@@ -1,0 +1,109 @@
+<html lang="en">
+<head>
+<title>Proof Windows - GNU Aris Manual</title>
+<meta http-equiv="Content-Type" content="text/html">
+<meta name="description" content="GNU Aris Manual">
+<meta name="generator" content="makeinfo 4.13">
+<link title="Top" rel="start" href="index.html#Top">
+<link rel="up" href="Menu-Options.html#Menu-Options" title="Menu Options">
+<link rel="next" href="Rules-Table.html#Rules-Table" title="Rules Table">
+<link href="http://www.gnu.org/software/texinfo/" rel="generator-home" title="Texinfo Homepage">
+<!--
+This manual is for GNU Aris, the logical proof program.
+
+Copyright (C) 2013 Ian Dunn
+
+     Permission is granted to copy, distribute and/or modify this
+     document under the terms of the GNU Free Documentation License,
+     Version 1.3 or any later version published by the Free Software
+     Foundation; with no Invariant Sections, with no Front-Cover Texts,
+     and with no Back-Cover Texts.  A copy of the license is included
+     in the section entitled ``GNU Free Documentation License''.
+   -->
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css"><!--
+  pre.display { font-family:inherit }
+  pre.format  { font-family:inherit }
+  pre.smalldisplay { font-family:inherit; font-size:smaller }
+  pre.smallformat  { font-family:inherit; font-size:smaller }
+  pre.smallexample { font-size:smaller }
+  pre.smalllisp    { font-size:smaller }
+  span.sc    { font-variant:small-caps }
+  span.roman { font-family:serif; font-weight:normal; } 
+  span.sansserif { font-family:sans-serif; font-weight:normal; } 
+--></style>
+</head>
+<body>
+<div class="node">
+<a name="Proof-Windows"></a>
+<p>
+Next:&nbsp;<a rel="next" accesskey="n" href="Rules-Table.html#Rules-Table">Rules Table</a>,
+Up:&nbsp;<a rel="up" accesskey="u" href="Menu-Options.html#Menu-Options">Menu Options</a>
+<hr>
+</div>
+
+<h3 class="section">5.1 Proof Windows</h3>
+
+<p>These are the menu options for the main proof windows.  Each one can be assigned a key command.
+
+     <dl>
+<dt>&lsquo;<samp><span class="samp">New</span></samp>&rsquo;<dt>&lsquo;<samp><span class="samp">Ctrl+N</span></samp>&rsquo;<dd>Start a new proof.  A new window is opened for this proof.
+
+     <br><dt>&lsquo;<samp><span class="samp">Open</span></samp>&rsquo;<dt><kbd>CTRL+O</kbd><dd>Open an existing proof in a new window.
+
+     <br><dt>&lsquo;<samp><span class="samp">Save</span></samp>&rsquo;<dt><kbd>CTRL+S</kbd><dd>Save the current proof.
+
+     <br><dt>&lsquo;<samp><span class="samp">Save As</span></samp>&rsquo;<dt><kbd>CTRL+SHIFT+S</kbd><dd>Save the current proof under a different name.
+
+     <br><dt>&lsquo;<samp><span class="samp">Export to LaTeX...</span></samp>&rsquo;<dd>Export the current proof to a LaTeX file.
+
+     <br><dt>&lsquo;<samp><span class="samp">Close</span></samp>&rsquo;<dt><kbd>CTRL+W</kbd><dd>Close the current proof.
+
+     <br><dt>&lsquo;<samp><span class="samp">Quit</span></samp>&rsquo;<dt><kbd>CTRL+Q</kbd><dd>Exit Aris.  But since logic is so much fun, I doubt you'll ever want to use this one.
+
+     <br><dt>&lsquo;<samp><span class="samp">Add Premise</span></samp>&rsquo;<dt><kbd>CTRL+P</kbd><dd>Insert a new premise at the end of the other premises.
+
+     <br><dt>&lsquo;<samp><span class="samp">Add Conclusion</span></samp>&rsquo;<dt><kbd>CTRL+J</kbd><dd>Insert a new conclusion after the current line if it is a conclusion, or at the start of the conclusions if it is a premise.
+
+     <br><dt>&lsquo;<samp><span class="samp">Add Subproof</span></samp>&rsquo;<dt><kbd>CTRL+B</kbd><dd>Begin a new subproof after the current line if it is a conclusion, or at the start of the conclusions if it is a premise.  This is unavailable in boolean mode, since subproofs can't be used.
+
+     <br><dt>&lsquo;<samp><span class="samp">End Subproof</span></samp>&rsquo;<dt><kbd>CTRL+D</kbd><dd>End the current subproof, if there is one.  Otherwise, this doesn't do anything.  This is unavailable in boolean mode, since subproofs can't be used.
+
+     <br><dt>&lsquo;<samp><span class="samp">Undo</span></samp>&rsquo;<dt><kbd>CTRL+Z</kbd><dd>Undo the last modification to the current proof.  On a new file, this does nothing.
+
+     <br><dt>&lsquo;<samp><span class="samp">Redo</span></samp>&rsquo;<dt><kbd>CTRL+Y</kbd><dd>Undo an undo operation.  If no undo has been made, then this does nothing.
+
+     <br><dt>&lsquo;<samp><span class="samp">Copy Line</span></samp>&rsquo;<dt><kbd>CTRL+G</kbd><dd>Copy the current line.
+
+     <br><dt>&lsquo;<samp><span class="samp">Kill Line</span></samp>&rsquo;<dt><kbd>CTRL+K</kbd><dd>Kill, or cut, the current line.  This removes the line from the proof.
+
+     <br><dt>&lsquo;<samp><span class="samp">Insert Line</span></samp>&rsquo;<dt><kbd>CTRL+I</kbd><dd>Insert the copied/killed line.
+
+     <br><dt>&lsquo;<samp><span class="samp">Evaluate Line</span></samp>&rsquo;<dt><kbd>CTRL+E</kbd><dd>Evaluate the logical validity of the current line.
+
+     <br><dt>&lsquo;<samp><span class="samp">Evaluate Proof</span></samp>&rsquo;<dt><kbd>CTRL+F</kbd><dd>Evaluate the logical validity of the current proof.  This evaluates each line of the proof.
+
+     <br><dt>&lsquo;<samp><span class="samp">Toggle Goals...</span></samp>&rsquo;<dt><kbd>CTRL+L</kbd><dd>Toggle the goal window for the current proof.
+
+     <br><dt>&lsquo;<samp><span class="samp">Toggle Boolean Mode</span></samp>&rsquo;<dt><kbd>CTRL+M</kbd><dd>Toggle boolean mode for the current proof See <a href="Boolean-Rules.html#Boolean-Rules">Boolean Rules</a>.
+
+     <br><dt>&lsquo;<samp><span class="samp">Import Proof</span></samp>&rsquo;<dd>Import another proof into this one.  This will merge the premises of the other proof into the current one, and insert the goals of the other proof as conclusions.  In addition, it sets the conclusions' references as the premises, and sets them all to use the lemma rule see <a href="lm.html#lm">lm</a>.
+
+     <br><dt>&lsquo;<samp><span class="samp">Toggle Rules</span></samp>&rsquo;<dt><kbd>CTRL+R</kbd><dd>Toggle the rules window.
+
+     <br><dt>&lsquo;<samp><span class="samp">Small</span></samp>&rsquo;<dt><kbd>CTRL+-</kbd><dd>Change the font size to small (8pt).
+
+     <br><dt>&lsquo;<samp><span class="samp">Medium</span></samp>&rsquo;<dt><kbd>CTRL+0</kbd><dd>Change the font size to medium (12pt).
+
+     <br><dt>&lsquo;<samp><span class="samp">Large</span></samp>&rsquo;<dt><kbd>CTRL+=</kbd><dd>Change the font size to large (16pt).
+
+     <br><dt>&lsquo;<samp><span class="samp">Custom</span></samp>&rsquo;<dd>Change the font size to a custom size.  This menu option opens a dialog box with a numerical entry.
+
+     <br><dt>&lsquo;<samp><span class="samp">Contents</span></samp>&rsquo;<dt><kbd>F1</kbd><dd>Display Aris help.  This is the only key command that cannot be modified.
+
+     <br><dt>&lsquo;<samp><span class="samp">About GNU Aris</span></samp>&rsquo;<dd>Displays information about GNU Aris.
+
+   </dl>
+
+   </body></html>
+
