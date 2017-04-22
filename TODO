@@ -5,3 +5,12 @@ GNU Aris -- TODO List
   - Sequence Logic
 * Bug Testing
 * Printing - Hold off on this
+
+*FOR Bram's Logic class project:
+  - make rules more user friendly, tooltips are good but there has to be a better way
+  - fix the issue in which the first letter typed in a proof does not show up until a second letter is typed.
+  - rearrange the menu bars
+  - kill line seems a little harsh (the word for this is cut)
+  - edit the default key shortcuts, they should be changed to the standard of (cut,copy,paste) being ctrl+(x,c,v)
+    ~fitchify some of the others
+  - correct some of the key shortcuts in the pdf to reflect what actually happens (and for our changes)
