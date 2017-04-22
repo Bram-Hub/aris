@@ -6,8 +6,9 @@ GNU Aris -- TODO List
 * Bug Testing
 * Printing - Hold off on this
 
-*FOR Bram's Logic class project:
+*FOR Bram's Logic class project: -the bugs encountered in windows, need to test if same on linux
   - make rules more user friendly, tooltips are good but there has to be a better way
+  - rules menu not long enough to click and drag
   - fix the issue in which the first letter typed in a proof does not show up until a second letter is typed.
   - rearrange the menu bars
   - kill line seems a little harsh (the word for this is cut)
