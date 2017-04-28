@@ -7,12 +7,19 @@ GNU Aris -- TODO List
 * Printing - Hold off on this
 
 *FOR Bram's Logic class project: -the bugs encountered in windows, need to test if same on linux
-  - make rules more user friendly, tooltips are good but there has to be a better way
+  - the customize display screen gets this error when changing the colors: 
+    ~also possibly when saving!!!!!!!!!!!
+    ~G-lib_GIO-ERROR **: NO GSettings schemas are installed on the system
   - fix the issue in which the first letter typed in a proof does not show up until a second letter is typed.
+  - make rules more user friendly, tooltips are good but there has to be a better way
+  - create a way to delete rows by means other than cut (and give it a default custom shortcut of crtl+d)
+    ~also make delete key map to this action as an unchangeable shortcut?
   - rearrange the menu bars
-  - correct some of the key shortcuts in the pdf to reflect what actually happens (and for our changes)
-  - wtf is the contents button for???
+  - make the contents button actually diplay the help menu
   - make the homepage button on the about page work
     ~my error: No application is registered as handling this file
-  - the customize display screen gets this error when changing the colors: (also possibly when saving?)
-    ~G-lib_GIO-ERROR **: NO GSettings schemas are installed on the system
+  - correct some of the key shortcuts in the pdf to reflect what actually happens and to reflect our changes
+  
+*DONE
+  - changed shortcuts to be more user friendly
+  - renamed kill and insert/yank to cut and paste

@@ -139,11 +139,11 @@ static conf_obj main_menu_conf[NUM_CONF_MENUS] = {
 
   {N_("Add Subproof"), N_("Add a new subproof to the current proof."),
    NULL, CONF_OBJ_MENU, CONF_MENU_ADD_SUB, conf_menu_value,
-   "media-skip-forward", "c+b"},
+   "media-skip-forward", "c+s+a"},
 
   {N_("End Subproof"), N_("End the current subproof."), NULL,
    CONF_OBJ_MENU, CONF_MENU_END_SUB, conf_menu_value,
-   "media-skip-backward", "c+d"},
+   "media-skip-backward", "c+e"},
 
   {N_("Undo"), N_("Undo the last command."), NULL,
    CONF_OBJ_MENU, CONF_MENU_UNDO, conf_menu_value, "edit-undo", "c+z"},
@@ -163,11 +163,11 @@ static conf_obj main_menu_conf[NUM_CONF_MENUS] = {
 
   {N_("Evaluate Line"),
    N_("Evaluate the current line in the current proof."), NULL,
-   CONF_OBJ_MENU, CONF_MENU_EVAL_LINE, conf_menu_value, "system-run", "c+e"},
+   CONF_OBJ_MENU, CONF_MENU_EVAL_LINE, conf_menu_value, "system-run", "c+f"},
 
   {N_("Evaluate Proof"), N_("Evaluate the current proof."), NULL,
    CONF_OBJ_MENU, CONF_MENU_EVAL_PROOF, conf_menu_value,
-   "edit-select-all", "c+f"},
+   "edit-select-all", "c+s+f"},
 
   {N_("Toggle Goals..."),
    N_("Check/Modify the current goal(s) for the current proof."),
@@ -175,7 +175,7 @@ static conf_obj main_menu_conf[NUM_CONF_MENUS] = {
 
   {N_("Toggle Boolean Mode"),
    N_("Toggle Boolean mode for the current proof."), NULL,
-   CONF_OBJ_MENU, CONF_MENU_BOOLEAN, conf_menu_value, NULL, "c+m"},
+   CONF_OBJ_MENU, CONF_MENU_BOOLEAN, conf_menu_value, NULL, "c+b"},
 
   {N_("Import Proof..."),
    N_("Import the premises and conclusions of a proof."), NULL,
