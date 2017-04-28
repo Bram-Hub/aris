@@ -49,7 +49,7 @@ enum CONF_MENU_ID {
   CONF_MENU_UNDO,
   CONF_MENU_REDO,
   CONF_MENU_COPY,
-  CONF_MENU_KILL,
+  CONF_MENU_CUT,
   CONF_MENU_INSERT,
   CONF_MENU_EVAL_LINE,
   CONF_MENU_EVAL_PROOF,
@@ -135,7 +135,7 @@ static conf_obj main_menu_conf[NUM_CONF_MENUS] = {
 
   {N_("Add Conclusion"),
    N_("Add a new conclusion to the current proof."), NULL,
-   CONF_OBJ_MENU, CONF_MENU_ADD_CONC, conf_menu_value, "list-add", "c+j"},
+   CONF_OBJ_MENU, CONF_MENU_ADD_CONC, conf_menu_value, "list-add", "c+a"},
 
   {N_("Add Subproof"), N_("Add a new subproof to the current proof."),
    NULL, CONF_OBJ_MENU, CONF_MENU_ADD_SUB, conf_menu_value,
@@ -152,15 +152,14 @@ static conf_obj main_menu_conf[NUM_CONF_MENUS] = {
    CONF_OBJ_MENU, CONF_MENU_REDO, conf_menu_value, "edit-redo", "c+y"},
 
   {N_("Copy Line"), N_("Copy the current line in the current proof."),
-   NULL, CONF_OBJ_MENU, CONF_MENU_COPY, conf_menu_value, "_Copy", "c+g"},
+   NULL, CONF_OBJ_MENU, CONF_MENU_COPY, conf_menu_value, "_Copy", "c+s+c"},
 
-  {N_("Kill Line"),
-   N_("Kill (Cut) the current line in the current proof."), NULL,
-   CONF_OBJ_MENU, CONF_MENU_KILL, conf_menu_value, "Cu_t", "c+k"},
+  {N_("Cut Line"), N_("Cut the current line in the current proof."), 
+   NULL, CONF_OBJ_MENU, CONF_MENU_CUT, conf_menu_value, "_Cut", "c+s+x"},
 
-  {N_("Insert Line"), N_("Insert a copied/killed line after the\
- current line in the current proof."), NULL, CONF_OBJ_MENU,
-   CONF_MENU_INSERT, conf_menu_value, "_Paste", "c+i"},
+  {N_("Paste Line"), N_("Insert a copied/cut line after the\
+   current line in the current proof."), NULL, CONF_OBJ_MENU,
+   CONF_MENU_INSERT, conf_menu_value, "_Paste", "c+s+v"},
 
   {N_("Evaluate Line"),
    N_("Evaluate the current line in the current proof."), NULL,
@@ -172,7 +171,7 @@ static conf_obj main_menu_conf[NUM_CONF_MENUS] = {
 
   {N_("Toggle Goals..."),
    N_("Check/Modify the current goal(s) for the current proof."),
-   NULL, CONF_OBJ_MENU, CONF_MENU_GOAL, conf_menu_value, NULL, "c+l"},
+   NULL, CONF_OBJ_MENU, CONF_MENU_GOAL, conf_menu_value, NULL, "c+g"},
 
   {N_("Toggle Boolean Mode"),
    N_("Toggle Boolean mode for the current proof."), NULL,
@@ -219,7 +218,7 @@ static conf_obj goal_menu_conf[NUM_GOAL_MENUS] = {
    CONF_MENU_ADD_PREM, conf_menu_value, "list-add", "c+j"},
 
   {"Remove Goal", "Remove the current goal for this proof.", NULL,
-   CONF_OBJ_MENU, CONF_MENU_KILL, conf_menu_value, "list-remove", "c+k"},
+   CONF_OBJ_MENU, CONF_MENU_CUT, conf_menu_value, "list-remove", "c+k"},
 
   {"Check Line", "Check if the current goal has been met.", NULL,
    CONF_OBJ_MENU, CONF_MENU_EVAL_LINE, conf_menu_value, "system-run", "c+e"},

@@ -251,7 +251,7 @@ goal_menu_activate (GtkMenuItem * item, gpointer data)
     case CONF_MENU_ADD_PREM:
       goal_add_line (goal, sd);
       break;
-    case CONF_MENU_KILL:
+    case CONF_MENU_CUT:
       goal_rem_line (goal);
       break;
     case CONF_MENU_EVAL_LINE:
@@ -1458,19 +1458,19 @@ menu_activated (aris_proof * ap, int menu_id)
       aris_proof_set_sb (ap, _("Sentence Copied."));
       break;
 
-    case CONF_MENU_KILL:
-      ret = aris_proof_kill (ap);
+    case CONF_MENU_CUT:
+      ret = aris_proof_cut (ap);
       if (ret < 0)
         return AEC_MEM;
 
       if (ret == 1)
-        aris_proof_set_sb (ap, _("The first sentence can not be killed."));
+        aris_proof_set_sb (ap, _("The first sentence can not be cut."));
       else
-        aris_proof_set_sb (ap, _("Sentence Killed."));
+        aris_proof_set_sb (ap, _("Sentence Cut."));
       break;
 
     case CONF_MENU_INSERT:
-      ret = aris_proof_yank (ap);
+      ret = aris_proof_paste (ap);
       aris_proof_set_sb (ap, _("Sentence Inserted."));
       break;
 

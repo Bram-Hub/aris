@@ -39,7 +39,7 @@ struct aris_proof {
   char * cur_file;	// The current file associated with this proof.
 
   item_t * fin_prem;	// The final premise.
-  list_t * yanked;	// The currently yanked lines.
+  list_t * clipboard;	// The contents of the clipboard.
   list_t * selected;	// The currently selected lines.
 
   char * sb_text;	// The statusbar text - may not be needed.
@@ -73,8 +73,8 @@ void aris_proof_set_font (aris_proof * ap, int font);
 void aris_proof_set_sb (aris_proof * ap, char * sb_text);
 int aris_proof_set_filename (aris_proof * ap, const char * filename);
 
-int aris_proof_kill (aris_proof * ap);
-int aris_proof_yank (aris_proof * ap);
+int aris_proof_cut (aris_proof * ap);
+int aris_proof_paste (aris_proof * ap);
 int aris_proof_copy (aris_proof * ap);
 
 int aris_proof_clear_selected (aris_proof * ap);

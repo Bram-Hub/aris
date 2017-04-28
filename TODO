@@ -8,15 +8,11 @@ GNU Aris -- TODO List
 
 *FOR Bram's Logic class project: -the bugs encountered in windows, need to test if same on linux
   - make rules more user friendly, tooltips are good but there has to be a better way
-  - rules menu not long enough to click and drag
   - fix the issue in which the first letter typed in a proof does not show up until a second letter is typed.
   - rearrange the menu bars
-  - kill line seems a little harsh (the word for this is cut)
-  - edit the default key shortcuts, they should be changed to the standard of (cut,copy,paste) being ctrl+(x,c,v)
-    ~fitchify some of the others
   - correct some of the key shortcuts in the pdf to reflect what actually happens (and for our changes)
   - wtf is the contents button for???
   - make the homepage button on the about page work
     ~my error: No application is registered as handling this file
-  - the customize display screen gets this error when changing the colors:
+  - the customize display screen gets this error when changing the colors: (also possibly when saving?)
     ~G-lib_GIO-ERROR **: NO GSettings schemas are installed on the system

@@ -86,8 +86,8 @@ G_MODULE_EXPORT gboolean goal_focus_in (GtkWidget * widget,
 int gui_destroy (aris_proof * ap);
 
 item_t * gui_copy (aris_proof * ap, sentence * sen);
-item_t * gui_kill (aris_proof * ap, sentence * sen);
-int gui_yank (aris_proof * ap);
+item_t * gui_kill (aris_proof * ap, sentence * sen); //means cut
+int gui_yank (aris_proof * ap); //means paste
 
 int gui_new ();
 int gui_save (aris_proof * ap, int save_as);

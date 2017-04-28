@@ -307,18 +307,18 @@ aris_proof_init_from_proof (proof_t * proof)
 void
 aris_proof_destroy (aris_proof * ap)
 {
-  if (ap->yanked)
+  if (ap->clipboard)
     {
-      item_t * yank_itr;
-      for (yank_itr = ap->yanked->head; yank_itr; yank_itr = yank_itr->next)
+      item_t * clipboard_itr;
+      for (clipboard_itr = ap->clipboard->head; clipboard_itr; clipboard_itr = clipboard_itr->next)
         {
           sen_data * y_sd;
-          y_sd = yank_itr->value;
+          y_sd = clipboard_itr->value;
           sen_data_destroy (y_sd);
         }
 
-      destroy_list (ap->yanked);
-      ap->yanked = NULL;
+      destroy_list (ap->clipboard);
+      ap->clipboard = NULL;
     }
 
   ap->fin_prem = NULL;
@@ -371,7 +371,7 @@ aris_proof_create_menu (sen_parent * ap)
       main_menu_conf[CONF_MENU_REDO],
       menu_separator,
       main_menu_conf[CONF_MENU_COPY],
-      main_menu_conf[CONF_MENU_KILL],
+      main_menu_conf[CONF_MENU_CUT],
       main_menu_conf[CONF_MENU_INSERT]
     },
     (conf_obj[]) {
@@ -858,21 +858,21 @@ int
 aris_proof_copy (aris_proof * ap)
 {
   // First, clear out the old copied sentences.
-  if (ap->yanked)
+  if (ap->clipboard)
     {
-      item_t * yank_itr;
-      for (yank_itr = ap->yanked->head; yank_itr; yank_itr = yank_itr->next)
+      item_t * clipboard_itr;
+      for (clipboard_itr = ap->clipboard->head; clipboard_itr; clipboard_itr = clipboard_itr->next)
         {
           sen_data * y_sd;
-          y_sd = yank_itr->value;
+          y_sd = clipboard_itr->value;
           sen_data_destroy (y_sd);
         }
-      ls_clear (ap->yanked);
+      ls_clear (ap->clipboard);
     }
   else
     {
-      ap->yanked = init_list ();
-      if (!ap->yanked)
+      ap->clipboard = init_list ();
+      if (!ap->clipboard)
         return AEC_MEM;
     }
 
@@ -994,7 +994,7 @@ aris_proof_copy (aris_proof * ap)
       else
         sd->depth = DEPTH_DEFAULT;
 
-      ret_chk = ls_push_obj (ap->yanked, sd);
+      ret_chk = ls_push_obj (ap->clipboard, sd);
       if (!ret_chk)
         return AEC_MEM;
 
@@ -1017,21 +1017,21 @@ aris_proof_copy (aris_proof * ap)
   return 0;
 }
 
-/* Kills the selected line(s) from an aris proof.
+/* Cuts the selected line(s) from an aris proof.
  *  input:
  *    ap - The aris proof from which sentences are being copied.
  *  output:
  *    0 on success, -1 on memory error, 1 if the sentence is the first.
  */
 int
-aris_proof_kill (aris_proof * ap)
+aris_proof_cut (aris_proof * ap)
 {
   int ret_chk;
   ret_chk = aris_proof_copy (ap);
   if (ret_chk == AEC_MEM)
     return AEC_MEM;
   
-  item_t * sel_itr = ap->yanked->head;
+  item_t * sel_itr = ap->clipboard->head;
 
   undo_info ui;
   list_t * ls, * sen_ls;
@@ -1099,16 +1099,16 @@ aris_proof_kill (aris_proof * ap)
   return 0;
 }
 
-/* Yanks any copied or killed lines to an aris proof.
+/* Pastes any copied or cut lines to an aris proof.
  *  input:
- *    ap - The aris proof to which the lines are being yanked.
+ *    ap - The aris proof to which the lines are being pasted.
  *  output:
  *    0 on success, -1 on memory error.
  */
 int
-aris_proof_yank (aris_proof * ap)
+aris_proof_paste (aris_proof * ap)
 {
-  if (!ap->yanked)
+  if (!ap->clipboard)
     return 0;
 
   list_t * ls;
@@ -1116,15 +1116,15 @@ aris_proof_yank (aris_proof * ap)
   if (!ls)
     return AEC_MEM;
 
-  item_t * yank_itr;
+  item_t * clipboard_itr;
   int ret, line_num;
   line_num = sentence_get_line_no ((sentence *)SEN_PARENT(ap)->focused->value);
-  for (yank_itr = ap->yanked->head; yank_itr; yank_itr = yank_itr->next)
+  for (clipboard_itr = ap->clipboard->head; clipboard_itr; clipboard_itr = clipboard_itr->next)
     {
       line_num++;
       sentence * sen;
       sen_data * sd;
-      sd = yank_itr->value;
+      sd = clipboard_itr->value;
 
       if (sd->refs)
         {
