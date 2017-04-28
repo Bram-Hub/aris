@@ -14,6 +14,8 @@ GNU Aris -- TODO List
   - make rules more user friendly, tooltips are good but there has to be a better way
   - create a way to delete rows by means other than cut (and give it a default custom shortcut of crtl+d)
     ~also make delete key map to this action as an unchangeable shortcut?
+	~also fix remove goal to remove the goal instead of using cut on it 
+	  (it doesn't affect anything it just doesn't need to be copying it)
   - rearrange the menu bars
   - make the contents button actually diplay the help menu
   - make the homepage button on the about page work

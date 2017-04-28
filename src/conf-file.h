@@ -215,20 +215,20 @@ static conf_obj main_menu_conf[NUM_CONF_MENUS] = {
 
 static conf_obj goal_menu_conf[NUM_GOAL_MENUS] = {
   {"Add Goal", "Add a new goal for this proof.", NULL, CONF_OBJ_MENU,
-   CONF_MENU_ADD_PREM, conf_menu_value, "list-add", "c+j"},
+   CONF_MENU_ADD_PREM, conf_menu_value, "list-add", "c+a"},
 
   {"Remove Goal", "Remove the current goal for this proof.", NULL,
-   CONF_OBJ_MENU, CONF_MENU_CUT, conf_menu_value, "list-remove", "c+k"},
+   CONF_OBJ_MENU, CONF_MENU_CUT, conf_menu_value, "list-remove", "c+d"},
 
   {"Check Line", "Check if the current goal has been met.", NULL,
-   CONF_OBJ_MENU, CONF_MENU_EVAL_LINE, conf_menu_value, "system-run", "c+e"},
+   CONF_OBJ_MENU, CONF_MENU_EVAL_LINE, conf_menu_value, "system-run", "c+f"},
 
   {"Check All", "Check if all goals have been met.", NULL,
    CONF_OBJ_MENU, CONF_MENU_EVAL_PROOF, conf_menu_value,
-   "edit-select-all", "c+f"},
+   "edit-select-all", "c+s+f"},
 
   {"Hide Goals", "Hide the goals window for this proof.", NULL,
-   CONF_OBJ_MENU, CONF_MENU_GOAL, conf_menu_value, "view-refresh", "c+l"}
+   CONF_OBJ_MENU, CONF_MENU_GOAL, conf_menu_value, "view-refresh", "c+g"}
 };
 
 /* The internal configuration objects */
@@ -268,24 +268,24 @@ static conf_obj display_conf[NUM_DISPLAY_CONFS] = {
    NULL, CONF_OBJ_COLOR, BG_COLOR_DEFAULT, conf_color_value, NULL, "ffffff"},
 
   {N_("Conclusion Color"), N_("The background color in which to\
- hilight the selected conclusion."), NULL, CONF_OBJ_COLOR,
-   BG_COLOR_CONC, conf_color_value, NULL, "729fcf"},
+ highlight the selected conclusion."), NULL, CONF_OBJ_COLOR,
+   BG_COLOR_CONC, conf_color_value, NULL, "00FF89"},
 
   {N_("Reference Color"), N_("The background color in which to\
- hilight the selected references."), NULL, CONF_OBJ_COLOR,
-   BG_COLOR_REF, conf_color_value, NULL, "a40000"},
+ highlight the selected references."), NULL, CONF_OBJ_COLOR,
+   BG_COLOR_REF, conf_color_value, NULL, "ff0d00"},
 
-  {N_("Bad Color"), N_("The background color in which to hilight\
+  {N_("Bad Color"), N_("The background color in which to highlight\
  mismatched parentheses and invalid goal lines."), NULL,
    CONF_OBJ_COLOR, BG_COLOR_BAD, conf_color_value, NULL, "7f0000"},
 
-  {N_("Good Color"), N_("The background color in which to hilight\
+  {N_("Good Color"), N_("The background color in which to highlight\
  matched parentheses and valid goal lines."), NULL, CONF_OBJ_COLOR,
    BG_COLOR_GOOD, conf_color_value, NULL, "007f00"},
 
   {N_("Selection Color"), N_("The background color in which to\
- hilight selected sentences."), NULL, CONF_OBJ_COLOR, BG_COLOR_SEL,\
-   conf_color_value, NULL, "ff0d00"}
+ highlight selected sentences."), NULL, CONF_OBJ_COLOR, BG_COLOR_SEL,\
+   conf_color_value, NULL, "C503FF"}
 };
 
 static const conf_obj menu_separator = {NULL, NULL, NULL,
