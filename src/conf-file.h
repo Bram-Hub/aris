@@ -181,9 +181,8 @@ static conf_obj main_menu_conf[NUM_CONF_MENUS] = {
    N_("Import the premises and conclusions of a proof."), NULL,
    CONF_OBJ_MENU, CONF_MENU_IMPORT, conf_menu_value, "drive-harddisk", NULL},
 
-  {N_("Toggle Rules"), N_("Show/Hide the rules tablet."), NULL,
-   CONF_OBJ_MENU, CONF_MENU_TOGGLE_RULES, conf_menu_value,
-   "view-refresh", "c+r"},
+  {N_("Toggle Rules"), N_("Show/Hide the rules tablet."), NULL, CONF_OBJ_MENU, 
+  CONF_MENU_TOGGLE_RULES, conf_menu_value, "view-refresh", "c+r"},
 
   {N_("Small"), N_("Set the font size to small."), NULL,
    CONF_OBJ_MENU, CONF_MENU_SMALL, conf_menu_value, "zoom-out", "c+-"},
@@ -200,9 +199,8 @@ static conf_obj main_menu_conf[NUM_CONF_MENUS] = {
   {N_("About GNU Aris"), N_("Display information about GNU Aris."),
    NULL, CONF_OBJ_MENU, CONF_MENU_ABOUT, conf_menu_value, "help-about", NULL},
 
-  {N_("Submit Proofs..."), N_("Submit all open proofs for grading."),
-   NULL, CONF_OBJ_MENU, CONF_MENU_SUBMIT, conf_menu_value,
-   "network-workgroup", NULL},
+  {N_("Submit Proofs..."), N_("Submit all open proofs for grading."), NULL, 
+   CONF_OBJ_MENU, CONF_MENU_SUBMIT, conf_menu_value, "network-workgroup", NULL},
 
   {N_("Customize"), N_("Customize GNU Aris."), NULL, CONF_OBJ_MENU,
    CONF_MENU_CUSTOMIZE, conf_menu_value, NULL, NULL},
@@ -223,9 +221,8 @@ static conf_obj goal_menu_conf[NUM_GOAL_MENUS] = {
   {"Check Line", "Check if the current goal has been met.", NULL,
    CONF_OBJ_MENU, CONF_MENU_EVAL_LINE, conf_menu_value, "system-run", "c+f"},
 
-  {"Check All", "Check if all goals have been met.", NULL,
-   CONF_OBJ_MENU, CONF_MENU_EVAL_PROOF, conf_menu_value,
-   "edit-select-all", "c+s+f"},
+  {"Check All", "Check if all goals have been met.", NULL, CONF_OBJ_MENU, 
+  CONF_MENU_EVAL_PROOF, conf_menu_value, "edit-select-all", "c+s+f"},
 
   {"Hide Goals", "Hide the goals window for this proof.", NULL,
    CONF_OBJ_MENU, CONF_MENU_GOAL, conf_menu_value, "view-refresh", "c+g"}
@@ -237,9 +234,11 @@ static conf_obj grade_conf[NUM_GRADE_CONFS] = {
   {N_("Grade IP"),
    N_("The IP Address of the Grading Server to Submit proofs to."),
    NULL, CONF_OBJ_GRADE, CONF_GRADE_IP, conf_grade_value, NULL, "127.0.0.1"},
+
   {N_("Grade Password"),
    N_("The Password of the Grading Server."),
    NULL, CONF_OBJ_GRADE, CONF_GRADE_PASS, conf_grade_value, NULL, "islegion"},
+
   {N_("Grade Directory"),
    N_("The directory of the Grading Server."),
    NULL, CONF_OBJ_GRADE, CONF_GRADE_DIR, conf_grade_value, NULL, "."}
@@ -264,28 +263,28 @@ static conf_obj display_conf[NUM_DISPLAY_CONFS] = {
    N_("The default font size to initialize GNU Aris with."),
    NULL, CONF_OBJ_FONT, FONT_TYPE_CUSTOM, conf_font_value, NULL, "8"},
 
-  {N_("Default Color"), N_("The background color of normal lines."),
-   NULL, CONF_OBJ_COLOR, BG_COLOR_DEFAULT, conf_color_value, NULL, "ffffff"},
+  {N_("Default Color"), N_("The background color of normal lines."), NULL, 
+  CONF_OBJ_COLOR, BG_COLOR_DEFAULT, conf_color_value, NULL, "ffffff"},
 
   {N_("Conclusion Color"), N_("The background color in which to\
- highlight the selected conclusion."), NULL, CONF_OBJ_COLOR,
-   BG_COLOR_CONC, conf_color_value, NULL, "00FF89"},
+   highlight the selected conclusion."), NULL, CONF_OBJ_COLOR,
+   BG_COLOR_CONC, conf_color_value, NULL, "B2B2B2"},
 
   {N_("Reference Color"), N_("The background color in which to\
- highlight the selected references."), NULL, CONF_OBJ_COLOR,
+   highlight the selected references."), NULL, CONF_OBJ_COLOR,
    BG_COLOR_REF, conf_color_value, NULL, "ff0d00"},
 
   {N_("Bad Color"), N_("The background color in which to highlight\
- mismatched parentheses and invalid goal lines."), NULL,
+   mismatched parentheses and invalid goal lines."), NULL,
    CONF_OBJ_COLOR, BG_COLOR_BAD, conf_color_value, NULL, "7f0000"},
 
   {N_("Good Color"), N_("The background color in which to highlight\
- matched parentheses and valid goal lines."), NULL, CONF_OBJ_COLOR,
+   matched parentheses and valid goal lines."), NULL, CONF_OBJ_COLOR,
    BG_COLOR_GOOD, conf_color_value, NULL, "007f00"},
 
   {N_("Selection Color"), N_("The background color in which to\
- highlight selected sentences."), NULL, CONF_OBJ_COLOR, BG_COLOR_SEL,\
-   conf_color_value, NULL, "C503FF"}
+   highlight selected sentences."), NULL, CONF_OBJ_COLOR, 
+   BG_COLOR_SEL, conf_color_value, NULL, "C503FF"}
 };
 
 static const conf_obj menu_separator = {NULL, NULL, NULL,
