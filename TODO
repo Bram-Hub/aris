@@ -10,7 +10,7 @@ GNU Aris -- TODO List
   - the customize display screen gets this error when changing the colors: 
     ~also when saving!!!!!!!!!!!
     ~G-lib_GIO-ERROR **: NO GSettings schemas are installed on the system
-  - fix the issue in which the first letter typed in a proof does not show up until a second letter is typed.
+  - fix the issue in which the first letter typed in a proof does not show up until a second letter is typed. (possibly in sentence.c)
   - make rules more user friendly, tooltips are good but there has to be a better way
   - create a way to delete rows by means other than cut (and give it a default custom shortcut of ctrl+d)
     ~also make delete key map to this action as an unchangeable shortcut?
@@ -22,7 +22,7 @@ GNU Aris -- TODO List
     ~make them highlighted blue over the the grey highlight
   - make the homepage button on the about page work
     ~my error: No application is registered as handling this file
-  - correct some of the key shortcuts in the pdf to reflect what actually happens and to reflect our changes
+  - correct aris.pdf using aris.texi to reflect our changes
   
 *DONE
   - changed shortcuts to be more user friendly

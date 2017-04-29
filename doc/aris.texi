@@ -79,7 +79,7 @@ This manual is for GNU Aris, a sequential proof program, designed to assist anyo
 A biconditional is a connective that connects two sentences, denoted by @samp{<->}.  A biconditional claims that @samp{sentence a if and only if sentence b} is a new sentence.  A biconditional can be inserted in Aris using the key combination @kbd{CTRL+5} (@pxref{Other Key Shortcuts}).
 
 @item Conclusion
-A conclusion is a sentence that is derived from a combination of other sentences and a rule.  A focused conclusion will be highlighted in cyan.  A conclusion has a set of references associated with it, which are highlighted in violet.  Both of these colors can be changed using customization (@pxref{Customization}).
+A conclusion is a sentence that is derived from a combination of other sentences and a rule.  A focused conclusion will be highlighted in gray.  A conclusion has a set of references associated with it, which are highlighted in red.  Both of these colors can be changed using customization (@pxref{Customization}).
 
 @item Conditional
 A conditional is a connective that connects two sentences, denoted by @samp{@arrow{}}.  A conditional claims that @samp{if sentence a, then sentence b} is a new sentence.  A conditional can be inserted in Aris using the key combination @kbd{CTRL+4} (@pxref{Other Key Shortcuts}).
@@ -130,7 +130,7 @@ A proof is a set of sentences, beginning with a set of premises and ending with 
 A quantifier is a type of logical symbol that claims something about the amount, or quantity, of an object that holds a specific property.  The quantifiers used in system @sc{psi} are the universal (@samp{V}), and the existential (@samp{3}).
 
 @item Reference
-A reference is a sentence that is being used to derive a conclusion.  A reference is highlighted in violet, and can be added or removed from the current sentence by holding down @kbd{CTRL}, and left-clicking on the desired reference.
+A reference is a sentence that is being used to derive a conclusion.  A reference is highlighted in red, and can be added or removed from the current sentence by holding down @kbd{CTRL}, and left-clicking on the desired reference.
 
 @item Rules
 The rules in Aris are a combination of inference rules, equivalence rules, and predicate rules that the user can use to derive sentences.  The rules window (also referred to as the rules tablet) is shared amongst all of the proofs in Aris.  It can be toggled by the key combination @kbd{CTRL+R} (@pxref{Proof Windows}) from any proof window. For the list of rules, @ref{Rules Index}.
@@ -244,7 +244,7 @@ For example, pressing @kbd{Ctrl+7} inserts a conjunction.  This is the character
 @node Adding
 @section Adding Sentences
 
-Hitting @kbd{Ctrl+A} adds a conclusion to the proof.  A conclusion is always added after the current line, or, if the line is a premise, then the conclusion is added after the last premise.  If the current line is a conclusion, then it is highlighted in cyan.
+Hitting @kbd{Ctrl+A} adds a conclusion to the proof.  A conclusion is always added after the current line, or, if the line is a premise, then the conclusion is added after the last premise.  If the current line is a conclusion, then it is highlighted in gray.
 
 Hitting @kbd{Ctrl+P} adds a premise to the proof.  A premise will always be added after the last premise.
 
@@ -255,9 +255,9 @@ To undo a command, simply press @kbd{Ctrl+Z}.  This will undo the last text modi
 @node Selecting
 @section Selecting Sentences
 
-Holing @kbd{CTRL}, and left-clicking on a sentence will select a sentence as a reference sentence.  The current line's reference sentences are highlighted in violet.  Only a line before the current line can be selected as a reference.  In addition, if the sentence is in a different subproof than the current line, then the sentence cannot be selected as a reference.  Each rule requires a specific amount of references (@pxref{Rules Index}).
+Holing @kbd{CTRL}, and left-clicking on a sentence will select a sentence as a reference sentence.  The current line's reference sentences are highlighted in red.  Only a line before the current line can be selected as a reference.  In addition, if the sentence is in a different subproof than the current line, then the sentence cannot be selected as a reference.  Each rule requires a specific amount of references (@pxref{Rules Index}).
 
-Holding @kbd{SHIFT} and left-clicking on a sentence will select the sentence.  The sentence will be highlighted in red-orange.  Multiple sentences can be selected this way, however when another action is taken, all of them will be de-selected.  Pressing @kbd{CTRL+SHIFT+X} will cut the selected lines, and @kbd{CTRL+SHIFT+C} will copy the selected lines.  If no lines are selected, then the current line will be used.
+Holding @kbd{SHIFT} and left-clicking on a sentence will select the sentence.  The sentence will be highlighted in violet.  Multiple sentences can be selected this way, however when another action is taken, all of them will be de-selected.  Pressing @kbd{CTRL+SHIFT+X} will cut the selected lines, and @kbd{CTRL+SHIFT+C} will copy the selected lines.  If no lines are selected, then the current line will be used.
 
 @node Syntax
 @section Aris Syntax
