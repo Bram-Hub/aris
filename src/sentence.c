@@ -1055,10 +1055,10 @@ sentence_key (sentence * sen, int key, int ctrl)
         case GDK_KEY_3:
           pixbuf = sen_parent_get_conn_by_type (sen->parent, EXL);
           break;
-        case GDK_KEY_1:
+        case GDK_KEY_6:
           pixbuf = sen_parent_get_conn_by_type (sen->parent, TAU);
           break;
-        case GDK_KEY_6:
+        case GDK_KEY_1:
           pixbuf = sen_parent_get_conn_by_type (sen->parent, CTR);
           break;
         case GDK_KEY_semicolon:
