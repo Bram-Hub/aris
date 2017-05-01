@@ -23,6 +23,8 @@
 #include "rules.h"
 #include "typedef.h"
 
+#include <wchar.h>
+
 #define TOGGLE_BUTTON(b) { gboolean is_toggled = gtk_toggle_button_get_active ( GTK_TOGGLE_BUTTON (b)); gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (b), !is_toggled);}
 
 struct rules_group {

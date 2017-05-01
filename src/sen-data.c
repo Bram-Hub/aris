@@ -18,6 +18,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <wchar.h>
 #include "sen-data.h"
 #include "process.h"
 #include "list.h"
@@ -321,7 +322,7 @@ sen_data_evaluate (sen_data * sd, int * ret_val, list_t * pf_vars, list_t * line
     }
 
   *ret_val = VALUE_TYPE_ERROR;
-  const char * rule = rules_list[sd->rule];
+  const char * rule = (char*) rules_list[sd->rule];
 
   vec_t * refs;
 

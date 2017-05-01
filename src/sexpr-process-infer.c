@@ -18,13 +18,15 @@
 
 #include "sexpr-process.h"
 #include "vec.h"
+#include "rules.h"
+#include <wchar.h>
 
 char *
 process_inference (unsigned char * conc, vec_t * prems, const char * rule)
 {
   char * ret = NULL;
 
-  if (!strcmp (rule, "mp"))
+  if (!strcmp (rule, (char*) rules_list[RULE_MP]))
     {
       if (prems->num_stuff != 2)
 	return _("Modus Ponens requires two (2) references.");
@@ -38,7 +40,7 @@ process_inference (unsigned char * conc, vec_t * prems, const char * rule)
 	return NULL;
     }  /* End of modus ponens */
 
-  if (!strcmp (rule, "ad"))
+  if (!strcmp (rule, (char*) rules_list[RULE_AD]))
     {
       if (prems->num_stuff != 1)
 	return _("Addition requires one (1) references.");
@@ -51,7 +53,7 @@ process_inference (unsigned char * conc, vec_t * prems, const char * rule)
 	return NULL;
     }  /* End of addition. */
 
-  if (!strcmp (rule, "sm"))
+  if (!strcmp (rule, (char*) rules_list[RULE_SM]))
     {
       if (prems->num_stuff != 1)
 	return _("Simplification requires one (1) reference.");
@@ -65,7 +67,7 @@ process_inference (unsigned char * conc, vec_t * prems, const char * rule)
 
     }  /* End of simplification. */
 
-  if (!strcmp (rule, "cn"))
+  if (!strcmp (rule, (char*) rules_list[RULE_CN]))
     {
       if (prems->num_stuff < 2)
 	return _("Conjunction requires at least two (2) references.");
@@ -76,7 +78,7 @@ process_inference (unsigned char * conc, vec_t * prems, const char * rule)
 
     }  /* End of conjunction. */
 
-  if (!strcmp (rule, "hs"))
+  if (!strcmp (rule, (char*) rules_list[RULE_HS]))
     {
       if (prems->num_stuff < 2)
 	return _("Hypothetical Syllogism requires at least two (2) references.");
@@ -86,7 +88,7 @@ process_inference (unsigned char * conc, vec_t * prems, const char * rule)
 	return NULL;
     }  /* End of hypothetical syllogism. */
 
-  if (!strcmp (rule, "ds"))
+  if (!strcmp (rule, (char*) rules_list[RULE_DS]))
     {
       if (prems->num_stuff < 2)
 	return _("Disjunctive Syllogism requires at least two (2) arguemnts.");
@@ -96,7 +98,7 @@ process_inference (unsigned char * conc, vec_t * prems, const char * rule)
 	return NULL;
     }  /* End of disjunctive syllogism. */
 
-  if (!strcmp (rule, "ex"))
+  if (!strcmp (rule, (char*) rules_list[RULE_EX]))
     {
       if (prems->num_stuff != 0)
 	return _("Excluded Middle requires zero (0) references.");
@@ -106,7 +108,7 @@ process_inference (unsigned char * conc, vec_t * prems, const char * rule)
 	return NULL;
     }  /* End of excluded middle. */
 
-  if (!strcmp (rule, "cd"))
+  if (!strcmp (rule, (char*) rules_list[RULE_CD]))
     {
       if (prems->num_stuff < 3)
 	return _("Constructive Dilemma requires at least three (3) references.");

@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include <wchar.h>
 
 #include "callbacks.h"
 #include "app.h"

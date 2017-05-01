@@ -18,6 +18,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <wchar.h>
 
 #include "proof.h"
 #include "sen-data.h"
@@ -277,7 +278,7 @@ convert_proof_latex (proof_t * proof, const char * filename)
       if (!text)
 	return AEC_MEM;
 
-      const char * rule = sd->subproof ? "assume" : rules_list[sd->rule];
+      const char * rule = sd->subproof ? "assume" : (char*) rules_list[sd->rule];
 
       fprintf (file, "\t\\stdline{%i}{%s}{%s} ", sd->line_num,
 	       text, rule);

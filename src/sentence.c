@@ -1636,7 +1636,7 @@ sentence_set_rule (sentence * sen, int rule)
 {
   SD(sen)->rule = rule;
   const char * rule_text = (SD(sen)->rule == -1)
-    ? NULL : rules_list[SD(sen)->rule];
+    ? NULL : (char*) rules_list[SD(sen)->rule];
   gtk_label_set_text (GTK_LABEL (sen->rule_box),
                       rule_text);
   return 0;

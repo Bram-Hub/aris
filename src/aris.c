@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
+#include <wchar.h>
 
 #include "process.h"
 #include "vec.h"

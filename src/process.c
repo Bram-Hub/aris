@@ -25,6 +25,7 @@
 
 #include <ctype.h>
 #include <math.h>
+#include <wchar.h>
 
 /* Eliminates a negation from a string.
  *  input:

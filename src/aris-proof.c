@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <math.h>
+#include <wchar.h>
 
 #include "aris-proof.h"
 #include "sen-parent.h"
@@ -71,7 +72,7 @@ aris_proof_init ()
   CHECK_ALLOC (ap, NULL);
 
   sen_parent_init (SEN_PARENT (ap), _("GNU Aris - Untitled"),
-                   640, 320, aris_proof_create_menu, SEN_PARENT_TYPE_PROOF);
+                   700, 720, aris_proof_create_menu, SEN_PARENT_TYPE_PROOF);
   ap->boolean = the_app->boolean;
 
   if (the_app->boolean || SUBPROOFS_DISABLED)
@@ -210,7 +211,7 @@ aris_proof_init_from_proof (proof_t * proof)
   CHECK_ALLOC (ap, NULL);
 
   sen_parent_init (SEN_PARENT (ap), _("GNU Aris - "),
-                   640, 320, aris_proof_create_menu, SEN_PARENT_TYPE_PROOF);
+                   700, 720, aris_proof_create_menu, SEN_PARENT_TYPE_PROOF);
 
   ap->boolean = proof->boolean;
   ap->cur_file = NULL;

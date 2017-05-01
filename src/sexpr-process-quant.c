@@ -19,6 +19,8 @@
 #include "sexpr-process.h"
 #include "vec.h"
 #include "var.h"
+#include "rules.h"
+#include <wchar.h>
 
 int
 help_fv (unsigned char * eq_sen, unsigned char * oth_sen, unsigned char * conc)
@@ -111,7 +113,7 @@ process_quantifiers (unsigned char * conc, vec_t * prems, const char * rule, vec
   unsigned char * prem;
   prem = vec_str_nth (prems, 0);
   
-  if (!strcmp (rule, "ug"))
+  if (!strcmp (rule, (char*) rules_list[RULE_UG]))
     {
       if (prems->num_stuff != 1)
 	return _("Universal Generalization requires one (1) references.");
@@ -121,7 +123,7 @@ process_quantifiers (unsigned char * conc, vec_t * prems, const char * rule, vec
 	return NULL;
     }
 
-  if (!strcmp (rule, "ui"))
+  if (!strcmp (rule, (char*) rules_list[RULE_UI]))
     {
       if (prems->num_stuff != 1)
 	return _("Universal Instantiation requires one (1) reference.");
@@ -131,7 +133,7 @@ process_quantifiers (unsigned char * conc, vec_t * prems, const char * rule, vec
 	return NULL;
     }
 
-  if (!strcmp (rule, "eg"))
+  if (!strcmp (rule, (char*) rules_list[RULE_EG]))
     {
       if (prems->num_stuff != 1)
 	return _("Existential Generalization requires one (1) reference.");
@@ -141,7 +143,7 @@ process_quantifiers (unsigned char * conc, vec_t * prems, const char * rule, vec
 	return NULL;
     }
 
-  if (!strcmp (rule, "ei"))
+  if (!strcmp (rule, (char*) rules_list[RULE_EI]))
     {
       if (prems->num_stuff != 1)
 	return _("Existential Instantiation requires one (1) references.");
@@ -151,7 +153,7 @@ process_quantifiers (unsigned char * conc, vec_t * prems, const char * rule, vec
 	return NULL;
     }
 
-  if (!strcmp (rule, "bv"))
+  if (!strcmp (rule, (char*) rules_list[RULE_BV]))
     {
       if (prems->num_stuff != 1)
 	return _("Bound Variable requires one (1) reference.");
@@ -161,7 +163,7 @@ process_quantifiers (unsigned char * conc, vec_t * prems, const char * rule, vec
 	return NULL;
     }
 
-  if (!strcmp (rule, "nq"))
+  if (!strcmp (rule, (char*) rules_list[RULE_NQ]))
     {
       if (prems->num_stuff != 1)
 	return _("Null Quantification requires one (1) reference.");
@@ -171,7 +173,7 @@ process_quantifiers (unsigned char * conc, vec_t * prems, const char * rule, vec
 	return NULL;
     }  /*  End of null quantifier.  */
 
-  if (!strcmp (rule, "pr"))
+  if (!strcmp (rule, (char*) rules_list[RULE_PR]))
     {
       if (prems->num_stuff != 1)
 	return _("Prenex requires one (1) reference.");
@@ -181,7 +183,7 @@ process_quantifiers (unsigned char * conc, vec_t * prems, const char * rule, vec
 	return NULL;
     }
 
-  if (!strcmp (rule, "ii"))
+  if (!strcmp (rule, (char*) rules_list[RULE_II]))
     {
       if (prems->num_stuff != 0)
 	return _("Identity requires zero (0) references.");
@@ -191,7 +193,7 @@ process_quantifiers (unsigned char * conc, vec_t * prems, const char * rule, vec
 	return NULL;
     }
 
-  if (!strcmp (rule, "fv"))
+  if (!strcmp (rule, (char*) rules_list[RULE_FV]))
     {
       if (prems->num_stuff != 2)
 	return _("Free Variable requires one two (2) references.");

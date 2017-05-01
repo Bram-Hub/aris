@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <wchar.h>
 #include "rules-table.h"
 #include "rules.h"
 #include "app.h"
@@ -90,8 +91,8 @@ rules_table_help_init (rules_table * rt, int modif,
   for (i = 0; i < limit; i++)
     {
       mod = i + modif;
-      rt->rules[mod] = gtk_toggle_button_new_with_label (rules_list[mod]);
-      gtk_grid_attach (GTK_GRID (table), rt->rules[mod], (i % 4),  i / 4, 1, 1);
+      rt->rules[mod] = gtk_toggle_button_new_with_label ((char*) rules_list[mod]);
+      gtk_grid_attach (GTK_GRID (table), rt->rules[mod], (i % 2),  i / 2, 1, 1);
       g_signal_connect (G_OBJECT (rt->rules[mod]), "toggled",
 			G_CALLBACK (toggled), GINT_TO_POINTER (mod));
       gtk_widget_set_tooltip_text (rt->rules[mod], rules_names[mod]);

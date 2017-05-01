@@ -37,6 +37,8 @@
 
 #include "sexpr-process.h"
 #include "vec.h"
+#include "rules.h"
+#include <wchar.h>
 
 enum {
   MODE_CO = 0,
@@ -239,7 +241,7 @@ process_equivalence (unsigned char * conc, vec_t * prems, const char * rule)
   unsigned char * prem;
   prem = vec_str_nth (prems, 0);
 
-  if (!strcmp (rule, "im"))
+  if (!strcmp (rule, (char*) rules_list[RULE_IM]))
     {
       if (prems->num_stuff != 1)
 	return _("Implication requires one (1) reference.");
@@ -249,7 +251,7 @@ process_equivalence (unsigned char * conc, vec_t * prems, const char * rule)
 	return NULL;
     }  /* End of implication. */
 
-  if (!strcmp (rule, "dm"))
+  if (!strcmp (rule, (char*) rules_list[RULE_DM]))
     {
       if (prems->num_stuff != 1)
 	return _("DeMorgan requires one (1) reference.");
@@ -259,7 +261,7 @@ process_equivalence (unsigned char * conc, vec_t * prems, const char * rule)
 	return NULL;
     }
 
-  if (!strcmp (rule, "as"))
+  if (!strcmp (rule, (char*) rules_list[RULE_AS]))
     {
       if (prems->num_stuff != 1)
 	return _("Association requires one (1) reference.");
@@ -269,7 +271,7 @@ process_equivalence (unsigned char * conc, vec_t * prems, const char * rule)
 	return NULL;
     }  /* End of association. */
 
-  if (!strcmp (rule, "co"))
+  if (!strcmp (rule, (char*) rules_list[RULE_CO]))
     {
       if (prems->num_stuff != 1)
 	return _("Commutativity requires one (1) reference.");
@@ -279,7 +281,7 @@ process_equivalence (unsigned char * conc, vec_t * prems, const char * rule)
 	return NULL;
     }  /* End of commutativity. */
 
-  if (!strcmp (rule, "id"))
+  if (!strcmp (rule, (char*) rules_list[RULE_ID]))
     {
       if (prems->num_stuff != 1)
 	return _("Idempotence requires one (1) reference.");
@@ -289,7 +291,7 @@ process_equivalence (unsigned char * conc, vec_t * prems, const char * rule)
 	return NULL;
     }  /* End of idempotence. */
 
-  if (!strcmp (rule, "dt"))
+  if (!strcmp (rule, (char*) rules_list[RULE_DT]))
     {
       if (prems->num_stuff != 1)
 	return _("Distribution requires one (1) reference.");
@@ -299,7 +301,7 @@ process_equivalence (unsigned char * conc, vec_t * prems, const char * rule)
 	return NULL;
     } /* End of distribution. */
 
-  if (!strcmp (rule, "eq"))
+  if (!strcmp (rule, (char*) rules_list[RULE_EQ]))
     {
       if (prems->num_stuff != 1)
 	return _("Equivalence requires one (1) reference.");
@@ -309,7 +311,7 @@ process_equivalence (unsigned char * conc, vec_t * prems, const char * rule)
 	return NULL;
     }  /* End of equivalence. */
 
-  if (!strcmp (rule, "dn"))
+  if (!strcmp (rule, (char*) rules_list[RULE_DN]))
     {
       if (prems->num_stuff != 1)
 	return _("Double Negation requires one (1) reference.");
@@ -319,7 +321,7 @@ process_equivalence (unsigned char * conc, vec_t * prems, const char * rule)
 	return NULL;
     }  /* End of double negation. */
 
-  if (!strcmp (rule, "ep"))
+  if (!strcmp (rule, (char*) rules_list[RULE_EP]))
     {
       if (prems->num_stuff != 1)
 	return _("Exportation requires one (1) reference.");
@@ -329,7 +331,7 @@ process_equivalence (unsigned char * conc, vec_t * prems, const char * rule)
 	return NULL;
     }
 
-  if (!strcmp (rule, "sb"))
+  if (!strcmp (rule, (char*) rules_list[RULE_SB]))
     {
       if (prems->num_stuff != 1)
 	return _("Subsumption requires one (1) reference.");

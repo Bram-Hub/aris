@@ -18,6 +18,8 @@
 
 #include "sexpr-process.h"
 #include "vec.h"
+#include "rules.h"
+#include <wchar.h>
 
 // Boolean rules follow the same structure as equivalence rules.
 
@@ -27,7 +29,7 @@ process_bool (unsigned char * conc, vec_t * prems, const char * rule)
   char * ret = NOT_MINE;
   unsigned char ** prem;
 
-  if (!strcmp (rule, "bi"))
+  if (!strcmp (rule, (char*) rules_list[RULE_BI]))
     {
       if (prems->num_stuff != 1)
 	return _("Boolean Identity requires one (1) reference.");
@@ -38,7 +40,7 @@ process_bool (unsigned char * conc, vec_t * prems, const char * rule)
 	return NULL;
     }
 
-  if (!strcmp (rule, "bd"))
+  if (!strcmp (rule, (char*) rules_list[RULE_BN]))
     {
       if (prems->num_stuff != 1)
 	return _("Boolean Domination requires one (1) reference.");
@@ -49,7 +51,7 @@ process_bool (unsigned char * conc, vec_t * prems, const char * rule)
 	return NULL;
     }
 
-  if (!strcmp (rule, "bn"))
+  if (!strcmp (rule, (char*) rules_list[RULE_BD]))
     {
       if (prems->num_stuff != 1)
 	return _("Boolean Negation requires one (1) reference.");
@@ -60,7 +62,7 @@ process_bool (unsigned char * conc, vec_t * prems, const char * rule)
 	return NULL;
     }
 
-  if (!strcmp (rule, "sn"))
+  if (!strcmp (rule, (char*) rules_list[RULE_SN]))
     {
       if (prems->num_stuff != 1)
 	return _("Symbol Negation require one (1) reference.");

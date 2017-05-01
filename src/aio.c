@@ -24,6 +24,7 @@
 #include <malloc.h>
 #include <libxml/xmlwriter.h>
 #include <libxml/xmlreader.h>
+#include <wchar.h>
 
 #include "aio.h"
 #include "var.h"

@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <wchar.h>
 
 #include "sexpr-process.h"
 #include "proof.h"
@@ -26,6 +27,7 @@
 #include "list.h"
 #include "sen-data.h"
 #include "var.h"
+#include "rules.h"
 
 int
 sexpr_id_chk (unsigned char * cur_ref, int * pf_id, vec_t * cur_sen_ids)
@@ -262,7 +264,7 @@ process_misc (unsigned char * conc, vec_t * prems, const char * rule, vec_t * va
 {
   char * ret = NOT_MINE;
 
-  if (!strcmp (rule, "lm"))
+  if (!strcmp (rule, (char*) rules_list[RULE_LM]))
     {
       if (!proof)
 	return _("A proof must be specified.");
@@ -272,7 +274,7 @@ process_misc (unsigned char * conc, vec_t * prems, const char * rule, vec_t * va
 	return NULL;
     }
 
-  if (!strcmp (rule, "sp"))
+  if (!strcmp (rule, (char*) rules_list[RULE_SP]))
     {
       if (prems->num_stuff < 2)
 	return _("Subproof requires a subproof as a reference."); 
@@ -287,7 +289,7 @@ process_misc (unsigned char * conc, vec_t * prems, const char * rule, vec_t * va
 	return NULL;
     }
 
-  if (!strcmp (rule, "sq"))
+  if (!strcmp (rule, (char*) rules_list[RULE_SQ]))
     {
       if (prems->num_stuff != 0)
 	return _("Sequence requires zero (0) references.");
@@ -297,7 +299,7 @@ process_misc (unsigned char * conc, vec_t * prems, const char * rule, vec_t * va
 	return NULL;
     }
 
-  if (!strcmp (rule, "in"))
+  if (!strcmp (rule, (char*) rules_list[RULE_IN]))
     {
       if (prems->num_stuff != 2)
 	return _("Induction requires two (2) references.");

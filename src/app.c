@@ -21,7 +21,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "config.h"
-
 #include "process.h"
 #include "app.h"
 #include "rules-table.h"

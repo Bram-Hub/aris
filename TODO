@@ -11,11 +11,12 @@ GNU Aris -- TODO List
     ~also when saving!!!!!!!!!!!
     ~G-lib_GIO-ERROR **: NO GSettings schemas are installed on the system
   - fix the issue in which the first letter typed in a proof does not show up until a second letter is typed. (possibly in sentence.c)
-  - make rules more user friendly, tooltips are good but there has to be a better way
   - create a way to delete rows by means other than cut (and give it a default custom shortcut of ctrl+d)
     ~also make delete key map to this action as an unchangeable shortcut?
 	~also fix remove goal to remove the goal instead of using cut on it 
 	  (it doesn't affect anything it just doesn't need to be copying it)
+  - fix rules in code to reflect name changes
+	~also maybe add some better tooltips
   - rearrange the menu bars
   - make the contents button actually diplay the help menu
   - make it so that when you select specific letters in a line those letters are highlighted 
