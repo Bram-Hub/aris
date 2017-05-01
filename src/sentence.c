@@ -113,15 +113,15 @@ sentence_init (sen_data * sd, sen_parent * sp, item_t * fcs)
     {
       if (sp->type == SEN_PARENT_TYPE_PROOF)
         gtk_label_set_text (GTK_LABEL (sen->rule_box),
-                            "pr");
+                            "premise");
       else
         gtk_label_set_text (GTK_LABEL (sen->rule_box),
-                            "gl");
+                            "goal");
     }
   else if (SEN_SUB (sen))
     {
       gtk_label_set_text (GTK_LABEL (sen->rule_box),
-                          "sf");
+                          "assumption");
     }
 
   if (sd->text)

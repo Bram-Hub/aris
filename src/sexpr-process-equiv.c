@@ -241,26 +241,6 @@ process_equivalence (unsigned char * conc, vec_t * prems, const char * rule)
   unsigned char * prem;
   prem = vec_str_nth (prems, 0);
 
-  if (!strcmp (rule, (char*) rules_list[RULE_IM]))
-    {
-      if (prems->num_stuff != 1)
-	return _("Implication requires one (1) reference.");
-
-      ret = proc_im (prem, conc);
-      if (!ret)
-	return NULL;
-    }  /* End of implication. */
-
-  if (!strcmp (rule, (char*) rules_list[RULE_DM]))
-    {
-      if (prems->num_stuff != 1)
-	return _("DeMorgan requires one (1) reference.");
-
-      ret = proc_dm (prem, conc, -1);
-      if (!ret)
-	return NULL;
-    }
-
   if (!strcmp (rule, (char*) rules_list[RULE_AS]))
     {
       if (prems->num_stuff != 1)
@@ -281,35 +261,15 @@ process_equivalence (unsigned char * conc, vec_t * prems, const char * rule)
 	return NULL;
     }  /* End of commutativity. */
 
-  if (!strcmp (rule, (char*) rules_list[RULE_ID]))
+  if (!strcmp (rule, (char*) rules_list[RULE_DM]))
     {
       if (prems->num_stuff != 1)
-	return _("Idempotence requires one (1) reference.");
+	return _("DeMorgan requires one (1) reference.");
 
-      ret = proc_id (prem, conc);
+      ret = proc_dm (prem, conc, -1);
       if (!ret)
 	return NULL;
-    }  /* End of idempotence. */
-
-  if (!strcmp (rule, (char*) rules_list[RULE_DT]))
-    {
-      if (prems->num_stuff != 1)
-	return _("Distribution requires one (1) reference.");
-
-      ret = proc_dt (prem, conc, -1);
-      if (!ret)
-	return NULL;
-    } /* End of distribution. */
-
-  if (!strcmp (rule, (char*) rules_list[RULE_EQ]))
-    {
-      if (prems->num_stuff != 1)
-	return _("Equivalence requires one (1) reference.");
-
-      ret = proc_eq (prem, conc);
-      if (!ret)
-	return NULL;
-    }  /* End of equivalence. */
+    }  /* End of DeMorgan. */
 
   if (!strcmp (rule, (char*) rules_list[RULE_DN]))
     {
@@ -321,15 +281,15 @@ process_equivalence (unsigned char * conc, vec_t * prems, const char * rule)
 	return NULL;
     }  /* End of double negation. */
 
-  if (!strcmp (rule, (char*) rules_list[RULE_EP]))
+  if (!strcmp (rule, (char*) rules_list[RULE_DT]))
     {
       if (prems->num_stuff != 1)
-	return _("Exportation requires one (1) reference.");
+	return _("Distribution requires one (1) reference.");
 
-      ret = proc_ep (prem, conc);
+      ret = proc_dt (prem, conc, -1);
       if (!ret)
 	return NULL;
-    }
+    }  /* End of distribution. */
 
   if (!strcmp (rule, (char*) rules_list[RULE_SB]))
     {
@@ -339,7 +299,47 @@ process_equivalence (unsigned char * conc, vec_t * prems, const char * rule)
       ret = proc_sb (prem, conc);
       if (!ret)
 	return NULL;
-    }
+    }  /* End of subsumption. */
+
+  if (!strcmp (rule, (char*) rules_list[RULE_ID]))
+    {
+      if (prems->num_stuff != 1)
+	return _("Idempotence requires one (1) reference.");
+
+      ret = proc_id (prem, conc);
+      if (!ret)
+	return NULL;
+    }  /* End of idempotence. */
+
+  if (!strcmp (rule, (char*) rules_list[RULE_IM]))
+    {
+      if (prems->num_stuff != 1)
+	return _("Implication requires one (1) reference.");
+
+      ret = proc_im (prem, conc);
+      if (!ret)
+	return NULL;
+    }  /* End of implication. */
+
+  if (!strcmp (rule, (char*) rules_list[RULE_EQ]))
+    {
+      if (prems->num_stuff != 1)
+	return _("Equivalence requires one (1) reference.");
+
+      ret = proc_eq (prem, conc);
+      if (!ret)
+	return NULL;
+    }  /* End of equivalence. */
+
+  if (!strcmp (rule, (char*) rules_list[RULE_EP]))
+    {
+      if (prems->num_stuff != 1)
+	return _("Exportation requires one (1) reference.");
+
+      ret = proc_ep (prem, conc);
+      if (!ret)
+	return NULL; 
+    }  /* End of exportation. */
 
   return ret;
 }

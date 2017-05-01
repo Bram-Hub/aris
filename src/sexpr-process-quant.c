@@ -121,7 +121,7 @@ process_quantifiers (unsigned char * conc, vec_t * prems, const char * rule, vec
       ret = proc_ug (prem, conc, vars);
       if (!ret)
 	return NULL;
-    }
+    }  /* End of universal introduction. */
 
   if (!strcmp (rule, (char*) rules_list[RULE_UE]))
     {
@@ -131,7 +131,7 @@ process_quantifiers (unsigned char * conc, vec_t * prems, const char * rule, vec
       ret = proc_ui (prem, conc);
       if (!ret)
 	return NULL;
-    }
+    }  /* End of universal elimination. */
 
   if (!strcmp (rule, (char*) rules_list[RULE_EI]))
     {
@@ -141,7 +141,7 @@ process_quantifiers (unsigned char * conc, vec_t * prems, const char * rule, vec
       ret = proc_eg (prem, conc);
       if (!ret)
 	return NULL;
-    }
+    }  /* End of existential elimination. */
 
   if (!strcmp (rule, (char*) rules_list[RULE_EE]))
     {
@@ -151,7 +151,7 @@ process_quantifiers (unsigned char * conc, vec_t * prems, const char * rule, vec
       ret = proc_ei (prem, conc, vars);
       if (!ret)
 	return NULL;
-    }
+    }  /* End of existential elimination. */
 
   if (!strcmp (rule, (char*) rules_list[RULE_BV]))
     {
@@ -161,7 +161,20 @@ process_quantifiers (unsigned char * conc, vec_t * prems, const char * rule, vec
       ret = proc_bv (prem, conc);
       if (!ret)
 	return NULL;
-    }
+    }  /* End of bound variable. */
+
+  if (!strcmp (rule, (char*) rules_list[RULE_FV]))
+    {
+      if (prems->num_stuff != 2)
+	return _("Free Variable requires one two (2) references.");
+
+      unsigned char * prem_0;
+      prem_0 = vec_str_nth (prems, 1);
+
+      ret = proc_fv (prem, prem_0, conc);
+      if (!ret)
+	return NULL;
+    }  /* End of free variable. */
 
   if (!strcmp (rule, (char*) rules_list[RULE_NQ]))
     {
@@ -181,7 +194,7 @@ process_quantifiers (unsigned char * conc, vec_t * prems, const char * rule, vec
       ret = proc_pr (prem, conc);
       if (!ret)
 	return NULL;
-    }
+    }  /* End of prenex. */
 
   if (!strcmp (rule, (char*) rules_list[RULE_II]))
     {
@@ -191,20 +204,7 @@ process_quantifiers (unsigned char * conc, vec_t * prems, const char * rule, vec
       ret = proc_ii (conc);
       if (!ret)
 	return NULL;
-    }
-
-  if (!strcmp (rule, (char*) rules_list[RULE_FV]))
-    {
-      if (prems->num_stuff != 2)
-	return _("Free Variable requires one two (2) references.");
-
-      unsigned char * prem_0;
-      prem_0 = vec_str_nth (prems, 1);
-
-      ret = proc_fv (prem, prem_0, conc);
-      if (!ret)
-	return NULL;
-    }
+    }  /* End of identity. */
 
   return ret;
 }

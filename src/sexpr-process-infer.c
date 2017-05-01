@@ -26,32 +26,16 @@ process_inference (unsigned char * conc, vec_t * prems, const char * rule)
 {
   char * ret = NULL;
 
-  if (!strcmp (rule, (char*) rules_list[RULE_MP]))
+  if (!strcmp (rule, (char*) rules_list[RULE_CN]))
     {
-      if (prems->num_stuff != 2)
-	return _("Modus Ponens requires two (2) references.");
+      if (prems->num_stuff < 2)
+	return _("Conjunction requires at least two (2) references.");
 
-      unsigned char * prem_0, * prem_1;
-      prem_0 = vec_str_nth (prems, 0);
-      prem_1 = vec_str_nth (prems, 1);
-
-      ret = proc_mp (prem_0, prem_1, conc);
+      ret = proc_cn (prems, conc);
       if (!ret)
 	return NULL;
-    }  /* End of modus ponens */
 
-  if (!strcmp (rule, (char*) rules_list[RULE_AD]))
-    {
-      if (prems->num_stuff != 1)
-	return _("Addition requires one (1) references.");
-
-      unsigned char * prem;
-      prem = vec_str_nth (prems, 0);
-
-      ret = proc_ad (prem, conc);
-      if (!ret)
-	return NULL;
-    }  /* End of addition. */
+    }  /* End of conjunction. */
 
   if (!strcmp (rule, (char*) rules_list[RULE_SM]))
     {
@@ -67,26 +51,18 @@ process_inference (unsigned char * conc, vec_t * prems, const char * rule)
 
     }  /* End of simplification. */
 
-  if (!strcmp (rule, (char*) rules_list[RULE_CN]))
+  if (!strcmp (rule, (char*) rules_list[RULE_AD]))
     {
-      if (prems->num_stuff < 2)
-	return _("Conjunction requires at least two (2) references.");
+      if (prems->num_stuff != 1)
+	return _("Addition requires one (1) references.");
 
-      ret = proc_cn (prems, conc);
+      unsigned char * prem;
+      prem = vec_str_nth (prems, 0);
+
+      ret = proc_ad (prem, conc);
       if (!ret)
 	return NULL;
-
-    }  /* End of conjunction. */
-
-  if (!strcmp (rule, (char*) rules_list[RULE_HS]))
-    {
-      if (prems->num_stuff < 2)
-	return _("Hypothetical Syllogism requires at least two (2) references.");
-
-      ret = proc_hs (prems, conc);
-      if (!ret)
-	return NULL;
-    }  /* End of hypothetical syllogism. */
+    }  /* End of addition. */
 
   if (!strcmp (rule, (char*) rules_list[RULE_DS]))
     {
@@ -97,6 +73,30 @@ process_inference (unsigned char * conc, vec_t * prems, const char * rule)
       if (!ret)
 	return NULL;
     }  /* End of disjunctive syllogism. */
+
+  if (!strcmp (rule, (char*) rules_list[RULE_MP]))
+    {
+      if (prems->num_stuff != 2)
+	return _("Modus Ponens requires two (2) references.");
+
+      unsigned char * prem_0, * prem_1;
+      prem_0 = vec_str_nth (prems, 0);
+      prem_1 = vec_str_nth (prems, 1);
+
+      ret = proc_mp (prem_0, prem_1, conc);
+      if (!ret)
+	return NULL;
+    }  /* End of modus ponens */
+
+  if (!strcmp (rule, (char*) rules_list[RULE_HS]))
+    {
+      if (prems->num_stuff < 2)
+	return _("Hypothetical Syllogism requires at least two (2) references.");
+
+      ret = proc_hs (prems, conc);
+      if (!ret)
+	return NULL;
+    }  /* End of hypothetical syllogism. */
 
   if (!strcmp (rule, (char*) rules_list[RULE_EX]))
     {

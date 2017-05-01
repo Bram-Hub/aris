@@ -272,7 +272,7 @@ process_misc (unsigned char * conc, vec_t * prems, const char * rule, vec_t * va
       ret = proc_lm (prems, conc, proof);
       if (!ret)
 	return NULL;
-    }
+    }  /* End of lemma. */
 
   if (!strcmp (rule, (char*) rules_list[RULE_SP]))
     {
@@ -287,7 +287,7 @@ process_misc (unsigned char * conc, vec_t * prems, const char * rule, vec_t * va
       ret = proc_sp (prem_0, prem_1, conc);
       if (!ret)
 	return NULL;
-    }
+    }  /* End of subproof. */
 
   if (!strcmp (rule, (char*) rules_list[RULE_SQ]))
     {
@@ -297,7 +297,7 @@ process_misc (unsigned char * conc, vec_t * prems, const char * rule, vec_t * va
       ret = proc_sq (conc, vars);
       if (!ret)
 	return NULL;
-    }
+    }  /* End of sequence. */
 
   if (!strcmp (rule, (char*) rules_list[RULE_IN]))
     {
@@ -309,7 +309,7 @@ process_misc (unsigned char * conc, vec_t * prems, const char * rule, vec_t * va
 		     conc, vars);
       if (!ret)
 	return NULL;
-    }
+    }  /* End of induction. */
 
   return ret;
 }
