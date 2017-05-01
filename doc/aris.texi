@@ -148,7 +148,7 @@ A tautology is a zero-place connective that stands on its own, denoted by @samp{
 A universal is a quantifier that precedes the rest of sentence, denoted by @samp{V}.  A universal claims that @samp{for all items, they have property P} is a new sentence, assuming that @samp{P} is a valid predicate. A universal quantifier can be inserted into Aris using the key combination @kbd{CTRL+2}.
 
 @item Variable
-A variable represents an object within a proof.  A variable is introduced when it is first used.  If the line that it is introduced in is a premise, the start of a subproof, or a line using existential instantiation (@pxref{ei}), then it is @strong{not} considered arbitrary.  Otherwise, it is.  Only the variables from lines that can be selected from the current line are taken into account when processing it.  This means that after a subproof is ended, then lines after it don't worry about variables introduced within it.
+A variable represents an object within a proof.  A variable is introduced when it is first used.  If the line that it is introduced in is a premise, the start of a subproof, or a line using existential elimination (@pxref{ee}), then it is @strong{not} considered arbitrary.  Otherwise, it is.  Only the variables from lines that can be selected from the current line are taken into account when processing it.  This means that after a subproof is ended, then lines after it don't worry about variables introduced within it.
 
 @end table
 
@@ -508,68 +508,15 @@ The rules are divided into five categories: Inference, Equivalence, Predicate, B
 The premises of any of these rules can be in any order.
 
 @menu
-* mp::  Modus Ponens
-* ad::  Addition
-* sm::  Simplification
 * cn::  Conjunction
-* hs::  Hypothetical Syllogism
+* sm::  Simplification
+* ad::  Addition
 * ds::  Disjunctive Syllogism
+* mp::  Modus Ponens
+* hs::  Hypothetical Syllogism
 * ex::  Excluded Middle
 * cd::  Constructive Dilemma
 @end menu
-
-@node mp
-@subsection Modus Ponens
-
-@itemize @w{}
-@item
- P -> Q
-@item
- P
-@item
---------
-@item
- Q
-@end itemize
-
-One of the basic rules of logic, modus ponens say that @samp{if P happens, then Q must happen.  P happened, so Q must happen}. @sp 1
-For example, if it is known that @samp{If the dog begins to bark, then someone is at the door}, and it is also known that @samp{the dog has begun to bark}, then modus ponens says that @samp{someone must be at the door}.
-
-Modus Ponens requires exactly two references.
-
-@node ad
-@subsection Addition
-
-@itemize @w{}
-@item
- P
-@item
---------
-@item
- P v Q v R v ...
-@end itemize
-
-What addition says is that something is already known, so it must be true that that something or something else, or something else, etc. must also be true. @sp 1
-For example, if it is known that @samp{The sky is blue}, then addition says that it can be inferred that @samp{The sky is blue, or the sky is yellow, or the sky is pink}, since only one of those statements has to be true.
-
-Addition requires exactly one reference.
-
-@node sm
-@subsection Simplification
-
-@itemize @w{}
-@item
- P ^ Q ^ R ^ ...
-@item
---------
-@item
- P (or Q, or R, or ...)
-@end itemize
-
-Simplification says that if it is known that P and Q and R, etc. is known to be true, then P is true. @sp 1
-For instance, if it is known that @samp{It is cloudy, and it is raining}, then simplification allows the inference of @samp{It is cloudy} and @samp{It is raining}.
-
-Simplification requires exactly one reference.
 
 @node cn
 @subsection Conjunction
@@ -592,6 +539,77 @@ Take for example, that it is known that @samp{I don't like green eggs and ham}, 
 
 Conjunction requires at least two references.
 
+@node sm
+@subsection Simplification
+
+@itemize @w{}
+@item
+ P ^ Q ^ R ^ ...
+@item
+--------
+@item
+ P (or Q, or R, or ...)
+@end itemize
+
+Simplification says that if it is known that P and Q and R, etc. is known to be true, then P is true. @sp 1
+For instance, if it is known that @samp{It is cloudy, and it is raining}, then simplification allows the inference of @samp{It is cloudy} and @samp{It is raining}.
+
+Simplification requires exactly one reference.
+
+@node ad
+@subsection Addition
+
+@itemize @w{}
+@item
+ P
+@item
+--------
+@item
+ P v Q v R v ...
+@end itemize
+
+What addition says is that something is already known, so it must be true that that something or something else, or something else, etc. must also be true. @sp 1
+For example, if it is known that @samp{The sky is blue}, then addition says that it can be inferred that @samp{The sky is blue, or the sky is yellow, or the sky is pink}, since only one of those statements has to be true.
+
+Addition requires exactly one reference.
+
+@node ds
+@subsection Disjunctive Syllogism
+
+@itemize @w{}
+@item
+ ~P
+@item
+ P v Q v R
+@item
+ ~R
+@item
+--------
+@item
+ Q
+@end itemize
+
+Disjunctive syllogism is commonly used when disjunctions are present.  It claims that if one knows that 'P or Q or R', and 'P is false', and 'R is false', then Q must be true.  This works with any number of disjuncts.
+
+@node mp
+@subsection Modus Ponens
+
+@itemize @w{}
+@item
+ P -> Q
+@item
+ P
+@item
+--------
+@item
+ Q
+@end itemize
+
+One of the basic rules of logic, modus ponens say that @samp{if P happens, then Q must happen.  P happened, so Q must happen}. @sp 1
+For example, if it is known that @samp{If the dog begins to bark, then someone is at the door}, and it is also known that @samp{the dog has begun to bark}, then modus ponens says that @samp{someone must be at the door}.
+
+Modus Ponens requires exactly two references.
+
 @node hs
 @subsection Hypothetical Syllogism
 
@@ -611,24 +629,6 @@ Conjunction requires at least two references.
 Also referred to as the chain rule, hypothetical syllogism states that if one knows that 'if P then Q', and 'if R then S', then one can infer 'if P then S'.  For example, if it is known @samp{if it is raining, then it is cloudy}, and @samp{if it is cloudy, then it is not sunny}, and @samp{if it is not sunny, then it is cold}, then hypothetical syllogism allows us to infer that @samp{if it is raining, then it is cold}.  This works with any number of conditional statements, as long as they all follow this pattern.
 
 Hypothetical Syllogism requires at least two references.
-
-@node ds
-@subsection Disjunctive Syllogism
-
-@itemize @w{}
-@item
- ~P
-@item
- P v Q v R
-@item
- ~R
-@item
---------
-@item
- Q
-@end itemize
-
-Disjunctive syllogism is commonly used when disjunctions are present.  It claims that if one knows that 'P or Q or R', and 'P is false', and 'R is false', then Q must be true.  This works with any number of disjuncts.
 
 @node ex
 @subsection Excluded Middle
@@ -668,44 +668,18 @@ Constructive Dilemma requires at least three references.
 Equivalence rules operate on any valid part of the sentence, and work both ways.  Each equivalence rule requires one reference.
 
 @menu
-* im::  Implication
-* dm::  DeMorgan
 * as::  Association
 * co::  Commutativity
-* id::  Idempotence
-* dt::  Distribution
-* eq::  Equivalence
+* dm::  DeMorgan
 * dn::  Double Negation
-* ep::  Exportation
+* dt::  Distribution
 * sb::  Subsumption
+* id::  Idempotence
+* im::  Implication
+* eq::  Equivalence
+* ep::  Exportation
 * Recursion:: Recursion in the equivalence rules
 @end menu
-
-@node im
-@subsection Implication
-
-@itemize @w{}
-@item
-P @arrow{} Q <=> ~P v Q
-@end itemize
-
-Implication uses the definition of the conditional.  It is also valid to claim something such as ~(~P v Q) v (~R v S) <=> (P @arrow{} Q) @arrow{} (R @arrow{} S), because implication is recursive.
-
-@node dm
-@subsection DeMorgan
-
-@itemize @w{}
-@item
-~(P ^ Q) <=> ~P v ~Q
-@item
-~(P v Q) <=> ~P ^ ~Q
-@item
-~3x(P(x)) <=> Vx(~P(x))
-@item
-~Vx(P(x)) <=> 3x(~P(x))
-@end itemize
-
-DeMorgan's Laws.
 
 @node as
 @subsection Association
@@ -731,17 +705,31 @@ P v Q v R <=> Q v R v P
 
 Just like addition and multiplication, conjunctions and disjunctions are commutative.  This of course means that @samp{I would like some pie and I would like some cake} is the same as saying @samp{I would like some cake and I would like some pie}.
 
-@node id
-@subsection Idempotence
+@subsection DeMorgan
 
 @itemize @w{}
 @item
-P ^ P ^ Q ^ R ^ R ^ R <=> P ^ Q ^ R
+~(P ^ Q) <=> ~P v ~Q
 @item
-P v P v Q v R v R v R <=> P v Q v R
+~(P v Q) <=> ~P ^ ~Q
+@item
+~3x(P(x)) <=> Vx(~P(x))
+@item
+~Vx(P(x)) <=> 3x(~P(x))
 @end itemize
 
-Idempotence claims that @samp{I like blue and I like blue} is the same as saying @samp{I like blue}.
+@node dm
+DeMorgan's Laws.
+
+@node dn
+@subsection Double Negation
+
+@itemize @w{}
+@item
+~~P <=> P
+@end itemize
+
+You probably learned in English class that saying @samp{I would not like to disagree} is the same thing as saying @samp{I would like to agree}.  That's what double negation claims.
 
 @node dt
 @subsection Distribution
@@ -757,36 +745,6 @@ P v (Q0 v Q1 ^ ... ^ Qn) <=> (P v Q0) ^ (P v Q1) ^ (P v Q2) ^ ... ^ (P v Qn)
 Vx(P(x) ^ Q(x)) <=> Vx(P(x)) ^ Vx(Q(x))
 @end itemize
 
-@node eq
-@subsection Equivalence
-
-@itemize @w{}
-@item
-P <-> Q <=> (P @arrow{} Q) ^ (Q @arrow{} R)
-@end itemize
-
-Equivalence uses the definition of the biconditional.  Claiming that @samp{P if and only if Q} is exactly the same as claiming @samp{if P then Q} and @samp{if Q then P}.  Equivalence is the only rule that works with biconditionals explicitly, and is thus used any time a biconditional is seen.
-
-@node dn
-@subsection Double Negation
-
-@itemize @w{}
-@item
-~~P <=> P
-@end itemize
-
-You probably learned in English class that saying @samp{I would not like to disagree} is the same thing as saying @samp{I would like to agree}.  That's what double negation claims.
-
-@node ep
-@subsection Exportation
-
-@itemize @w{}
-@item
-(P ^ Q) @arrow{} R <=> P @arrow{} (Q @arrow{} R)
-@end itemize
-
-This is one of the few equivalence rules that deals with conditionals.
-
 @node sb
 @subsection Subsumption
 
@@ -798,6 +756,48 @@ P v (P ^ Q) <=> P
 @end itemize
 
 Also called absorption.  This rule can be used in Boolean mode.
+
+@node id
+@subsection Idempotence
+
+@itemize @w{}
+@item
+P ^ P ^ Q ^ R ^ R ^ R <=> P ^ Q ^ R
+@item
+P v P v Q v R v R v R <=> P v Q v R
+@end itemize
+
+Idempotence claims that @samp{I like blue and I like blue} is the same as saying @samp{I like blue}.
+
+@node im
+@subsection Implication
+
+@itemize @w{}
+@item
+P @arrow{} Q <=> ~P v Q
+@end itemize
+
+Implication uses the definition of the conditional.  It is also valid to claim something such as ~(~P v Q) v (~R v S) <=> (P @arrow{} Q) @arrow{} (R @arrow{} S), because implication is recursive.
+
+@node eq
+@subsection Equivalence
+
+@itemize @w{}
+@item
+P <-> Q <=> (P @arrow{} Q) ^ (Q @arrow{} R)
+@end itemize
+
+Equivalence uses the definition of the biconditional.  Claiming that @samp{P if and only if Q} is exactly the same as claiming @samp{if P then Q} and @samp{if Q then P}.  Equivalence is the only rule that works with biconditionals explicitly, and is thus used any time a biconditional is seen.
+
+@node ep
+@subsection Exportation
+
+@itemize @w{}
+@item
+(P ^ Q) @arrow{} R <=> P @arrow{} (Q @arrow{} R)
+@end itemize
+
+This is one of the few equivalence rules that deals with conditionals.
 
 @node Recursion
 @subsection Recursion in the Equivalence Rules
@@ -823,19 +823,19 @@ Commutativity and idempotence work differently than the others when it comes to 
 The predicate rules are the rules that work specifically with predicate logic.
 
 @menu
-* ug:: Universal Generalization
-* ui:: Universal Instantiation
-* eg:: Existential Generalization
-* ei:: Existential Instantiation
+* ui:: Universal Introduction
+* ue:: Universal Elimination
+* ei:: Existential Introduction
+* ee:: Existential Elimination
 * bv:: Bound Variable
+* fv:: Free Variable
 * nq:: Null Quantifier
 * pr:: Prenex
 * ii:: Identity
-* fv:: Free Variable
 @end menu
 
-@node ug
-@subsection Universal Generalization
+@node ui
+@subsection Universal Introduction
 
 @itemize @w{}
 @item
@@ -846,12 +846,12 @@ P(a) ; a is arbitrary
 Vx(P(x))
 @end itemize
 
-Universal Generalization claims that if a property @samp{P} is true for some arbitrary object, then it is true for all objects.  A symbol is arbitrary if nothing is known about, or rather if it was not introduced through a premise or using existential instantiation. @ref{Terms, Variables}
+Universal Introduction claims that if a property @samp{P} is true for some arbitrary object, then it is true for all objects.  A symbol is arbitrary if nothing is known about, or rather if it was not introduced through a premise or using existential Elimination. @ref{Terms, Variables}
 
-Universal Generalization uses exactly one reference.
+Universal Introduction uses exactly one reference.
 
-@node ui
-@subsection Universal Instantiation
+@node ue
+@subsection Universal Elimination
 
 @itemize @w{}
 @item
@@ -862,12 +862,12 @@ Vx(P(x))
 P(a)
 @end itemize
 
-Universal Generalization claims that if a property @samp{P} is true for all objects, then it must be true for an object @samp{a}.
+Universal Elimination claims that if a property @samp{P} is true for all objects, then it must be true for an object @samp{a}.
 
-Universal Generalization uses exactly one reference.
+Universal Elimination uses exactly one reference.
 
-@node eg
-@subsection Existential Generalization
+@node ei
+@subsection Existential Introduction
 
 @itemize @w{}
 @item
@@ -878,12 +878,12 @@ P(a)
 3x(P(x))
 @end itemize
 
-Existential Generalization claims that if @samp{P} is true for some object, then there exists an object for which @samp{P} is true.
+Existential Introduction claims that if @samp{P} is true for some object, then there exists an object for which @samp{P} is true.
 
-Existential Generalization uses exactly one reference.
+Existential Introduction uses exactly one reference.
 
-@node ei
-@subsection Existential Instantiation.
+@node ee
+@subsection Existential Elimination.
 
 @itemize @w{}
 @item
@@ -894,9 +894,9 @@ Existential Generalization uses exactly one reference.
 P(a) ; a must not have been used before
 @end itemize
 
-Existential Instantiation claims that if there exists an object for which property @samp{P} is true, then it can be claimed that some unused object has this property.  In this case, @samp{a} becomes a placeholder for the object.  @ref{Terms, Variables}
+Existential Elimination claims that if there exists an object for which property @samp{P} is true, then it can be claimed that some unused object has this property.  In this case, @samp{a} becomes a placeholder for the object.  @ref{Terms, Variables}
 
-Existential Instantiation uses exactly one reference.
+Existential Elimination uses exactly one reference.
 
 @node bv
 @subsection Bound Variable
@@ -911,6 +911,24 @@ Vx(P(x)) <=> Vy(P(y))
 Bound Variable allows the user to substitute any bound variable for another bound variable, given that the second bound variable does not appear anywhere in the scope of the quantifier of the first bound variable.  For example, if it is known that Vx(Vy(P(x) ^ P(y))), an invalid use of bound variable would be to state that Vx(Vx(P(x) ^ P(x))).
 
 As an equivalence rule, bound variable uses only one reference, and can work on any part of the sentence.
+
+@node fv
+@subsection Free Variable
+
+@itemize @w{}
+@item
+a = b
+@item
+P(a)
+@item
+--------
+@item
+P(b)
+@end itemize
+
+Free Variable allows the user to substitute a free variable for another free variable, given that the two are identical.
+
+Free Variable uses exactly two references.
 
 @node nq
 @subsection Null Quantifier
@@ -955,24 +973,6 @@ Prenex uses only one reference, and, being an equivalence rule, can be used on a
 Identity asserts that any variable is identical to itself.
 
 Identity does not use any references.
-
-@node fv
-@subsection Free Variable
-
-@itemize @w{}
-@item
-a = b
-@item
-P(a)
-@item
---------
-@item
-P(b)
-@end itemize
-
-Free Variable allows the user to substitute a free variable for another free variable, given that the two are identical.
-
-Free Variable uses exactly two references.
 
 @node Boolean Rules
 @section Boolean Rules

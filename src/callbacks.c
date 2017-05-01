@@ -712,7 +712,7 @@ evaluate_line (aris_proof * ap, sentence * sen)
           // This means that the variables apply to the current line.
           int prem = SEN_PREM(ev_sen), sub = SEN_SUB(ev_sen);
           int arb = (prem || sub
-                     || rule == RULE_EI
+                     || rule == RULE_EE
                      || rule == RULE_SQ)
             ? 0 : 1;
           ret = sexpr_collect_vars_to_proof (vars, SD(ev_sen)->sexpr, arb);

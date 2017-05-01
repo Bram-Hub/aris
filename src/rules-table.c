@@ -150,19 +150,19 @@ rules_table_init (int boolean)
   if (!rt->pred)
     return NULL;
 
-  rt->misc = rules_group_init (4, "Miscellaneous", rt);
-  if (!rt->misc)
-    return NULL;
-
   rt->boole = rules_group_init (4, "Boolean", rt);
   if (!rt->boole)
     return NULL;
 
-  rules_table_help_init (rt, 0, rt->infer->table, 8, boolean);
-  rules_table_help_init (rt, 8, rt->equiv->table, 10, 0);
-  rules_table_help_init (rt, 18, rt->pred->table, 9, boolean);
-  rules_table_help_init (rt, 27, rt->misc->table, 4, boolean);
-  rules_table_help_init (rt, 31, rt->boole->table, 4, 0);
+  rt->misc = rules_group_init (4, "Miscellaneous", rt);
+  if (!rt->misc)
+    return NULL;
+
+  rules_table_help_init (rt, START_INFER_RULES, rt->infer->table, 8, boolean);
+  rules_table_help_init (rt, START_EQUIV_RULES, rt->equiv->table, 10, 0);
+  rules_table_help_init (rt, START_PRED_RULES, rt->pred->table, 9, boolean);
+  rules_table_help_init (rt, START_BOOL_RULES, rt->boole->table, 4, 0);
+  rules_table_help_init (rt, START_MISC_RULES, rt->misc->table, 4, boolean);
 
   if (boolean)
     {
@@ -484,8 +484,8 @@ rules_table_set_boolean_mode (rules_table * rt, int boolean)
 
   for (i = 0; i < NUM_RULES; i++)
     {
-      if (i < RULE_DM || i == RULE_EQ || i == RULE_EP
-	  || (i >= RULE_UG && i <= RULE_IN))
+      if (!(i == RULE_DM || i == RULE_DT || i == RULE_AS || i == RULE_CO || i == RULE_DN
+	  || i == RULE_SB || i == RULE_ID || (i >= START_BOOL_RULES && i < END_BOOL_RULES)))
 	gtk_widget_set_sensitive (rt->rules[i], oth_sens);
     }
 

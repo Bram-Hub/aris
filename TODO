@@ -15,9 +15,8 @@ GNU Aris -- TODO List
     ~also make delete key map to this action as an unchangeable shortcut?
 	~also fix remove goal to remove the goal instead of using cut on it 
 	  (it doesn't affect anything it just doesn't need to be copying it)
-  - fix rules in code to reflect name changes
-	~also maybe add some better tooltips
   - rearrange the menu bars
+  - add some better tooltips to the rules
   - make the contents button actually diplay the help menu
   - make it so that when you select specific letters in a line those letters are highlighted 
     ~make them highlighted blue over the the grey highlight

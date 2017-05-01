@@ -42,17 +42,17 @@ process (unsigned char * conc, vec_t * prems, const char * rule, vec_t * vars,
   if (strncmp (equiv, NOT_MINE, 28))
     return equiv;
 
-  bool = process_bool (conclusion, prems, rule);
-  if (!bool)
-    return NULL;
-  if (strncmp (bool, NOT_MINE, 28))
-    return bool;
-
   quant = process_quantifiers (conclusion, prems, rule, vars);
   if (!quant)
     return NULL;
   if (strncmp (quant, NOT_MINE, 28))
     return quant;
+
+  bool = process_bool (conclusion, prems, rule);
+  if (!bool)
+    return NULL;
+  if (strncmp (bool, NOT_MINE, 28))
+    return bool;
 
   misc = process_misc (conclusion, prems, rule, vars, proof);
   if (!misc)

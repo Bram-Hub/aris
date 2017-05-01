@@ -201,7 +201,7 @@ eval_proof (list_t * everything, vec_t * rets, int verbose)
       if (verbose)
 	printf ("%i: %s\n", sd->line_num, ret_chk);
 
-      int arb = (sd->premise || sd->rule == RULE_EI || sd->subproof) ? 0 : 1;
+      int arb = (sd->premise || sd->rule == RULE_EE || sd->subproof) ? 0 : 1;
       if (sd->sexpr)
 	{
 	  ret = sexpr_collect_vars_to_proof (pf_vars, sd->sexpr, arb);

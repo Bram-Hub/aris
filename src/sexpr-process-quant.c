@@ -113,32 +113,22 @@ process_quantifiers (unsigned char * conc, vec_t * prems, const char * rule, vec
   unsigned char * prem;
   prem = vec_str_nth (prems, 0);
   
-  if (!strcmp (rule, (char*) rules_list[RULE_UG]))
+  if (!strcmp (rule, (char*) rules_list[RULE_UI]))
     {
       if (prems->num_stuff != 1)
-	return _("Universal Generalization requires one (1) references.");
+	return _("Universal Introduction requires one (1) references.");
 
       ret = proc_ug (prem, conc, vars);
       if (!ret)
 	return NULL;
     }
 
-  if (!strcmp (rule, (char*) rules_list[RULE_UI]))
+  if (!strcmp (rule, (char*) rules_list[RULE_UE]))
     {
       if (prems->num_stuff != 1)
-	return _("Universal Instantiation requires one (1) reference.");
+	return _("Universal Elimination requires one (1) reference.");
 
       ret = proc_ui (prem, conc);
-      if (!ret)
-	return NULL;
-    }
-
-  if (!strcmp (rule, (char*) rules_list[RULE_EG]))
-    {
-      if (prems->num_stuff != 1)
-	return _("Existential Generalization requires one (1) reference.");
-
-      ret = proc_eg (prem, conc);
       if (!ret)
 	return NULL;
     }
@@ -146,7 +136,17 @@ process_quantifiers (unsigned char * conc, vec_t * prems, const char * rule, vec
   if (!strcmp (rule, (char*) rules_list[RULE_EI]))
     {
       if (prems->num_stuff != 1)
-	return _("Existential Instantiation requires one (1) references.");
+	return _("Existential Introduction requires one (1) reference.");
+
+      ret = proc_eg (prem, conc);
+      if (!ret)
+	return NULL;
+    }
+
+  if (!strcmp (rule, (char*) rules_list[RULE_EE]))
+    {
+      if (prems->num_stuff != 1)
+	return _("Existential Elimination requires one (1) references.");
 
       ret = proc_ei (prem, conc, vars);
       if (!ret)

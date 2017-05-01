@@ -1593,7 +1593,7 @@ sentence_check_entire (sentence * sen, sentence * ref)
 
 /* Checks a sentence's rule against the boolean rules.
  *  input:
- *    sen - the sentenc being checked.
+ *    sen - the sentence being checked.
  *    boolean - whether or not boolean mode is being activated.
  *  output:
  *    0 if the rule does not check out, 1 if it does.
@@ -1607,8 +1607,8 @@ sentence_check_boolean_rule (sentence * sen, int boolean)
   int bool_okay = 1;
   int rule = sentence_get_rule (sen);
 
-  if (rule < RULE_DM || rule == RULE_EQ || rule == RULE_EP
-      || (rule >= RULE_EG && rule <= RULE_SP))
+  if (!(rule == RULE_DM || rule == RULE_DT || rule == RULE_AS || rule == RULE_CO || rule == RULE_DN
+	  || rule == RULE_SB || rule == RULE_ID || (rule >= START_BOOL_RULES && rule < END_BOOL_RULES)))
     bool_okay = 0;
 
   return bool_okay;

@@ -314,15 +314,15 @@ char * process_quantifiers (unsigned char * conc,
 			    const char * rule,
 			    vec_t * vars);
 
+char * process_bool (unsigned char * conc,
+		     vec_t * prems,
+		     const char * rule);
+
 char * process_misc (unsigned char * conc,
 		     vec_t * prems,
 		     const char * rule,
 		     vec_t * vars,
 		     proof_t * proof);
-
-char * process_bool (unsigned char * conc,
-		     vec_t * prems,
-		     const char * rule);
 
 
 // Sexpr conversion functions.

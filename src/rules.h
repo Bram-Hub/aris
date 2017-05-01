@@ -37,28 +37,33 @@ enum RULES_INDEX {
   RULE_AD, RULE_DS,
   RULE_MP, RULE_HS,
   RULE_EX, RULE_CD,
-  RULE_IM, RULE_ID,
-  RULE_DM, RULE_DT,
   RULE_AS, RULE_CO,
+  RULE_DM, RULE_DN,
+  RULE_DT, RULE_SB,
+  RULE_ID, RULE_IM,
   RULE_EQ, RULE_EP,
-  RULE_DN, RULE_SB,
-  RULE_UG, RULE_UI,
-  RULE_EG, RULE_EI,
+  RULE_UI, RULE_UE,
+  RULE_EI, RULE_EE,
   RULE_BV, RULE_FV,
   RULE_NQ, RULE_PR,
   RULE_II,
-  RULE_LM, RULE_SP,
-  RULE_SQ, RULE_IN,
   RULE_BI, RULE_BD,
   RULE_BN, RULE_SN,
+  RULE_LM, RULE_SP,
+  RULE_SQ, RULE_IN,
   NUM_RULES
 };
 
-#define END_INFER_RULES RULE_IM
-#define END_EQUIV_RULES RULE_UG
-#define END_PRED_RULES RULE_LM
-#define END_MISC_RULES RULE_BI
-#define END_BOOL_RULES NUM_RULES
+#define START_INFER_RULES 0
+#define END_INFER_RULES RULE_AS
+#define START_EQUIV_RULES END_INFER_RULES
+#define END_EQUIV_RULES RULE_UI
+#define START_PRED_RULES END_EQUIV_RULES
+#define END_PRED_RULES RULE_BI
+#define START_BOOL_RULES END_PRED_RULES
+#define END_BOOL_RULES RULE_LM
+#define START_MISC_RULES END_BOOL_RULES
+#define END_MISC_RULES NUM_RULES
 
 // The rules list.
 
@@ -68,20 +73,20 @@ static const wchar_t* rules_list[NUM_RULES] = {
   (wchar_t*) "Addition", (wchar_t*) "Disjunctive Syllogism",
   (wchar_t*) "Modus Ponens", (wchar_t*) "Hypothetical Syllogism",
   (wchar_t*) "Excluded Middle", (wchar_t*) "Constructive Dilemma",
-  (wchar_t*) "Implication", (wchar_t*) "Idempotence",
-  (wchar_t*) "DeMorgan", (wchar_t*) "Distribution",
   (wchar_t*) "Association", (wchar_t*) "Commutativity",
+  (wchar_t*) "DeMorgan", (wchar_t*) "Double Negation",
+  (wchar_t*) "Distribution", (wchar_t*) "Subsumption",
+  (wchar_t*) "Idempotence", (wchar_t*) "Implication",
   (wchar_t*) "Equivalence", (wchar_t*) "Exportation",
-  (wchar_t*) "Double Negation", (wchar_t*) "Subsumption",
   (wchar_t*) "\u2200 Intro", (wchar_t*) "\u2200 Elim",
   (wchar_t*) "\u2203 Intro", (wchar_t*) "\u2203 Elim",
   (wchar_t*) "Bound Variable Sub.", (wchar_t*) "Free Variable Sub.",
   (wchar_t*) "Null Quantifier", (wchar_t*) "Prenex", 
   (wchar_t*) "Identity",
-  (wchar_t*) "Lemma", (wchar_t*) "Subproof",
-  (wchar_t*) "Sequence", (wchar_t*) "Induction",
   (wchar_t*) "Boolean Identity", (wchar_t*) "Boolean Dominance",
-  (wchar_t*) "Boolean Negation", (wchar_t*) "Symbol Negation"
+  (wchar_t*) "Boolean Negation", (wchar_t*) "Symbol Negation",
+  (wchar_t*) "Lemma", (wchar_t*) "Subproof",
+  (wchar_t*) "Sequence", (wchar_t*) "Induction"
 };
 
 static char* rules_names[NUM_RULES] = {
@@ -89,20 +94,20 @@ static char* rules_names[NUM_RULES] = {
   N_("Addition"), N_("Disjunctive Syllogism"),
   N_("Modus Ponens"), N_("Hypothetical Syllogism"),
   N_("Excluded Middle"), N_("Constructive Dilemma"),
-  N_("Implication"), N_("Idempotence"),
-  N_("DeMorgan"), N_("Distribution"),
   N_("Association"), N_("Commutativity"),
+  N_("DeMorgan"), N_("Double Negation"),
+  N_("Distribution"), N_("Subsumption"),
+  N_("Idempotence"), N_("Implication"),
   N_("Equivalence"), N_("Exportation"),
-  N_("Double Negation"), N_("Subsumption"),
   N_("Universal Generalization"), N_("Universal Instantiation"),
   N_("Existential Generalization"), N_("Existential Instantiation"),
   N_("Bound Variable Substitution"), N_("Free Variable Substitution"),
   N_("Null Quantifier"), N_("Prenex"),
   N_("Identity"),
-  N_("Lemma"), N_("Subproof"),
-  N_("Sequence"), N_("Induction"),
   N_("Boolean Identity"), N_("Boolean Dominance"),
-  N_("Boolean Negation"), N_("Symbol Negation")
+  N_("Boolean Negation"), N_("Symbol Negation"),
+  N_("Lemma"), N_("Subproof"),
+  N_("Sequence"), N_("Induction")
 };
 
 #endif  /*  ARIS_RULES_H  */
