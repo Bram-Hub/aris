@@ -38,7 +38,7 @@ process_bool (unsigned char * conc, vec_t * prems, const char * rule)
       ret = proc_bi (*prem, conc);
       if (!ret)
 	return NULL;
-    }
+    }  /* End of boolean identity. */
 
   if (!strcmp (rule, (char*) rules_list[RULE_BN]))
     {
@@ -49,7 +49,7 @@ process_bool (unsigned char * conc, vec_t * prems, const char * rule)
       ret = proc_bd (*prem, conc);
       if (!ret)
 	return NULL;
-    }
+    }  /* End of boolean domination. */
 
   if (!strcmp (rule, (char*) rules_list[RULE_BD]))
     {
@@ -60,7 +60,7 @@ process_bool (unsigned char * conc, vec_t * prems, const char * rule)
       ret = proc_bn (*prem, conc);
       if (!ret)
 	return NULL;
-    }
+    }  /* End of boolean negation. */
 
   if (!strcmp (rule, (char*) rules_list[RULE_SN]))
     {
@@ -71,7 +71,7 @@ process_bool (unsigned char * conc, vec_t * prems, const char * rule)
       ret = proc_sn (*prem, conc);
       if (!ret)
 	return NULL;
-    }
+    }  /* End of symbol negation. */
 
   return ret;
 }
