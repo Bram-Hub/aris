@@ -21,7 +21,6 @@
 
 #ifndef WIN32
 #include <libintl.h>
-#include <wchar.h>
 #define _(String) gettext (String)
 #define gettext_noop(String) String
 #define N_(String) gettext_noop (String)
@@ -29,6 +28,7 @@
 #define _(String) String
 #define N_(String) String
 #endif
+#include <wchar.h>
 
 // The rules indices.
 
