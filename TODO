@@ -7,10 +7,10 @@ GNU Aris -- TODO List
 * Printing - Hold off on this
 
 *FOR Bram's Logic class project: -the bugs encountered in windows, need to test if same on linux
+  - get to build on Linux (automake error)
   - the customize display screen gets this error when changing the colors: 
     ~also when saving!!!!!!!!!!!
     ~G-lib_GIO-ERROR **: NO GSettings schemas are installed on the system
-  - fix the issue in which the first letter typed in a proof does not show up until a second letter is typed. (possibly in sentence.c)
   - create a way to delete rows by means other than cut (and give it a default custom shortcut of ctrl+d)
     ~also make delete key map to this action as an unchangeable shortcut?
 	~also fix remove goal to remove the goal instead of using cut on it 
@@ -27,3 +27,5 @@ GNU Aris -- TODO List
 *DONE
   - changed shortcuts to be more user friendly
   - renamed kill and insert/yank to cut and paste
+  - fix the issue in which the first letter typed in a proof does not show up until a second letter is typed. (possibly in sentence.c)
+    ~should be fixed
