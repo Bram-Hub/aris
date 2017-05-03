@@ -1072,6 +1072,9 @@ sentence_key (sentence * sen, int key, int ctrl)
         case GDK_KEY_space:
           insert_char = " ";
           break;
+		case GDK_KEY_Delete:
+		  aris_proof_delete((aris_proof*) sen->parent);
+		  break;
         default:
           break;
         }

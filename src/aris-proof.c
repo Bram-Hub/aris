@@ -1041,8 +1041,6 @@ aris_proof_delete (aris_proof * ap)
   if (ls_empty (ap->selected))
     ls_push_obj (ap->selected, (sentence *) SEN_PARENT (ap)->focused->value);
 
-  sel_itr = ap->selected->head;
-
   undo_info ui;
   list_t * ls, * sen_ls;
   ls = init_list ();
@@ -1057,22 +1055,13 @@ aris_proof_delete (aris_proof * ap)
 
   // Since refs will be changing, set up undo information and
   //  the list of sentences before removing anything.
-   
 
-  for (; sel_itr; sel_itr = sel_itr->next)
+  for (sel_itr = ap->selected->head; sel_itr; sel_itr = sel_itr->next)
     {
-      sen_data * sd = sel_itr->value;
+      sentence * sen = sel_itr->value;
+      sen_data * sd = sentence_copy_to_data(sen);
 
-      // This is really inefficient.
-      item_t * ev_itr = ls_nth (SEN_PARENT (ap)->everything, sd->line_num - 1);
-
-      sentence * sen;
-      sen = ev_itr->value;
-      sen_data * undo_sd;
-
-      // This will fix the differences with depth and refs imposed by copy.
-      undo_sd = sentence_copy_to_data (sen);
-      push_chk = ls_push_obj (ls, undo_sd);
+      push_chk = ls_push_obj (ls, sd);
       if (!push_chk)
         return AEC_MEM;
 
@@ -1080,7 +1069,8 @@ aris_proof_delete (aris_proof * ap)
       if (!push_chk)
         return AEC_MEM;
     }
-
+  
+  aris_proof_clear_selected (ap);
   item_t * n_itr;
 
   for (sel_itr = sen_ls->head; sel_itr;)
@@ -1105,7 +1095,7 @@ aris_proof_delete (aris_proof * ap)
   ret = aris_proof_set_changed (ap, 1, ui);
   if (ret < 0)
     return AEC_MEM;
-
+  
   return 0;
   //return aris_proof_cut(ap);// temporary fix since above code is still broken
 }

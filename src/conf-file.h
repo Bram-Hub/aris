@@ -324,7 +324,7 @@ enum MENU_ORDER {
 
 enum MENU_SIZE {
   FILE_MENU_SIZE = 9,
-  EDIT_MENU_SIZE = 11,//change to 12 once delete function works
+  EDIT_MENU_SIZE = 12,
   PROOF_MENU_SIZE = 6,
   RULES_MENU_SIZE = 2,
   FONT_MENU_SIZE = 4,
