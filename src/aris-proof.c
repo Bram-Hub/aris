@@ -395,6 +395,7 @@ aris_proof_create_menu (sen_parent * ap)
       main_menu_conf[CONF_MENU_CUSTOM],
     },
     (conf_obj[]) {
+	  main_menu_conf[CONF_MENU_CUSTOMIZE],
       main_menu_conf[CONF_MENU_CONTENTS],
       main_menu_conf[CONF_MENU_ABOUT],
     }

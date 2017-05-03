@@ -360,8 +360,8 @@ rules_table_create_menu (rules_table * rt)
       main_menu_conf[CONF_MENU_CUSTOM]
     },
     (conf_obj[]) {
+	  main_menu_conf[CONF_MENU_CUSTOMIZE],
       main_menu_conf[CONF_MENU_CONTENTS],
-      main_menu_conf[CONF_MENU_CUSTOMIZE],
       main_menu_conf[CONF_MENU_ABOUT]
     },
   };

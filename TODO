@@ -14,6 +14,7 @@ GNU Aris -- TODO List
   - make it so that pasting single lines from one subproof to another maintain the depth
     ~whole subproof pasting is fine
     ~inconsistent
+  - customize crashes when setting medium shortcut
   - rearrange the menu bars
   - add some better tooltips to the rules
   - make the contents button actually display the help menu

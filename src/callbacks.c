@@ -1577,6 +1577,9 @@ menu_activated (aris_proof * ap, int menu_id)
       aris_proof_set_sb (ap, _("Displaying Help."));
       break;
 
+	case CONF_MENU_CUSTOMIZE:
+		gui_customize_show(SEN_PARENT(ap)->window);
+		break;
 
     case CONF_MENU_ABOUT:
       gui_about (SEN_PARENT (ap)->window);

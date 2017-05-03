@@ -62,9 +62,9 @@ enum CONF_MENU_ID {
   CONF_MENU_MEDIUM,
   CONF_MENU_LARGE,
   CONF_MENU_CUSTOM,
-  CONF_MENU_ABOUT,
   CONF_MENU_SUBMIT,
   CONF_MENU_CUSTOMIZE,
+  CONF_MENU_ABOUT,
   CONF_MENU_CONTENTS,
   NUM_CONF_MENUS
 };
@@ -200,14 +200,14 @@ static conf_obj main_menu_conf[NUM_CONF_MENUS] = {
   {N_("Custom..."), N_("Set the font size manually."), NULL,
    CONF_OBJ_MENU, CONF_MENU_CUSTOM, conf_menu_value, "zoom-fit-best", NULL},
 
-  {N_("About GNU Aris"), N_("Display information about GNU Aris."),
-   NULL, CONF_OBJ_MENU, CONF_MENU_ABOUT, conf_menu_value, "help-about", NULL},
-
   {N_("Submit Proofs..."), N_("Submit all open proofs for grading."), NULL, 
    CONF_OBJ_MENU, CONF_MENU_SUBMIT, conf_menu_value, "network-workgroup", NULL},
 
   {N_("Customize"), N_("Customize GNU Aris."), NULL, CONF_OBJ_MENU,
    CONF_MENU_CUSTOMIZE, conf_menu_value, NULL, NULL},
+
+  {N_("About GNU Aris"), N_("Display information about GNU Aris."),
+   NULL, CONF_OBJ_MENU, CONF_MENU_ABOUT, conf_menu_value, "help-about", NULL },
 
   {N_("Contents"), N_("Display help for GNU Aris."), NULL,
    CONF_OBJ_MENU, CONF_MENU_CONTENTS, conf_menu_value, "help-browser", "f1"},
@@ -328,7 +328,7 @@ enum MENU_SIZE {
   PROOF_MENU_SIZE = 6,
   RULES_MENU_SIZE = 2,
   FONT_MENU_SIZE = 4,
-  HELP_MENU_SIZE = 2
+  HELP_MENU_SIZE = 3
 };
 
 static conf_obj * goal_menus;
