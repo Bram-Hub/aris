@@ -465,7 +465,7 @@ Inserts a new goal at the end of the other goals.
 
 @item @samp{Remove goal}
 @itemx @kbd{CTRL+D}
-Deletes the current line from the goals.
+Deletes the current line from the goals. Can also be evoked by pressing (CTRL+DELETE).
 
 @item @samp{Check Line}
 @itemx @kbd{CTRL+F}

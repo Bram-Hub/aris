@@ -14,7 +14,6 @@ GNU Aris -- TODO List
   - make it so that pasting single lines from one subproof to another maintain the depth
     ~whole subproof pasting is fine
     ~inconsistent
-  - make CTRL+DELETE work with goals menu
   - rearrange the menu bars
   - add some better tooltips to the rules
   - make the contents button actually display the help menu
@@ -29,3 +28,4 @@ GNU Aris -- TODO List
   - fix the issue in which the first letter typed in a proof does not show up until a second letter is typed.
   - create a way to delete lines by means other than cut
     ~and give it a default custom shortcut of ctrl+d
+    ~also make ctrl+delete key map to this action as an unchangeable shortcut

@@ -1073,7 +1073,12 @@ sentence_key (sentence * sen, int key, int ctrl)
           insert_char = " ";
           break;
 		case GDK_KEY_Delete:
-		  aris_proof_delete((aris_proof*) sen->parent);
+		  if (sen->parent->type == SEN_PARENT_TYPE_PROOF) {
+			aris_proof_delete((aris_proof*) sen->parent);
+		  }
+		  else {
+			  goal_rem_line ((goal_t*) sen->parent);
+		  }
 		  break;
         default:
           break;
