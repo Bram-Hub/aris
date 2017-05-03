@@ -13,8 +13,6 @@ GNU Aris -- TODO List
     ~fine on linux
   - create a way to delete rows by means other than cut (and give it a default custom shortcut of ctrl+d)
     ~also make delete key map to this action as an unchangeable shortcut?
-	~also fix remove goal to remove the goal instead of using cut on it 
-	  (it doesn't affect anything it just doesn't need to be copying it)
   - make it so that pasting single lines from one subproof to another maintain the depth
     ~whole subproof pasting is fine
     ~inconsistent

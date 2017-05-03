@@ -73,9 +73,10 @@ void aris_proof_set_font (aris_proof * ap, int font);
 void aris_proof_set_sb (aris_proof * ap, char * sb_text);
 int aris_proof_set_filename (aris_proof * ap, const char * filename);
 
+int aris_proof_copy (aris_proof * ap);
 int aris_proof_cut (aris_proof * ap);
 int aris_proof_paste (aris_proof * ap);
-int aris_proof_copy (aris_proof * ap);
+int aris_proof_delete (aris_proof * ap);
 
 int aris_proof_clear_selected (aris_proof * ap);
 int aris_proof_select_sentence (aris_proof * ap, sentence * sen);

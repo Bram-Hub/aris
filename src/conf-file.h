@@ -51,6 +51,7 @@ enum CONF_MENU_ID {
   CONF_MENU_COPY,
   CONF_MENU_CUT,
   CONF_MENU_INSERT,
+  CONF_MENU_DELETE,
   CONF_MENU_EVAL_LINE,
   CONF_MENU_EVAL_PROOF,
   CONF_MENU_GOAL,
@@ -161,6 +162,9 @@ static conf_obj main_menu_conf[NUM_CONF_MENUS] = {
    current line in the current proof."), NULL, CONF_OBJ_MENU,
    CONF_MENU_INSERT, conf_menu_value, "_Paste", "c+s+v"},
 
+  {N_("Delete Line"), N_("Remove the current line in the current proof."), 
+   NULL, CONF_OBJ_MENU, CONF_MENU_DELETE, conf_menu_value, "_Delete", "c+d"},
+
   {N_("Evaluate Line"),
    N_("Evaluate the current line in the current proof."), NULL,
    CONF_OBJ_MENU, CONF_MENU_EVAL_LINE, conf_menu_value, "system-run", "c+f"},
@@ -216,7 +220,7 @@ static conf_obj goal_menu_conf[NUM_GOAL_MENUS] = {
    CONF_MENU_ADD_PREM, conf_menu_value, "list-add", "c+a"},
 
   {"Remove Goal", "Remove the current goal for this proof.", NULL,
-   CONF_OBJ_MENU, CONF_MENU_CUT, conf_menu_value, "list-remove", "c+d"},
+   CONF_OBJ_MENU, CONF_MENU_DELETE, conf_menu_value, "list-remove", "c+d"},
 
   {"Check Line", "Check if the current goal has been met.", NULL,
    CONF_OBJ_MENU, CONF_MENU_EVAL_LINE, conf_menu_value, "system-run", "c+f"},
@@ -320,7 +324,7 @@ enum MENU_ORDER {
 
 enum MENU_SIZE {
   FILE_MENU_SIZE = 9,
-  EDIT_MENU_SIZE = 11,
+  EDIT_MENU_SIZE = 11,//change to 12 once delete function works
   PROOF_MENU_SIZE = 6,
   RULES_MENU_SIZE = 2,
   FONT_MENU_SIZE = 4,

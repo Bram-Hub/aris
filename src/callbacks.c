@@ -260,7 +260,7 @@ goal_menu_activate (GtkMenuItem * item, gpointer data)
     case CONF_MENU_ADD_PREM:
       goal_add_line (goal, sd);
       break;
-    case CONF_MENU_CUT:
+    case CONF_MENU_DELETE:
       goal_rem_line (goal);
       break;
     case CONF_MENU_EVAL_LINE:
@@ -1473,7 +1473,7 @@ menu_activated (aris_proof * ap, int menu_id)
         return AEC_MEM;
 
       if (ret == 1)
-        aris_proof_set_sb (ap, _("The first sentence can not be cut."));
+        aris_proof_set_sb (ap, _("The first sentence cannot be cut."));
       else
         aris_proof_set_sb (ap, _("Sentence Cut."));
       break;
@@ -1481,6 +1481,17 @@ menu_activated (aris_proof * ap, int menu_id)
     case CONF_MENU_INSERT:
       ret = aris_proof_paste (ap);
       aris_proof_set_sb (ap, _("Sentence Inserted."));
+      break;
+
+	case CONF_MENU_DELETE:
+	  ret = aris_proof_delete (ap);
+      if (ret < 0)
+        return AEC_MEM;
+
+      if (ret == 1)
+        aris_proof_set_sb (ap, _("The first sentence cannot be deleted."));
+      else
+        aris_proof_set_sb (ap, _("Sentence Deleted."));
       break;
 
     case CONF_MENU_EVAL_LINE:
@@ -1515,7 +1526,6 @@ menu_activated (aris_proof * ap, int menu_id)
           aris_proof_set_sb (ap, _("Font Type Set to Small."));
           gtk_widget_set_sensitive (font_small, FALSE);
         }
-
       break;
 
     case CONF_MENU_MEDIUM:

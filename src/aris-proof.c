@@ -373,7 +373,8 @@ aris_proof_create_menu (sen_parent * ap)
       menu_separator,
       main_menu_conf[CONF_MENU_COPY],
       main_menu_conf[CONF_MENU_CUT],
-      main_menu_conf[CONF_MENU_INSERT]
+      main_menu_conf[CONF_MENU_INSERT],
+      main_menu_conf[CONF_MENU_DELETE]
     },
     (conf_obj[]) {
       main_menu_conf[CONF_MENU_EVAL_LINE],
@@ -1016,6 +1017,97 @@ aris_proof_copy (aris_proof * ap)
 
   aris_proof_clear_selected (ap);
   return 0;
+}
+
+/* Removes the selected line(s) from an aris proof.
+ *  input:
+ *    ap - The aris proof from which sentences are being removed.
+ *  output:
+ *    0 on success, -1 on memory error, 1 if the sentence is the first.
+ */
+int
+aris_proof_delete (aris_proof * ap)
+{
+  int ret_chk;
+  item_t * sel_itr;
+
+  if (!ap->selected)
+    {
+      ap->selected = init_list ();
+      if (!ap->selected)
+        return AEC_MEM;
+    }
+
+  if (ls_empty (ap->selected))
+    ls_push_obj (ap->selected, (sentence *) SEN_PARENT (ap)->focused->value);
+
+  sel_itr = ap->selected->head;
+
+  undo_info ui;
+  list_t * ls, * sen_ls;
+  ls = init_list ();
+  if (!ls)
+    return AEC_MEM;
+
+  sen_ls = init_list ();
+  if (!sen_ls)
+    return AEC_MEM;
+
+  item_t * push_chk;
+
+  // Since refs will be changing, set up undo information and
+  //  the list of sentences before removing anything.
+   
+
+  for (; sel_itr; sel_itr = sel_itr->next)
+    {
+      sen_data * sd = sel_itr->value;
+
+      // This is really inefficient.
+      item_t * ev_itr = ls_nth (SEN_PARENT (ap)->everything, sd->line_num - 1);
+
+      sentence * sen;
+      sen = ev_itr->value;
+      sen_data * undo_sd;
+
+      // This will fix the differences with depth and refs imposed by copy.
+      undo_sd = sentence_copy_to_data (sen);
+      push_chk = ls_push_obj (ls, undo_sd);
+      if (!push_chk)
+        return AEC_MEM;
+
+      push_chk = ls_push_obj (sen_ls, sen);
+      if (!push_chk)
+        return AEC_MEM;
+    }
+
+  item_t * n_itr;
+
+  for (sel_itr = sen_ls->head; sel_itr;)
+    {
+      sentence * sen = sel_itr->value;
+      ret_chk = aris_proof_remove_sentence (ap, sen);
+      if (ret_chk == AEC_MEM)
+        return AEC_MEM;
+      if (ret_chk == 1)
+        return 1;
+      n_itr = sel_itr->next;
+      free (sel_itr);
+      sel_itr = n_itr;
+    }
+  free (sen_ls);
+
+  ui = undo_info_init (ap, ls, UIT_REM_SEN);
+  if (ui.type == -1)
+    return AEC_MEM;
+
+  int ret;
+  ret = aris_proof_set_changed (ap, 1, ui);
+  if (ret < 0)
+    return AEC_MEM;
+
+  return 0;
+  //return aris_proof_cut(ap);// temporary fix since above code is still broken
 }
 
 /* Cuts the selected line(s) from an aris proof.
