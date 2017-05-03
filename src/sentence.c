@@ -714,7 +714,9 @@ sentence_connect_signals (sentence * sen)
   g_signal_connect (G_OBJECT (sen->entry), "button-release-event",
                     G_CALLBACK (sentence_btn_release), (gpointer) sen);
   g_signal_connect (G_OBJECT (sen->entry), "key-press-event",
-                    G_CALLBACK (sentence_key_press), (gpointer) sen);
+                    G_CALLBACK (sentence_key_press), (gpointer) sen); 
+  g_signal_connect (G_OBJECT (sen->entry), "key-release-event",
+                    G_CALLBACK (sentence_key_release), (gpointer) sen);// fixes bug on windows with the first letter not showing up
   g_signal_connect (G_OBJECT (gtk_text_view_get_buffer (GTK_TEXT_VIEW (sen->entry))),
                     "changed",
                     G_CALLBACK (sentence_changed), (gpointer) sen);

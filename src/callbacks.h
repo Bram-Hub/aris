@@ -66,6 +66,9 @@ G_MODULE_EXPORT gboolean sentence_btn_release (GtkWidget * widget,
 G_MODULE_EXPORT gboolean sentence_key_press (GtkWidget * widget,
 					     GdkEventKey * event,
 					     gpointer data);
+G_MODULE_EXPORT gboolean sentence_key_release (GtkWidget * widget,
+					     GdkEventKey * event,
+					     gpointer data);
 G_MODULE_EXPORT void sentence_changed (GtkTextView * edit, gpointer data);
 G_MODULE_EXPORT void sentence_mapped (GtkWidget * widget,
 				      GdkRectangle * rect,

@@ -184,6 +184,14 @@ sentence_btn_release (GtkWidget * widget, GdkEventButton * event, gpointer data)
   return FALSE;
 }
 
+G_MODULE_EXPORT gboolean
+sentence_key_release (GtkWidget * widget, GdkEventKey * event, gpointer data)
+{
+	event->keyval = 65507;
+	sentence_key_press(widget, event, data);
+	return TRUE;
+}
+
 /* Calls sentence_key (sentence.h) on a sentence specified by data.
  *  input:
  *    data - the sentence on which to process the key press.
