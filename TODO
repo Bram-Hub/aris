@@ -17,6 +17,7 @@ GNU Aris -- TODO List
     ~make them highlighted blue over the grey highlight
   - make the homepage button on the about page work
     ~my error: No application is registered as handling this file
+  - Cancel button when asking if you want to exit before saving crashes program
   
 *DONE
   - changed shortcuts to be more user friendly
