@@ -29,6 +29,10 @@ if(UNIX)
     option(__EXTENSIONS__ "Enable Solaris General Extensions" ON)
 endif()
 
+if(MINGW)
+    option(WIN32 ON)
+endif()
+
 find_package(PkgConfig REQUIRED)
 find_package(LibXml2 REQUIRED)
 PKG_CHECK_MODULES(GTK3 REQUIRED gtk+-3.0)

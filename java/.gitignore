@@ -75,4 +75,5 @@ crashlytics-build.properties
 fabric.properties
 
 #Ignore cmake build files
-build/
+build*/
+bin*/
