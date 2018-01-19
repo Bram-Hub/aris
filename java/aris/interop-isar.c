@@ -974,7 +974,7 @@ parse_connectives (char * in_str, int cur_conn, char ** out_str)
 	  g_len = strlen (new_gen);
 	  gen = realloc (gen, (gen_pos + g_len) * sizeof (char));
 	  CHECK_ALLOC (gen, -1);
-	  
+
 	  gen_pos += sprintf (gen + gen_pos, "%s", new_gen);
 	  free (new_gen);
 
