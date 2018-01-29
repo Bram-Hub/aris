@@ -9,11 +9,11 @@ extern "C" {
 #endif
 /*
  * Class:     edu_rpi_aris_ArisNative
- * Method:    test
- * Signature: ()V
+ * Method:    process_sentence
+ * Signature: (Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;)Ljava/lang/String;
  */
-JNIEXPORT void JNICALL Java_edu_rpi_aris_ArisNative_test
-  (JNIEnv *, jobject);
+JNIEXPORT jstring JNICALL Java_edu_rpi_aris_ArisNative_process_1sentence
+  (JNIEnv *, jclass, jstring, jobjectArray, jstring, jobjectArray);
 
 #ifdef __cplusplus
 }
