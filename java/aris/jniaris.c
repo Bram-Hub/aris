@@ -17,10 +17,6 @@ void cleanup_str(JNIEnv * env, jstring jnistr, const char * str) {
     (*env)->ReleaseStringUTFChars(env, jnistr, str);
 }
 
-jstring to_jni_str(JNIEnv * env, const char * str) {
-    return (*env)->NewStringUTF(env, str);
-}
-
 vec_t * get_vec(JNIEnv * env, jobjectArray arr) {
     jsize size = (*env)->GetArrayLength(env, arr);
     vec_t * vec = init_vec(sizeof(char *));
