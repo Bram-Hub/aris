@@ -35,13 +35,14 @@ endif()
 
 find_package(PkgConfig REQUIRED)
 find_package(LibXml2 REQUIRED)
+find_package(JNI REQUIRED)
 PKG_CHECK_MODULES(GTK3 REQUIRED gtk+-3.0)
 
 file(GLOB SOURCES "aris/*.c")
 
 configure_file(include/config.h.in config.h @ONLY)
 
-include_directories( include/ ${LIBXML2_INCLUDE_DIR} ${GTK3_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
+include_directories( include/ ${LIBXML2_INCLUDE_DIR} ${GTK3_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR} ${JNI_INCLUDE_DIRS})
 link_directories(${GTK3_LIBRARY_DIRS})
 
 add_definitions(${GTK3_CFLAGS_OTHER} ${LIBXML2_DEFINITIONS} "-DARIS_GUI")
