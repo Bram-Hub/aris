@@ -23,6 +23,14 @@ char *
 process (unsigned char * conc, vec_t * prems, const char * rule, vec_t * vars,
 	 proof_t * proof)
 {
+
+	printf("Conc: %s\n", conc);
+	printf("Rule: %s\n", rule);
+	for(int i = 0; i < prems->num_stuff; ++i) {
+		unsigned char * str = vec_str_nth(prems, i);
+    printf("prem %d: %s\n", i, str);
+	}
+
   unsigned char * conclusion;
 
   conclusion = conc;
