@@ -8,20 +8,20 @@ public enum Operator {
     CONDITIONAL("->", '→', false),
     BICONDITIONAL("<->", '↔', false);
 
-    public static final Operator[] BOOL_OPER, UNARY_OPER;
+    public static final Operator[] BINARY_OPER, UNARY_OPER;
     public static final int NUM_UNARY = 1;
 
     static {
         Operator[] operators = Operator.values();
-        BOOL_OPER = new Operator[operators.length - NUM_UNARY];
-        UNARY_OPER = new Operator[operators.length - BOOL_OPER.length];
+        BINARY_OPER = new Operator[operators.length - NUM_UNARY];
+        UNARY_OPER = new Operator[operators.length - BINARY_OPER.length];
         int j = 0;
         int k = 0;
         for (int i = 0; i < operators.length; ++i)
             if (operators[i].isUnary)
                 UNARY_OPER[j++] = operators[i];
             else
-                BOOL_OPER[k++] = operators[i];
+                BINARY_OPER[k++] = operators[i];
 
     }
 

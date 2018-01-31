@@ -113,6 +113,30 @@ public class SentenceUtil {
                 exp = exp.substring(1);
                 exp = toPolish(removeParen(exp));
                 exp = OP + opr.rep + " " + exp + CP;
+            } else if (exp.charAt(0) != OP) {
+                int argStart = -1;
+                String[] args = null;
+                String fun = null;
+                for (int i = 0; i < exp.length(); ++i) {
+                    char c = exp.charAt(i);
+                    if (c == OP) {
+                        if (argStart != -1)
+                            throw new ParseException("Missing closing parentheses in function", i);
+                        fun = exp.substring(0, i);
+                        argStart = i + 1;
+                    } else if (c == CP) {
+                        if (argStart == -1)
+                            throw new ParseException("No matching open parentheses for closing parentheses", i);
+                        if (args != null)
+                            throw new ParseException("Double closing parentheses found", i);
+                        args = exp.substring(argStart, i).split(",");
+                    }
+                }
+                if (argStart != -1) {
+                    if (args == null)
+                        throw new ParseException("Failed to parse function", 0);
+                    exp = OP + fun + " " + join(args) + CP;
+                }
             }
             return exp;
         }
@@ -128,8 +152,18 @@ public class SentenceUtil {
         return sb.toString();
     }
 
+    public static String join(String[] arr) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < arr.length; ++i) {
+            sb.append(arr[i]);
+            if (i < arr.length - 1)
+                sb.append(" ");
+        }
+        return sb.toString();
+    }
+
     public static Operator getBoolOpr(char c) {
-        for (Operator opr : Operator.BOOL_OPER)
+        for (Operator opr : Operator.BINARY_OPER)
             if (c == opr.logic)
                 return opr;
         return null;
