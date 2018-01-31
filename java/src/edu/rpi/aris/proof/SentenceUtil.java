@@ -19,7 +19,7 @@ public class SentenceUtil {
             if (c == OP)
                 opCount++;
             else if (c == CP) {
-                cpCount--;
+                cpCount++;
                 if (cpCount < 0)
                     return i;
             }
@@ -46,13 +46,6 @@ public class SentenceUtil {
     }
 
     public static String removeParen(String expr) {
-        if (expr.startsWith(Character.toString(OP)))
-            return expr.substring(0, expr.length() - 1).substring(1);
-        return expr;
-    }
-
-    public static String toPolishNotation(String expr) throws ParseException {
-        expr = removeWhitespace(expr);
         if (expr.startsWith(Character.toString(OP))) {
             boolean rmParen = true;
             int count = 0;
@@ -67,12 +60,16 @@ public class SentenceUtil {
                 }
             }
             if (rmParen)
-                expr = removeParen(expr);
+                return removeParen(expr.substring(0, expr.length() - 1).substring(1));
         }
-        return toPolNot(expr);
+        return expr;
     }
 
-    private static String toPolNot(String expr) throws ParseException {
+    public static String toPolishNotation(String expr) throws ParseException {
+        return toPolish(removeParen(removeWhitespace(expr)));
+    }
+
+    private static String toPolish(String expr) throws ParseException {
         int parenDepth = 0;
         Operator oper = null;
         ArrayList<String> exprs = new ArrayList<>();
@@ -94,17 +91,31 @@ public class SentenceUtil {
                     start = i + 1;
                 } else
                     throw new ParseException("Invalid operator in generalized " + oper.name().toLowerCase(), i);
-            } else if (parenDepth == 0 && (tmpOpr = getUnairyOpr(c)) != null) {
-                //TODO
             }
         }
         exprs.add(expr.substring(start));
         if (oper != null) {
-            for (int i = 0; i < exprs.size(); ++i)
-                exprs.set(i, toPolNot(removeParen(exprs.get(i))));
+            for (int i = 0; i < exprs.size(); ++i) {
+                String exp = exprs.get(i);
+                Operator opr;
+                if ((opr = getUnaryOpr(exp.charAt(0))) != null)
+                    exp = exp.substring(1);
+                exp = toPolish(removeParen(exp));
+                if (opr != null)
+                    exp = OP + opr.rep + " " + exp + CP;
+                exprs.set(i, exp);
+            }
             return OP + oper.rep + " " + join(exprs) + CP;
-        } else
-            return expr;
+        } else {
+            String exp = expr;
+            Operator opr;
+            if ((opr = getUnaryOpr(exp.charAt(0))) != null) {
+                exp = exp.substring(1);
+                exp = toPolish(removeParen(exp));
+                exp = OP + opr.rep + " " + exp + CP;
+            }
+            return exp;
+        }
     }
 
     public static String join(ArrayList<String> list) {
@@ -124,8 +135,8 @@ public class SentenceUtil {
         return null;
     }
 
-    private static Operator getUnairyOpr(char c) {
-        for (Operator opr : Operator.UNAIRY_OPER)
+    private static Operator getUnaryOpr(char c) {
+        for (Operator opr : Operator.UNARY_OPER)
             if (c == opr.logic)
                 return opr;
         return null;

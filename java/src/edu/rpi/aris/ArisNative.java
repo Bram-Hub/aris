@@ -14,7 +14,7 @@ public class ArisNative {
 
     public static void main(String[] args) throws ParseException {
         System.out.println(process_sentence("B", new String[]{"(<i> A B)", "A"}, "Modus Ponens", new String[]{}));
-        System.out.println(SentenceUtil.toPolishNotation("(Home(max) ∧ Happy(carl)) ∨ (Home(claire) ∧ Happy(scruffy))"));
+        System.out.println(SentenceUtil.toPolishNotation("(((Home(max,test) ∧ Happy(carl)) ∨ (Home(claire) ∧ Happy(scruffy))))"));
     }
 
 }

@@ -2,38 +2,37 @@ package edu.rpi.aris.proof;
 
 public enum Operator {
 
-    NOT("!", '¬'),
-    AND("&", '∧'),
-    OR("|", '∨'),
-    CONDITIONAL("->", '→'),
-    BICONDITIONAL("<->", '↔');
+    NOT("!", '¬', true),
+    AND("&", '∧', false),
+    OR("|", '∨', false),
+    CONDITIONAL("->", '→', false),
+    BICONDITIONAL("<->", '↔', false);
 
-    //    public static final char[] OPERATORS;
-    public static final Operator[] BOOL_OPER, UNAIRY_OPER;
+    public static final Operator[] BOOL_OPER, UNARY_OPER;
+    public static final int NUM_UNARY = 1;
 
     static {
         Operator[] operators = Operator.values();
-//        OPERATORS = new char[operators.length];
-//        for (int i = 0; i < operators.length; ++i)
-//            OPERATORS[i] = operators[i].logic;
-        BOOL_OPER = new Operator[operators.length - 1];
-        UNAIRY_OPER = new Operator[operators.length - BOOL_OPER.length];
+        BOOL_OPER = new Operator[operators.length - NUM_UNARY];
+        UNARY_OPER = new Operator[operators.length - BOOL_OPER.length];
         int j = 0;
         int k = 0;
         for (int i = 0; i < operators.length; ++i)
-            if (operators[i] != NOT)
-                BOOL_OPER[j++] = operators[i];
+            if (operators[i].isUnary)
+                UNARY_OPER[j++] = operators[i];
             else
-                UNAIRY_OPER[k++] = operators[i];
+                BOOL_OPER[k++] = operators[i];
 
     }
 
     public final String rep;
     public final char logic;
+    public final boolean isUnary;
 
-    Operator(String rep, char logic) {
+    Operator(String rep, char logic, boolean isUnary) {
         this.rep = rep;
         this.logic = logic;
+        this.isUnary = isUnary;
     }
 
 }
