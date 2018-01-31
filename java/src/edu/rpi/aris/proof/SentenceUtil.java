@@ -70,6 +70,8 @@ public class SentenceUtil {
     }
 
     private static String toPolish(String expr) throws ParseException {
+        if(expr.length() == 0)
+            throw new ParseException("Empty expression found in sentence", -1);
         int parenDepth = 0;
         Operator oper = null;
         ArrayList<String> exprs = new ArrayList<>();
@@ -86,7 +88,7 @@ public class SentenceUtil {
                     oper = tmpOpr;
                 if (tmpOpr == oper) {
                     if (start == i)
-                        throw new ParseException("Boolean operator needs to connect 2 expressions", i);
+                        throw new ParseException("Binary operator needs to connect 2 expressions", i);
                     exprs.add(expr.substring(start, i));
                     start = i + 1;
                 } else
@@ -97,6 +99,8 @@ public class SentenceUtil {
         if (oper != null) {
             for (int i = 0; i < exprs.size(); ++i) {
                 String exp = exprs.get(i);
+                if(exp.length() == 0)
+                    throw new ParseException("Binary connective missing connective", -1);
                 Operator opr;
                 if ((opr = getUnaryOpr(exp.charAt(0))) != null)
                     exp = exp.substring(1);
@@ -162,7 +166,7 @@ public class SentenceUtil {
         return sb.toString();
     }
 
-    public static Operator getBoolOpr(char c) {
+    private static Operator getBoolOpr(char c) {
         for (Operator opr : Operator.BINARY_OPER)
             if (c == opr.logic)
                 return opr;

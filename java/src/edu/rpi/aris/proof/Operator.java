@@ -35,4 +35,11 @@ public enum Operator {
         this.isUnary = isUnary;
     }
 
+    public static Operator getOperator(String opr) {
+        for (Operator o : Operator.values())
+            if (o.rep.equals(opr))
+                return o;
+        return null;
+    }
+
 }
