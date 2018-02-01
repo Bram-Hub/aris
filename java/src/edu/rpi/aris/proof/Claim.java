@@ -31,4 +31,9 @@ public class Claim {
     public Premise[] getPremises() {
         return premises;
     }
+
+    public Rule getRule() {
+        return rule;
+    }
+
 }

@@ -1,7 +1,12 @@
 package edu.rpi.aris.proof;
 
+import com.sun.istack.internal.NotNull;
+
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class SentenceUtil {
 
@@ -70,7 +75,7 @@ public class SentenceUtil {
     }
 
     private static String toPolish(String expr) throws ParseException {
-        if(expr.length() == 0)
+        if (expr.length() == 0)
             throw new ParseException("Empty expression found in sentence", -1);
         int parenDepth = 0;
         Operator oper = null;
@@ -99,7 +104,7 @@ public class SentenceUtil {
         if (oper != null) {
             for (int i = 0; i < exprs.size(); ++i) {
                 String exp = exprs.get(i);
-                if(exp.length() == 0)
+                if (exp.length() == 0)
                     throw new ParseException("Binary connective missing connective", -1);
                 Operator opr;
                 if ((opr = getUnaryOpr(exp.charAt(0))) != null)
@@ -144,6 +149,13 @@ public class SentenceUtil {
             }
             return exp;
         }
+    }
+
+    public static String toPolish(@NotNull Expression[] exprs, @NotNull String opr) {
+        Objects.requireNonNull(exprs);
+        Objects.requireNonNull(opr);
+        ArrayList<String> polish = Arrays.stream(exprs).map(Expression::toString).collect(Collectors.toCollection(ArrayList::new));
+        return OP + opr + " " + join(polish) + CP;
     }
 
     public static String join(ArrayList<String> list) {

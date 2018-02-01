@@ -1,17 +1,37 @@
 package edu.rpi.aris.proof;
 
+import com.sun.istack.internal.NotNull;
+
 import java.util.ArrayList;
+import java.util.Objects;
 
 public class Expression {
 
     private Operator operator = null;
     private String polishRep;
     private String functionOperator = null;
-    private boolean isFuntional = false;
+    private boolean isFunctional = false;
     private boolean isLiteral = false;
     private Expression[] expressions = null;
 
     public Expression(String expr) {
+        init(expr);
+    }
+
+    //this constructor does not support functional operators
+    public Expression(@NotNull Expression[] exprs, Operator opr) {
+        Objects.requireNonNull(exprs);
+        if (operator == null) {
+            if (exprs.length != 1)
+                throw new IllegalArgumentException("Must give exactly one expression if null operator");
+            init(exprs[0].toString());
+        } else if (operator.isUnary && exprs.length != 1) {
+            throw new IllegalArgumentException("Must give exactly 1 Expression for unary operator");
+        } else
+            init(SentenceUtil.toPolish(expressions, opr.rep));
+    }
+
+    private void init(String expr) {
         polishRep = expr;
         expr = SentenceUtil.removeParen(expr);
         if (!expr.contains(" ")) {
@@ -24,7 +44,7 @@ public class Expression {
         operator = Operator.getOperator(oprStr);
         if (operator == null) {
             functionOperator = oprStr;
-            isFuntional = true;
+            isFunctional = true;
         }
         expr = expr.substring(expr.indexOf(' ') + 1);
         ArrayList<String> strExp = new ArrayList<>();
@@ -58,8 +78,8 @@ public class Expression {
         return functionOperator;
     }
 
-    public boolean isFuntional() {
-        return isFuntional;
+    public boolean isFunctional() {
+        return isFunctional;
     }
 
     public boolean isLiteral() {
@@ -80,6 +100,22 @@ public class Expression {
     @Override
     public String toString() {
         return polishRep;
+    }
+
+    public String toRegexString() {
+        if (isLiteral) {
+            return polishRep;
+        }
+        String opr = isFunctional ? functionOperator : operator.rep;
+        StringBuilder sb = new StringBuilder();
+        sb.append(SentenceUtil.OP).append(opr).append(" ");
+        for (int i = 0; i < expressions.length; ++i)
+            sb.append(expressions[i].toString().replaceAll(" ", "~")).append(i + 1 == expressions.length ? "" : " ");
+        return sb.append(SentenceUtil.CP).toString();
+    }
+
+    public static String fromRegexString(String regexString) {
+        return regexString.replaceAll("~", " ");
     }
 
     @Override

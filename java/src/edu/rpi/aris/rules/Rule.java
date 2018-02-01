@@ -22,6 +22,14 @@ public abstract class Rule {
         return verifyClaim(claim.getConclusion(), claim.getPremises());
     }
 
+    public abstract String[][] getPremiseRules();
+
+    public abstract String[][] getConclusionRules();
+
+    public abstract boolean obeyOrder();
+
+    public abstract Expression[] getRegexBindings(Expression expression);
+
     protected abstract String getName();
 
     protected abstract String getSimpleName();
