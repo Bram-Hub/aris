@@ -42,16 +42,15 @@ public class RegexMatcher {
             if (boundVars.containsKey(s) && obeyOrder) {
                 rule = rule.replaceAll(s, boundVars.get(s));
                 remove.add(s);
-            } else if (allowBinding) {
-                rule = rule.replaceFirst(s, "\\\\E(?<" + s + ">.{1," + 10 + "})\\\\Q");
+            } else {
+                rule = rule.replaceFirst(s, "\\\\E(?<" + s + ">.{1,4096})\\\\Q");
                 rule = rule.replace(' ' + s, " \\<" + s + ">");
-            } else
-                return null;
+            }
         }
         vars.removeAll(remove);
         Pattern rulePattern = Pattern.compile(rule);
         Matcher ruleMatcher = rulePattern.matcher(regexExp);
-        if (ruleMatcher.find()) {
+        if (ruleMatcher.matches()) {
             if (obeyOrder && !allowBinding)
                 return boundVars;
             for (String s : vars) {
@@ -164,7 +163,7 @@ public class RegexMatcher {
                 for (Premise p : premises) {
                     String remove = null;
                     for (int j = 0; j < pRules.size(); ++j) {
-                        if (attemptBind(pRules.get(j), p.getPremis(), map, rule.obeyOrder, !rule.bindConclusionFirst) != null) {
+                        if (attemptBind(pRules.get(j), p.getPremis(), map, rule.obeyOrder, !rule.bindConclusionFirst && j == 0) != null) {
                             remove = pRules.get(j);
                             break;
                         } else if (j == pRules.size() - 1)
