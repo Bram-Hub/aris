@@ -1,14 +1,15 @@
 package edu.rpi.aris.proof;
 
 import edu.rpi.aris.rules.Rule;
+import edu.rpi.aris.rules.RuleList;
 
 public class Claim {
 
     private Expression conclusion;
     private Premise[] premises;
-    private Rule rule;
+    private RuleList rule;
 
-    public Claim(Expression conclusion, Premise[] premises, Rule rule) {
+    public Claim(Expression conclusion, Premise[] premises, RuleList rule) {
         this.conclusion = conclusion;
         if (premises == null)
             premises = new Premise[0];
@@ -21,7 +22,8 @@ public class Claim {
             return "No rule specified";
         if (conclusion == null)
             return "No conclusion specified";
-        return rule.verifyClaim(this);
+        return null;
+//        return rule.verifyClaim(this);
     }
 
     public Expression getConclusion() {
@@ -32,7 +34,7 @@ public class Claim {
         return premises;
     }
 
-    public Rule getRule() {
+    public RuleList getRule() {
         return rule;
     }
 

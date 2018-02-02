@@ -31,6 +31,10 @@ public class Expression {
             init(SentenceUtil.toPolish(expressions, opr.rep));
     }
 
+//    public static String fromRegexString(String regexString) {
+//        return regexString.replace(REGEX_SPACE, ' ');
+//    }
+
     private void init(String expr) {
         polishRep = expr;
         expr = SentenceUtil.removeParen(expr);
@@ -63,11 +67,9 @@ public class Expression {
             }
         }
         strExp.add(expr.substring(start));
-        if (strExp.size() > 1) {
-            expressions = new Expression[strExp.size()];
-            for (int i = 0; i < strExp.size(); ++i)
-                expressions[i] = new Expression(strExp.get(i));
-        }
+        expressions = new Expression[strExp.size()];
+        for (int i = 0; i < strExp.size(); ++i)
+            expressions[i] = new Expression(strExp.get(i));
     }
 
     public Operator getOperator() {
@@ -102,21 +104,17 @@ public class Expression {
         return polishRep;
     }
 
-    public String toRegexString() {
-        if (isLiteral) {
-            return polishRep;
-        }
-        String opr = isFunctional ? functionOperator : operator.rep;
-        StringBuilder sb = new StringBuilder();
-        sb.append(SentenceUtil.OP).append(opr).append(" ");
-        for (int i = 0; i < expressions.length; ++i)
-            sb.append(expressions[i].toString().replaceAll(" ", "~")).append(i + 1 == expressions.length ? "" : " ");
-        return sb.append(SentenceUtil.CP).toString();
-    }
-
-    public static String fromRegexString(String regexString) {
-        return regexString.replaceAll("~", " ");
-    }
+//    public String toRegexString() {
+//        if (isLiteral) {
+//            return polishRep;
+//        }
+//        String opr = isFunctional ? functionOperator : operator.rep;
+//        StringBuilder sb = new StringBuilder();
+//        sb.append(SentenceUtil.OP).append(opr).append(" ");
+//        for (int i = 0; i < expressions.length; ++i)
+//            sb.append(expressions[i].toString().replace(' ', REGEX_SPACE)).append(i + 1 == expressions.length ? "" : " ");
+//        return sb.append(SentenceUtil.CP).toString();
+//    }
 
     @Override
     public boolean equals(Object obj) {

@@ -28,6 +28,8 @@ public abstract class Rule {
 
     public abstract boolean obeyOrder();
 
+    public abstract boolean bindConclusionFirst();
+
     public abstract Expression[] getRegexBindings(Expression expression);
 
     protected abstract String getName();

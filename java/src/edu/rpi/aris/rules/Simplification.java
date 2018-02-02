@@ -12,16 +12,21 @@ public class Simplification extends Rule {
 
     @Override
     public String[][] getPremiseRules() {
-        return new String[][]{{"(& A B)"}};
+        return new String[][]{{"(& A ...)"}};
     }
 
     @Override
     public String[][] getConclusionRules() {
-        return new String[][]{{"A"}};
+        return new String[][]{{"(& A ...)"}};
     }
 
     @Override
     public boolean obeyOrder() {
+        return false;
+    }
+
+    @Override
+    public boolean bindConclusionFirst() {
         return false;
     }
 
