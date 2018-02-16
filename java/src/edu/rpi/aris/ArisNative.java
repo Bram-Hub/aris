@@ -22,7 +22,7 @@ public class ArisNative {
         Premise[] p = new Premise[]{new Premise(premise)};
         System.out.println(premise);
         Expression conclusion = new Expression(SentenceUtil.toPolishNotation("(Home(max,test) ∨ Happy(carl))"));
-        Claim claim = new Claim(conclusion, p, RuleList.SIMPLIFICATION);
+        Claim claim = new Claim(conclusion, p, RuleList.SIMPLIFICATION.rule);
         System.out.println(claim.isValidClaim());
     }
 

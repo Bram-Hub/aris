@@ -11,34 +11,6 @@ public class Simplification extends Rule {
     }
 
     @Override
-    public String[][] getPremiseRules() {
-        return new String[][]{{"(& A ...)"}};
-    }
-
-    @Override
-    public String[][] getConclusionRules() {
-        return new String[][]{{"(& A ...)"}};
-    }
-
-    @Override
-    public boolean obeyOrder() {
-        return false;
-    }
-
-    @Override
-    public boolean bindConclusionFirst() {
-        return false;
-    }
-
-    @Override
-    public Expression[] getRegexBindings(Expression expression) {
-        if (expression.getOperator() == Operator.AND)
-            return expression.getExpressions();
-        else
-            return new Expression[]{expression};
-    }
-
-    @Override
     protected String getName() {
         return "Simplification (" + getSimpleName() + ")";
     }

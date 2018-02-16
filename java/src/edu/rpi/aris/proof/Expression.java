@@ -31,10 +31,6 @@ public class Expression {
             init(SentenceUtil.toPolish(expressions, opr.rep));
     }
 
-//    public static String fromRegexString(String regexString) {
-//        return regexString.replace(REGEX_SPACE, ' ');
-//    }
-
     private void init(String expr) {
         polishRep = expr;
         expr = SentenceUtil.removeParen(expr);
@@ -103,18 +99,6 @@ public class Expression {
     public String toString() {
         return polishRep;
     }
-
-//    public String toRegexString() {
-//        if (isLiteral) {
-//            return polishRep;
-//        }
-//        String opr = isFunctional ? functionOperator : operator.rep;
-//        StringBuilder sb = new StringBuilder();
-//        sb.append(SentenceUtil.OP).append(opr).append(" ");
-//        for (int i = 0; i < expressions.length; ++i)
-//            sb.append(expressions[i].toString().replace(' ', REGEX_SPACE)).append(i + 1 == expressions.length ? "" : " ");
-//        return sb.append(SentenceUtil.CP).toString();
-//    }
 
     @Override
     public boolean equals(Object obj) {

@@ -1,12 +1,10 @@
 package edu.rpi.aris.proof;
 
-import edu.rpi.aris.rules.RuleList;
-
-import java.text.ParseException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public class RegexMatcher {
 
@@ -146,47 +144,47 @@ public class RegexMatcher {
         return String.valueOf(arr);
     }
 
-    public static boolean verifyClaim(Claim claim) {
-        RuleList rule = claim.getRule();
-        for (int i = 0; i < rule.premises.length; ++i) {
-            String[] premisesRules = rule.premises[i];
-            String conclusionRule = rule.conclusions[i];
-            Premise[] premises = claim.getPremises();
-            HashMap<String, String> map = new HashMap<>();
-            boolean valid = true;
-            if (rule.bindConclusionFirst)
-                if (attemptBind(conclusionRule, claim.getConclusion(), map, rule.obeyOrder, true) == null) {
-                    valid = false;
-                }
-            if (valid) {
-                ArrayList<String> pRules = Arrays.stream(premisesRules).collect(Collectors.toCollection(ArrayList::new));
-                for (Premise p : premises) {
-                    String remove = null;
-                    for (int j = 0; j < pRules.size(); ++j) {
-                        if (attemptBind(pRules.get(j), p.getPremis(), map, rule.obeyOrder, !rule.bindConclusionFirst && j == 0) != null) {
-                            remove = pRules.get(j);
-                            break;
-                        } else if (j == pRules.size() - 1)
-                            valid = false;
-                    }
-                    if (remove != null)
-                        pRules.remove(remove);
-                }
-            }
-            if (valid && !rule.bindConclusionFirst)
-                valid = attemptBind(conclusionRule, claim.getConclusion(), map, rule.obeyOrder, false) != null;
-            if (valid)
-                return true;
-        }
-        return false;
-    }
+//    public static boolean verifyClaim(Claim claim) {
+//        RuleList rule = claim.getRule();
+//        for (int i = 0; i < rule.premises.length; ++i) {
+//            String[] premisesRules = rule.premises[i];
+//            String conclusionRule = rule.conclusions[i];
+//            Premise[] premises = claim.getPremises();
+//            HashMap<String, String> map = new HashMap<>();
+//            boolean valid = true;
+//            if (rule.bindConclusionFirst)
+//                if (attemptBind(conclusionRule, claim.getConclusion(), map, rule.obeyOrder, true) == null) {
+//                    valid = false;
+//                }
+//            if (valid) {
+//                ArrayList<String> pRules = Arrays.stream(premisesRules).collect(Collectors.toCollection(ArrayList::new));
+//                for (Premise p : premises) {
+//                    String remove = null;
+//                    for (int j = 0; j < pRules.size(); ++j) {
+//                        if (attemptBind(pRules.get(j), p.getPremis(), map, rule.obeyOrder, !rule.bindConclusionFirst && j == 0) != null) {
+//                            remove = pRules.get(j);
+//                            break;
+//                        } else if (j == pRules.size() - 1)
+//                            valid = false;
+//                    }
+//                    if (remove != null)
+//                        pRules.remove(remove);
+//                }
+//            }
+//            if (valid && !rule.bindConclusionFirst)
+//                valid = attemptBind(conclusionRule, claim.getConclusion(), map, rule.obeyOrder, false) != null;
+//            if (valid)
+//                return true;
+//        }
+//        return false;
+//    }
 
-    public static void main(String[] args) throws ParseException {
-        String logic = "¬A ∧ ¬B";
-        logic = SentenceUtil.toPolishNotation(logic);
-        Expression exp = new Expression("(<-> A B)");
-        Claim c = new Claim(new Expression("B"), new Premise[]{new Premise(exp), new Premise(new Expression("A"))}, RuleList.BICONDITIONAL);
-        System.out.println(verifyClaim(c));
-    }
+//    public static void main(String[] args) throws ParseException {
+//        String logic = "¬A ∧ ¬B";
+//        logic = SentenceUtil.toPolishNotation(logic);
+//        Expression exp = new Expression("(<-> A B)");
+//        Claim c = new Claim(new Expression("B"), new Premise[]{new Premise(exp), new Premise(new Expression("A"))}, RuleList.BICONDITIONAL);
+//        System.out.println(verifyClaim(c));
+//    }
 
 }
