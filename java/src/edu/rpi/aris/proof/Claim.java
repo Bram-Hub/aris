@@ -37,4 +37,20 @@ public class Claim {
         return rule;
     }
 
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Premises:\n");
+        for (Premise p : premises) {
+            if (p.isSubproof()) {
+                sb.append("{ ").append(p.getAssumption()).append(", ").append(p.getConclusion()).append(" }\n");
+            } else {
+                sb.append(p.getPremis()).append("\n");
+            }
+        }
+        sb.append("Conclusion: ").append(conclusion).append("\n");
+        sb.append("Rule: ").append(rule.getName());
+        return sb.toString();
+    }
+
 }

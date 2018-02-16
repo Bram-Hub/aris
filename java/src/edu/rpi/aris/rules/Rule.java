@@ -22,9 +22,9 @@ public abstract class Rule {
         return verifyClaim(claim.getConclusion(), claim.getPremises());
     }
 
-    protected abstract String getName();
+    public abstract String getName();
 
-    protected abstract String getSimpleName();
+    public abstract String getSimpleName();
 
     protected abstract int requiredPremises(Claim claim);
 

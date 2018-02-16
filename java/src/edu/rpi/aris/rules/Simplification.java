@@ -11,12 +11,12 @@ public class Simplification extends Rule {
     }
 
     @Override
-    protected String getName() {
+    public String getName() {
         return "Simplification (" + getSimpleName() + ")";
     }
 
     @Override
-    protected String getSimpleName() {
+    public String getSimpleName() {
         return "∧ Elim";
     }
 

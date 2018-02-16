@@ -11,12 +11,12 @@ public class ModusTollens extends Rule {
     }
 
     @Override
-    protected String getName() {
+    public String getName() {
         return null;
     }
 
     @Override
-    protected String getSimpleName() {
+    public String getSimpleName() {
         return null;
     }
 
