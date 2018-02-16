@@ -70,6 +70,10 @@ public class SentenceUtil {
         return expr;
     }
 
+    public static Expression toExpression(String expr) throws ParseException {
+        return new Expression(toPolishNotation(expr));
+    }
+
     public static String toPolishNotation(String expr) throws ParseException {
         return toPolish(removeParen(removeWhitespace(expr)));
     }

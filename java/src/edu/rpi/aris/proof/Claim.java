@@ -1,9 +1,10 @@
 package edu.rpi.aris.proof;
 
 import edu.rpi.aris.rules.Rule;
-import edu.rpi.aris.rules.RuleList;
 
 public class Claim {
+
+    public static final String SUBPROOF_REP = "==>";
 
     private Expression conclusion;
     private Premise[] premises;
@@ -43,7 +44,7 @@ public class Claim {
         sb.append("Premises:\n");
         for (Premise p : premises) {
             if (p.isSubproof()) {
-                sb.append("{ ").append(p.getAssumption()).append(", ").append(p.getConclusion()).append(" }\n");
+                sb.append("{ ").append(p.getAssumption()).append(" ").append(SUBPROOF_REP).append(" ").append(p.getConclusion()).append(" }\n");
             } else {
                 sb.append(p.getPremis()).append("\n");
             }

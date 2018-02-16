@@ -4,7 +4,8 @@ public enum RuleList {
 
     SIMPLIFICATION(new Simplification()),
     MODUS_PONENS(new ModusPonens()),
-    MODUS_TOLLENS(new ModusTollens());
+    MODUS_TOLLENS(new ModusTollens()),
+    HYPOTHETICAL_SYLLOGISM(new HypotheticalSyllogism());
 
     public final String name, simpleName;
     public final Rule rule;

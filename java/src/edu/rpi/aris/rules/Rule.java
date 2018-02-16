@@ -6,8 +6,7 @@ import edu.rpi.aris.proof.Premise;
 
 public abstract class Rule {
 
-    public Rule() {
-
+    Rule() {
     }
 
     public String verifyClaim(Claim claim) {

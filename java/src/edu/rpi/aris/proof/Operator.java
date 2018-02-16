@@ -2,11 +2,11 @@ package edu.rpi.aris.proof;
 
 public enum Operator {
 
-    NOT("!", '¬', true),
-    AND("&", '∧', false),
-    OR("|", '∨', false),
-    CONDITIONAL("->", '→', false),
-    BICONDITIONAL("<->", '↔', false);
+    NOT("!", '¬', true, false),
+    AND("&", '∧', false, true),
+    OR("|", '∨', false, true),
+    CONDITIONAL("->", '→', false, false),
+    BICONDITIONAL("<->", '↔', false, false);
 
     public static final Operator[] BINARY_OPER, UNARY_OPER;
     public static final int NUM_UNARY = 1;
@@ -27,12 +27,13 @@ public enum Operator {
 
     public final String rep;
     public final char logic;
-    public final boolean isUnary;
+    public final boolean isUnary, canGeneralize;
 
-    Operator(String rep, char logic, boolean isUnary) {
+    Operator(String rep, char logic, boolean isUnary, boolean canGeneralize) {
         this.rep = rep;
         this.logic = logic;
         this.isUnary = isUnary;
+        this.canGeneralize = canGeneralize;
     }
 
     public static Operator getOperator(String opr) {

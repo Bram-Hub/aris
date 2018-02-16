@@ -2,6 +2,7 @@ package edu.rpi.aris.proof;
 
 import com.sun.istack.internal.NotNull;
 
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Objects;
 
@@ -14,12 +15,12 @@ public class Expression {
     private boolean isLiteral = false;
     private Expression[] expressions = null;
 
-    public Expression(String expr) {
+    public Expression(String expr) throws ParseException {
         init(expr);
     }
 
     //this constructor does not support functional operators
-    public Expression(@NotNull Expression[] exprs, Operator opr) {
+    public Expression(@NotNull Expression[] exprs, Operator opr) throws ParseException {
         Objects.requireNonNull(exprs);
         if (operator == null) {
             if (exprs.length != 1)
@@ -27,11 +28,13 @@ public class Expression {
             init(exprs[0].toString());
         } else if (operator.isUnary && exprs.length != 1) {
             throw new IllegalArgumentException("Must give exactly 1 Expression for unary operator");
+        } else if (!operator.canGeneralize && !operator.isUnary && exprs.length != 2) {
+            throw new IllegalArgumentException("Cannot create generalized " + operator.name());
         } else
             init(SentenceUtil.toPolish(expressions, opr.rep));
     }
 
-    private void init(String expr) {
+    private void init(String expr) throws ParseException {
         polishRep = expr;
         expr = SentenceUtil.removeParen(expr);
         if (!expr.contains(" ")) {
@@ -63,6 +66,12 @@ public class Expression {
             }
         }
         strExp.add(expr.substring(start));
+        if (operator != null) {
+            if (operator.isUnary && strExp.size() != 1)
+                throw new ParseException("Multiple expressions given for unary operator", -1);
+            else if (!operator.canGeneralize && !operator.isUnary && strExp.size() != 2)
+                throw new ParseException("Cannot create generalized " + operator.name(), -1);
+        }
         expressions = new Expression[strExp.size()];
         for (int i = 0; i < strExp.size(); ++i)
             expressions[i] = new Expression(strExp.get(i));
@@ -121,7 +130,7 @@ public class Expression {
         return true;
     }
 
-    public Expression negate() {
+    public Expression negate() throws ParseException {
         return new Expression(new Expression[]{this}, Operator.NOT);
     }
 

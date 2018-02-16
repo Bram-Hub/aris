@@ -28,18 +28,4 @@ public class SentenceUtilTest {
         }
     }
 
-    public static Premise[] getPremises(String[] prems) throws ParseException {
-        Premise[] p = new Premise[prems.length];
-        for (int i = 0; i < prems.length; i++)
-            p[i] = new Premise(new Expression(SentenceUtil.toPolishNotation(prems[i])));
-        return p;
-    }
-
-    public static Expression[] getExpressions(String[] exps) throws ParseException {
-        Expression[] e = new Expression[exps.length];
-        for (int i = 0; i < exps.length; ++i)
-            e[i] = new Expression(SentenceUtil.toPolishNotation(exps[i]));
-        return e;
-    }
-
 }
