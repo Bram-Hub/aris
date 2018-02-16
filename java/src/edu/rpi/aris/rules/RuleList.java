@@ -2,7 +2,8 @@ package edu.rpi.aris.rules;
 
 public enum RuleList {
 
-    SIMPLIFICATION(new Simplification());
+    SIMPLIFICATION(new Simplification()),
+    MODUS_PONENS(new ModusPonens());
 
     public final String name, simpleName;
     public final Rule rule;

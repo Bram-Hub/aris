@@ -95,6 +95,32 @@ public class Expression {
         return false;
     }
 
+    private boolean sameFunOpr(String opr1, String opr2) {
+        return opr1 == null && opr2 == null || opr1 != null && opr2 != null && opr1.equals(opr2);
+    }
+
+    public boolean startsWith(Expression exp) {
+        if (exp.operator != operator || !sameFunOpr(functionOperator, exp.functionOperator))
+            return false;
+        if (exp.expressions.length > expressions.length)
+            return false;
+        for (int i = 0; i < exp.expressions.length; i++)
+            if (!exp.expressions[i].equals(expressions[i]))
+                return false;
+        return true;
+    }
+
+    public boolean endsWith(Expression exp) {
+        if (exp.operator != operator || !sameFunOpr(functionOperator, exp.functionOperator))
+            return false;
+        if (exp.expressions.length > expressions.length)
+            return false;
+        for (int i = 1; i <= exp.expressions.length; i++)
+            if (!exp.expressions[exp.expressions.length - i].equals(expressions[expressions.length - i]))
+                return false;
+        return true;
+    }
+
     @Override
     public String toString() {
         return polishRep;
