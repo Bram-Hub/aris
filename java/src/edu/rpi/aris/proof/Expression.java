@@ -121,6 +121,10 @@ public class Expression {
         return true;
     }
 
+    public Expression negate() {
+        return new Expression(new Expression[]{this}, Operator.NOT);
+    }
+
     @Override
     public String toString() {
         return polishRep;
