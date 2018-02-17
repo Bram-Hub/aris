@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.ChoiceBox?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<HBox fx:id="root" alignment="CENTER" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1">
+    <HBox alignment="CENTER" styleClass="proof-left-border" stylesheets="@main_window.css">
+        <ImageView fx:id="selectedLine" pickOnBounds="true" preserveRatio="true" />
+    </HBox>
+    <VBox fx:id="textVbox" HBox.hgrow="ALWAYS">
+      <Region prefHeight="2.0" />
+      <HBox HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
+         <children>
+              <TextField fx:id="textField" editable="false" HBox.hgrow="ALWAYS" />
+             <ChoiceBox fx:id="ruleChoose" />
+         </children>
+      </HBox>
+      <Region prefHeight="2.0" />
+    </VBox>
+    <ImageView fx:id="validImage" pickOnBounds="true" preserveRatio="true" />
+</HBox>
