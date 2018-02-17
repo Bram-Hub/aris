@@ -9,12 +9,12 @@
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 
-<HBox fx:id="root" alignment="CENTER" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1">
-    <HBox alignment="CENTER" styleClass="proof-left-border" stylesheets="@main_window.css" HBox.hgrow="NEVER">
+<HBox fx:id="root" alignment="CENTER" stylesheets="@main_window.css" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1">
+    <HBox alignment="CENTER" styleClass="proof-left-border" HBox.hgrow="NEVER">
         <ImageView fx:id="selectedLine" fitHeight="25.0" fitWidth="25.0" pickOnBounds="true" preserveRatio="true" HBox.hgrow="NEVER" />
     </HBox>
     <VBox fx:id="textVbox" HBox.hgrow="ALWAYS">
-        <Region prefHeight="2.0" />
+        <Region prefHeight="4.0" />
         <HBox alignment="CENTER" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
             <Region prefWidth="2.0" />
             <TextField fx:id="textField" editable="false" HBox.hgrow="ALWAYS" />

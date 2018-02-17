@@ -2,8 +2,7 @@ package edu.rpi.aris.gui;
 
 import edu.rpi.aris.rules.RuleList;
 import javafx.beans.property.BooleanProperty;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.control.ContextMenu;
@@ -13,6 +12,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
@@ -24,6 +24,7 @@ public class ProofLine {
 
     public static final int SUBPROOF_INDENT = 25;
     public static final Image SELECTED_IMAGE = new Image(ProofLine.class.getResourceAsStream("right_arrow.png"));
+    public static final String HIGHLIGHT_STYLE = "highlight-premise";
 
     @FXML
     private HBox root;
@@ -44,6 +45,13 @@ public class ProofLine {
     private int level;
     private MainWindow window;
     private RuleList selectedRule = null;
+    private EventHandler<MouseEvent> highlightListener = new EventHandler<MouseEvent>() {
+        @Override
+        public void handle(MouseEvent mouseEvent) {
+            if (!textField.isEditable())
+                window.requestSelect(ProofLine.this);
+        }
+    };
 
     public ProofLine(boolean isAssumption, int level, MainWindow window) {
         this.isAssumption = isAssumption;
@@ -72,6 +80,7 @@ public class ProofLine {
                 textField.requestFocus();
             selectedLine.imageProperty().setValue(newVal ? SELECTED_IMAGE : null);
         });
+        textField.setOnMouseClicked(highlightListener);
         setUpRules();
         if (isAssumption) {
             ruleChoose.setVisible(false);
@@ -85,6 +94,7 @@ public class ProofLine {
         }
         for (int i = 0; i < level; ++i) {
             Region spacer = new Region();
+            spacer.setOnMouseClicked(highlightListener);
             spacer.maxHeightProperty().bind(root.heightProperty().subtract(isAssumption && i == 0 ? 5 : 0));
             spacer.setPrefWidth(SUBPROOF_INDENT);
             spacer.getStyleClass().add("proof-left-border");
@@ -95,6 +105,16 @@ public class ProofLine {
 
     public BooleanProperty getEditableProperty() {
         return textField.editableProperty();
+    }
+
+    public void setHighlighted(boolean highlighted) {
+        if (highlighted) {
+            root.getStyleClass().add(HIGHLIGHT_STYLE);
+            textVbox.getStyleClass().add(HIGHLIGHT_STYLE);
+        } else {
+            root.getStyleClass().remove(HIGHLIGHT_STYLE);
+            textVbox.getStyleClass().remove(HIGHLIGHT_STYLE);
+        }
     }
 
     private void setUpRules() {

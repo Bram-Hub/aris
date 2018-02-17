@@ -14,6 +14,7 @@ import javafx.util.Pair;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 
 public class MainWindow {
 
@@ -64,4 +65,9 @@ public class MainWindow {
         int index = indexLookup.get(line);
         selectedLine.set(index);
     }
+
+    public void requestSelect(ProofLine line) {
+        line.setHighlighted(true);
+    }
+
 }
