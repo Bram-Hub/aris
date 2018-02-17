@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.ChoiceBox?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.ContextMenu?>
+<?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.HBox?>
@@ -8,18 +10,27 @@
 <?import javafx.scene.layout.VBox?>
 
 <HBox fx:id="root" alignment="CENTER" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1">
-    <HBox alignment="CENTER" styleClass="proof-left-border" stylesheets="@main_window.css">
-        <ImageView fx:id="selectedLine" pickOnBounds="true" preserveRatio="true" />
+    <HBox alignment="CENTER" styleClass="proof-left-border" stylesheets="@main_window.css" HBox.hgrow="NEVER">
+        <ImageView fx:id="selectedLine" fitHeight="25.0" fitWidth="25.0" pickOnBounds="true" preserveRatio="true" HBox.hgrow="NEVER" />
     </HBox>
     <VBox fx:id="textVbox" HBox.hgrow="ALWAYS">
-      <Region prefHeight="2.0" />
-      <HBox HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
-         <children>
-              <TextField fx:id="textField" editable="false" HBox.hgrow="ALWAYS" />
-             <ChoiceBox fx:id="ruleChoose" />
-         </children>
-      </HBox>
-      <Region prefHeight="2.0" />
+        <Region prefHeight="2.0" />
+        <HBox alignment="CENTER" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
+            <Region prefWidth="2.0" />
+            <TextField fx:id="textField" editable="false" HBox.hgrow="ALWAYS" />
+            <Label fx:id="ruleChoose" alignment="CENTER" contentDisplay="CENTER" styleClass="rule-box" text="▼ Rule">
+                <contextMenu>
+                    <ContextMenu fx:id="ruleMenu" />
+                </contextMenu>
+                <HBox.margin>
+                    <Insets left="5.0" />
+                </HBox.margin>
+                <padding>
+                    <Insets bottom="3.0" left="3.0" right="3.0" top="3.0" />
+                </padding>
+            </Label>
+        </HBox>
+        <Region prefHeight="4.0" />
     </VBox>
-    <ImageView fx:id="validImage" pickOnBounds="true" preserveRatio="true" />
+    <ImageView fx:id="validImage" fitHeight="25.0" fitWidth="25.0" pickOnBounds="true" preserveRatio="true" />
 </HBox>
