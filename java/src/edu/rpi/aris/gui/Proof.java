@@ -24,6 +24,10 @@ public class Proof {
         return numLines;
     }
 
+    public ObservableList<Line> getLines() {
+        return lines;
+    }
+
     public Proof.Line addLine(int index) {
         if (index <= lines.size()) {
             Line l = new Line();

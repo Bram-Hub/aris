@@ -126,6 +126,7 @@ public class ProofLine implements LineDeletionListener {
             spacer.setOnMouseClicked(highlightListener);
             spacer.maxHeightProperty().bind(root.heightProperty().subtract(isAssumption && i == 0 ? 5 : 0));
             spacer.setPrefWidth(SUBPROOF_INDENT);
+            spacer.setMinWidth(SUBPROOF_INDENT);
             spacer.getStyleClass().add("proof-left-border");
             root.getChildren().add(1, spacer);
             root.setAlignment(Pos.BOTTOM_LEFT);
@@ -156,7 +157,7 @@ public class ProofLine implements LineDeletionListener {
         return menuItem;
     }
 
-    public Node getRootNode() {
+    public HBox getRootNode() {
         return root;
     }
 
