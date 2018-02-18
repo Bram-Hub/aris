@@ -1,10 +1,12 @@
 package edu.rpi.aris.gui;
 
 import edu.rpi.aris.rules.RuleList;
-import javafx.beans.property.BooleanProperty;
+import javafx.beans.binding.Bindings;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
@@ -47,6 +49,9 @@ public class ProofLine implements LineDeletionListener {
     private int level;
     private MainWindow window;
     private RuleList selectedRule = null;
+    private Proof.Line proofLine;
+    private SimpleStringProperty numberString = new SimpleStringProperty();
+
     private EventHandler<MouseEvent> highlightListener = new EventHandler<MouseEvent>() {
         @Override
         public void handle(MouseEvent mouseEvent) {
@@ -59,6 +64,7 @@ public class ProofLine implements LineDeletionListener {
         this.isAssumption = isAssumption;
         this.level = level;
         this.window = window;
+        this.proofLine = proofLine;
     }
 
     @FXML
@@ -68,6 +74,14 @@ public class ProofLine implements LineDeletionListener {
         textField.fontProperty().bind(window.getFontProperty());
         ruleChoose.fontProperty().bind(window.getFontProperty());
         numberLbl.fontProperty().bind(window.getFontProperty());
+        numberLbl.textProperty().bind(Bindings.createStringBinding(() -> {
+            String total = String.valueOf(window.numLines().get());
+            String num = String.valueOf(proofLine.lineNumberProperty().get() + 1);
+            int spaces = (total.length() - num.length());
+            if (spaces < 0)
+                return "";
+            return new String(new char[spaces]).replace("\0", "  ") + num + '.';
+        }, window.numLines(), proofLine.lineNumberProperty()));
         ruleChoose.setOnMouseClicked(e -> {
             window.requestFocus(this);
             if (e.getButton() == MouseButton.PRIMARY)
@@ -84,6 +98,13 @@ public class ProofLine implements LineDeletionListener {
             selectedLine.imageProperty().setValue(newVal ? SELECTED_IMAGE : null);
         });
         textField.setOnMouseClicked(highlightListener);
+        textField.setOnKeyPressed(keyEvent -> {
+            if (window.ignoreKeyEvent(keyEvent)) {
+                textField.getParent().fireEvent(keyEvent);
+                keyEvent.consume();
+            }
+        });
+        textField.editableProperty().bind(Bindings.createBooleanBinding(() -> proofLine.lineNumberProperty().get() == window.selectedLineProperty().get(), proofLine.lineNumberProperty(), window.selectedLineProperty()));
         setUpRules();
         if (isAssumption) {
             ruleChoose.setVisible(false);
@@ -104,10 +125,6 @@ public class ProofLine implements LineDeletionListener {
             root.getChildren().add(1, spacer);
             root.setAlignment(Pos.BOTTOM_LEFT);
         }
-    }
-
-    public BooleanProperty getEditableProperty() {
-        return textField.editableProperty();
     }
 
     public void setHighlighted(boolean highlighted) {
@@ -134,8 +151,13 @@ public class ProofLine implements LineDeletionListener {
         return menuItem;
     }
 
+    public Node getRootNode() {
+        return root;
+    }
+
     @Override
     public void lineDeleted() {
 
     }
+
 }

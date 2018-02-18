@@ -20,5 +20,7 @@
       </library>
     </orderEntry>
     <orderEntry type="library" name="org.apache.logging.log4j:log4j-core:2.10.0" level="project" />
+    <orderEntry type="library" name="commons-lang:commons-lang:2.6" level="project" />
+    <orderEntry type="library" name="commons-collections:commons-collections:3.2.2" level="project" />
   </component>
 </module>
