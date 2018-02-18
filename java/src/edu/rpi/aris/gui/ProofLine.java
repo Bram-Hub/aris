@@ -18,6 +18,7 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import org.apache.commons.lang.StringUtils;
 
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -82,7 +83,7 @@ public class ProofLine implements LineDeletionListener {
             int spaces = (total.length() - num.length());
             if (spaces < 0)
                 return "";
-            return new String(new char[spaces]).replace("\0", "  ") + num + '.';
+            return StringUtils.repeat("  ", spaces) + num + '.';
         }, window.numLines(), proofLine.lineNumberProperty()));
         ruleChoose.setOnMouseClicked(e -> {
             window.requestFocus(this);
