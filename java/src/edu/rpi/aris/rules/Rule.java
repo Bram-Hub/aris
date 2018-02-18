@@ -27,6 +27,8 @@ public abstract class Rule {
 
     protected abstract int requiredPremises(Claim claim);
 
+    //protected abstract boolean canGeneralizedPremises();
+
     protected abstract int subproofPremises(Claim claim);
 
     protected abstract String verifyClaim(Expression conclusion, Premise[] premises);

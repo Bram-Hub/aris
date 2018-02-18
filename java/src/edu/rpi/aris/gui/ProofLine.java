@@ -31,6 +31,8 @@ public class ProofLine implements LineDeletionListener {
     @FXML
     private HBox root;
     @FXML
+    private HBox selectedHbox;
+    @FXML
     private VBox textVbox;
     @FXML
     private TextField textField;
@@ -88,6 +90,8 @@ public class ProofLine implements LineDeletionListener {
                 ruleChoose.getContextMenu().show(ruleChoose, e.getScreenX(), e.getScreenY());
         });
         selectedLine.setOnMouseClicked(e -> window.requestFocus(this));
+        selectedHbox.setOnMouseClicked(e -> window.requestFocus(this));
+        numberLbl.setOnMouseClicked(e -> window.requestFocus(this));
         textField.focusedProperty().addListener((observableValue, oldVal, newVal) -> {
             if (textField.isEditable() && !newVal)
                 textField.requestFocus();

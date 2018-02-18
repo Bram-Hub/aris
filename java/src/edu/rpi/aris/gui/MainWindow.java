@@ -87,7 +87,10 @@ public class MainWindow {
     public void initialize() {
         scrollPane.getContent().boundsInLocalProperty().addListener((observableValue, oldBounds, newBounds) -> {
             if (oldBounds.getHeight() != newBounds.getHeight()) {
-                ProofLine line = (ProofLine) proofLines.get(selectedLine.get());
+                ProofLine line;
+                synchronized (MainWindow.class) {
+                    line = (ProofLine) proofLines.get(selectedLine.get());
+                }
                 if (line != null)
                     scrollPane.setVvalue((line).getRootNode().getBoundsInLocal().getMaxY());
             }
@@ -95,7 +98,7 @@ public class MainWindow {
         addProofLine(true, 0, 0);
     }
 
-    public void addProofLine(boolean assumption, int proofLevel, int index) {
+    public synchronized void addProofLine(boolean assumption, int proofLevel, int index) {
         FXMLLoader loader = new FXMLLoader(MainWindow.class.getResource("proof_line.fxml"));
         ProofLine controller = new ProofLine(assumption, proofLevel, this, proof.addLine(index));
         loader.setController(controller);
@@ -113,7 +116,7 @@ public class MainWindow {
         return fontObjectProperty;
     }
 
-    public void requestFocus(ProofLine line) {
+    public synchronized void requestFocus(ProofLine line) {
         int index = (int) proofLines.getKey(line);
         selectedLine.set(index);
     }
