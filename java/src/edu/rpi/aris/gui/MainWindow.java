@@ -4,13 +4,8 @@ import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
-import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.geometry.Bounds;
-import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Menu;
@@ -90,28 +85,26 @@ public class MainWindow {
     public void initialize() {
         scrollPane.getContent().boundsInLocalProperty().addListener((observableValue, oldBounds, newBounds) -> {
             if (oldBounds.getHeight() != newBounds.getHeight()) {
-                ProofLine line = (ProofLine) proofLines.get(selectedLine.get());
-                if (line != null && line.getRootNode().getHeight() != 0) {
-                    double startY = 0;
-                    double endY = newBounds.getHeight();
-                    for (int i = 0; i < proof.getLines().size(); ++i) {
-                        if (i < selectedLine.get()) {
-                            startY += ((ProofLine) proofLines.get(i)).getRootNode().getHeight();
-                        } else if (i > selectedLine.get())
-                            endY -= ((ProofLine) proofLines.get(i)).getRootNode().getHeight();
+                synchronized (MainWindow.class) {
+                    ProofLine line = (ProofLine) proofLines.get(selectedLine.get());
+                    if (line != null && line.getRootNode().getHeight() != 0) {
+                        double startY = 0;
+                        for (int i = 0; i < proof.getLines().size(); ++i) {
+                            if (i < selectedLine.get()) {
+                                startY += ((ProofLine) proofLines.get(i)).getRootNode().getHeight();
+                            } else
+                                break;
+                        }
+                        double startScroll = (startY + line.getRootNode().getHeight() - scrollPane.getHeight()) / (newBounds.getHeight() - scrollPane.getHeight());
+                        double endScroll = (startY) / (newBounds.getHeight() - scrollPane.getHeight());
+                        double currentScroll = scrollPane.getVvalue();
+                        if(currentScroll < startScroll) {
+                            scrollPane.setVvalue(startScroll);
+                        } else if(currentScroll > endScroll) {
+                            scrollPane.setVvalue(endScroll);
+                        }
                     }
-                    double startScroll = startY / newBounds.getHeight();
-                    double endScroll = (startY + scrollPane.getHeight()) / newBounds.getHeight();
-                    System.out.println("Start: " + startScroll);
-                    System.out.println("End:   " + endScroll);
-                    //TODO: auto scroll if necessary
                 }
-            }
-        });
-        scrollPane.getContent().boundsInLocalProperty().addListener(new ChangeListener<Bounds>() {
-            @Override
-            public void changed(ObservableValue<? extends Bounds> observableValue, Bounds bounds, Bounds t1) {
-//                System.out.println(t1);
             }
         });
         addProofLine(true, 0, 0);
