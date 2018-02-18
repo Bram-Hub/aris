@@ -1,13 +1,11 @@
 package edu.rpi.aris.gui;
 
-import javafx.application.Platform;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Menu;
@@ -88,8 +86,9 @@ public class MainWindow {
         scrollPane.getContent().boundsInLocalProperty().addListener((observableValue, oldBounds, newBounds) -> {
             if (oldBounds.getHeight() != newBounds.getHeight()) {
                 ProofLine line = (ProofLine) proofLines.get(selectedLine.get());
-                if (line != null)
-                    scrollPane.setVvalue((line).getRootNode().getBoundsInLocal().getMaxY());
+                if (line != null) {
+                    //TODO: auto scroll if necessary
+                }
             }
         });
         addProofLine(true, 0, 0);

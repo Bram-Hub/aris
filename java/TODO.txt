@@ -1,0 +1,5 @@
+Add licences for:
+    material.io icons
+    log4j2
+    apache commons lang
+    apache commons collections
