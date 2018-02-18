@@ -1,6 +1,5 @@
 package edu.rpi.aris.proof;
 
-import com.sun.istack.internal.NotNull;
 
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -155,7 +154,7 @@ public class SentenceUtil {
         }
     }
 
-    public static String toPolish(@NotNull Expression[] exprs, @NotNull String opr) {
+    public static String toPolish(Expression[] exprs, String opr) {
         Objects.requireNonNull(exprs);
         Objects.requireNonNull(opr);
         ArrayList<String> polish = Arrays.stream(exprs).map(Expression::toString).collect(Collectors.toCollection(ArrayList::new));

@@ -1,7 +1,5 @@
 package edu.rpi.aris.proof;
 
-import com.sun.istack.internal.NotNull;
-
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Objects;
@@ -20,7 +18,7 @@ public class Expression {
     }
 
     //this constructor does not support functional operators
-    public Expression(@NotNull Expression[] exprs, Operator opr) throws ParseException {
+    public Expression( Expression[] exprs, Operator opr) throws ParseException {
         Objects.requireNonNull(exprs);
         if (operator == null) {
             if (exprs.length != 1)
