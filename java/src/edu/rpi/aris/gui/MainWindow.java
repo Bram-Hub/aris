@@ -137,6 +137,7 @@ public class MainWindow {
 
     public synchronized void requestFocus(ProofLine line) {
         int index = (int) proofLines.getKey(line);
+        selectedLine.set(-1);
         selectedLine.set(index);
     }
 
