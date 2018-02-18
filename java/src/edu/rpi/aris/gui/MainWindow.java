@@ -95,13 +95,13 @@ public class MainWindow {
                             } else
                                 break;
                         }
-                        double startScroll = (startY + line.getRootNode().getHeight() - scrollPane.getHeight()) / (newBounds.getHeight() - scrollPane.getHeight());
-                        double endScroll = (startY) / (newBounds.getHeight() - scrollPane.getHeight());
+                        double downScroll = (startY + line.getRootNode().getHeight() - scrollPane.getHeight()) / (newBounds.getHeight() - scrollPane.getHeight());
+                        double upScroll = (startY) / (newBounds.getHeight() - scrollPane.getHeight());
                         double currentScroll = scrollPane.getVvalue();
-                        if(currentScroll < startScroll) {
-                            scrollPane.setVvalue(startScroll);
-                        } else if(currentScroll > endScroll) {
-                            scrollPane.setVvalue(endScroll);
+                        if(currentScroll < downScroll) {
+                            scrollPane.setVvalue(downScroll);
+                        } else if(currentScroll > upScroll) {
+                            scrollPane.setVvalue(upScroll);
                         }
                     }
                 }
