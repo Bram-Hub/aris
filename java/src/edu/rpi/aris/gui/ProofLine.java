@@ -20,7 +20,7 @@ import javafx.scene.layout.VBox;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-public class ProofLine {
+public class ProofLine implements LineDeletionListener {
 
     public static final int SUBPROOF_INDENT = 25;
     public static final Image SELECTED_IMAGE = new Image(ProofLine.class.getResourceAsStream("right_arrow.png"));
@@ -34,6 +34,8 @@ public class ProofLine {
     private TextField textField;
     @FXML
     private Label ruleChoose;
+    @FXML
+    private Label numberLbl;
     @FXML
     private ImageView validImage;
     @FXML
@@ -53,7 +55,7 @@ public class ProofLine {
         }
     };
 
-    public ProofLine(boolean isAssumption, int level, MainWindow window) {
+    public ProofLine(boolean isAssumption, int level, MainWindow window, Proof.Line proofLine) {
         this.isAssumption = isAssumption;
         this.level = level;
         this.window = window;
@@ -65,6 +67,7 @@ public class ProofLine {
         validImage.fitWidthProperty().bind(validImage.fitHeightProperty());
         textField.fontProperty().bind(window.getFontProperty());
         ruleChoose.fontProperty().bind(window.getFontProperty());
+        numberLbl.fontProperty().bind(window.getFontProperty());
         ruleChoose.setOnMouseClicked(e -> {
             window.requestFocus(this);
             if (e.getButton() == MouseButton.PRIMARY)
@@ -131,4 +134,8 @@ public class ProofLine {
         return menuItem;
     }
 
+    @Override
+    public void lineDeleted() {
+
+    }
 }

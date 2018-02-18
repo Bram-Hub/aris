@@ -14,7 +14,6 @@ import javafx.util.Pair;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 
 public class MainWindow {
 
@@ -49,7 +48,7 @@ public class MainWindow {
 
     public void addProofLine(boolean assumption, int proofLevel, int index) throws IOException {
         FXMLLoader loader = new FXMLLoader(MainWindow.class.getResource("proof_line.fxml"));
-        ProofLine controller = new ProofLine(assumption, proofLevel, this);
+        ProofLine controller = new ProofLine(assumption, proofLevel, this, null);
         loader.setController(controller);
         HBox line = loader.load();
         proofTable.getChildren().add(index, line);
