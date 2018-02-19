@@ -109,6 +109,8 @@ public class ProofLine {
                 textField.getParent().fireEvent(keyEvent);
                 keyEvent.consume();
             }
+            if (window.handleKeyEvent(keyEvent))
+                keyEvent.consume();
         });
         textField.editableProperty().bind(Bindings.createBooleanBinding(() -> proofLine.lineNumberProperty().get() == window.selectedLineProperty().get(), proofLine.lineNumberProperty(), window.selectedLineProperty()));
         setUpRules();
@@ -119,7 +121,7 @@ public class ProofLine {
                 textVbox.getStyleClass().remove(UNDERLINE);
             }
         });
-        if(proofLine.isUnderlined().get())
+        if (proofLine.isUnderlined().get())
             textVbox.getStyleClass().add(UNDERLINE);
         if (proofLine.isAssumption()) {
             ruleChoose.setVisible(false);

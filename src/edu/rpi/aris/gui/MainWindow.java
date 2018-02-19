@@ -6,12 +6,14 @@ import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Bounds;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -54,6 +56,31 @@ public class MainWindow {
         pane.setCenter(root);
         Scene scene = new Scene(pane, 1000, 800);
         primaryStage.setScene(scene);
+        scene.setOnKeyPressed(this::handleKeyEvent);
+    }
+
+    public boolean handleKeyEvent(KeyEvent keyEvent) {
+        if (keyEvent.getCode() == KeyCode.UP)
+            lineUp();
+        else if (keyEvent.getCode() == KeyCode.DOWN)
+            lineDown();
+        else
+            return false;
+        return true;
+    }
+
+    private synchronized void lineUp() {
+        if (selectedLine.get() > 0) {
+            requestFocus(selectedLine.get() - 1);
+            autoScroll(scrollPane.getContent().getBoundsInLocal());
+        }
+    }
+
+    private synchronized void lineDown() {
+        if (selectedLine.get() + 1 < proof.numLinesProperty().get()) {
+            requestFocus(selectedLine.get() + 1);
+            autoScroll(scrollPane.getContent().getBoundsInLocal());
+        }
     }
 
     private MenuBar setupMenu() {
@@ -65,7 +92,7 @@ public class MainWindow {
         MenuItem deleteLine = new MenuItem("Delete Line");
         MenuItem startSubproof = new MenuItem("Start Subproof");
         MenuItem endSubproof = new MenuItem("End Subproof");
-        MenuItem newPremise = new MenuItem("");
+        MenuItem newPremise = new MenuItem("Add Premise");
 
         addLine.setOnAction(actionEvent -> {
             addProofLine(false, proof.getLines().get(selectedLine.get()).subproofLevelProperty().get(), selectedLine.get() + 1);
@@ -78,7 +105,7 @@ public class MainWindow {
 
         endSubproof.setOnAction(actionEvent -> endSubproof());
 
-        newPremise.setOnAction(actionEvent -> addPremise());
+        newPremise.setOnAction(actionEvent -> selectedLine.set(addPremise()));
 
         addLine.acceleratorProperty().bind(accelerators.newProofLine);
         deleteLine.acceleratorProperty().bind(accelerators.deleteProofLine);
@@ -112,35 +139,37 @@ public class MainWindow {
         selectedLine.set(0);
     }
 
+    private synchronized void autoScroll(Bounds contentBounds) {
+        if (selectedLine.get() >= 0) {
+            ProofLine line = proofLines.get(selectedLine.get());
+            if (line != null && line.getRootNode().getHeight() != 0) {
+                double startY = 0;
+                for (int i = 0; i < proof.getLines().size(); ++i) {
+                    if (i < selectedLine.get()) {
+                        startY += proofLines.get(i).getRootNode().getHeight();
+                    } else
+                        break;
+                }
+                double downScroll = (startY + line.getRootNode().getHeight() - scrollPane.getHeight()) / (contentBounds.getHeight() - scrollPane.getHeight());
+                double upScroll = (startY) / (contentBounds.getHeight() - scrollPane.getHeight());
+                double currentScroll = scrollPane.getVvalue();
+                if (currentScroll < downScroll) {
+                    scrollPane.setVvalue(downScroll);
+                } else if (currentScroll > upScroll) {
+                    scrollPane.setVvalue(upScroll);
+                }
+            }
+        }
+    }
+
     @FXML
     public void initialize() {
         scrollPane.getContent().boundsInLocalProperty().addListener((observableValue, oldBounds, newBounds) -> {
-            if (oldBounds.getHeight() != newBounds.getHeight()) {
-                synchronized (MainWindow.class) {
-                    if (selectedLine.get() >= 0) {
-                        ProofLine line = proofLines.get(selectedLine.get());
-                        if (line != null && line.getRootNode().getHeight() != 0) {
-                            double startY = 0;
-                            for (int i = 0; i < proof.getLines().size(); ++i) {
-                                if (i < selectedLine.get()) {
-                                    startY += proofLines.get(i).getRootNode().getHeight();
-                                } else
-                                    break;
-                            }
-                            double downScroll = (startY + line.getRootNode().getHeight() - scrollPane.getHeight()) / (newBounds.getHeight() - scrollPane.getHeight());
-                            double upScroll = (startY) / (newBounds.getHeight() - scrollPane.getHeight());
-                            double currentScroll = scrollPane.getVvalue();
-                            if (currentScroll < downScroll) {
-                                scrollPane.setVvalue(downScroll);
-                            } else if (currentScroll > upScroll) {
-                                scrollPane.setVvalue(upScroll);
-                            }
-                        }
-                    }
-                }
-            }
+            if (oldBounds.getHeight() != newBounds.getHeight())
+                autoScroll(newBounds);
         });
         addPremise();
+        selectedLine.set(-1);
     }
 
     private synchronized void addProofLine(boolean assumption, int proofLevel, int index) {
@@ -164,10 +193,10 @@ public class MainWindow {
         proofLines.add(index, controller);
     }
 
-    private synchronized void addPremise() {
+    private synchronized int addPremise() {
         Proof.Line line = proof.addPremise();
         addProofLine(line);
-        selectedLine.set(line.lineNumberProperty().get());
+        return line.lineNumberProperty().get();
     }
 
     public ObjectProperty<Font> getFontProperty() {
@@ -176,8 +205,12 @@ public class MainWindow {
 
     public synchronized void requestFocus(ProofLine line) {
         int index = proofLines.indexOf(line);
+        requestFocus(index);
+    }
+
+    public synchronized void requestFocus(int lineNum) {
         selectedLine.set(-1);
-        selectedLine.set(index);
+        selectedLine.set(lineNum);
     }
 
     public void requestSelect(ProofLine line) {
