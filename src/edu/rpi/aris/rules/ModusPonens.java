@@ -26,6 +26,11 @@ public class ModusPonens extends Rule {
     }
 
     @Override
+    protected boolean canGeneralizePremises() {
+        return false;
+    }
+
+    @Override
     protected int subproofPremises(Claim claim) {
         return 0;
     }
