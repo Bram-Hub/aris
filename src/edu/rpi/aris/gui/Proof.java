@@ -81,8 +81,9 @@ public class Proof {
     }
 
     public HashSet<Line> getHighlighted(Line line) {
-        HashSet<Line> highlighted = new HashSet<>(line.premises);
+        HashSet<Line> highlight = new HashSet<>(line.premises);
         for (Line p : line.premises) {
+            HashSet<Line> highlighted = new HashSet<>();
             int lineNum = p.lineNumber.get();
             if (p.isAssumption() && lineNum + 1 < lines.size()) {
                 int indent = p.subproofLevelProperty().get();
@@ -95,9 +96,11 @@ public class Proof {
                         l = lines.get(++lineNum);
                 }
             }
-            highlighted.add(p);
+            if(!highlighted.contains(line))
+                highlight.addAll(highlighted);
+            highlight.add(p);
         }
-        return highlighted;
+        return highlight;
     }
 
     public void delete(int lineNum) {
