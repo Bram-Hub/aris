@@ -208,16 +208,18 @@ public class MainWindow {
 
     private synchronized void deleteLine(int lineNum) {
         if (lineNum > 0 || (proof.numPremises().get() > 1 && lineNum >= 0)) {
-            Proof.Line line = proof.getLines().get(lineNum);
-            if (line.isAssumption() && lineNum + 1 < proof.getLines().size()) {
-                int indent = line.subproofLevelProperty().get();
-                Proof.Line l = proof.getLines().get(lineNum + 1);
-                while (l != null && (l.subproofLevelProperty().get() > indent || (l.subproofLevelProperty().get() == indent && !l.isAssumption()))) {
-                    removeLine(l.lineNumberProperty().get());
-                    if (lineNum + 1 == proof.getLines().size())
-                        l = null;
-                    else
-                        l = proof.getLines().get(lineNum + 1);
+            if (lineNum >= proof.numPremises().get()) {
+                Proof.Line line = proof.getLines().get(lineNum);
+                if (line.isAssumption() && lineNum + 1 < proof.getLines().size()) {
+                    int indent = line.subproofLevelProperty().get();
+                    Proof.Line l = proof.getLines().get(lineNum + 1);
+                    while (l != null && (l.subproofLevelProperty().get() > indent || (l.subproofLevelProperty().get() == indent && !l.isAssumption()))) {
+                        removeLine(l.lineNumberProperty().get());
+                        if (lineNum + 1 == proof.getLines().size())
+                            l = null;
+                        else
+                            l = proof.getLines().get(lineNum + 1);
+                    }
                 }
             }
             removeLine(lineNum);
