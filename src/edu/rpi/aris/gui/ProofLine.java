@@ -2,6 +2,7 @@ package edu.rpi.aris.gui;
 
 import edu.rpi.aris.rules.RuleList;
 import javafx.beans.binding.Bindings;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
@@ -29,6 +30,7 @@ public class ProofLine {
     public static final int SUBPROOF_INDENT = 25;
     public static final Image SELECTED_IMAGE = new Image(ProofLine.class.getResourceAsStream("right_arrow.png"));
     public static final String HIGHLIGHT_STYLE = "highlight-premise";
+    public static final String UNDERLINE = "underline";
 
     @FXML
     private HBox root;
@@ -110,10 +112,18 @@ public class ProofLine {
         });
         textField.editableProperty().bind(Bindings.createBooleanBinding(() -> proofLine.lineNumberProperty().get() == window.selectedLineProperty().get(), proofLine.lineNumberProperty(), window.selectedLineProperty()));
         setUpRules();
+        proofLine.isUnderlined().addListener((observableValue, oldVal, newVal) -> {
+            if (newVal && !textVbox.getStyleClass().contains(UNDERLINE)) {
+                textVbox.getStyleClass().add(UNDERLINE);
+            } else {
+                textVbox.getStyleClass().remove(UNDERLINE);
+            }
+        });
+        if(proofLine.isUnderlined().get())
+            textVbox.getStyleClass().add(UNDERLINE);
         if (proofLine.isAssumption()) {
             ruleChoose.setVisible(false);
             ruleChoose.setManaged(false);
-            textVbox.getStyleClass().add("underline");
             if (proofLine.subproofLevelProperty().get() != 0)
                 ((Region) textVbox.getChildren().get(0)).setPrefHeight(9);
         }
@@ -147,7 +157,7 @@ public class ProofLine {
         for (int i = 0; i < level; ++i) {
             Region spacer = new Region();
             spacer.setOnMouseClicked(highlightListener);
-            spacer.maxHeightProperty().bind(root.heightProperty().subtract(proofLine.isAssumption() && i == level-1 ? 5 : 0));
+            spacer.maxHeightProperty().bind(root.heightProperty().subtract(proofLine.isAssumption() && i == level - 1 ? 5 : 0));
             spacer.setPrefWidth(SUBPROOF_INDENT);
             spacer.setMinWidth(SUBPROOF_INDENT);
             spacer.getStyleClass().add("proof-left-border");

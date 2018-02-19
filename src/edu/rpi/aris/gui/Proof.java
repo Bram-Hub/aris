@@ -2,19 +2,24 @@ package edu.rpi.aris.gui;
 
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.ObservableMap;
 
 import java.util.HashSet;
+import java.util.concurrent.Callable;
 
 public class Proof {
 
     private ObservableMap<Line, Integer> lineLookup = FXCollections.observableHashMap();
     private ObservableList<Line> lines = FXCollections.observableArrayList();
     private SimpleIntegerProperty numLines = new SimpleIntegerProperty();
+    private SimpleIntegerProperty numPremises = new SimpleIntegerProperty();
 
     public Proof() {
         numLines.bind(Bindings.size(lines));
@@ -22,6 +27,10 @@ public class Proof {
 
     public IntegerProperty numLinesProperty() {
         return numLines;
+    }
+
+    public IntegerProperty numPremises() {
+        return numPremises;
     }
 
     public ObservableList<Line> getLines() {
@@ -41,6 +50,13 @@ public class Proof {
             return null;
     }
 
+    public Proof.Line addPremise() {
+        Line line = addLine(numPremises.get(), true, 0);
+        line.isUnderlined().bind(Bindings.createBooleanBinding(() -> line.lineNumber.get() == numPremises.get() - 1, numPremises));
+        numPremises.set(numPremises.get() + 1);
+        return line;
+    }
+
     public void togglePremise(int selected, Line premise) {
         Line line = lines.get(selected);
         if (line != null && premise.lineNumber.get() < selected)
@@ -48,12 +64,15 @@ public class Proof {
     }
 
     public void delete(int lineNum) {
-        if (lineNum > 0) {
+        if (lineNum > 0 || (numPremises.get() > 1 && lineNum >= 0)) {
             for (Line l : lines)
                 l.lineDeleted(lines.get(lineNum));
             lines.remove(lineNum);
             for (int i = lineNum; i < lines.size(); ++i)
                 lineLookup.put(lines.get(i), i);
+            if (numPremises.get() > 1 && lineNum < numPremises.get()) {
+                numPremises.set(numPremises.get() - 1);
+            }
         }
     }
 
@@ -69,9 +88,11 @@ public class Proof {
         private SimpleStringProperty expressionString = new SimpleStringProperty();
         private HashSet<Line> highlightLines = new HashSet<>();
         private SimpleIntegerProperty subproofLevel = new SimpleIntegerProperty();
+        private SimpleBooleanProperty underlined = new SimpleBooleanProperty();
 
         public Line(int subproofLevel, boolean assumption) {
             isAssumption = assumption;
+            underlined.set(isAssumption);
             this.subproofLevel.set(subproofLevel);
         }
 
@@ -100,6 +121,13 @@ public class Proof {
             highlightLines.remove(deletedLine);
         }
 
+        private void setUnderlined(boolean underlined) {
+            this.underlined.set(underlined);
+        }
+
+        public SimpleBooleanProperty isUnderlined() {
+            return underlined;
+        }
     }
 
 }
