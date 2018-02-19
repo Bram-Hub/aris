@@ -181,7 +181,7 @@ public class MainWindow {
     }
 
     private synchronized void updateHighlighting(int selectedLine) {
-        if (selectedLine > 0) {
+        if (selectedLine >= 0) {
             Proof.Line line = proof.getLines().get(selectedLine);
             if (line != null)
                 for (ProofLine p : proofLines)
