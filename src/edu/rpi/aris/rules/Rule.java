@@ -27,7 +27,7 @@ public abstract class Rule {
 
     protected abstract int requiredPremises(Claim claim);
 
-    //protected abstract boolean canGeneralizedPremises();
+    protected abstract boolean canGeneralizePremises();
 
     protected abstract int subproofPremises(Claim claim);
 

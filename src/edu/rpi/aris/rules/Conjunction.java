@@ -5,19 +5,19 @@ import edu.rpi.aris.proof.Expression;
 import edu.rpi.aris.proof.Operator;
 import edu.rpi.aris.proof.Premise;
 
-public class HypotheticalSyllogism extends Rule {
+public class Conjunction extends Rule {
 
-    HypotheticalSyllogism() {
+    Conjunction() {
     }
 
     @Override
     public String getName() {
-        return "Hypothetical Syllogism";
+        return "Conjunction(" + getSimpleName() + ")";
     }
 
     @Override
     public String getSimpleName() {
-        return "HS";
+        return "∧ Intro";
     }
 
     @Override
@@ -41,7 +41,7 @@ public class HypotheticalSyllogism extends Rule {
         Expression p2 = premises[1].getPremis();
         if (p1.getOperator() != Operator.CONDITIONAL || p2.getOperator() != Operator.CONDITIONAL)
             return "Both Premises must be implications";
-        if (conclusion.getOperator() != Operator.CONDITIONAL)
+        if (conclusion.getOperator() != Operator.AND)
             return "The conclusion must be an implication";
         if (p1.getExpressions()[0].equals(p2.getExpressions()[1])) {
             Expression p = p1;
