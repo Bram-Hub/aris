@@ -131,6 +131,7 @@ public class ProofLine {
         }
         setIndent(proofLine.subproofLevelProperty().get());
         proofLine.subproofLevelProperty().addListener((observableValue, oldVal, newVal) -> setIndent(newVal.intValue()));
+        root.setOnMouseClicked(highlightListener);
     }
 
     public void setHighlighted(boolean highlighted) {

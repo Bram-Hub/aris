@@ -5,14 +5,11 @@ import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.ObservableMap;
 
 import java.util.HashSet;
-import java.util.concurrent.Callable;
 
 public class Proof {
 
@@ -59,8 +56,48 @@ public class Proof {
 
     public void togglePremise(int selected, Line premise) {
         Line line = lines.get(selected);
-        if (line != null && premise.lineNumber.get() < selected)
-            line.togglePremise(premise);
+        if (line.isAssumption)
+            return;
+        HashSet<Integer> canSelect = new HashSet<>();
+        int maxLvl = line.subproofLevel.get() + 1;
+        for (int i = selected - 1; i >= 0; i--) {
+            Line p = lines.get(i);
+            if (p.subproofLevel.get() == maxLvl && p.isAssumption) {
+                canSelect.add(i);
+            } else if (p.subproofLevel.get() < maxLvl) {
+                canSelect.add(i);
+                if (p.subproofLevel.get() < maxLvl && p.isAssumption)
+                    maxLvl = p.subproofLevel.get();
+            }
+        }
+        for (int i = premise.lineNumber.get(); i >= 0; i--) {
+            if (canSelect.contains(i)) {
+                premise = lines.get(i);
+                break;
+            }
+        }
+        if (!line.removePremise(premise))
+            line.addPremise(premise);
+    }
+
+    public HashSet<Line> getHighlighted(Line line) {
+        HashSet<Line> highlighted = new HashSet<>(line.premises);
+        for (Line p : line.premises) {
+            int lineNum = p.lineNumber.get();
+            if (p.isAssumption() && lineNum + 1 < lines.size()) {
+                int indent = p.subproofLevelProperty().get();
+                Proof.Line l = lines.get(lineNum + 1);
+                while (l != null && (l.subproofLevelProperty().get() > indent || (l.subproofLevelProperty().get() == indent && !l.isAssumption()))) {
+                    highlighted.add(l);
+                    if (lineNum + 1 == lines.size())
+                        l = null;
+                    else
+                        l = lines.get(++lineNum);
+                }
+            }
+            highlighted.add(p);
+        }
+        return highlighted;
     }
 
     public void delete(int lineNum) {
@@ -86,7 +123,8 @@ public class Proof {
         private final boolean isAssumption;
         private SimpleIntegerProperty lineNumber = new SimpleIntegerProperty();
         private SimpleStringProperty expressionString = new SimpleStringProperty();
-        private HashSet<Line> highlightLines = new HashSet<>();
+        private HashSet<Line> premises = new HashSet<>();
+        //        private HashSet<Line> highlightLines = new HashSet<>();
         private SimpleIntegerProperty subproofLevel = new SimpleIntegerProperty();
         private SimpleBooleanProperty underlined = new SimpleBooleanProperty();
 
@@ -108,17 +146,32 @@ public class Proof {
             return isAssumption;
         }
 
-        public HashSet<Line> getHighlightLines() {
-            return highlightLines;
+//        public HashSet<Line> getHighlightLines() {
+//            return highlightLines;
+//        }
+
+        public HashSet<Line> getPremises() {
+            return premises;
         }
 
-        public void togglePremise(Line premise) {
-            if (!highlightLines.remove(premise))
-                highlightLines.add(premise);
+        public void addPremise(Line premise) {
+            premises.add(premise);
         }
+
+        public boolean removePremise(Line premise) {
+            return premises.remove(premise);
+        }
+
+//        private void addHighlight(Line line) {
+//            highlightLines.add(line);
+//        }
+//
+//        private void removeHighlight(Line line) {
+//            highlightLines.remove(line);
+//        }
 
         private void lineDeleted(Line deletedLine) {
-            highlightLines.remove(deletedLine);
+            removePremise(deletedLine);
         }
 
         private void setUnderlined(boolean underlined) {

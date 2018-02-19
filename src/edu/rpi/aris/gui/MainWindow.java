@@ -23,6 +23,7 @@ import javafx.stage.Stage;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 
 public class MainWindow {
 
@@ -233,9 +234,10 @@ public class MainWindow {
     private synchronized void updateHighlighting(int selectedLine) {
         if (selectedLine >= 0) {
             Proof.Line line = proof.getLines().get(selectedLine);
+            HashSet<Proof.Line> highlighted = proof.getHighlighted(line);
             if (line != null)
                 for (ProofLine p : proofLines)
-                    p.setHighlighted(line.getHighlightLines().contains(p.getModel()) && p.getModel() != line);
+                    p.setHighlighted(highlighted.contains(p.getModel()) && p.getModel() != line);
         }
     }
 
