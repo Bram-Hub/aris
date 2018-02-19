@@ -6,7 +6,6 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
-import javafx.scene.Node;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
@@ -23,7 +22,7 @@ import org.apache.commons.lang.StringUtils;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-public class ProofLine implements LineDeletionListener {
+public class ProofLine {
 
     public static final int SUBPROOF_INDENT = 25;
     public static final Image SELECTED_IMAGE = new Image(ProofLine.class.getResourceAsStream("right_arrow.png"));
@@ -109,7 +108,9 @@ public class ProofLine implements LineDeletionListener {
                 keyEvent.consume();
             }
         });
-        textField.editableProperty().bind(Bindings.createBooleanBinding(() -> proofLine.lineNumberProperty().get() == window.selectedLineProperty().get(), proofLine.lineNumberProperty(), window.selectedLineProperty()));
+        textField.editableProperty().bind(Bindings.createBooleanBinding(() -> {
+            return proofLine.lineNumberProperty().get() == window.selectedLineProperty().get();
+        }, proofLine.lineNumberProperty(), window.selectedLineProperty()));
         setUpRules();
         if (isAssumption) {
             ruleChoose.setVisible(false);
@@ -135,8 +136,10 @@ public class ProofLine implements LineDeletionListener {
 
     public void setHighlighted(boolean highlighted) {
         if (highlighted) {
-            root.getStyleClass().add(HIGHLIGHT_STYLE);
-            textVbox.getStyleClass().add(HIGHLIGHT_STYLE);
+            if(!root.getStyleClass().contains(HIGHLIGHT_STYLE)) {
+                root.getStyleClass().add(HIGHLIGHT_STYLE);
+                textVbox.getStyleClass().add(HIGHLIGHT_STYLE);
+            }
         } else {
             root.getStyleClass().remove(HIGHLIGHT_STYLE);
             textVbox.getStyleClass().remove(HIGHLIGHT_STYLE);
@@ -161,9 +164,8 @@ public class ProofLine implements LineDeletionListener {
         return root;
     }
 
-    @Override
-    public void lineDeleted() {
-
+    public Proof.Line getModel() {
+        return proofLine;
     }
 
 }

@@ -41,28 +41,48 @@ public class Proof {
             return null;
     }
 
+    public void togglePremise(int selected, Line premise) {
+        Line line = lines.get(selected);
+        if (line != null && premise.lineNumber.get() < selected)
+            line.togglePremise(premise);
+    }
+
+    public void delete(int lineNum) {
+        if (lineNum > 0) {
+            for (Line l : lines)
+                l.lineDeleted(lines.get(lineNum));
+            lines.remove(lineNum);
+            for (int i = lineNum; i < lines.size(); ++i)
+                lineLookup.put(lines.get(i), i);
+        }
+    }
+
+    public void delete(Line line) {
+        if (line != null)
+            delete(lineLookup.get(line));
+    }
+
     public static class Line {
 
         private SimpleIntegerProperty lineNumber = new SimpleIntegerProperty();
         private SimpleStringProperty expressionString = new SimpleStringProperty();
-        private HashSet<Line> premises = new HashSet<>();
-        private HashSet<LineDeletionListener> listeners = new HashSet<>();
+        private HashSet<Line> highlightLines = new HashSet<>();
 
         public IntegerProperty lineNumberProperty() {
             return lineNumber;
         }
 
-        public void delete() {
-            for (LineDeletionListener l : listeners)
-                l.lineDeleted();
+        public HashSet<Line> getHighlightLines() {
+            return highlightLines;
         }
 
-        public boolean addLineDeletionListener(LineDeletionListener listener) {
-            return listeners.add(listener);
+        public void togglePremise(Line premise) {
+            if (!highlightLines.remove(premise))
+                highlightLines.add(premise);
         }
 
-        public boolean removeLineDeletionListener(LineDeletionListener listener) {
-            return listeners.remove(listener);
+        private void lineDeleted(Line deletedLine) {
+            highlightLines.remove(deletedLine);
         }
 
     }

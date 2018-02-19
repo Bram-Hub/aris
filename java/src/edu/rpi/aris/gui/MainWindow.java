@@ -18,10 +18,9 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
-import org.apache.commons.collections.BidiMap;
-import org.apache.commons.collections.bidimap.DualHashBidiMap;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 public class MainWindow {
 
@@ -31,7 +30,7 @@ public class MainWindow {
     private ScrollPane scrollPane;
 
     private ObjectProperty<Font> fontObjectProperty;
-    private BidiMap proofLines = new DualHashBidiMap();
+    private ArrayList<ProofLine> proofLines = new ArrayList<>();
     private SimpleIntegerProperty selectedLine = new SimpleIntegerProperty(-1);
     private Proof proof = new Proof();
     private Stage primaryStage;
@@ -41,6 +40,7 @@ public class MainWindow {
         this.primaryStage = primaryStage;
         fontObjectProperty = new SimpleObjectProperty<>(new Font(14));
         setupScene();
+        selectedLine.addListener((observableValue, oldVal, newVal) -> updateHighlighting(newVal.intValue()));
     }
 
     private void setupScene() throws IOException {
@@ -61,15 +61,18 @@ public class MainWindow {
         Menu file = new Menu("File");
 
         MenuItem addLine = new MenuItem("Add Line");
+        MenuItem deleteLine = new MenuItem("Delete Line");
 
         addLine.setOnAction(actionEvent -> {
             addProofLine(false, 0, selectedLine.get() + 1);
             selectedLine.set(selectedLine.get() + 1);
         });
+        deleteLine.setOnAction(actionEvent -> deleteLine(selectedLine.get()));
 
         addLine.acceleratorProperty().bind(accelerators.newProofLine);
+        deleteLine.acceleratorProperty().bind(accelerators.deleteProofLine);
 
-        file.getItems().addAll(addLine);
+        file.getItems().addAll(addLine, deleteLine);
 
         bar.getMenus().addAll(file);
 
@@ -86,22 +89,24 @@ public class MainWindow {
         scrollPane.getContent().boundsInLocalProperty().addListener((observableValue, oldBounds, newBounds) -> {
             if (oldBounds.getHeight() != newBounds.getHeight()) {
                 synchronized (MainWindow.class) {
-                    ProofLine line = (ProofLine) proofLines.get(selectedLine.get());
-                    if (line != null && line.getRootNode().getHeight() != 0) {
-                        double startY = 0;
-                        for (int i = 0; i < proof.getLines().size(); ++i) {
-                            if (i < selectedLine.get()) {
-                                startY += ((ProofLine) proofLines.get(i)).getRootNode().getHeight();
-                            } else
-                                break;
-                        }
-                        double downScroll = (startY + line.getRootNode().getHeight() - scrollPane.getHeight()) / (newBounds.getHeight() - scrollPane.getHeight());
-                        double upScroll = (startY) / (newBounds.getHeight() - scrollPane.getHeight());
-                        double currentScroll = scrollPane.getVvalue();
-                        if(currentScroll < downScroll) {
-                            scrollPane.setVvalue(downScroll);
-                        } else if(currentScroll > upScroll) {
-                            scrollPane.setVvalue(upScroll);
+                    if (selectedLine.get() >= 0) {
+                        ProofLine line = proofLines.get(selectedLine.get());
+                        if (line != null && line.getRootNode().getHeight() != 0) {
+                            double startY = 0;
+                            for (int i = 0; i < proof.getLines().size(); ++i) {
+                                if (i < selectedLine.get()) {
+                                    startY += proofLines.get(i).getRootNode().getHeight();
+                                } else
+                                    break;
+                            }
+                            double downScroll = (startY + line.getRootNode().getHeight() - scrollPane.getHeight()) / (newBounds.getHeight() - scrollPane.getHeight());
+                            double upScroll = (startY) / (newBounds.getHeight() - scrollPane.getHeight());
+                            double currentScroll = scrollPane.getVvalue();
+                            if (currentScroll < downScroll) {
+                                scrollPane.setVvalue(downScroll);
+                            } else if (currentScroll > upScroll) {
+                                scrollPane.setVvalue(upScroll);
+                            }
                         }
                     }
                 }
@@ -121,7 +126,7 @@ public class MainWindow {
             e.printStackTrace();
         }
         proofTable.getChildren().add(index, line);
-        proofLines.put(index, controller);
+        proofLines.add(index, controller);
     }
 
     public ObjectProperty<Font> getFontProperty() {
@@ -129,13 +134,14 @@ public class MainWindow {
     }
 
     public synchronized void requestFocus(ProofLine line) {
-        int index = (int) proofLines.getKey(line);
+        int index = proofLines.indexOf(line);
         selectedLine.set(-1);
         selectedLine.set(index);
     }
 
     public void requestSelect(ProofLine line) {
-        line.setHighlighted(true);
+        proof.togglePremise(selectedLine.get(), line.getModel());
+        updateHighlighting(selectedLine.get());
     }
 
     public IntegerProperty numLines() {
@@ -148,6 +154,28 @@ public class MainWindow {
 
     public IntegerProperty selectedLineProperty() {
         return selectedLine;
+    }
+
+    private synchronized void updateHighlighting(int selectedLine) {
+        if (selectedLine > 0) {
+            Proof.Line line = proof.getLines().get(selectedLine);
+            if (line != null)
+                for (ProofLine p : proofLines)
+                    p.setHighlighted(line.getHighlightLines().contains(p.getModel()) && p.getModel() != line);
+        }
+    }
+
+    private synchronized void deleteLine(int lineNum) {
+        if (lineNum > 0) {
+            int selected = selectedLine.get();
+            selectedLine.set(-1);
+            proofLines.remove(lineNum);
+            proofTable.getChildren().remove(lineNum);
+            proof.delete(lineNum);
+            if (selected == proof.numLinesProperty().get())
+                --selected;
+            selectedLine.set(selected);
+        }
     }
 
 }
