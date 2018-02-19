@@ -37,8 +37,8 @@ public class HypotheticalSyllogism extends Rule {
 
     @Override
     protected String verifyClaim(Expression conclusion, Premise[] premises) {
-        Expression p1 = premises[0].getPremis();
-        Expression p2 = premises[1].getPremis();
+        Expression p1 = premises[0].getPremise();
+        Expression p2 = premises[1].getPremise();
         if (p1.getOperator() != Operator.CONDITIONAL || p2.getOperator() != Operator.CONDITIONAL)
             return "Both Premises must be implications";
         if (conclusion.getOperator() != Operator.CONDITIONAL)

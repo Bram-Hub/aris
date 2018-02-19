@@ -161,7 +161,7 @@ public class RegexMatcher {
 //                for (Premise p : premises) {
 //                    String remove = null;
 //                    for (int j = 0; j < pRules.size(); ++j) {
-//                        if (attemptBind(pRules.get(j), p.getPremis(), map, rule.obeyOrder, !rule.bindConclusionFirst && j == 0) != null) {
+//                        if (attemptBind(pRules.get(j), p.getPremise(), map, rule.obeyOrder, !rule.bindConclusionFirst && j == 0) != null) {
 //                            remove = pRules.get(j);
 //                            break;
 //                        } else if (j == pRules.size() - 1)

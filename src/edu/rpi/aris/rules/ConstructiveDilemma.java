@@ -5,24 +5,24 @@ import edu.rpi.aris.proof.Expression;
 import edu.rpi.aris.proof.Operator;
 import edu.rpi.aris.proof.Premise;
 
-public class Conjunction extends Rule {
+public class ConstructiveDilemma extends Rule {
 
-    Conjunction() {
+    ConstructiveDilemma() {
     }
 
     @Override
     public String getName() {
-        return "Conjunction (" + getSimpleName() + ")";
+        return "Constructive Dilemma";
     }
 
     @Override
     public String getSimpleName() {
-        return "∧ Intro";
+        return "CD";
     }
 
     @Override
     protected int requiredPremises(Claim claim) {
-        return 2;
+        return 3;
     }
 
     @Override
@@ -38,14 +38,8 @@ public class Conjunction extends Rule {
     @Override
     protected String verifyClaim(Expression conclusion, Premise[] premises) {
         Expression p1 = premises[0].getPremise();
-        Expression p2 = premises[1].getPremise();
-        if (conclusion.getOperator() != Operator.AND)
-            return "The conclusion must be a conjunction";
-        if (!conclusion.hasSubExpression(p1) || !conclusion.hasSubExpression(p2))
-            return "One of the premises is not in the conclusion";
-        for (Expression e : conclusion.getExpressions())
-            if (!p1.equals(e) && !p2.equals(e))
-                return "One of the conjuncts in the conclusion is not a premise";
+        Expression p2 = premises[0].getPremise();
+        Expression p3 = premises[0].getPremise();
         return null;
     }
 }

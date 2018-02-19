@@ -95,6 +95,10 @@ public class Expression {
         return expressions;
     }
 
+    public int getNumExpressions() {
+        return expressions.length;
+    }
+
     public boolean hasSubExpression(Expression exp) {
         for (Expression e : expressions)
             if (e.equals(exp))
