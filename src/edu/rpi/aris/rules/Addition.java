@@ -5,19 +5,19 @@ import edu.rpi.aris.proof.Expression;
 import edu.rpi.aris.proof.Operator;
 import edu.rpi.aris.proof.Premise;
 
-public class Simplification extends Rule {
+public class Addition extends Rule {
 
-    Simplification() {
+    Addition() {
     }
 
     @Override
     public String getName() {
-        return "Simplification (" + getSimpleName() + ")";
+        return "Addition (" + getSimpleName() + ")";
     }
 
     @Override
     public String getSimpleName() {
-        return "∧ Elim";
+        return "∨ Intro";
     }
 
     @Override
@@ -38,15 +38,10 @@ public class Simplification extends Rule {
     @Override
     protected String verifyClaim(Expression conclusion, Premise[] premises) {
         Expression premise = premises[0].getPremise();
-        if (premise.getOperator() != Operator.AND)
-            return "The premise must be a conjunction";
-        if (premise.hasSubExpression(conclusion))
-            return null;
-        if (conclusion.getOperator() != Operator.AND)
-            return "The Conclusion is not a conjunct in the premise or a conjunction";
-        for (Expression e : conclusion.getExpressions())
-            if (!premise.hasSubExpression(e))
-                return "The Conclusion is not a conjunct in the premise and contains a conjunct not present in the premise";
+        if (conclusion.getOperator() != Operator.OR)
+            return "The conclusion must be a disjunction";
+        if (!conclusion.hasSubExpression(premise))
+            return "the premises is not a disjunct in the conclusion";
         return null;
     }
 }

@@ -4,9 +4,13 @@ public enum RuleList {
 
     CONJUNCTION(new Conjunction()),
     SIMPLIFICATION(new Simplification()),
-    HYPOTHETICAL_SYLLOGISM(new HypotheticalSyllogism()),
+    ADDITION(new Addition()),
+    DIJUNCTIVE_SYLLOGISM(new DisjunctiveSyllogism()),
     MODUS_PONENS(new ModusPonens()),
-    MODUS_TOLLENS(new ModusTollens());
+    MODUS_TOLLENS(new ModusTollens()),
+    HYPOTHETICAL_SYLLOGISM(new HypotheticalSyllogism()),
+    EXCLUDED_MIDDLE(new ExcludedMiddle()),
+    CONSTRUCTIVE_DILEMMA(new ConstructiveDilemma());
 
     public final String name, simpleName;
     public final Rule rule;

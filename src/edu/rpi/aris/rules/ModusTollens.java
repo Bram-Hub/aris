@@ -43,8 +43,8 @@ public class ModusTollens extends Rule {
 
     @Override
     protected String verifyClaim(Expression conclusion, Premise[] premises) {
-        Expression p1 = premises[0].getPremis();
-        Expression p2 = premises[1].getPremis();
+        Expression p1 = premises[0].getPremise();
+        Expression p2 = premises[1].getPremise();
         try {
             if (p1.getOperator() == Operator.CONDITIONAL && p2.getOperator() == Operator.CONDITIONAL)
                 return check(p1, p2, conclusion) == null ? null : check(p2, p1, conclusion);

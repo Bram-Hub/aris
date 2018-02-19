@@ -20,7 +20,7 @@ public class Premise {
         return isSubproof;
     }
 
-    public Expression getPremis() {
+    public Expression getPremise() {
         return isSubproof ? null : p1;
     }
 

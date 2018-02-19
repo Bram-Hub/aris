@@ -46,7 +46,7 @@ public class Claim {
             if (p.isSubproof()) {
                 sb.append("{ ").append(p.getAssumption()).append(" ").append(SUBPROOF_REP).append(" ").append(p.getConclusion()).append(" }\n");
             } else {
-                sb.append(p.getPremis()).append("\n");
+                sb.append(p.getPremise()).append("\n");
             }
         }
         sb.append("Conclusion: ").append(conclusion).append("\n");
