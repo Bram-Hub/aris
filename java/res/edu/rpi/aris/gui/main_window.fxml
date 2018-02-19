@@ -18,7 +18,7 @@
       </HBox>
    </bottom>
    <center>
-      <ScrollPane fx:id="scrollPane" fitToWidth="true" hbarPolicy="NEVER" BorderPane.alignment="CENTER">
+      <ScrollPane fx:id="scrollPane" fitToWidth="true" BorderPane.alignment="CENTER">
           <VBox fx:id="proofTable" alignment="CENTER" />
       </ScrollPane>
    </center>

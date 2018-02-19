@@ -12,14 +12,15 @@
 <HBox fx:id="root" alignment="CENTER" stylesheets="@main_window.css" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1">
     <HBox fx:id="selectedHbox" alignment="CENTER" styleClass="proof-left-border" HBox.hgrow="NEVER">
         <ImageView fx:id="selectedLine" fitHeight="25.0" fitWidth="25.0" pickOnBounds="true" preserveRatio="true" HBox.hgrow="NEVER" />
-      <Label fx:id="numberLbl" />
+        <Label fx:id="numberLbl" minHeight="-Infinity" minWidth="-Infinity" />
     </HBox>
+    <HBox fx:id="subproofIndent" alignment="BOTTOM_LEFT" />
     <VBox fx:id="textVbox" HBox.hgrow="ALWAYS">
         <Region prefHeight="4.0" />
         <HBox alignment="CENTER" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
-            <Region prefWidth="2.0" />
-            <TextField fx:id="textField" editable="false" HBox.hgrow="ALWAYS" />
-            <Label fx:id="ruleChoose" alignment="CENTER" contentDisplay="CENTER" styleClass="rule-box" text="▼ Rule">
+            <Region minHeight="-Infinity" minWidth="-Infinity" prefWidth="2.0" />
+            <TextField fx:id="textField" editable="false" minWidth="100.0" HBox.hgrow="ALWAYS" />
+            <Label fx:id="ruleChoose" alignment="CENTER" contentDisplay="CENTER" minWidth="-Infinity" styleClass="rule-box" text="▼ Rule">
                 <contextMenu>
                     <ContextMenu fx:id="ruleMenu" />
                 </contextMenu>
