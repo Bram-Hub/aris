@@ -9,8 +9,9 @@ public class AcceleratorManager {
     public SimpleObjectProperty<KeyCombination> newProofLine = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+A"));
     public SimpleObjectProperty<KeyCombination> deleteProofLine = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+D"));
     public SimpleObjectProperty<KeyCombination> startSubproof = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+P"));
+    public SimpleObjectProperty<KeyCombination> endSubproof = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+E"));
 
-    private SimpleObjectProperty[] accelerators = new SimpleObjectProperty[]{newProofLine, deleteProofLine, startSubproof};
+    private SimpleObjectProperty[] accelerators = new SimpleObjectProperty[]{newProofLine, deleteProofLine, startSubproof, endSubproof};
 
     public boolean ignore(KeyEvent event) {
         for (SimpleObjectProperty a : accelerators)

@@ -63,6 +63,7 @@ public class MainWindow {
         MenuItem addLine = new MenuItem("Add Line");
         MenuItem deleteLine = new MenuItem("Delete Line");
         MenuItem startSubproof = new MenuItem("Start Subproof");
+        MenuItem endSubproof = new MenuItem("End Subproof");
 
         addLine.setOnAction(actionEvent -> {
             addProofLine(false, proof.getLines().get(selectedLine.get()).subproofLevelProperty().get(), selectedLine.get() + 1);
@@ -72,15 +73,27 @@ public class MainWindow {
         deleteLine.setOnAction(actionEvent -> deleteLine(selectedLine.get()));
 
         startSubproof.setOnAction(actionEvent -> {
-            addProofLine(true, proof.getLines().get(selectedLine.get()).subproofLevelProperty().get() + 1, selectedLine.get() + 1);
-            selectedLine.set(selectedLine.get() + 1);
+            int level = proof.getLines().get(selectedLine.get()).subproofLevelProperty().get() + 1;
+            int lineNum = selectedLine.get();
+            selectedLine.set(-1);
+            if (proofLines.get(lineNum).getText().trim().length() == 0 && !proof.getLines().get(lineNum).isAssumption())
+                deleteLine(lineNum);
+            else
+                lineNum++;
+            addProofLine(true, level, lineNum);
+            selectedLine.set(lineNum);
+        });
+
+        endSubproof.setOnAction(actionEvent -> {
+            endSubproof();
         });
 
         addLine.acceleratorProperty().bind(accelerators.newProofLine);
         deleteLine.acceleratorProperty().bind(accelerators.deleteProofLine);
         startSubproof.acceleratorProperty().bind(accelerators.startSubproof);
+        endSubproof.acceleratorProperty().bind(accelerators.endSubproof);
 
-        file.getItems().addAll(addLine, deleteLine, startSubproof);
+        file.getItems().addAll(addLine, deleteLine, startSubproof, endSubproof);
 
         bar.getMenus().addAll(file);
 
@@ -121,12 +134,11 @@ public class MainWindow {
             }
         });
         addProofLine(true, 0, 0);
-        for (int i = 1; i < 5; ++i) {
-            addProofLine(true, i, i);
-        }
     }
 
     public synchronized void addProofLine(boolean assumption, int proofLevel, int index) {
+        if (proofLevel < 0)
+            return;
         FXMLLoader loader = new FXMLLoader(MainWindow.class.getResource("proof_line.fxml"));
         ProofLine controller = new ProofLine(this, proof.addLine(index, assumption, proofLevel));
         loader.setController(controller);
@@ -203,6 +215,20 @@ public class MainWindow {
         if (selected == proof.numLinesProperty().get())
             --selected;
         selectedLine.set(selected);
+    }
+
+    private void endSubproof() {
+        int level = proof.getLines().get(selectedLine.get()).subproofLevelProperty().get();
+        if (level == 0)
+            return;
+        int newLine = proof.getLines().size();
+        for (int i = selectedLine.get() + 1; i < newLine; ++i) {
+            Proof.Line l = proof.getLines().get(i);
+            if (l.subproofLevelProperty().get() < level || (l.subproofLevelProperty().get() == level && l.isAssumption()))
+                newLine = i;
+        }
+        addProofLine(false, level - 1, newLine);
+        selectedLine.set(newLine);
     }
 
 }

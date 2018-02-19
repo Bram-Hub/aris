@@ -173,4 +173,8 @@ public class ProofLine {
         return proofLine;
     }
 
+    public String getText() {
+        return textField.getText();
+    }
+
 }
