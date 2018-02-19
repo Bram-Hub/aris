@@ -3,6 +3,8 @@ package edu.rpi.aris.gui;
 import edu.rpi.aris.rules.RuleList;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
@@ -33,6 +35,8 @@ public class ProofLine {
     @FXML
     private HBox selectedHbox;
     @FXML
+    private HBox subproofIndent;
+    @FXML
     private VBox textVbox;
     @FXML
     private TextField textField;
@@ -47,8 +51,6 @@ public class ProofLine {
     @FXML
     private ContextMenu ruleMenu;
 
-    private boolean isAssumption;
-    private int level;
     private MainWindow window;
     private RuleList selectedRule = null;
     private Proof.Line proofLine;
@@ -62,9 +64,7 @@ public class ProofLine {
         }
     };
 
-    public ProofLine(boolean isAssumption, int level, MainWindow window, Proof.Line proofLine) {
-        this.isAssumption = isAssumption;
-        this.level = level;
+    public ProofLine(MainWindow window, Proof.Line proofLine) {
         this.window = window;
         this.proofLine = proofLine;
     }
@@ -108,35 +108,22 @@ public class ProofLine {
                 keyEvent.consume();
             }
         });
-        textField.editableProperty().bind(Bindings.createBooleanBinding(() -> {
-            return proofLine.lineNumberProperty().get() == window.selectedLineProperty().get();
-        }, proofLine.lineNumberProperty(), window.selectedLineProperty()));
+        textField.editableProperty().bind(Bindings.createBooleanBinding(() -> proofLine.lineNumberProperty().get() == window.selectedLineProperty().get(), proofLine.lineNumberProperty(), window.selectedLineProperty()));
         setUpRules();
-        if (isAssumption) {
+        if (proofLine.isAssumption()) {
             ruleChoose.setVisible(false);
             ruleChoose.setManaged(false);
             textVbox.getStyleClass().add("underline");
-            if (level != 0) {
-                Region region = new Region();
-                region.setPrefHeight(5);
-                textVbox.getChildren().add(0, region);
-            }
+            if (proofLine.subproofLevelProperty().get() != 0)
+                ((Region) textVbox.getChildren().get(0)).setPrefHeight(9);
         }
-        for (int i = 0; i < level; ++i) {
-            Region spacer = new Region();
-            spacer.setOnMouseClicked(highlightListener);
-            spacer.maxHeightProperty().bind(root.heightProperty().subtract(isAssumption && i == 0 ? 5 : 0));
-            spacer.setPrefWidth(SUBPROOF_INDENT);
-            spacer.setMinWidth(SUBPROOF_INDENT);
-            spacer.getStyleClass().add("proof-left-border");
-            root.getChildren().add(1, spacer);
-            root.setAlignment(Pos.BOTTOM_LEFT);
-        }
+        setIndent(proofLine.subproofLevelProperty().get());
+        proofLine.subproofLevelProperty().addListener((observableValue, oldVal, newVal) -> setIndent(newVal.intValue()));
     }
 
     public void setHighlighted(boolean highlighted) {
         if (highlighted) {
-            if(!root.getStyleClass().contains(HIGHLIGHT_STYLE)) {
+            if (!root.getStyleClass().contains(HIGHLIGHT_STYLE)) {
                 root.getStyleClass().add(HIGHLIGHT_STYLE);
                 textVbox.getStyleClass().add(HIGHLIGHT_STYLE);
             }
@@ -149,6 +136,24 @@ public class ProofLine {
     private void setUpRules() {
         //TODO: Change this to separate rules into sections and allow choosing logic system
         ruleMenu.getItems().addAll(Arrays.stream(RuleList.values()).map(this::getRuleMenu).collect(Collectors.toList()));
+    }
+
+    private void setIndent(int level) {
+        if (proofLine.subproofLevelProperty().get() != 0)
+            ((Region) textVbox.getChildren().get(0)).setPrefHeight(9);
+        else
+            ((Region) textVbox.getChildren().get(0)).setPrefHeight(4);
+        subproofIndent.getChildren().clear();
+        for (int i = 0; i < level; ++i) {
+            Region spacer = new Region();
+            spacer.setOnMouseClicked(highlightListener);
+            spacer.maxHeightProperty().bind(root.heightProperty().subtract(proofLine.isAssumption() && i == level-1 ? 5 : 0));
+            spacer.setPrefWidth(SUBPROOF_INDENT);
+            spacer.setMinWidth(SUBPROOF_INDENT);
+            spacer.getStyleClass().add("proof-left-border");
+            subproofIndent.getChildren().add(spacer);
+            subproofIndent.setAlignment(Pos.BOTTOM_LEFT);
+        }
     }
 
     private MenuItem getRuleMenu(RuleList rule) {

@@ -28,9 +28,9 @@ public class Proof {
         return lines;
     }
 
-    public Proof.Line addLine(int index) {
+    public Proof.Line addLine(int index, boolean isAssumption, int subproofLevel) {
         if (index <= lines.size()) {
-            Line l = new Line();
+            Line l = new Line(subproofLevel, isAssumption);
             lines.add(index, l);
             lineLookup.put(l, index);
             for (int i = index + 1; i < lines.size(); ++i)
@@ -64,12 +64,27 @@ public class Proof {
 
     public static class Line {
 
+        private final boolean isAssumption;
         private SimpleIntegerProperty lineNumber = new SimpleIntegerProperty();
         private SimpleStringProperty expressionString = new SimpleStringProperty();
         private HashSet<Line> highlightLines = new HashSet<>();
+        private SimpleIntegerProperty subproofLevel = new SimpleIntegerProperty();
+
+        public Line(int subproofLevel, boolean assumption) {
+            isAssumption = assumption;
+            this.subproofLevel.set(subproofLevel);
+        }
 
         public IntegerProperty lineNumberProperty() {
             return lineNumber;
+        }
+
+        public IntegerProperty subproofLevelProperty() {
+            return subproofLevel;
+        }
+
+        public boolean isAssumption() {
+            return isAssumption;
         }
 
         public HashSet<Line> getHighlightLines() {
