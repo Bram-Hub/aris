@@ -1,4 +1,4 @@
-* { -fx-hcolor: lightgreen; }
+* { -fx-hcolor: #8edcff; }
 .column-header-background { visibility: hidden; -fx-padding: -1em; }
 .proof-left-border { -fx-border-color: black; -fx-border-width: 0 2 0 0; }
 .underlined { -fx-border-color: black; -fx-border-width: 0 0 2 0; }

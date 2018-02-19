@@ -39,6 +39,7 @@ public class MainWindow {
 
     public MainWindow(Stage primaryStage) throws IOException {
         this.primaryStage = primaryStage;
+        primaryStage.setTitle("ARIS");
         fontObjectProperty = new SimpleObjectProperty<>(new Font(14));
         setupScene();
     }
@@ -51,7 +52,7 @@ public class MainWindow {
         BorderPane pane = new BorderPane();
         pane.setTop(bar);
         pane.setCenter(root);
-        Scene scene = new Scene(pane/*, 1000, 800*/);
+        Scene scene = new Scene(pane, 1000, 800);
         primaryStage.setScene(scene);
     }
 
