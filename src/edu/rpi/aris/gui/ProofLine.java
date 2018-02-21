@@ -1,6 +1,7 @@
 package edu.rpi.aris.gui;
 
 import edu.rpi.aris.rules.RuleList;
+import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
@@ -52,6 +53,7 @@ public class ProofLine {
 
     private MainWindow window;
     private Proof.Line proofLine;
+    private int caretPos = 0;
 
     private EventHandler<MouseEvent> highlightListener = new EventHandler<MouseEvent>() {
         @Override
@@ -91,8 +93,16 @@ public class ProofLine {
         selectedHBox.setOnMouseClicked(e -> window.requestFocus(this));
         numberLbl.setOnMouseClicked(e -> window.requestFocus(this));
         textField.focusedProperty().addListener((observableValue, oldVal, newVal) -> {
-            if (textField.isEditable() && !newVal)
-                textField.requestFocus();
+            if (newVal)
+                Platform.runLater(() -> {
+                    textField.deselect();
+                    textField.positionCaret(caretPos);
+                });
+            else {
+                caretPos = textField.getCaretPosition();
+                if (textField.isEditable())
+                    textField.requestFocus();
+            }
         });
         textField.editableProperty().addListener((observableValue, oldVal, newVal) -> {
             if (newVal)
@@ -100,13 +110,15 @@ public class ProofLine {
             selectedLine.imageProperty().setValue(newVal ? SELECTED_IMAGE : null);
         });
         textField.setOnMouseClicked(highlightListener);
-        textField.setOnKeyPressed(keyEvent -> {
-            if (window.ignoreKeyEvent(keyEvent)) {
-                textField.getParent().fireEvent(keyEvent);
-                keyEvent.consume();
+        textField.addEventHandler(KeyEvent.ANY, keyEvent -> {
+            if (keyEvent.getEventType() == KeyEvent.KEY_PRESSED) {
+                if (window.ignoreKeyEvent(keyEvent)) {
+                    textField.getParent().fireEvent(keyEvent);
+                    keyEvent.consume();
+                }
+                if (window.handleKeyEvent(keyEvent))
+                    keyEvent.consume();
             }
-            if (window.handleKeyEvent(keyEvent))
-                keyEvent.consume();
             handleKeyEvent(keyEvent);
         });
         textField.editableProperty().bind(Bindings.createBooleanBinding(() -> proofLine.lineNumberProperty().get() == window.selectedLineProperty().get(), proofLine.lineNumberProperty(), window.selectedLineProperty()));
@@ -133,12 +145,13 @@ public class ProofLine {
     }
 
     private void handleKeyEvent(KeyEvent event) {
-        String txt = event.getText();
+        String txt = event.getCharacter();
         if (txt.length() == 1) {
             String replace = ConfigurationManager.KEY_MAP.get(txt);
             if (replace != null) {
+                if (event.getEventType() == KeyEvent.KEY_TYPED)
+                    textField.insertText(textField.getCaretPosition(), replace);
                 event.consume();
-                textField.appendText(replace);
             }
         }
     }

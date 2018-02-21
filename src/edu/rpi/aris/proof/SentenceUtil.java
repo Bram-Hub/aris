@@ -108,7 +108,7 @@ public class SentenceUtil {
             for (int i = 0; i < exprs.size(); ++i) {
                 String exp = exprs.get(i);
                 if (exp.length() == 0)
-                    throw new ParseException("Binary connective missing connective", -1);
+                    throw new ParseException("Binary connective missing expression", -1);
                 Operator opr;
                 if ((opr = getUnaryOpr(exp.charAt(0))) != null)
                     exp = exp.substring(1);

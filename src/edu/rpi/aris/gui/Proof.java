@@ -2,14 +2,13 @@ package edu.rpi.aris.gui;
 
 import edu.rpi.aris.proof.Claim;
 import edu.rpi.aris.proof.Expression;
+import edu.rpi.aris.proof.Premise;
 import edu.rpi.aris.proof.SentenceUtil;
 import edu.rpi.aris.rules.RuleList;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.*;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-import javafx.collections.ObservableMap;
+import javafx.collections.*;
 
 import java.text.ParseException;
 import java.util.HashSet;
@@ -126,12 +125,24 @@ public class Proof {
             delete(lineLookup.get(line));
     }
 
+    private Line getSubproofConclusion(Line assumption) {
+        if (!assumption.isAssumption)
+            return null;
+        int lvl = assumption.subProofLevel.get();
+        for (int i = assumption.lineNumber.get() + 1; i < numLines.get(); ++i) {
+            Line l = lines.get(i);
+            if (l.subProofLevel.get() < lvl || (l.subProofLevel.get() == lvl && l.isAssumption))
+                return lines.get(i - 1);
+        }
+        return null;
+    }
+
     public static class Line {
 
         private final boolean isAssumption;
         private SimpleIntegerProperty lineNumber = new SimpleIntegerProperty();
         private SimpleStringProperty expressionString = new SimpleStringProperty();
-        private HashSet<Line> premises = new HashSet<>();
+        private ObservableSet<Line> premises = FXCollections.observableSet();
         private SimpleIntegerProperty subProofLevel = new SimpleIntegerProperty();
         private SimpleBooleanProperty underlined = new SimpleBooleanProperty();
         private SimpleObjectProperty<RuleList> selectedRule = new SimpleObjectProperty<>(null);
@@ -153,6 +164,8 @@ public class Proof {
                     startTimer();
                 }
             });
+            selectedRule.addListener((observableValue, oldVal, newVal) -> verifyClaim());
+            premises.addListener((SetChangeListener<Line>) change -> verifyClaim());
         }
 
         public IntegerProperty lineNumberProperty() {
@@ -167,15 +180,15 @@ public class Proof {
             return isAssumption;
         }
 
-        public HashSet<Line> getPremises() {
+        public synchronized ObservableSet<Line> getPremises() {
             return premises;
         }
 
-        private void addPremise(Line premise) {
+        private synchronized void addPremise(Line premise) {
             premises.add(premise);
         }
 
-        private boolean removePremise(Line premise) {
+        private synchronized boolean removePremise(Line premise) {
             return premises.remove(premise);
         }
 
@@ -189,34 +202,66 @@ public class Proof {
                 try {
                     claim = null;
                     expression = new Expression(SentenceUtil.toPolishNotation(str));
-                    Platform.runLater(() -> statusMsg.set(""));
+                    setStatus("");
                 } catch (ParseException e) {
-                    Platform.runLater(() -> statusMsg.set(e.getMessage()));
+                    setStatus(e.getMessage());
                     expression = null;
                 }
             } else {
                 expression = null;
+                setStatus("");
             }
         }
 
-        private synchronized void buildClaim() {
-            stopTimer();
-            buildExpression();
-            if (expression == null)
-                return;
-            if (selectedRule.get() == null)
-                statusMsg.set("Rule Not Specified");
-            statusMsg.set("Claim construction code not complete");
+        private void setStatus(String status) {
+            Platform.runLater(() -> statusMsg.set(status));
         }
 
-        public synchronized boolean verifyClaim() {
+        private synchronized void buildClaim() {
+            buildExpression();
+            if (expression == null || isAssumption)
+                return;
+            if (selectedRule.get() == null) {
+                setStatus("Rule Not Specified");
+                return;
+            }
+            Premise[] premises = new Premise[this.premises.size()];
+            int i = 0;
+            for (Line p : this.premises) {
+                p.stopTimer();
+                p.buildExpression();
+                if (p.expression == null) {
+                    setStatus("The expression at line " + (p.lineNumber.get() + 1) + " is invalid");
+                    return;
+                }
+                if (p.isAssumption && p.subProofLevel.get() > subProofLevel.get()) {
+                    Line conc = proof.getSubproofConclusion(p);
+                    if (conc == null) {
+                        setStatus("He's dead, Jim");
+                        return;
+                    }
+                    premises[i] = new Premise(p.expression, conc.expression);
+                } else
+                    premises[i] = new Premise(p.expression);
+                ++i;
+            }
+            claim = new Claim(expression, premises, selectedRule.get().rule);
+        }
+
+        public boolean verifyClaim() {
+            return verifyClaim(true);
+        }
+
+        private synchronized boolean verifyClaim(boolean stopTimer) {
+            if (stopTimer)
+                stopTimer();
             buildClaim();
             if (claim != null) {
                 String result = claim.isValidClaim();
                 if (result == null)
-                    statusMsg.set("Line is Correct!");
+                    setStatus("Line is Correct!");
                 else
-                    statusMsg.set(result);
+                    setStatus(result);
                 return result == null;
             }
             return false;
@@ -239,11 +284,16 @@ public class Proof {
         }
 
         private synchronized void startTimer() {
+            if (!Aris.isGUI())
+                return;
             stopTimer();
             TimerTask task = new TimerTask() {
                 @Override
                 public void run() {
-                    buildExpression();
+                    synchronized (Line.this) {
+                        parseTimer = null;
+                        verifyClaim(false);
+                    }
                 }
             };
             parseTimer = new Timer();

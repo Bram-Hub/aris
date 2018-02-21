@@ -44,9 +44,10 @@ public class MainWindow {
         fontObjectProperty = new SimpleObjectProperty<>(new Font(14));
         setupScene();
         selectedLine.addListener((observableValue, oldVal, newVal) -> {
-            if (selectedLine.get() >= 0)
+            if (selectedLine.get() >= 0) {
                 statusLbl.textProperty().bind(proof.getLines().get(selectedLine.get()).statusMsgProperty());
-            else
+                proof.getLines().get(newVal.intValue()).verifyClaim();
+            } else
                 statusLbl.textProperty().unbind();
             updateHighlighting(newVal.intValue());
         });
@@ -111,7 +112,10 @@ public class MainWindow {
 
         endSubproof.setOnAction(actionEvent -> endSubproof());
 
-        newPremise.setOnAction(actionEvent -> selectedLine.set(addPremise()));
+        newPremise.setOnAction(actionEvent -> {
+            selectedLine.set(-1);
+            selectedLine.set(addPremise());
+        });
 
         addLine.acceleratorProperty().bind(accelerators.newProofLine);
         deleteLine.acceleratorProperty().bind(accelerators.deleteProofLine);

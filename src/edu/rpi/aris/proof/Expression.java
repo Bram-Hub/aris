@@ -15,7 +15,7 @@ public class Expression {
     private boolean isLiteral = false;
     private Expression[] expressions = null;
 
-    private static final Pattern LITERAL_PATTERN = Pattern.compile("[A-Za-z][A-Za-z0-9]*");
+    private static final Pattern LITERAL_PATTERN = Pattern.compile("[A-Za-z0-9]+");
     private static final Pattern NOT_LITERAL_PATTERN = Pattern.compile("[^A-Za-z0-9]");
 
     public Expression(String expr) throws ParseException {
