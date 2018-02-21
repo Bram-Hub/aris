@@ -13,7 +13,7 @@ public class DisjunctiveSyllogismTest {
 
     @Test
     public void test() throws ParseException {
-        TestUtil.validateClaims(premise, conc, valid, RuleList.DIJUNCTIVE_SYLLOGISM);
+        TestUtil.validateClaims(premise, conc, valid, RuleList.DISJUNCTIVE_SYLLOGISM);
     }
 
 }

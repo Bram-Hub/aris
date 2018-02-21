@@ -6,6 +6,7 @@ import edu.rpi.aris.proof.Operator;
 import edu.rpi.aris.proof.Premise;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import sun.rmi.server.InactiveGroupException;
 
 import java.text.ParseException;
 
@@ -27,6 +28,11 @@ public class ModusTollens extends Rule {
     }
 
     @Override
+    public Type[] getRuleType() {
+        return new Type[] {Type.INFERENCE};
+    }
+
+    @Override
     protected int requiredPremises(Claim claim) {
         return 2;
     }
@@ -37,7 +43,7 @@ public class ModusTollens extends Rule {
     }
 
     @Override
-    protected int subproofPremises(Claim claim) {
+    protected int subProofPremises(Claim claim) {
         return 0;
     }
 

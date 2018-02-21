@@ -5,7 +5,7 @@ public enum RuleList {
     CONJUNCTION(new Conjunction()),
     SIMPLIFICATION(new Simplification()),
     ADDITION(new Addition()),
-    DIJUNCTIVE_SYLLOGISM(new DisjunctiveSyllogism()),
+    DISJUNCTIVE_SYLLOGISM(new DisjunctiveSyllogism()),
     MODUS_PONENS(new ModusPonens()),
     MODUS_TOLLENS(new ModusTollens()),
     HYPOTHETICAL_SYLLOGISM(new HypotheticalSyllogism()),

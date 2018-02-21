@@ -21,6 +21,11 @@ public class HypotheticalSyllogism extends Rule {
     }
 
     @Override
+    public Type[] getRuleType() {
+        return new Type[] {Type.INFERENCE};
+    }
+
+    @Override
     protected int requiredPremises(Claim claim) {
         return 2;
     }
@@ -31,7 +36,7 @@ public class HypotheticalSyllogism extends Rule {
     }
 
     @Override
-    protected int subproofPremises(Claim claim) {
+    protected int subProofPremises(Claim claim) {
         return 0;
     }
 

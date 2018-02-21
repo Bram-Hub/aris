@@ -16,8 +16,8 @@ public abstract class Rule {
         for (Premise p : claim.getPremises())
             if (p.isSubproof())
                 spPremises++;
-        if (spPremises != subproofPremises(claim))
-            return "Rule " + getName() + " requires exactly " + subproofPremises(claim) + " subproof(s) as premises";
+        if (spPremises != subProofPremises(claim))
+            return "Rule " + getName() + " requires exactly " + subProofPremises(claim) + " subproof(s) as premises";
         return verifyClaim(claim.getConclusion(), claim.getPremises());
     }
 
@@ -25,12 +25,21 @@ public abstract class Rule {
 
     public abstract String getSimpleName();
 
+    public abstract Type[] getRuleType();
+
     protected abstract int requiredPremises(Claim claim);
 
     protected abstract boolean canGeneralizePremises();
 
-    protected abstract int subproofPremises(Claim claim);
+    protected abstract int subProofPremises(Claim claim);
 
     protected abstract String verifyClaim(Expression conclusion, Premise[] premises);
+
+    public enum Type {
+        INFERENCE,
+        EQUIVALENCE,
+        ELIM,
+        INTRO
+    }
 
 }

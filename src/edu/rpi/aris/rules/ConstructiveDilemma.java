@@ -21,6 +21,11 @@ public class ConstructiveDilemma extends Rule {
     }
 
     @Override
+    public Type[] getRuleType() {
+        return new Type[] {Type.INFERENCE};
+    }
+
+    @Override
     protected int requiredPremises(Claim claim) {
         return 3;
     }
@@ -31,7 +36,7 @@ public class ConstructiveDilemma extends Rule {
     }
 
     @Override
-    protected int subproofPremises(Claim claim) {
+    protected int subProofPremises(Claim claim) {
         return 0;
     }
 

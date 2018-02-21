@@ -23,6 +23,11 @@ public class ExcludedMiddle  extends Rule {
     }
 
     @Override
+    public Type[] getRuleType() {
+        return new Type[] {};
+    }
+
+    @Override
     protected int requiredPremises(Claim claim) {
         return 0;
     }
@@ -33,7 +38,7 @@ public class ExcludedMiddle  extends Rule {
     }
 
     @Override
-    protected int subproofPremises(Claim claim) {
+    protected int subProofPremises(Claim claim) {
         return 0;
     }
 

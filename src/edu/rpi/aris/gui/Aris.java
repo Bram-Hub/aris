@@ -8,6 +8,7 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.stage.Stage;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -18,7 +19,7 @@ import java.io.StringWriter;
 
 public class Aris extends Application implements Thread.UncaughtExceptionHandler {
 
-    public static final String VERSION = "";
+    public static final String VERSION = "0.1";
 
     private static Logger logger = LogManager.getLogger(Aris.class);
 
@@ -43,7 +44,7 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
     @Override
     public void uncaughtException(Thread t, Throwable e) {
         logger.fatal("He's dead, Jim!");
-        logger.catching(e);
+        logger.catching(Level.FATAL, e);
         if (GUI) {
             Alert alert = new Alert(Alert.AlertType.ERROR);
 
@@ -58,6 +59,7 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
 
             StringWriter sw = new StringWriter();
             PrintWriter pw = new PrintWriter(sw);
+            pw.println("ARIS-Java " + VERSION);
             e.printStackTrace(pw);
             String exceptionText = sw.toString();
 

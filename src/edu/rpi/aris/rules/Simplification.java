@@ -21,6 +21,11 @@ public class Simplification extends Rule {
     }
 
     @Override
+    public Type[] getRuleType() {
+        return new Type[]{Type.INFERENCE, Type.ELIM};
+    }
+
+    @Override
     protected int requiredPremises(Claim claim) {
         return 1;
     }
@@ -31,7 +36,7 @@ public class Simplification extends Rule {
     }
 
     @Override
-    protected int subproofPremises(Claim claim) {
+    protected int subProofPremises(Claim claim) {
         return 0;
     }
 
