@@ -38,8 +38,9 @@ public class ConstructiveDilemma extends Rule {
     @Override
     protected String verifyClaim(Expression conclusion, Premise[] premises) {
         Expression p1 = premises[0].getPremise();
-        Expression p2 = premises[0].getPremise();
-        Expression p3 = premises[0].getPremise();
+        Expression p2 = premises[1].getPremise();
+        Expression p3 = premises[2].getPremise();
+
         return null;
     }
 }

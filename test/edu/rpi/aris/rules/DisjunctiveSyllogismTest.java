@@ -5,7 +5,7 @@ import org.junit.Test;
 
 import java.text.ParseException;
 
-public class ModusPonensTest {
+public class DisjunctiveSyllogismTest {
 
     private String[][] premise = new String[][]{{"A → B", "A"}, {"(A ∧ B) → C", "A ∧ B"}, {"A → (B ∧ C)", "A"}, {"A ∧ B", "A"}, {"A → B", "B"}};
     private String[] conc = new String[]{"A", "B", "C", "A ∧ B", "B ∧ C"};
@@ -13,7 +13,7 @@ public class ModusPonensTest {
 
     @Test
     public void test() throws ParseException {
-        TestUtil.validateClaims(premise, conc, valid, RuleList.MODUS_PONENS);
+        TestUtil.validateClaims(premise, conc, valid, RuleList.DIJUNCTIVE_SYLLOGISM);
     }
 
 }
