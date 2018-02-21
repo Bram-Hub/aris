@@ -8,7 +8,7 @@ import java.util.HashMap;
 
 public class ConfigurationManager {
 
-    public static final HashMap<String, String> KEY_MAP = new HashMap<>();
+    private static final HashMap<String, String> KEY_MAP = new HashMap<>();
     private static final String[][] keyMap = new String[][]{{"&", "∧"}, {"|", "∨"}, {"!", "¬"}, {"~", "¬"}, {"$", "→"}, {"%", "↔"}};
 
     static {
@@ -16,19 +16,14 @@ public class ConfigurationManager {
             KEY_MAP.put(s[0], s[1]);
     }
 
-    public SimpleObjectProperty<KeyCombination> newProofLine = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+A"));
-    public SimpleObjectProperty<KeyCombination> deleteProofLine = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+D"));
-    public SimpleObjectProperty<KeyCombination> newPremise = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+R"));
-    public SimpleObjectProperty<KeyCombination> startSubProof = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+P"));
-    public SimpleObjectProperty<KeyCombination> endSubProof = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+E"));
-    private SimpleObjectProperty[] accelerators = new SimpleObjectProperty[]{newProofLine, deleteProofLine, startSubProof, endSubProof, newPremise};
+    public SimpleObjectProperty<KeyCombination> newProofLineKey = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+A"));
+    public SimpleObjectProperty<KeyCombination> deleteProofLineKey = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+D"));
+    public SimpleObjectProperty<KeyCombination> newPremiseKey = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+R"));
+    public SimpleObjectProperty<KeyCombination> startSubProofKey = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+P"));
+    public SimpleObjectProperty<KeyCombination> endSubProofKey = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+E"));
+    public SimpleObjectProperty<KeyCombination> verifyLineKey = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+F"));
 
-    public boolean ignore(KeyEvent event) {
-        for (SimpleObjectProperty a : accelerators)
-            if (((KeyCombination) a.get()).match(event))
-                return true;
-        return false;
-    }
+    private SimpleObjectProperty[] accelerators = new SimpleObjectProperty[]{newProofLineKey, deleteProofLineKey, startSubProofKey, endSubProofKey, newPremiseKey, verifyLineKey};
 
     public static String replaceText(String text) {
         for (int i = 0; i < text.length(); ++i) {
@@ -37,5 +32,12 @@ public class ConfigurationManager {
                 text = text.substring(0, i) + replace + text.substring(i + 1);
         }
         return text;
+    }
+
+    public boolean ignore(KeyEvent event) {
+        for (SimpleObjectProperty a : accelerators)
+            if (((KeyCombination) a.get()).match(event))
+                return true;
+        return false;
     }
 }

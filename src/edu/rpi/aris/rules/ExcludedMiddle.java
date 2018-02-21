@@ -1,11 +1,11 @@
 package edu.rpi.aris.rules;
 
-import edu.rpi.aris.proof.Claim;
 import edu.rpi.aris.proof.Expression;
 import edu.rpi.aris.proof.Operator;
 import edu.rpi.aris.proof.Premise;
 
 import java.text.ParseException;
+import java.util.ArrayList;
 
 public class ExcludedMiddle  extends Rule {
 
@@ -28,17 +28,27 @@ public class ExcludedMiddle  extends Rule {
     }
 
     @Override
-    protected int requiredPremises(Claim claim) {
-        return 0;
-    }
-
-    @Override
-    protected boolean canGeneralizePremises() {
+    public boolean canAutoFill() {
         return false;
     }
 
     @Override
-    protected int subProofPremises(Claim claim) {
+    public ArrayList<String> getAutoFill(Premise[] premises) {
+        return null;
+    }
+
+    @Override
+    protected int requiredPremises() {
+        return 0;
+    }
+
+    @Override
+    public boolean canGeneralizePremises() {
+        return false;
+    }
+
+    @Override
+    protected int subProofPremises() {
         return 0;
     }
 

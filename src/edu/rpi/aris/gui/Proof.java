@@ -9,7 +9,6 @@ import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.*;
 import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.collections.*;
 import javafx.scene.image.Image;
 
@@ -41,9 +40,9 @@ public class Proof {
         return lines;
     }
 
-    public Proof.Line addLine(int index, boolean isAssumption, int subproofLevel) {
+    public Proof.Line addLine(int index, boolean isAssumption, int subProofLevel) {
         if (index <= lines.size()) {
-            Line l = new Line(subproofLevel, isAssumption, this);
+            Line l = new Line(subProofLevel, isAssumption, this);
             lines.add(index, l);
             lineLookup.put(l, index);
             for (int i = index + 1; i < lines.size(); ++i)
@@ -61,22 +60,27 @@ public class Proof {
         return line;
     }
 
-    public void togglePremise(int selected, Line premise) {
-        Line line = lines.get(selected);
-        if (line.isAssumption || premise.lineNumber.get() >= selected)
-            return;
-        HashSet<Integer> canSelect = new HashSet<>();
+    public HashSet<Integer> getPossiblePremiseLines(Line line) {
+        HashSet<Integer> possiblePremise = new HashSet<>();
         int maxLvl = line.subProofLevel.get() + 1;
-        for (int i = selected - 1; i >= 0; i--) {
+        for (int i = line.lineNumber.get() - 1; i >= 0; i--) {
             Line p = lines.get(i);
             if (p.subProofLevel.get() == maxLvl && p.isAssumption) {
-                canSelect.add(i);
+                possiblePremise.add(i);
             } else if (p.subProofLevel.get() < maxLvl) {
-                canSelect.add(i);
+                possiblePremise.add(i);
                 if (p.subProofLevel.get() < maxLvl && p.isAssumption)
                     maxLvl = p.subProofLevel.get();
             }
         }
+        return possiblePremise;
+    }
+
+    public void togglePremise(int selected, Line premise) {
+        Line line = lines.get(selected);
+        if (line.isAssumption || premise.lineNumber.get() >= selected)
+            return;
+        HashSet<Integer> canSelect = getPossiblePremiseLines(line);
         for (int i = premise.lineNumber.get(); i >= 0; i--) {
             if (canSelect.contains(i)) {
                 premise = lines.get(i);
@@ -121,11 +125,6 @@ public class Proof {
                 numPremises.set(numPremises.get() - 1);
             }
         }
-    }
-
-    public void delete(Line line) {
-        if (line != null)
-            delete(lineLookup.get(line));
     }
 
     private Line getSubProofConclusion(Line assumption, Line goal) {
@@ -249,6 +248,33 @@ public class Proof {
             Platform.runLater(() -> statusMsg.set(status));
         }
 
+        public Premise[] getClaimPremises() {
+            Premise[] premises = new Premise[this.premises.size()];
+            int i = 0;
+            for (Line p : this.premises) {
+                p.stopTimer();
+                p.buildExpression();
+                if (p.expression == null) {
+                    setStatus("The expression at line " + (p.lineNumber.get() + 1) + " is invalid");
+                    status.set(Status.INVALID_CLAIM);
+                    return null;
+                }
+                Line conclusion;
+                if (p.isAssumption && (conclusion = proof.getSubProofConclusion(p, this)) != null) {
+                    conclusion.buildExpression();
+                    if (conclusion.expression == null) {
+                        setStatus("The expression at line " + (p.lineNumber.get() + 1) + " is invalid");
+                        status.set(Status.INVALID_CLAIM);
+                        return null;
+                    }
+                    premises[i] = new Premise(p.expression, conclusion.expression);
+                } else
+                    premises[i] = new Premise(p.expression);
+                ++i;
+            }
+            return premises;
+        }
+
         private synchronized void buildClaim() {
             buildExpression();
             if (expression == null || isAssumption)
@@ -258,23 +284,7 @@ public class Proof {
                 status.set(Status.NO_RULE);
                 return;
             }
-            Premise[] premises = new Premise[this.premises.size()];
-            int i = 0;
-            for (Line p : this.premises) {
-                p.stopTimer();
-                p.buildExpression();
-                if (p.expression == null) {
-                    setStatus("The expression at line " + (p.lineNumber.get() + 1) + " is invalid");
-                    status.set(Status.INVALID_CLAIM);
-                    return;
-                }
-                Line conclusion;
-                if (p.isAssumption && (conclusion = proof.getSubProofConclusion(p, this)) != null)
-                    premises[i] = new Premise(p.expression, conclusion.expression);
-                else
-                    premises[i] = new Premise(p.expression);
-                ++i;
-            }
+            Premise[] premises = getClaimPremises();
             claim = new Claim(expression, premises, selectedRule.get().rule);
         }
 

@@ -1,9 +1,13 @@
 package edu.rpi.aris.rules;
 
-import edu.rpi.aris.proof.Claim;
 import edu.rpi.aris.proof.Expression;
 import edu.rpi.aris.proof.Operator;
 import edu.rpi.aris.proof.Premise;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class Simplification extends Rule {
 
@@ -26,17 +30,29 @@ public class Simplification extends Rule {
     }
 
     @Override
-    protected int requiredPremises(Claim claim) {
+    public boolean canAutoFill() {
+        return true;
+    }
+
+    @Override
+    public ArrayList<String> getAutoFill(Premise[] premises) {
+        if(premises[0].isSubproof() || premises[0].getPremise().getOperator() != Operator.AND)
+            return null;
+        return Arrays.stream(premises[0].getPremise().getExpressions()).map(Expression::toLogicString).collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    @Override
+    protected int requiredPremises() {
         return 1;
     }
 
     @Override
-    protected boolean canGeneralizePremises() {
+    public boolean canGeneralizePremises() {
         return false;
     }
 
     @Override
-    protected int subProofPremises(Claim claim) {
+    protected int subProofPremises() {
         return 0;
     }
 

@@ -1,5 +1,6 @@
 package edu.rpi.aris.gui;
 
+import edu.rpi.aris.rules.Rule;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleIntegerProperty;
@@ -21,6 +22,7 @@ import javafx.stage.Stage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.stream.Collectors;
 
 public class MainWindow {
 
@@ -36,7 +38,7 @@ public class MainWindow {
     private SimpleIntegerProperty selectedLine = new SimpleIntegerProperty(-1);
     private Proof proof = new Proof();
     private Stage primaryStage;
-    private ConfigurationManager accelerators = new ConfigurationManager();
+    private ConfigurationManager configuration = new ConfigurationManager();
 
     public MainWindow(Stage primaryStage) throws IOException {
         this.primaryStage = primaryStage;
@@ -100,6 +102,7 @@ public class MainWindow {
         MenuItem startSubproof = new MenuItem("Start Subproof");
         MenuItem endSubproof = new MenuItem("End Subproof");
         MenuItem newPremise = new MenuItem("Add Premise");
+        MenuItem verifyLine = new MenuItem("Verify Line");
 
         addLine.setOnAction(actionEvent -> {
             addProofLine(false, proof.getLines().get(selectedLine.get()).subProofLevelProperty().get(), selectedLine.get() + 1);
@@ -117,17 +120,45 @@ public class MainWindow {
             selectedLine.set(addPremise());
         });
 
-        addLine.acceleratorProperty().bind(accelerators.newProofLine);
-        deleteLine.acceleratorProperty().bind(accelerators.deleteProofLine);
-        startSubproof.acceleratorProperty().bind(accelerators.startSubProof);
-        endSubproof.acceleratorProperty().bind(accelerators.endSubProof);
-        newPremise.acceleratorProperty().bind(accelerators.newPremise);
+        verifyLine.setOnAction(actionEvent -> verifyLine());
 
-        file.getItems().addAll(addLine, deleteLine, startSubproof, endSubproof, newPremise);
+        addLine.acceleratorProperty().bind(configuration.newProofLineKey);
+        deleteLine.acceleratorProperty().bind(configuration.deleteProofLineKey);
+        startSubproof.acceleratorProperty().bind(configuration.startSubProofKey);
+        endSubproof.acceleratorProperty().bind(configuration.endSubProofKey);
+        newPremise.acceleratorProperty().bind(configuration.newPremiseKey);
+        verifyLine.acceleratorProperty().bind(configuration.verifyLineKey);
+
+        file.getItems().addAll(addLine, deleteLine, startSubproof, endSubproof, newPremise, verifyLine);
 
         bar.getMenus().addAll(file);
 
         return bar;
+    }
+
+    private synchronized void verifyLine() {
+        int lineNum = selectedLine.get();
+        if (lineNum >= 0) {
+            Proof.Line line = proof.getLines().get(lineNum);
+            if (line.expressionStringProperty().get().trim().length() == 0) {
+                Rule rule = line.selectedRuleProperty().get().rule;
+                if (rule != null && rule.canAutoFill()) {
+                    ArrayList<String> candidates = rule.getAutoFillCandidates(line.getClaimPremises());
+                    if (candidates != null && candidates.size() > 0) {
+                        HashSet<String> existingPremises = proof.getPossiblePremiseLines(line).stream().map(i -> proofLines.get(i).getText().replace(" ", "")).collect(Collectors.toCollection(HashSet::new));
+                        for(String s : candidates) {
+                            if(!existingPremises.contains(s.replace(" ", ""))) {
+                                proofLines.get(lineNum).setText(s);
+                                proof.getLines().get(lineNum).verifyClaim();
+                                return;
+                            }
+                        }
+                        proofLines.get(lineNum).setText(candidates.get(0));
+                    }
+                }
+            }
+            proof.getLines().get(lineNum).verifyClaim();
+        }
     }
 
     private void startSubproof() {
@@ -219,7 +250,7 @@ public class MainWindow {
         requestFocus(index);
     }
 
-    public synchronized void requestFocus(int lineNum) {
+    private synchronized void requestFocus(int lineNum) {
         selectedLine.set(-1);
         selectedLine.set(lineNum);
     }
@@ -234,7 +265,7 @@ public class MainWindow {
     }
 
     public boolean ignoreKeyEvent(KeyEvent event) {
-        return accelerators.ignore(event);
+        return configuration.ignore(event);
     }
 
     public IntegerProperty selectedLineProperty() {

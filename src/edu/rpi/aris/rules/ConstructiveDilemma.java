@@ -1,9 +1,9 @@
 package edu.rpi.aris.rules;
 
-import edu.rpi.aris.proof.Claim;
 import edu.rpi.aris.proof.Expression;
-import edu.rpi.aris.proof.Operator;
 import edu.rpi.aris.proof.Premise;
+
+import java.util.ArrayList;
 
 public class ConstructiveDilemma extends Rule {
 
@@ -26,17 +26,28 @@ public class ConstructiveDilemma extends Rule {
     }
 
     @Override
-    protected int requiredPremises(Claim claim) {
-        return 3;
-    }
-
-    @Override
-    protected boolean canGeneralizePremises() {
+    public boolean canAutoFill() {
         return true;
     }
 
     @Override
-    protected int subProofPremises(Claim claim) {
+    public ArrayList<String> getAutoFill(Premise[] premises) {
+        //TODO
+        return null;
+    }
+
+    @Override
+    protected int requiredPremises() {
+        return 3;
+    }
+
+    @Override
+    public boolean canGeneralizePremises() {
+        return true;
+    }
+
+    @Override
+    protected int subProofPremises() {
         return 0;
     }
 

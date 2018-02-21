@@ -8,15 +8,14 @@ import java.util.regex.Pattern;
 
 public class Expression {
 
+    private static final Pattern LITERAL_PATTERN = Pattern.compile("[A-Za-z0-9]+");
+    private static final Pattern NOT_LITERAL_PATTERN = Pattern.compile("[^A-Za-z0-9]");
     private Operator operator = null;
     private String polishRep;
     private String functionOperator = null;
     private boolean isFunctional = false;
     private boolean isLiteral = false;
     private Expression[] expressions = null;
-
-    private static final Pattern LITERAL_PATTERN = Pattern.compile("[A-Za-z0-9]+");
-    private static final Pattern NOT_LITERAL_PATTERN = Pattern.compile("[^A-Za-z0-9]");
 
     public Expression(String expr) throws ParseException {
         init(expr);
@@ -151,6 +150,30 @@ public class Expression {
 
     public Expression negate() throws ParseException {
         return new Expression(new Expression[]{this}, Operator.NOT);
+    }
+
+    public String toLogicString() {
+        if (isLiteral)
+            return polishRep;
+        if (isFunctional) {
+            StringBuilder sb = new StringBuilder(functionOperator);
+            sb.append("(");
+            for (int i = 0; i < expressions.length; ++i) {
+                sb.append(expressions[i].toLogicString());
+                if (i < expressions.length - 1)
+                    sb.append(", ");
+            }
+            return sb.append(")").toString();
+        }
+        if (operator.isUnary)
+            return operator.logic + expressions[0].toLogicString();
+        StringBuilder sb = new StringBuilder("(");
+        for (int i = 0; i < expressions.length; ++i) {
+            sb.append(expressions[i].toLogicString());
+            if (i < expressions.length - 1)
+                sb.append(" ").append(operator.logic).append(" ");
+        }
+        return sb.append(")").toString();
     }
 
     @Override

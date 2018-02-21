@@ -1,9 +1,11 @@
 package edu.rpi.aris.rules;
 
-import edu.rpi.aris.proof.Claim;
 import edu.rpi.aris.proof.Expression;
 import edu.rpi.aris.proof.Operator;
 import edu.rpi.aris.proof.Premise;
+import edu.rpi.aris.proof.SentenceUtil;
+
+import java.util.ArrayList;
 
 public class Addition extends Rule {
 
@@ -26,17 +28,34 @@ public class Addition extends Rule {
     }
 
     @Override
-    protected int requiredPremises(Claim claim) {
+    public boolean canAutoFill() {
+        return true;
+    }
+
+    @Override
+    public ArrayList<String> getAutoFill(Premise[] premises) {
+        if (premises[0].isSubproof())
+            return null;
+        String str = premises[0].getPremise().toLogicString();
+        if (premises[0].getPremise().getOperator() == Operator.OR)
+            str = SentenceUtil.removeParen(str);
+        ArrayList<String> list = new ArrayList<>();
+        list.add(str + " " + Operator.OR.logic + " ");
+        return list;
+    }
+
+    @Override
+    protected int requiredPremises() {
         return 1;
     }
 
     @Override
-    protected boolean canGeneralizePremises() {
+    public boolean canGeneralizePremises() {
         return false;
     }
 
     @Override
-    protected int subProofPremises(Claim claim) {
+    protected int subProofPremises() {
         return 0;
     }
 

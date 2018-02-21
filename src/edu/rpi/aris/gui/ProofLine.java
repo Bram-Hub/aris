@@ -200,4 +200,8 @@ public class ProofLine {
         return textField.getText();
     }
 
+    public void setText(String text) {
+        textField.setText(text);
+        textField.positionCaret(text.length());
+    }
 }

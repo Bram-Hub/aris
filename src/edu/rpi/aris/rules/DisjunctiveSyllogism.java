@@ -1,11 +1,12 @@
 package edu.rpi.aris.rules;
 
-import edu.rpi.aris.proof.Claim;
 import edu.rpi.aris.proof.Expression;
 import edu.rpi.aris.proof.Operator;
 import edu.rpi.aris.proof.Premise;
 
-public class DisjunctiveSyllogism  extends Rule {
+import java.util.ArrayList;
+
+public class DisjunctiveSyllogism extends Rule {
 
     DisjunctiveSyllogism() {
     }
@@ -26,17 +27,28 @@ public class DisjunctiveSyllogism  extends Rule {
     }
 
     @Override
-    protected int requiredPremises(Claim claim) {
+    public boolean canAutoFill() {
+        return true;
+    }
+
+    @Override
+    public ArrayList<String> getAutoFill(Premise[] premises) {
+        //TODO
+        return null;
+    }
+
+    @Override
+    protected int requiredPremises() {
         return 1;
     }
 
     @Override
-    protected boolean canGeneralizePremises() {
+    public boolean canGeneralizePremises() {
         return false;
     }
 
     @Override
-    protected int subProofPremises(Claim claim) {
+    protected int subProofPremises() {
         return 0;
     }
 
