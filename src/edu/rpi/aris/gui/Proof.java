@@ -329,7 +329,7 @@ public class Proof {
                     }
                 }
             };
-            parseTimer = new Timer();
+            parseTimer = new Timer(true);
             parseTimer.schedule(task, 1000);
         }
 
