@@ -1,25 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.VBox?>
-
+<?import javafx.scene.layout.*?>
 <BorderPane stylesheets="@main_window.css" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1">
-   <top>
-      <HBox BorderPane.alignment="CENTER" />
-   </top>
-   <bottom>
-      <HBox alignment="CENTER_LEFT" BorderPane.alignment="CENTER">
-         <TextField HBox.hgrow="ALWAYS" />
-         <ImageView fitHeight="25.0" fitWidth="25.0" pickOnBounds="true" preserveRatio="true" HBox.hgrow="NEVER" />
-      </HBox>
-   </bottom>
-   <center>
-      <ScrollPane fx:id="scrollPane" fitToWidth="true" BorderPane.alignment="CENTER">
-          <VBox fx:id="proofTable" alignment="CENTER" />
-      </ScrollPane>
-   </center>
+    <top>
+        <HBox BorderPane.alignment="CENTER"/>
+    </top>
+    <bottom>
+        <VBox alignment="CENTER_LEFT" BorderPane.alignment="CENTER">
+            <HBox alignment="CENTER_LEFT">
+                <TextField HBox.hgrow="ALWAYS"/>
+                <ImageView fitHeight="25.0" fitWidth="25.0" pickOnBounds="true" preserveRatio="true"
+                           HBox.hgrow="NEVER"/>
+            </HBox>
+            <Label fx:id="statusLbl"/>
+        </VBox>
+    </bottom>
+    <center>
+        <ScrollPane fx:id="scrollPane" fitToWidth="true" BorderPane.alignment="CENTER">
+            <VBox fx:id="proofTable" alignment="CENTER"/>
+        </ScrollPane>
+    </center>
 </BorderPane>

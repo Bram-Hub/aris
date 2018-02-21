@@ -5,17 +5,14 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Region?>
-<?import javafx.scene.layout.VBox?>
-
+<?import javafx.scene.layout.*?>
 <HBox fx:id="root" alignment="CENTER" stylesheets="@main_window.css" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1">
-    <HBox fx:id="selectedHbox" alignment="CENTER" styleClass="proof-left-border" HBox.hgrow="NEVER">
+    <HBox fx:id="selectedHBox" alignment="CENTER" styleClass="proof-left-border" HBox.hgrow="NEVER">
         <ImageView fx:id="selectedLine" fitHeight="25.0" fitWidth="25.0" pickOnBounds="true" preserveRatio="true" HBox.hgrow="NEVER" />
         <Label fx:id="numberLbl" minHeight="-Infinity" minWidth="-Infinity" />
     </HBox>
-    <HBox fx:id="subproofIndent" alignment="BOTTOM_LEFT" />
-    <VBox fx:id="textVbox" HBox.hgrow="ALWAYS">
+    <HBox fx:id="subProofIndent" alignment="BOTTOM_LEFT"/>
+    <VBox fx:id="textVBox" HBox.hgrow="ALWAYS">
         <Region prefHeight="4.0" />
         <HBox alignment="CENTER" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
             <Region minHeight="-Infinity" minWidth="-Infinity" prefWidth="2.0" />

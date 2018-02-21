@@ -1,15 +1,20 @@
 package edu.rpi.aris.gui;
 
+import edu.rpi.aris.proof.Claim;
+import edu.rpi.aris.proof.Expression;
+import edu.rpi.aris.proof.SentenceUtil;
+import edu.rpi.aris.rules.RuleList;
+import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
-import javafx.beans.property.IntegerProperty;
-import javafx.beans.property.SimpleBooleanProperty;
-import javafx.beans.property.SimpleIntegerProperty;
-import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.ObservableMap;
 
+import java.text.ParseException;
 import java.util.HashSet;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class Proof {
 
@@ -36,7 +41,7 @@ public class Proof {
 
     public Proof.Line addLine(int index, boolean isAssumption, int subproofLevel) {
         if (index <= lines.size()) {
-            Line l = new Line(subproofLevel, isAssumption);
+            Line l = new Line(subproofLevel, isAssumption, this);
             lines.add(index, l);
             lineLookup.put(l, index);
             for (int i = index + 1; i < lines.size(); ++i)
@@ -59,15 +64,15 @@ public class Proof {
         if (line.isAssumption)
             return;
         HashSet<Integer> canSelect = new HashSet<>();
-        int maxLvl = line.subproofLevel.get() + 1;
+        int maxLvl = line.subProofLevel.get() + 1;
         for (int i = selected - 1; i >= 0; i--) {
             Line p = lines.get(i);
-            if (p.subproofLevel.get() == maxLvl && p.isAssumption) {
+            if (p.subProofLevel.get() == maxLvl && p.isAssumption) {
                 canSelect.add(i);
-            } else if (p.subproofLevel.get() < maxLvl) {
+            } else if (p.subProofLevel.get() < maxLvl) {
                 canSelect.add(i);
-                if (p.subproofLevel.get() < maxLvl && p.isAssumption)
-                    maxLvl = p.subproofLevel.get();
+                if (p.subProofLevel.get() < maxLvl && p.isAssumption)
+                    maxLvl = p.subProofLevel.get();
             }
         }
         for (int i = premise.lineNumber.get(); i >= 0; i--) {
@@ -86,9 +91,9 @@ public class Proof {
             HashSet<Line> highlighted = new HashSet<>();
             int lineNum = p.lineNumber.get();
             if (p.isAssumption() && lineNum + 1 < lines.size()) {
-                int indent = p.subproofLevelProperty().get();
+                int indent = p.subProofLevelProperty().get();
                 Proof.Line l = lines.get(lineNum + 1);
-                while (l != null && (l.subproofLevelProperty().get() > indent || (l.subproofLevelProperty().get() == indent && !l.isAssumption()))) {
+                while (l != null && (l.subProofLevelProperty().get() > indent || (l.subProofLevelProperty().get() == indent && !l.isAssumption()))) {
                     highlighted.add(l);
                     if (lineNum + 1 == lines.size())
                         l = null;
@@ -96,7 +101,7 @@ public class Proof {
                         l = lines.get(++lineNum);
                 }
             }
-            if(!highlighted.contains(line))
+            if (!highlighted.contains(line))
                 highlight.addAll(highlighted);
             highlight.add(p);
         }
@@ -127,63 +132,131 @@ public class Proof {
         private SimpleIntegerProperty lineNumber = new SimpleIntegerProperty();
         private SimpleStringProperty expressionString = new SimpleStringProperty();
         private HashSet<Line> premises = new HashSet<>();
-        //        private HashSet<Line> highlightLines = new HashSet<>();
-        private SimpleIntegerProperty subproofLevel = new SimpleIntegerProperty();
+        private SimpleIntegerProperty subProofLevel = new SimpleIntegerProperty();
         private SimpleBooleanProperty underlined = new SimpleBooleanProperty();
+        private SimpleObjectProperty<RuleList> selectedRule = new SimpleObjectProperty<>(null);
+        private Expression expression = null;
+        private Claim claim = null;
+        private SimpleStringProperty statusMsg = new SimpleStringProperty();
+        private Timer parseTimer = null;
+        private Proof proof;
 
-        public Line(int subproofLevel, boolean assumption) {
+        private Line(int subProofLevel, boolean assumption, Proof proof) {
             isAssumption = assumption;
             underlined.set(isAssumption);
-            this.subproofLevel.set(subproofLevel);
+            this.proof = proof;
+            this.subProofLevel.set(subProofLevel);
+            expressionString.addListener((observableValue, oldVal, newVal) -> {
+                synchronized (Line.this) {
+                    expression = null;
+                    claim = null;
+                    startTimer();
+                }
+            });
         }
 
         public IntegerProperty lineNumberProperty() {
             return lineNumber;
         }
 
-        public IntegerProperty subproofLevelProperty() {
-            return subproofLevel;
+        public IntegerProperty subProofLevelProperty() {
+            return subProofLevel;
         }
 
         public boolean isAssumption() {
             return isAssumption;
         }
 
-//        public HashSet<Line> getHighlightLines() {
-//            return highlightLines;
-//        }
-
         public HashSet<Line> getPremises() {
             return premises;
         }
 
-        public void addPremise(Line premise) {
+        private void addPremise(Line premise) {
             premises.add(premise);
         }
 
-        public boolean removePremise(Line premise) {
+        private boolean removePremise(Line premise) {
             return premises.remove(premise);
         }
-
-//        private void addHighlight(Line line) {
-//            highlightLines.add(line);
-//        }
-//
-//        private void removeHighlight(Line line) {
-//            highlightLines.remove(line);
-//        }
 
         private void lineDeleted(Line deletedLine) {
             removePremise(deletedLine);
         }
 
-        private void setUnderlined(boolean underlined) {
-            this.underlined.set(underlined);
+        private synchronized void buildExpression() {
+            String str = expressionString.get();
+            if (str.trim().length() > 0) {
+                try {
+                    claim = null;
+                    expression = new Expression(SentenceUtil.toPolishNotation(str));
+                    Platform.runLater(() -> statusMsg.set(""));
+                } catch (ParseException e) {
+                    Platform.runLater(() -> statusMsg.set(e.getMessage()));
+                    expression = null;
+                }
+            } else {
+                expression = null;
+            }
+        }
+
+        private synchronized void buildClaim() {
+            stopTimer();
+            buildExpression();
+            if (expression == null)
+                return;
+            if (selectedRule.get() == null)
+                statusMsg.set("Rule Not Specified");
+            statusMsg.set("Claim construction code not complete");
+        }
+
+        public synchronized boolean verifyClaim() {
+            buildClaim();
+            if (claim != null) {
+                String result = claim.isValidClaim();
+                if (result == null)
+                    statusMsg.set("Line is Correct!");
+                else
+                    statusMsg.set(result);
+                return result == null;
+            }
+            return false;
         }
 
         public SimpleBooleanProperty isUnderlined() {
             return underlined;
         }
+
+        public SimpleStringProperty expressionStringProperty() {
+            return expressionString;
+        }
+
+        public SimpleObjectProperty<RuleList> selectedRuleProperty() {
+            return selectedRule;
+        }
+
+        public SimpleStringProperty statusMsgProperty() {
+            return statusMsg;
+        }
+
+        private synchronized void startTimer() {
+            stopTimer();
+            TimerTask task = new TimerTask() {
+                @Override
+                public void run() {
+                    buildExpression();
+                }
+            };
+            parseTimer = new Timer();
+            parseTimer.schedule(task, 1000);
+        }
+
+        private synchronized void stopTimer() {
+            if (parseTimer != null) {
+                parseTimer.cancel();
+                parseTimer = null;
+            }
+        }
+
     }
 
 }
