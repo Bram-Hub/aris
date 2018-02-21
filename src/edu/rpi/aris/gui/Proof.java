@@ -8,7 +8,10 @@ import edu.rpi.aris.rules.RuleList;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.*;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.*;
+import javafx.scene.image.Image;
 
 import java.text.ParseException;
 import java.util.HashSet;
@@ -125,16 +128,34 @@ public class Proof {
             delete(lineLookup.get(line));
     }
 
-    private Line getSubproofConclusion(Line assumption) {
-        if (!assumption.isAssumption)
-            return null;
+    private Line getSubProofConclusion(Line assumption, Line goal) {
         int lvl = assumption.subProofLevel.get();
+        if (!assumption.isAssumption || lvl == 0)
+            return null;
         for (int i = assumption.lineNumber.get() + 1; i < numLines.get(); ++i) {
             Line l = lines.get(i);
+            if (l == goal)
+                return null;
             if (l.subProofLevel.get() < lvl || (l.subProofLevel.get() == lvl && l.isAssumption))
                 return lines.get(i - 1);
         }
         return null;
+    }
+
+    public enum Status {
+
+        NONE("no_icon.png"),
+        INVALID_EXPRESSION("warning.png"),
+        NO_RULE("question_mark.png"),
+        INVALID_CLAIM("red_x.png"),
+        CORRECT("check_mark.png");
+
+        public final Image img;
+
+        Status(String imgLoc) {
+            img = new Image(Status.class.getResourceAsStream(imgLoc));
+        }
+
     }
 
     public static class Line {
@@ -146,6 +167,7 @@ public class Proof {
         private SimpleIntegerProperty subProofLevel = new SimpleIntegerProperty();
         private SimpleBooleanProperty underlined = new SimpleBooleanProperty();
         private SimpleObjectProperty<RuleList> selectedRule = new SimpleObjectProperty<>(null);
+        private SimpleObjectProperty<Status> status = new SimpleObjectProperty<>(Status.NONE);
         private Expression expression = null;
         private Claim claim = null;
         private SimpleStringProperty statusMsg = new SimpleStringProperty();
@@ -176,6 +198,10 @@ public class Proof {
             return subProofLevel;
         }
 
+        public SimpleObjectProperty<Status> statusProperty() {
+            return status;
+        }
+
         public boolean isAssumption() {
             return isAssumption;
         }
@@ -186,6 +212,7 @@ public class Proof {
 
         private synchronized void addPremise(Line premise) {
             premises.add(premise);
+            premise.expressionString.addListener((observableValue, oldVal, newVal) -> status.set(Status.NONE));
         }
 
         private synchronized boolean removePremise(Line premise) {
@@ -203,13 +230,16 @@ public class Proof {
                     claim = null;
                     expression = new Expression(SentenceUtil.toPolishNotation(str));
                     setStatus("");
+                    status.set(Status.NONE);
                 } catch (ParseException e) {
                     setStatus(e.getMessage());
+                    status.set(Status.INVALID_EXPRESSION);
                     expression = null;
                 }
             } else {
                 expression = null;
                 setStatus("");
+                status.set(Status.NONE);
             }
         }
 
@@ -223,6 +253,7 @@ public class Proof {
                 return;
             if (selectedRule.get() == null) {
                 setStatus("Rule Not Specified");
+                status.set(Status.NO_RULE);
                 return;
             }
             Premise[] premises = new Premise[this.premises.size()];
@@ -232,16 +263,13 @@ public class Proof {
                 p.buildExpression();
                 if (p.expression == null) {
                     setStatus("The expression at line " + (p.lineNumber.get() + 1) + " is invalid");
+                    status.set(Status.INVALID_CLAIM);
                     return;
                 }
-                if (p.isAssumption && p.subProofLevel.get() > subProofLevel.get()) {
-                    Line conc = proof.getSubproofConclusion(p);
-                    if (conc == null) {
-                        setStatus("He's dead, Jim");
-                        return;
-                    }
-                    premises[i] = new Premise(p.expression, conc.expression);
-                } else
+                Line conclusion;
+                if (p.isAssumption && (conclusion = proof.getSubProofConclusion(p, this)) != null)
+                    premises[i] = new Premise(p.expression, conclusion.expression);
+                else
                     premises[i] = new Premise(p.expression);
                 ++i;
             }
@@ -258,10 +286,13 @@ public class Proof {
             buildClaim();
             if (claim != null) {
                 String result = claim.isValidClaim();
-                if (result == null)
+                if (result == null) {
                     setStatus("Line is Correct!");
-                else
+                    status.set(Status.CORRECT);
+                } else {
                     setStatus(result);
+                    status.set(Status.INVALID_CLAIM);
+                }
                 return result == null;
             }
             return false;

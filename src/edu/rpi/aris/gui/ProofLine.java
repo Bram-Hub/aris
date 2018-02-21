@@ -142,6 +142,7 @@ public class ProofLine {
         setIndent(proofLine.subProofLevelProperty().get());
         proofLine.subProofLevelProperty().addListener((observableValue, oldVal, newVal) -> setIndent(newVal.intValue()));
         root.setOnMouseClicked(highlightListener);
+        validImage.imageProperty().bind(Bindings.createObjectBinding(() -> proofLine.statusProperty().get().img, proofLine.statusProperty()));
     }
 
     private void handleKeyEvent(KeyEvent event) {
