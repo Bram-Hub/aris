@@ -30,4 +30,12 @@ public class ConfigurationManager {
         return false;
     }
 
+    public static String replaceText(String text) {
+        for (int i = 0; i < text.length(); ++i) {
+            String replace;
+            if ((replace = KEY_MAP.get(String.valueOf(text.charAt(i)))) != null)
+                text = text.substring(0, i) + replace + text.substring(i + 1);
+        }
+        return text;
+    }
 }

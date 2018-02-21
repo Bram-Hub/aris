@@ -63,7 +63,7 @@ public class Proof {
 
     public void togglePremise(int selected, Line premise) {
         Line line = lines.get(selected);
-        if (line.isAssumption)
+        if (line.isAssumption || premise.lineNumber.get() >= selected)
             return;
         HashSet<Integer> canSelect = new HashSet<>();
         int maxLvl = line.subProofLevel.get() + 1;

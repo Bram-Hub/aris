@@ -37,10 +37,19 @@ public class DisjunctiveSyllogism  extends Rule {
 
     @Override
     protected String verifyClaim(Expression conclusion, Premise[] premises) {
-        Expression premise = premises[0].getPremise();
-        if (conclusion.getOperator() != Operator.OR)
-            return "The conclusion must be a disjunction";
-        if (!conclusion.hasSubExpression(premise))
+        Expression p1 = premises[0].getPremise();
+        Expression p2 = premises[1].getPremise();
+        int found = -1;
+        for (int i = 0; i <= premises.length; ++i) {
+            Expression e = premises[i].getPremise();
+            if (p1.getOperator() == Operator.OR) {
+                found = i;
+            }
+        }
+        if (found < 0) {
+            return "One of the premises must be a disjunction";
+        }
+        if (!conclusion.hasSubExpression(p1))
             return "the premises is not a disjunct in the conclusion";
         return null;
     }

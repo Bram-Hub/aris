@@ -6,10 +6,7 @@ import javafx.beans.binding.Bindings;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
-import javafx.scene.control.ContextMenu;
-import javafx.scene.control.Label;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyEvent;
@@ -21,6 +18,7 @@ import javafx.scene.layout.VBox;
 import org.apache.commons.lang.StringUtils;
 
 import java.util.Arrays;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 public class ProofLine {
@@ -110,6 +108,11 @@ public class ProofLine {
             selectedLine.imageProperty().setValue(newVal ? SELECTED_IMAGE : null);
         });
         textField.setOnMouseClicked(highlightListener);
+        UnaryOperator<TextFormatter.Change> filter = t -> {
+            t.setText(ConfigurationManager.replaceText(t.getText()));
+            return t;
+        };
+        textField.setTextFormatter(new TextFormatter<>(filter));
         textField.addEventHandler(KeyEvent.ANY, keyEvent -> {
             if (keyEvent.getEventType() == KeyEvent.KEY_PRESSED) {
                 if (window.ignoreKeyEvent(keyEvent)) {
@@ -119,7 +122,6 @@ public class ProofLine {
                 if (window.handleKeyEvent(keyEvent))
                     keyEvent.consume();
             }
-            handleKeyEvent(keyEvent);
         });
         textField.editableProperty().bind(Bindings.createBooleanBinding(() -> proofLine.lineNumberProperty().get() == window.selectedLineProperty().get(), proofLine.lineNumberProperty(), window.selectedLineProperty()));
         setUpRules();
@@ -143,18 +145,6 @@ public class ProofLine {
         proofLine.subProofLevelProperty().addListener((observableValue, oldVal, newVal) -> setIndent(newVal.intValue()));
         root.setOnMouseClicked(highlightListener);
         validImage.imageProperty().bind(Bindings.createObjectBinding(() -> proofLine.statusProperty().get().img, proofLine.statusProperty()));
-    }
-
-    private void handleKeyEvent(KeyEvent event) {
-        String txt = event.getCharacter();
-        if (txt.length() == 1) {
-            String replace = ConfigurationManager.KEY_MAP.get(txt);
-            if (replace != null) {
-                if (event.getEventType() == KeyEvent.KEY_TYPED)
-                    textField.insertText(textField.getCaretPosition(), replace);
-                event.consume();
-            }
-        }
     }
 
     public void setHighlighted(boolean highlighted) {

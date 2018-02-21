@@ -5,7 +5,7 @@ import org.junit.Test;
 
 import java.text.ParseException;
 
-public class ModusPonensTest {
+public class HypotheticalSyllogismTest {
 
     private String[][] premise = new String[][]{{"A → B", "A"}, {"(A ∧ B) → C", "A ∧ B"}, {"A → (B ∧ C)", "A"}, {"A ∧ B", "A"}, {"A → B", "B"}};
     private String[] conc = new String[]{"A", "B", "C", "A ∧ B", "B ∧ C"};
