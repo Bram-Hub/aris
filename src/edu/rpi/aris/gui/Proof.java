@@ -173,6 +173,7 @@ public class Proof {
         private SimpleStringProperty statusMsg = new SimpleStringProperty();
         private Timer parseTimer = null;
         private Proof proof;
+        private ChangeListener<String> expressionChangeListener = (observableValue, s, t1) -> status.set(Status.NONE);
 
         private Line(int subProofLevel, boolean assumption, Proof proof) {
             isAssumption = assumption;
@@ -212,10 +213,11 @@ public class Proof {
 
         private synchronized void addPremise(Line premise) {
             premises.add(premise);
-            premise.expressionString.addListener((observableValue, oldVal, newVal) -> status.set(Status.NONE));
+            premise.expressionString.addListener(expressionChangeListener);
         }
 
         private synchronized boolean removePremise(Line premise) {
+            premise.expressionString.removeListener(expressionChangeListener);
             return premises.remove(premise);
         }
 
