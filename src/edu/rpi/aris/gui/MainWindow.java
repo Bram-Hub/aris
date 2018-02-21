@@ -9,10 +9,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.geometry.Bounds;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Menu;
-import javafx.scene.control.MenuBar;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.ScrollPane;
+import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
@@ -31,20 +28,29 @@ public class MainWindow {
     private VBox proofTable;
     @FXML
     private ScrollPane scrollPane;
+    @FXML
+    private Label statusLbl;
 
     private ObjectProperty<Font> fontObjectProperty;
     private ArrayList<ProofLine> proofLines = new ArrayList<>();
     private SimpleIntegerProperty selectedLine = new SimpleIntegerProperty(-1);
     private Proof proof = new Proof();
     private Stage primaryStage;
-    private AcceleratorManager accelerators = new AcceleratorManager();
+    private ConfigurationManager accelerators = new ConfigurationManager();
 
     public MainWindow(Stage primaryStage) throws IOException {
         this.primaryStage = primaryStage;
         primaryStage.setTitle("ARIS");
         fontObjectProperty = new SimpleObjectProperty<>(new Font(14));
         setupScene();
-        selectedLine.addListener((observableValue, oldVal, newVal) -> updateHighlighting(newVal.intValue()));
+        selectedLine.addListener((observableValue, oldVal, newVal) -> {
+            if (selectedLine.get() >= 0) {
+                statusLbl.textProperty().bind(proof.getLines().get(selectedLine.get()).statusMsgProperty());
+                proof.getLines().get(newVal.intValue()).verifyClaim();
+            } else
+                statusLbl.textProperty().unbind();
+            updateHighlighting(newVal.intValue());
+        });
     }
 
     private void setupScene() throws IOException {
@@ -96,7 +102,7 @@ public class MainWindow {
         MenuItem newPremise = new MenuItem("Add Premise");
 
         addLine.setOnAction(actionEvent -> {
-            addProofLine(false, proof.getLines().get(selectedLine.get()).subproofLevelProperty().get(), selectedLine.get() + 1);
+            addProofLine(false, proof.getLines().get(selectedLine.get()).subProofLevelProperty().get(), selectedLine.get() + 1);
             selectedLine.set(selectedLine.get() + 1);
         });
 
@@ -106,12 +112,15 @@ public class MainWindow {
 
         endSubproof.setOnAction(actionEvent -> endSubproof());
 
-        newPremise.setOnAction(actionEvent -> selectedLine.set(addPremise()));
+        newPremise.setOnAction(actionEvent -> {
+            selectedLine.set(-1);
+            selectedLine.set(addPremise());
+        });
 
         addLine.acceleratorProperty().bind(accelerators.newProofLine);
         deleteLine.acceleratorProperty().bind(accelerators.deleteProofLine);
-        startSubproof.acceleratorProperty().bind(accelerators.startSubproof);
-        endSubproof.acceleratorProperty().bind(accelerators.endSubproof);
+        startSubproof.acceleratorProperty().bind(accelerators.startSubProof);
+        endSubproof.acceleratorProperty().bind(accelerators.endSubProof);
         newPremise.acceleratorProperty().bind(accelerators.newPremise);
 
         file.getItems().addAll(addLine, deleteLine, startSubproof, endSubproof, newPremise);
@@ -122,7 +131,7 @@ public class MainWindow {
     }
 
     private void startSubproof() {
-        int level = proof.getLines().get(selectedLine.get()).subproofLevelProperty().get() + 1;
+        int level = proof.getLines().get(selectedLine.get()).subProofLevelProperty().get() + 1;
         int lineNum = selectedLine.get();
         selectedLine.set(-1);
         if (lineNum < proof.numPremises().get())
@@ -171,6 +180,7 @@ public class MainWindow {
         });
         addPremise();
         selectedLine.set(-1);
+        statusLbl.fontProperty().bind(fontObjectProperty);
     }
 
     private synchronized void addProofLine(boolean assumption, int proofLevel, int index) {
@@ -246,9 +256,9 @@ public class MainWindow {
             if (lineNum >= proof.numPremises().get()) {
                 Proof.Line line = proof.getLines().get(lineNum);
                 if (line.isAssumption() && lineNum + 1 < proof.getLines().size()) {
-                    int indent = line.subproofLevelProperty().get();
+                    int indent = line.subProofLevelProperty().get();
                     Proof.Line l = proof.getLines().get(lineNum + 1);
-                    while (l != null && (l.subproofLevelProperty().get() > indent || (l.subproofLevelProperty().get() == indent && !l.isAssumption()))) {
+                    while (l != null && (l.subProofLevelProperty().get() > indent || (l.subProofLevelProperty().get() == indent && !l.isAssumption()))) {
                         removeLine(l.lineNumberProperty().get());
                         if (lineNum + 1 == proof.getLines().size())
                             l = null;
@@ -273,13 +283,13 @@ public class MainWindow {
     }
 
     private void endSubproof() {
-        int level = proof.getLines().get(selectedLine.get()).subproofLevelProperty().get();
+        int level = proof.getLines().get(selectedLine.get()).subProofLevelProperty().get();
         if (level == 0)
             return;
         int newLine = proof.getLines().size();
         for (int i = selectedLine.get() + 1; i < newLine; ++i) {
             Proof.Line l = proof.getLines().get(i);
-            if (l.subproofLevelProperty().get() < level || (l.subproofLevelProperty().get() == level && l.isAssumption()))
+            if (l.subProofLevelProperty().get() < level || (l.subProofLevelProperty().get() == level && l.isAssumption()))
                 newLine = i;
         }
         addProofLine(false, level - 1, newLine);

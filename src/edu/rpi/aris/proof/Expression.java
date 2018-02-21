@@ -3,6 +3,8 @@ package edu.rpi.aris.proof;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Expression {
 
@@ -13,12 +15,15 @@ public class Expression {
     private boolean isLiteral = false;
     private Expression[] expressions = null;
 
+    private static final Pattern LITERAL_PATTERN = Pattern.compile("[A-Za-z0-9]+");
+    private static final Pattern NOT_LITERAL_PATTERN = Pattern.compile("[^A-Za-z0-9]");
+
     public Expression(String expr) throws ParseException {
         init(expr);
     }
 
     //this constructor does not support functional operators
-    public Expression( Expression[] exprs, Operator opr) throws ParseException {
+    public Expression(Expression[] exprs, Operator opr) throws ParseException {
         Objects.requireNonNull(exprs);
         if (operator == null) {
             if (exprs.length != 1)
@@ -36,6 +41,18 @@ public class Expression {
         polishRep = expr;
         expr = SentenceUtil.removeParen(expr);
         if (!expr.contains(" ")) {
+            if (!LITERAL_PATTERN.matcher(expr).matches()) {
+                if (expr.length() == 0)
+                    throw new ParseException("No expression given", -1);
+                if (Character.isDigit(expr.charAt(0)))
+                    throw new ParseException("Literal cannot start with a number", -1);
+                Matcher matcher = NOT_LITERAL_PATTERN.matcher(expr);
+                if (matcher.find()) {
+                    String symbol = matcher.group();
+                    throw new ParseException("Unknown symbol in expression: " + symbol, -1);
+                }
+                throw new ParseException("Failed to parse expression", -1);
+            }
             polishRep = expr;
             isLiteral = true;
             expressions = new Expression[0];

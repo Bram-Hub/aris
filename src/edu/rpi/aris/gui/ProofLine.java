@@ -1,11 +1,8 @@
 package edu.rpi.aris.gui;
 
 import edu.rpi.aris.rules.RuleList;
+import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
-import javafx.beans.property.SimpleBooleanProperty;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
@@ -15,6 +12,7 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
@@ -27,19 +25,19 @@ import java.util.stream.Collectors;
 
 public class ProofLine {
 
-    public static final int SUBPROOF_INDENT = 25;
-    public static final Image SELECTED_IMAGE = new Image(ProofLine.class.getResourceAsStream("right_arrow.png"));
-    public static final String HIGHLIGHT_STYLE = "highlight-premise";
-    public static final String UNDERLINE = "underline";
+    private static final int SUB_PROOF_INDENT = 25;
+    private static final Image SELECTED_IMAGE = new Image(ProofLine.class.getResourceAsStream("right_arrow.png"));
+    private static final String HIGHLIGHT_STYLE = "highlight-premise";
+    private static final String UNDERLINE = "underline";
 
     @FXML
     private HBox root;
     @FXML
-    private HBox selectedHbox;
+    private HBox selectedHBox;
     @FXML
-    private HBox subproofIndent;
+    private HBox subProofIndent;
     @FXML
-    private VBox textVbox;
+    private VBox textVBox;
     @FXML
     private TextField textField;
     @FXML
@@ -54,9 +52,8 @@ public class ProofLine {
     private ContextMenu ruleMenu;
 
     private MainWindow window;
-    private RuleList selectedRule = null;
     private Proof.Line proofLine;
-    private SimpleStringProperty numberString = new SimpleStringProperty();
+    private int caretPos = 0;
 
     private EventHandler<MouseEvent> highlightListener = new EventHandler<MouseEvent>() {
         @Override
@@ -66,7 +63,7 @@ public class ProofLine {
         }
     };
 
-    public ProofLine(MainWindow window, Proof.Line proofLine) {
+    ProofLine(MainWindow window, Proof.Line proofLine) {
         this.window = window;
         this.proofLine = proofLine;
     }
@@ -77,6 +74,7 @@ public class ProofLine {
         validImage.fitWidthProperty().bind(validImage.fitHeightProperty());
         textField.fontProperty().bind(window.getFontProperty());
         ruleChoose.fontProperty().bind(window.getFontProperty());
+        ruleChoose.textProperty().bind(Bindings.createStringBinding(() -> proofLine.selectedRuleProperty().get() == null ? "▼ Rule" : proofLine.selectedRuleProperty().get().simpleName, proofLine.selectedRuleProperty()));
         numberLbl.fontProperty().bind(window.getFontProperty());
         numberLbl.textProperty().bind(Bindings.createStringBinding(() -> {
             String total = String.valueOf(window.numLines().get());
@@ -92,11 +90,19 @@ public class ProofLine {
                 ruleChoose.getContextMenu().show(ruleChoose, e.getScreenX(), e.getScreenY());
         });
         selectedLine.setOnMouseClicked(e -> window.requestFocus(this));
-        selectedHbox.setOnMouseClicked(e -> window.requestFocus(this));
+        selectedHBox.setOnMouseClicked(e -> window.requestFocus(this));
         numberLbl.setOnMouseClicked(e -> window.requestFocus(this));
         textField.focusedProperty().addListener((observableValue, oldVal, newVal) -> {
-            if (textField.isEditable() && !newVal)
-                textField.requestFocus();
+            if (newVal)
+                Platform.runLater(() -> {
+                    textField.deselect();
+                    textField.positionCaret(caretPos);
+                });
+            else {
+                caretPos = textField.getCaretPosition();
+                if (textField.isEditable())
+                    textField.requestFocus();
+            }
         });
         textField.editableProperty().addListener((observableValue, oldVal, newVal) -> {
             if (newVal)
@@ -104,45 +110,61 @@ public class ProofLine {
             selectedLine.imageProperty().setValue(newVal ? SELECTED_IMAGE : null);
         });
         textField.setOnMouseClicked(highlightListener);
-        textField.setOnKeyPressed(keyEvent -> {
-            if (window.ignoreKeyEvent(keyEvent)) {
-                textField.getParent().fireEvent(keyEvent);
-                keyEvent.consume();
+        textField.addEventHandler(KeyEvent.ANY, keyEvent -> {
+            if (keyEvent.getEventType() == KeyEvent.KEY_PRESSED) {
+                if (window.ignoreKeyEvent(keyEvent)) {
+                    textField.getParent().fireEvent(keyEvent);
+                    keyEvent.consume();
+                }
+                if (window.handleKeyEvent(keyEvent))
+                    keyEvent.consume();
             }
-            if (window.handleKeyEvent(keyEvent))
-                keyEvent.consume();
+            handleKeyEvent(keyEvent);
         });
         textField.editableProperty().bind(Bindings.createBooleanBinding(() -> proofLine.lineNumberProperty().get() == window.selectedLineProperty().get(), proofLine.lineNumberProperty(), window.selectedLineProperty()));
         setUpRules();
+        proofLine.expressionStringProperty().bind(textField.textProperty());
         proofLine.isUnderlined().addListener((observableValue, oldVal, newVal) -> {
-            if (newVal && !textVbox.getStyleClass().contains(UNDERLINE)) {
-                textVbox.getStyleClass().add(UNDERLINE);
+            if (newVal && !textVBox.getStyleClass().contains(UNDERLINE)) {
+                textVBox.getStyleClass().add(UNDERLINE);
             } else {
-                textVbox.getStyleClass().remove(UNDERLINE);
+                textVBox.getStyleClass().remove(UNDERLINE);
             }
         });
         if (proofLine.isUnderlined().get())
-            textVbox.getStyleClass().add(UNDERLINE);
+            textVBox.getStyleClass().add(UNDERLINE);
         if (proofLine.isAssumption()) {
             ruleChoose.setVisible(false);
             ruleChoose.setManaged(false);
-            if (proofLine.subproofLevelProperty().get() != 0)
-                ((Region) textVbox.getChildren().get(0)).setPrefHeight(9);
+            if (proofLine.subProofLevelProperty().get() != 0)
+                ((Region) textVBox.getChildren().get(0)).setPrefHeight(9);
         }
-        setIndent(proofLine.subproofLevelProperty().get());
-        proofLine.subproofLevelProperty().addListener((observableValue, oldVal, newVal) -> setIndent(newVal.intValue()));
+        setIndent(proofLine.subProofLevelProperty().get());
+        proofLine.subProofLevelProperty().addListener((observableValue, oldVal, newVal) -> setIndent(newVal.intValue()));
         root.setOnMouseClicked(highlightListener);
+    }
+
+    private void handleKeyEvent(KeyEvent event) {
+        String txt = event.getCharacter();
+        if (txt.length() == 1) {
+            String replace = ConfigurationManager.KEY_MAP.get(txt);
+            if (replace != null) {
+                if (event.getEventType() == KeyEvent.KEY_TYPED)
+                    textField.insertText(textField.getCaretPosition(), replace);
+                event.consume();
+            }
+        }
     }
 
     public void setHighlighted(boolean highlighted) {
         if (highlighted) {
             if (!root.getStyleClass().contains(HIGHLIGHT_STYLE)) {
                 root.getStyleClass().add(HIGHLIGHT_STYLE);
-                textVbox.getStyleClass().add(HIGHLIGHT_STYLE);
+                textVBox.getStyleClass().add(HIGHLIGHT_STYLE);
             }
         } else {
             root.getStyleClass().remove(HIGHLIGHT_STYLE);
-            textVbox.getStyleClass().remove(HIGHLIGHT_STYLE);
+            textVBox.getStyleClass().remove(HIGHLIGHT_STYLE);
         }
     }
 
@@ -152,29 +174,26 @@ public class ProofLine {
     }
 
     private void setIndent(int level) {
-        if (proofLine.subproofLevelProperty().get() != 0)
-            ((Region) textVbox.getChildren().get(0)).setPrefHeight(9);
+        if (proofLine.subProofLevelProperty().get() != 0)
+            ((Region) textVBox.getChildren().get(0)).setPrefHeight(9);
         else
-            ((Region) textVbox.getChildren().get(0)).setPrefHeight(4);
-        subproofIndent.getChildren().clear();
+            ((Region) textVBox.getChildren().get(0)).setPrefHeight(4);
+        subProofIndent.getChildren().clear();
         for (int i = 0; i < level; ++i) {
             Region spacer = new Region();
             spacer.setOnMouseClicked(highlightListener);
             spacer.maxHeightProperty().bind(root.heightProperty().subtract(proofLine.isAssumption() && i == level - 1 ? 5 : 0));
-            spacer.setPrefWidth(SUBPROOF_INDENT);
-            spacer.setMinWidth(SUBPROOF_INDENT);
+            spacer.setPrefWidth(SUB_PROOF_INDENT);
+            spacer.setMinWidth(SUB_PROOF_INDENT);
             spacer.getStyleClass().add("proof-left-border");
-            subproofIndent.getChildren().add(spacer);
-            subproofIndent.setAlignment(Pos.BOTTOM_LEFT);
+            subProofIndent.getChildren().add(spacer);
+            subProofIndent.setAlignment(Pos.BOTTOM_LEFT);
         }
     }
 
     private MenuItem getRuleMenu(RuleList rule) {
         MenuItem menuItem = new MenuItem(rule.name);
-        menuItem.setOnAction(actionEvent -> {
-            selectedRule = rule;
-            ruleChoose.setText(rule.simpleName);
-        });
+        menuItem.setOnAction(actionEvent -> proofLine.selectedRuleProperty().set(rule));
         return menuItem;
     }
 
