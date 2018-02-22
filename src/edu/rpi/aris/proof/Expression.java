@@ -8,8 +8,8 @@ import java.util.regex.Pattern;
 
 public class Expression {
 
-    private static final Pattern LITERAL_PATTERN = Pattern.compile("[A-Za-z0-9]+");
-    private static final Pattern NOT_LITERAL_PATTERN = Pattern.compile("[^A-Za-z0-9]");
+    private static final Pattern LITERAL_PATTERN = Pattern.compile("[A-Za-z0-9]+|⊥");
+    private static final Pattern NOT_LITERAL_PATTERN = Pattern.compile("[^A-Za-z0-9⊥]");
     private Operator operator = null;
     private String polishRep;
     private String functionOperator = null;

@@ -111,7 +111,7 @@ public class MainWindow {
 
         deleteLine.setOnAction(actionEvent -> deleteLine(selectedLine.get()));
 
-        startSubproof.setOnAction(actionEvent -> startSubproof());
+        startSubproof.setOnAction(actionEvent -> startSubProof());
 
         endSubproof.setOnAction(actionEvent -> endSubproof());
 
@@ -140,14 +140,14 @@ public class MainWindow {
         int lineNum = selectedLine.get();
         if (lineNum >= 0) {
             Proof.Line line = proof.getLines().get(lineNum);
-            if (line.expressionStringProperty().get().trim().length() == 0) {
+            if (line.expressionStringProperty().get().trim().length() == 0 && line.selectedRuleProperty().get() != null) {
                 Rule rule = line.selectedRuleProperty().get().rule;
                 if (rule != null && rule.canAutoFill()) {
                     ArrayList<String> candidates = rule.getAutoFillCandidates(line.getClaimPremises());
                     if (candidates != null && candidates.size() > 0) {
                         HashSet<String> existingPremises = proof.getPossiblePremiseLines(line).stream().map(i -> proofLines.get(i).getText().replace(" ", "")).collect(Collectors.toCollection(HashSet::new));
-                        for(String s : candidates) {
-                            if(!existingPremises.contains(s.replace(" ", ""))) {
+                        for (String s : candidates) {
+                            if (!existingPremises.contains(s.replace(" ", ""))) {
                                 proofLines.get(lineNum).setText(s);
                                 proof.getLines().get(lineNum).verifyClaim();
                                 return;
@@ -161,7 +161,7 @@ public class MainWindow {
         }
     }
 
-    private void startSubproof() {
+    private void startSubProof() {
         int level = proof.getLines().get(selectedLine.get()).subProofLevelProperty().get() + 1;
         int lineNum = selectedLine.get();
         selectedLine.set(-1);
