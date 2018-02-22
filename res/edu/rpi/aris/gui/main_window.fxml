@@ -1,39 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ScrollPane?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.VBox?>
-
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
 <BorderPane stylesheets="@main_window.css" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1">
     <top>
         <HBox BorderPane.alignment="CENTER" />
     </top>
     <bottom>
         <VBox alignment="CENTER_LEFT" BorderPane.alignment="CENTER">
-            <HBox alignment="CENTER_LEFT">
-                <TextField HBox.hgrow="ALWAYS">
-               <HBox.margin>
-                  <Insets left="3.0" />
-               </HBox.margin></TextField>
-                <ImageView fitHeight="25.0" fitWidth="25.0" pickOnBounds="true" preserveRatio="true" HBox.hgrow="NEVER">
-               <HBox.margin>
-                  <Insets bottom="3.0" left="3.0" right="3.0" top="3.0" />
-               </HBox.margin></ImageView>
-            </HBox>
             <Label fx:id="statusLbl">
-            <padding>
-               <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
-            </padding></Label>
+                <padding>
+                    <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
+                </padding>
+            </Label>
         </VBox>
     </bottom>
     <center>
-        <ScrollPane fx:id="scrollPane" fitToWidth="true" BorderPane.alignment="CENTER">
-            <VBox fx:id="proofTable" alignment="CENTER" />
-        </ScrollPane>
+        <SplitPane dividerPositions="0.5" orientation="VERTICAL" BorderPane.alignment="CENTER">
+            <items>
+                <ScrollPane fx:id="scrollPane" fitToWidth="true">
+                    <VBox fx:id="proofTable" alignment="CENTER"/>
+                </ScrollPane>
+                <ScrollPane hbarPolicy="NEVER">
+                    <VBox>
+                        <Label text="Goals:">
+                            <padding>
+                                <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
+                            </padding>
+                        </Label>
+                    </VBox>
+                </ScrollPane>
+            </items>
+        </SplitPane>
     </center>
 </BorderPane>

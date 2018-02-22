@@ -25,7 +25,7 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
 
     private static boolean GUI = false;
 
-    public MainWindow mainWindow = null;
+    private MainWindow mainWindow = null;
 
     public static void main(String[] args) {
         Aris.launch(args);

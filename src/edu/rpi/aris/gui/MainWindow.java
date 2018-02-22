@@ -99,8 +99,8 @@ public class MainWindow {
 
         MenuItem addLine = new MenuItem("Add Line");
         MenuItem deleteLine = new MenuItem("Delete Line");
-        MenuItem startSubproof = new MenuItem("Start Subproof");
-        MenuItem endSubproof = new MenuItem("End Subproof");
+        MenuItem startSubProof = new MenuItem("Start Subproof");
+        MenuItem endSubProof = new MenuItem("End Subproof");
         MenuItem newPremise = new MenuItem("Add Premise");
         MenuItem verifyLine = new MenuItem("Verify Line");
 
@@ -111,9 +111,9 @@ public class MainWindow {
 
         deleteLine.setOnAction(actionEvent -> deleteLine(selectedLine.get()));
 
-        startSubproof.setOnAction(actionEvent -> startSubProof());
+        startSubProof.setOnAction(actionEvent -> startSubProof());
 
-        endSubproof.setOnAction(actionEvent -> endSubproof());
+        endSubProof.setOnAction(actionEvent -> endSubproof());
 
         newPremise.setOnAction(actionEvent -> {
             selectedLine.set(-1);
@@ -124,12 +124,12 @@ public class MainWindow {
 
         addLine.acceleratorProperty().bind(configuration.newProofLineKey);
         deleteLine.acceleratorProperty().bind(configuration.deleteProofLineKey);
-        startSubproof.acceleratorProperty().bind(configuration.startSubProofKey);
-        endSubproof.acceleratorProperty().bind(configuration.endSubProofKey);
+        startSubProof.acceleratorProperty().bind(configuration.startSubProofKey);
+        endSubProof.acceleratorProperty().bind(configuration.endSubProofKey);
         newPremise.acceleratorProperty().bind(configuration.newPremiseKey);
         verifyLine.acceleratorProperty().bind(configuration.verifyLineKey);
 
-        file.getItems().addAll(addLine, deleteLine, startSubproof, endSubproof, newPremise, verifyLine);
+        file.getItems().addAll(addLine, deleteLine, startSubProof, endSubProof, newPremise, verifyLine);
 
         bar.getMenus().addAll(file);
 
