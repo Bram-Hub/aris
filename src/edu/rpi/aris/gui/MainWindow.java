@@ -140,7 +140,7 @@ public class MainWindow {
         int lineNum = selectedLine.get();
         if (lineNum >= 0) {
             Proof.Line line = proof.getLines().get(lineNum);
-            if (line.expressionStringProperty().get().trim().length() == 0 && line.selectedRuleProperty().get() != null) {
+            if (line.expressionStringProperty().get().trim().length() == 0 /*&& line.selectedRuleProperty().get() != null*/) {
                 Rule rule = line.selectedRuleProperty().get().rule;
                 if (rule != null && rule.canAutoFill()) {
                     ArrayList<String> candidates = rule.getAutoFillCandidates(line.getClaimPremises());

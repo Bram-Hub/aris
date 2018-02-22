@@ -12,7 +12,6 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -41,10 +40,16 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
         controller.show();
     }
 
+    private void generateBugReport(Thread t, Throwable e) {
+        //TODO
+    }
+
     @Override
     public void uncaughtException(Thread t, Throwable e) {
         logger.fatal("He's dead, Jim!");
         logger.catching(Level.FATAL, e);
+        Thread bugReportThread = new Thread(() -> generateBugReport(t, e));
+        bugReportThread.start();
         if (GUI) {
             Alert alert = new Alert(Alert.AlertType.ERROR);
 
@@ -55,7 +60,7 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
 
             alert.setTitle("Fatal Error");
             alert.setHeaderText("He's dead, Jim!");
-            alert.setContentText("A fatal error has occurred and Aris was unable to recover");
+            alert.setContentText("A fatal error has occurred and Aris was unable to recover\nA bug report was generated and sent to the Aris developers");
 
             StringWriter sw = new StringWriter();
             PrintWriter pw = new PrintWriter(sw);
@@ -67,7 +72,7 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
 
             TextArea textArea = new TextArea(exceptionText);
             textArea.setEditable(false);
-            textArea.setWrapText(true);
+            textArea.setWrapText(false);
 
             textArea.setMaxWidth(Double.MAX_VALUE);
             textArea.setMaxHeight(Double.MAX_VALUE);
@@ -82,6 +87,11 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
             alert.getDialogPane().setExpandableContent(expContent);
 
             alert.showAndWait();
+        }
+        try {
+            bugReportThread.join();
+        } catch (InterruptedException e1) {
+            logger.error("Interrupted while sending bug report", e1);
         }
         System.exit(1);
     }
