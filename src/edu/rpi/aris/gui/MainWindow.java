@@ -327,4 +327,8 @@ public class MainWindow {
         selectedLine.set(newLine);
     }
 
+    public Stage getStage() {
+        return primaryStage;
+    }
+
 }

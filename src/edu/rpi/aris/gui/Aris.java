@@ -7,6 +7,7 @@ import javafx.scene.control.TextArea;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -24,6 +25,8 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
 
     private static boolean GUI = false;
 
+    public MainWindow mainWindow = null;
+
     public static void main(String[] args) {
         Aris.launch(args);
     }
@@ -36,8 +39,8 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
     public void start(Stage stage) throws IOException {
         Thread.setDefaultUncaughtExceptionHandler(this);
         GUI = true;
-        MainWindow controller = new MainWindow(stage);
-        controller.show();
+        mainWindow = new MainWindow(stage);
+        mainWindow.show();
     }
 
     private void generateBugReport(Thread t, Throwable e) {
@@ -52,6 +55,9 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
         bugReportThread.start();
         if (GUI) {
             Alert alert = new Alert(Alert.AlertType.ERROR);
+
+            alert.initModality(Modality.APPLICATION_MODAL);
+            alert.initOwner(mainWindow.getStage().getScene().getWindow());
 
             alert.getDialogPane().setPrefHeight(Region.USE_COMPUTED_SIZE);
             alert.getDialogPane().setPrefWidth(Region.USE_COMPUTED_SIZE);
