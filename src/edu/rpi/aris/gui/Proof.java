@@ -21,6 +21,7 @@ public class Proof {
 
     private ObservableMap<Line, Integer> lineLookup = FXCollections.observableHashMap();
     private ObservableList<Line> lines = FXCollections.observableArrayList();
+    private ObservableList<Goal> goals = FXCollections.observableArrayList();
     private SimpleIntegerProperty numLines = new SimpleIntegerProperty();
     private SimpleIntegerProperty numPremises = new SimpleIntegerProperty();
 
@@ -58,6 +59,20 @@ public class Proof {
         line.isUnderlined().bind(Bindings.createBooleanBinding(() -> line.lineNumber.get() == numPremises.get() - 1, numPremises));
         numPremises.set(numPremises.get() + 1);
         return line;
+    }
+
+    public Goal addGoal() {
+        Goal goal = new Goal();
+        goals.add(goal);
+        return goal;
+    }
+
+    public void removeGoal(int goalNum) {
+        goals.remove(goalNum);
+    }
+
+    public Goal getGoal(int goalNum) {
+        return goals.get(goalNum);
     }
 
     public HashSet<Integer> getPossiblePremiseLines(Line line) {
@@ -350,6 +365,12 @@ public class Proof {
             }
         }
 
+    }
+
+    public static class Goal {
+        private SimpleStringProperty goalString = new SimpleStringProperty();
+        private Expression expression = null;
+        private Status goalStatus = Status.NONE;
     }
 
 }
