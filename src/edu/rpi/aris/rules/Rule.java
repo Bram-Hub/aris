@@ -12,14 +12,24 @@ public abstract class Rule {
     }
 
     public String verifyClaim(Claim claim) {
-        if (!canGeneralizePremises() && claim.getPremises().length != requiredPremises())
-            return "Rule " + getName() + " requires exactly " + requiredPremises() + " premises";
+        if (canGeneralizePremises()) {
+            if (claim.getPremises().length < requiredPremises())
+                return "Rule " + getName() + " requires at least " + requiredPremises() + " premises";
+        } else {
+            if (claim.getPremises().length != requiredPremises())
+                return "Rule " + getName() + " requires exactly " + requiredPremises() + " premises";
+        }
         int spPremises = 0;
         for (Premise p : claim.getPremises())
             if (p.isSubproof())
                 spPremises++;
-        if (!canGeneralizePremises() && spPremises != subProofPremises())
-            return "Rule " + getName() + " requires exactly " + subProofPremises() + " subproof(s) as premises";
+        if (canGeneralizePremises()) {
+            if (spPremises < subProofPremises())
+                return "Rule " + getName() + " requires at least " + subProofPremises() + " subproof(s) as premises";
+        } else {
+            if (spPremises != subProofPremises())
+                return "Rule " + getName() + " requires exactly " + subProofPremises() + " subproof(s) as premises";
+        }
         return verifyClaim(claim.getConclusion(), claim.getPremises());
     }
 
