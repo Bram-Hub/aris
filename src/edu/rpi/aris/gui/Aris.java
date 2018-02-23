@@ -63,6 +63,7 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
             alert.getDialogPane().setPrefWidth(Region.USE_COMPUTED_SIZE);
 
             alert.getDialogPane().setPrefWidth(600);
+            alert.getDialogPane().setPrefHeight(500);
 
             alert.setTitle("Fatal Error");
             alert.setHeaderText("He's dead, Jim!");
@@ -82,15 +83,18 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
 
             textArea.setMaxWidth(Double.MAX_VALUE);
             textArea.setMaxHeight(Double.MAX_VALUE);
+
             GridPane.setVgrow(textArea, Priority.ALWAYS);
             GridPane.setHgrow(textArea, Priority.ALWAYS);
 
             GridPane expContent = new GridPane();
+            expContent.setMinHeight(300);
             expContent.setMaxWidth(Double.MAX_VALUE);
             expContent.add(label, 0, 0);
             expContent.add(textArea, 0, 1);
 
             alert.getDialogPane().setExpandableContent(expContent);
+            alert.getDialogPane().setExpanded(true);
 
             alert.showAndWait();
         }

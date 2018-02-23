@@ -22,9 +22,10 @@
                 <ScrollPane fx:id="scrollPane" fitToWidth="true">
                     <VBox fx:id="proofTable" alignment="CENTER"/>
                 </ScrollPane>
-                <ScrollPane hbarPolicy="NEVER">
+                <ScrollPane fx:id="goalScroll" fitToHeight="true" fitToWidth="true" hbarPolicy="NEVER"
+                            maxHeight="100.0">
                     <VBox>
-                        <Label text="Goals:">
+                        <Label fx:id="goalLbl" text="Goals:">
                             <padding>
                                 <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
                             </padding>

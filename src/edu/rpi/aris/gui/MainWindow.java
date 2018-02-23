@@ -31,10 +31,15 @@ public class MainWindow {
     @FXML
     private ScrollPane scrollPane;
     @FXML
+    private ScrollPane goalScroll;
+    @FXML
     private Label statusLbl;
+    @FXML
+    private Label goalLbl;
 
     private ObjectProperty<Font> fontObjectProperty;
     private ArrayList<ProofLine> proofLines = new ArrayList<>();
+    private ArrayList<GoalLine> goalLines = new ArrayList<>();
     private SimpleIntegerProperty selectedLine = new SimpleIntegerProperty(-1);
     private Proof proof = new Proof();
     private Stage primaryStage;
@@ -46,11 +51,13 @@ public class MainWindow {
         fontObjectProperty = new SimpleObjectProperty<>(new Font(14));
         setupScene();
         selectedLine.addListener((observableValue, oldVal, newVal) -> {
+            statusLbl.textProperty().unbind();
             if (selectedLine.get() >= 0) {
                 statusLbl.textProperty().bind(proof.getLines().get(selectedLine.get()).statusMsgProperty());
                 proof.getLines().get(newVal.intValue()).verifyClaim();
-            } else
-                statusLbl.textProperty().unbind();
+            } else if (selectedLine.get() < -1) {
+                statusLbl.textProperty().bind(proof.getGoals().get(selectedLine.get() * -1 - 2).statusStringProperty());
+            }
             updateHighlighting(newVal.intValue());
         });
     }
@@ -82,13 +89,19 @@ public class MainWindow {
         if (selectedLine.get() > 0) {
             requestFocus(selectedLine.get() - 1);
             autoScroll(scrollPane.getContent().getBoundsInLocal());
+        } else if (selectedLine.get() < -2) {
+            requestFocus(selectedLine.get() + 1);
+            autoScroll(goalScroll.getContent().getBoundsInLocal());
         }
     }
 
     private synchronized void lineDown() {
-        if (selectedLine.get() + 1 < proof.numLinesProperty().get()) {
+        if (selectedLine.get() >= 0 && selectedLine.get() + 1 < proof.numLinesProperty().get()) {
             requestFocus(selectedLine.get() + 1);
             autoScroll(scrollPane.getContent().getBoundsInLocal());
+        } else if (selectedLine.get() < -1 && selectedLine.get() > proof.getGoals().size() * -1 - 1) {
+            requestFocus(selectedLine.get() - 1);
+            autoScroll(goalScroll.getContent().getBoundsInLocal());
         }
     }
 
@@ -103,8 +116,11 @@ public class MainWindow {
         MenuItem endSubProof = new MenuItem("End Subproof");
         MenuItem newPremise = new MenuItem("Add Premise");
         MenuItem verifyLine = new MenuItem("Verify Line");
+        MenuItem addGoal = new MenuItem("Add Goal");
 
         addLine.setOnAction(actionEvent -> {
+            if (selectedLine.get() < 0)
+                return;
             addProofLine(false, proof.getLines().get(selectedLine.get()).subProofLevelProperty().get(), selectedLine.get() + 1);
             selectedLine.set(selectedLine.get() + 1);
         });
@@ -122,14 +138,20 @@ public class MainWindow {
 
         verifyLine.setOnAction(actionEvent -> verifyLine());
 
+        addGoal.setOnAction(actionEvent -> {
+            selectedLine.set(-1);
+            selectedLine.set(-2 - addGoal());
+        });
+
         addLine.acceleratorProperty().bind(configuration.newProofLineKey);
         deleteLine.acceleratorProperty().bind(configuration.deleteProofLineKey);
         startSubProof.acceleratorProperty().bind(configuration.startSubProofKey);
         endSubProof.acceleratorProperty().bind(configuration.endSubProofKey);
         newPremise.acceleratorProperty().bind(configuration.newPremiseKey);
         verifyLine.acceleratorProperty().bind(configuration.verifyLineKey);
+        addGoal.acceleratorProperty().bind(configuration.addGoalKey);
 
-        file.getItems().addAll(addLine, deleteLine, startSubProof, endSubProof, newPremise, verifyLine);
+        file.getItems().addAll(addLine, deleteLine, startSubProof, endSubProof, newPremise, verifyLine, addGoal);
 
         bar.getMenus().addAll(file);
 
@@ -181,24 +203,37 @@ public class MainWindow {
     }
 
     private synchronized void autoScroll(Bounds contentBounds) {
+        HBox root = null;
+        ScrollPane scroll = null;
+        double startY = 0;
         if (selectedLine.get() >= 0) {
-            ProofLine line = proofLines.get(selectedLine.get());
-            if (line != null && line.getRootNode().getHeight() != 0) {
-                double startY = 0;
-                for (int i = 0; i < proof.getLines().size(); ++i) {
-                    if (i < selectedLine.get()) {
-                        startY += proofLines.get(i).getRootNode().getHeight();
-                    } else
-                        break;
-                }
-                double downScroll = (startY + line.getRootNode().getHeight() - scrollPane.getHeight()) / (contentBounds.getHeight() - scrollPane.getHeight());
-                double upScroll = (startY) / (contentBounds.getHeight() - scrollPane.getHeight());
-                double currentScroll = scrollPane.getVvalue();
-                if (currentScroll < downScroll) {
-                    scrollPane.setVvalue(downScroll);
-                } else if (currentScroll > upScroll) {
-                    scrollPane.setVvalue(upScroll);
-                }
+            root = proofLines.get(selectedLine.get()).getRootNode();
+            scroll = scrollPane;
+            for (int i = 0; i < proof.getLines().size(); ++i) {
+                if (i < selectedLine.get()) {
+                    startY += proofLines.get(i).getRootNode().getHeight();
+                } else
+                    break;
+            }
+        } else if (selectedLine.get() < -1) {
+            root = goalLines.get(selectedLine.get() * -1 - 2).getRootNode();
+            scroll = goalScroll;
+            startY += goalLbl.getHeight();
+            for (int i = 0; i < proof.getGoals().size(); ++i) {
+                if (i < selectedLine.get() * -1 - 2) {
+                    startY += goalLines.get(i).getRootNode().getHeight();
+                } else
+                    break;
+            }
+        }
+        if (root != null && scroll != null && root.getHeight() != 0) {
+            double downScroll = (startY + root.getHeight() - scroll.getHeight()) / (contentBounds.getHeight() - scroll.getHeight());
+            double upScroll = (startY) / (contentBounds.getHeight() - scroll.getHeight());
+            double currentScroll = scroll.getVvalue();
+            if (currentScroll < downScroll) {
+                scroll.setVvalue(downScroll);
+            } else if (currentScroll > upScroll) {
+                scroll.setVvalue(upScroll);
             }
         }
     }
@@ -206,16 +241,21 @@ public class MainWindow {
     @FXML
     public void initialize() {
         scrollPane.getContent().boundsInLocalProperty().addListener((observableValue, oldBounds, newBounds) -> {
-            if (oldBounds.getHeight() != newBounds.getHeight())
+            if (oldBounds.getHeight() != newBounds.getHeight() && selectedLine.get() >= 0)
+                autoScroll(newBounds);
+        });
+        goalScroll.getContent().boundsInLocalProperty().addListener((ov, oldVal, newBounds) -> {
+            if (oldVal.getHeight() != newBounds.getHeight() && selectedLine.get() < -1)
                 autoScroll(newBounds);
         });
         addPremise();
+        addGoal();
         selectedLine.set(-1);
         statusLbl.fontProperty().bind(fontObjectProperty);
     }
 
     private synchronized void addProofLine(boolean assumption, int proofLevel, int index) {
-        if (proofLevel < 0)
+        if (proofLevel < 0 || index < 0)
             return;
         addProofLine(proof.addLine(index, assumption, proofLevel));
     }
@@ -241,6 +281,24 @@ public class MainWindow {
         return line.lineNumberProperty().get();
     }
 
+    private synchronized int addGoal() {
+        FXMLLoader loader = new FXMLLoader(MainWindow.class.getResource("goal_line.fxml"));
+        Proof.Goal goal = proof.addGoal();
+        GoalLine controller = new GoalLine(this, goal);
+        loader.setController(controller);
+        HBox box = null;
+        try {
+            box = loader.load();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        int index = goal.goalNumProperty().get();
+        VBox content = (VBox) goalScroll.getContent();
+        content.getChildren().add(index + 1, box);
+        goalLines.add(index, controller);
+        return index;
+    }
+
     public ObjectProperty<Font> getFontProperty() {
         return fontObjectProperty;
     }
@@ -248,6 +306,11 @@ public class MainWindow {
     public synchronized void requestFocus(ProofLine line) {
         int index = proofLines.indexOf(line);
         requestFocus(index);
+    }
+
+    public void requestFocus(GoalLine line) {
+        selectedLine.set(-1);
+        selectedLine.set(-2 - line.lineNumber());
     }
 
     private synchronized void requestFocus(int lineNum) {
@@ -299,6 +362,17 @@ public class MainWindow {
                 }
             }
             removeLine(lineNum);
+        } else if (lineNum < -1) {
+            if (proof.getGoals().size() <= 1)
+                return;
+            lineNum = lineNum * -1 - 2;
+            selectedLine.set(-1);
+            proof.removeGoal(lineNum);
+            goalLines.remove(lineNum);
+            ((VBox) goalScroll.getContent()).getChildren().remove(lineNum + 1);
+            if (lineNum >= proof.getGoals().size())
+                lineNum = proof.getGoals().size() - 1;
+            selectedLine.set(-2 - lineNum);
         }
     }
 
@@ -330,5 +404,6 @@ public class MainWindow {
     public Stage getStage() {
         return primaryStage;
     }
+
 
 }

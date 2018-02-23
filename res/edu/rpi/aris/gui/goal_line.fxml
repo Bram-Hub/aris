@@ -4,8 +4,9 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.*?>
-<HBox xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/8.0.121" alignment="CENTER_LEFT">
-    <TextField fx:id="goalText" HBox.hgrow="ALWAYS">
+<HBox xmlns:fx="http://javafx.com/fxml/1" fx:id="root" alignment="CENTER" stylesheets="@main_window.css"
+      xmlns="http://javafx.com/javafx/8.0.121">
+    <TextField fx:id="goalText" focusTraversable="false" minWidth="100.0" HBox.hgrow="ALWAYS">
         <HBox.margin>
             <Insets left="3.0"/>
         </HBox.margin>

@@ -62,7 +62,8 @@ public class Proof {
     }
 
     public Goal addGoal() {
-        Goal goal = new Goal();
+        Goal goal = new Goal(this);
+        goal.goalNum.bind(Bindings.createIntegerBinding(() -> goals.indexOf(goal), goals));
         goals.add(goal);
         return goal;
     }
@@ -71,8 +72,8 @@ public class Proof {
         goals.remove(goalNum);
     }
 
-    public Goal getGoal(int goalNum) {
-        return goals.get(goalNum);
+    public ObservableList<Goal> getGoals() {
+        return goals;
     }
 
     public HashSet<Integer> getPossiblePremiseLines(Line line) {
@@ -92,6 +93,8 @@ public class Proof {
     }
 
     public void togglePremise(int selected, Line premise) {
+        if (selected < 0)
+            return;
         Line line = lines.get(selected);
         if (line.isAssumption || premise.lineNumber.get() >= selected)
             return;
@@ -368,9 +371,85 @@ public class Proof {
     }
 
     public static class Goal {
+        private SimpleIntegerProperty goalNum = new SimpleIntegerProperty();
         private SimpleStringProperty goalString = new SimpleStringProperty();
+        private SimpleStringProperty statusString = new SimpleStringProperty();
+        private SimpleObjectProperty<Status> goalStatus = new SimpleObjectProperty<>(Status.NONE);
         private Expression expression = null;
-        private Status goalStatus = Status.NONE;
+        private Timer parseTimer = null;
+        private Proof proof;
+
+        public Goal(Proof proof) {
+            this.proof = proof;
+            goalString.addListener((observableValue, s, t1) -> {
+                expression = null;
+                startTimer();
+            });
+        }
+
+        public SimpleIntegerProperty goalNumProperty() {
+            return goalNum;
+        }
+
+        public SimpleStringProperty goalStringProperty() {
+            return goalString;
+        }
+
+        public SimpleStringProperty statusStringProperty() {
+            return statusString;
+        }
+
+        public SimpleObjectProperty<Status> goalStatusProperty() {
+            return goalStatus;
+        }
+
+        private synchronized void buildExpression() {
+            String str = goalString.get();
+            if (str.trim().length() > 0) {
+                try {
+                    expression = new Expression(SentenceUtil.toPolishNotation(str));
+                    setStatus("");
+                    goalStatus.set(Status.NONE);
+                } catch (ParseException e) {
+                    setStatus(e.getMessage());
+                    goalStatus.set(Status.INVALID_EXPRESSION);
+                    expression = null;
+                }
+            } else {
+                expression = null;
+                setStatus("");
+                goalStatus.set(Status.NONE);
+            }
+        }
+
+        private void setStatus(String status) {
+            Platform.runLater(() -> statusString.set(status));
+        }
+
+        private synchronized void startTimer() {
+            if (!Aris.isGUI())
+                return;
+            stopTimer();
+            TimerTask task = new TimerTask() {
+                @Override
+                public void run() {
+                    synchronized (Goal.this) {
+                        parseTimer = null;
+                        buildExpression();
+                    }
+                }
+            };
+            parseTimer = new Timer(true);
+            parseTimer.schedule(task, 1000);
+        }
+
+        private synchronized void stopTimer() {
+            if (parseTimer != null) {
+                parseTimer.cancel();
+                parseTimer = null;
+            }
+        }
+
     }
 
 }
