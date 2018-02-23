@@ -1,6 +1,7 @@
 package edu.rpi.aris.gui;
 
 import edu.rpi.aris.rules.Rule;
+import javafx.beans.binding.Bindings;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleIntegerProperty;
@@ -251,6 +252,7 @@ public class MainWindow {
             if (oldVal.getHeight() != newBounds.getHeight() && selectedLine.get() < -1)
                 autoScroll(newBounds);
         });
+        goalScroll.maxHeightProperty().bind(Bindings.createDoubleBinding(() -> Math.max(100, goalScroll.getContent().getBoundsInLocal().getHeight()), goalScroll.getContent().boundsInLocalProperty()));
         addPremise();
         addGoal();
         selectedLine.set(-1);
