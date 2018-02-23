@@ -92,6 +92,9 @@ public class MainWindow {
         } else if (selectedLine.get() < -2) {
             requestFocus(selectedLine.get() + 1);
             autoScroll(goalScroll.getContent().getBoundsInLocal());
+        } else if (selectedLine.get() == -2) {
+            requestFocus(proof.numLinesProperty().get() - 1);
+            autoScroll(scrollPane.getContent().getBoundsInLocal());
         }
     }
 

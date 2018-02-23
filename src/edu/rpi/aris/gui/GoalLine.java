@@ -1,5 +1,6 @@
 package edu.rpi.aris.gui;
 
+import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.scene.control.TextField;
@@ -22,6 +23,7 @@ public class GoalLine {
 
     private Proof.Goal goal;
     private MainWindow window;
+    private int caretPos = 0;
 
     GoalLine(MainWindow window, Proof.Goal goal) {
         this.goal = goal;
@@ -51,6 +53,18 @@ public class GoalLine {
                 }
                 if (window.handleKeyEvent(keyEvent))
                     keyEvent.consume();
+            }
+        });
+        goalText.focusedProperty().addListener((observableValue, oldVal, newVal) -> {
+            if (newVal)
+                Platform.runLater(() -> {
+                    goalText.deselect();
+                    goalText.positionCaret(caretPos);
+                });
+            else {
+                caretPos = goalText.getCaretPosition();
+                if (goalText.isEditable())
+                    goalText.requestFocus();
             }
         });
     }
