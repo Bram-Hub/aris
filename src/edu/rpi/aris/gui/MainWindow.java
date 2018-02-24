@@ -121,6 +121,7 @@ public class MainWindow {
         MenuItem newPremise = new MenuItem("Add Premise");
         MenuItem verifyLine = new MenuItem("Verify Line");
         MenuItem addGoal = new MenuItem("Add Goal");
+        MenuItem verifyProof = new MenuItem("Verify Proof");
 
         addLine.setOnAction(actionEvent -> {
             if (selectedLine.get() < 0)
@@ -147,6 +148,8 @@ public class MainWindow {
             selectedLine.set(-2 - addGoal());
         });
 
+        verifyProof.setOnAction(actionEvent -> proof.verifyProof());
+
         addLine.acceleratorProperty().bind(configuration.newProofLineKey);
         deleteLine.acceleratorProperty().bind(configuration.deleteProofLineKey);
         startSubProof.acceleratorProperty().bind(configuration.startSubProofKey);
@@ -154,8 +157,9 @@ public class MainWindow {
         newPremise.acceleratorProperty().bind(configuration.newPremiseKey);
         verifyLine.acceleratorProperty().bind(configuration.verifyLineKey);
         addGoal.acceleratorProperty().bind(configuration.addGoalKey);
+        verifyProof.acceleratorProperty().bind(configuration.verifyProofKey);
 
-        file.getItems().addAll(addLine, deleteLine, startSubProof, endSubProof, newPremise, verifyLine, addGoal);
+        file.getItems().addAll(addLine, deleteLine, startSubProof, endSubProof, newPremise, verifyLine, addGoal, verifyProof);
 
         bar.getMenus().addAll(file);
 
@@ -166,7 +170,7 @@ public class MainWindow {
         int lineNum = selectedLine.get();
         if (lineNum >= 0) {
             Proof.Line line = proof.getLines().get(lineNum);
-            if (line.expressionStringProperty().get().trim().length() == 0 /*&& line.selectedRuleProperty().get() != null*/) {
+            if (line.expressionStringProperty().get().trim().length() == 0 && line.selectedRuleProperty().get() != null) {
                 Rule rule = line.selectedRuleProperty().get().rule;
                 if (rule != null && rule.canAutoFill()) {
                     ArrayList<String> candidates = rule.getAutoFillCandidates(line.getClaimPremises());
@@ -175,7 +179,7 @@ public class MainWindow {
                         for (String s : candidates) {
                             if (!existingPremises.contains(s.replace(" ", ""))) {
                                 proofLines.get(lineNum).setText(s);
-                                proof.getLines().get(lineNum).verifyClaim();
+                                line.verifyClaim();
                                 return;
                             }
                         }
@@ -183,7 +187,7 @@ public class MainWindow {
                     }
                 }
             }
-            proof.getLines().get(lineNum).verifyClaim();
+            line.verifyClaim();
         }
     }
 
@@ -314,11 +318,15 @@ public class MainWindow {
     }
 
     public void requestFocus(GoalLine line) {
+        if (selectedLine.get() == -2 - line.lineNumber())
+            return;
         selectedLine.set(-1);
         selectedLine.set(-2 - line.lineNumber());
     }
 
     private synchronized void requestFocus(int lineNum) {
+        if (selectedLine.get() == lineNum)
+            return;
         selectedLine.set(-1);
         selectedLine.set(lineNum);
     }
@@ -347,6 +355,9 @@ public class MainWindow {
             if (line != null)
                 for (ProofLine p : proofLines)
                     p.setHighlighted(highlighted.contains(p.getModel()) && p.getModel() != line);
+        } else {
+            for (ProofLine p : proofLines)
+                p.setHighlighted(false);
         }
     }
 

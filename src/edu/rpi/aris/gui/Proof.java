@@ -13,6 +13,7 @@ import javafx.collections.*;
 import javafx.scene.image.Image;
 
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -62,7 +63,7 @@ public class Proof {
     }
 
     public Goal addGoal() {
-        Goal goal = new Goal(this);
+        Goal goal = new Goal();
         goal.goalNum.bind(Bindings.createIntegerBinding(() -> goals.indexOf(goal), goals));
         goals.add(goal);
         return goal;
@@ -145,6 +146,56 @@ public class Proof {
         }
     }
 
+    public ArrayList<Status> verifyProof() {
+        ArrayList<Status> goalStatus = new ArrayList<>();
+        for (Goal g : goals) {
+            if (g.expression == null && !g.buildExpression())
+                goalStatus.add(Status.INVALID_EXPRESSION);
+            else {
+                Line line = findGoal(g.expression);
+                if (line == null) {
+                    g.goalStatus.set(Status.INVALID_CLAIM);
+                    g.setStatus("This goal is not a top level statement in the proof");
+                    goalStatus.add(Status.INVALID_CLAIM);
+                } else {
+                    boolean valid = recursiveLineVerification(line);
+                    g.goalStatus.set(valid ? Status.CORRECT : Status.INVALID_CLAIM);
+                    g.setStatus(valid ? "Congratulations! You proved the goal!" : "The goal does not follow from the support steps");
+                    goalStatus.add(g.goalStatus.get());
+                }
+            }
+        }
+        return goalStatus;
+    }
+
+    private boolean recursiveLineVerification(Line l) {
+        if (l.isAssumption || l.status.get() == Status.CORRECT)
+            return true;
+        if (l.status.get() == Status.NONE) {
+            l.buildClaim();
+            if (l.claim == null || !l.verifyClaim())
+                return false;
+            for (Line p : l.premises)
+                if (!recursiveLineVerification(p))
+                    return false;
+            return true;
+        } else
+            return false;
+    }
+
+    private Line findGoal(Expression e) {
+        if (e == null)
+            return null;
+        for (int i = numLines.get() - 1; i >= 0; --i) {
+            Line l = lines.get(i);
+            if (l.expression == null)
+                l.buildExpression();
+            if (l.subProofLevel.get() == 0 && l.expression != null && l.expression.equals(e))
+                return l;
+        }
+        return null;
+    }
+
     private Line getSubProofConclusion(Line assumption, Line goal) {
         int lvl = assumption.subProofLevel.get();
         if (!assumption.isAssumption || lvl == 0)
@@ -157,6 +208,13 @@ public class Proof {
                 return lines.get(i - 1);
         }
         return null;
+    }
+
+    private void resetGoalStatus() {
+        for (Goal g : goals) {
+            g.goalStatus.set(Status.NONE);
+            g.buildExpression();
+        }
     }
 
     public enum Status {
@@ -202,10 +260,17 @@ public class Proof {
                     expression = null;
                     claim = null;
                     startTimer();
+                    proof.resetGoalStatus();
                 }
             });
-            selectedRule.addListener((observableValue, oldVal, newVal) -> verifyClaim());
-            premises.addListener((SetChangeListener<Line>) change -> verifyClaim());
+            selectedRule.addListener((observableValue, oldVal, newVal) -> {
+                verifyClaim();
+                proof.resetGoalStatus();
+            });
+            premises.addListener((SetChangeListener<Line>) change -> {
+                verifyClaim();
+                proof.resetGoalStatus();
+            });
         }
 
         public IntegerProperty lineNumberProperty() {
@@ -377,10 +442,8 @@ public class Proof {
         private SimpleObjectProperty<Status> goalStatus = new SimpleObjectProperty<>(Status.NONE);
         private Expression expression = null;
         private Timer parseTimer = null;
-        private Proof proof;
 
-        public Goal(Proof proof) {
-            this.proof = proof;
+        public Goal() {
             goalString.addListener((observableValue, s, t1) -> {
                 expression = null;
                 startTimer();
@@ -403,22 +466,26 @@ public class Proof {
             return goalStatus;
         }
 
-        private synchronized void buildExpression() {
+        private synchronized boolean buildExpression() {
+            stopTimer();
             String str = goalString.get();
             if (str.trim().length() > 0) {
                 try {
                     expression = new Expression(SentenceUtil.toPolishNotation(str));
                     setStatus("");
                     goalStatus.set(Status.NONE);
+                    return true;
                 } catch (ParseException e) {
                     setStatus(e.getMessage());
                     goalStatus.set(Status.INVALID_EXPRESSION);
                     expression = null;
+                    return false;
                 }
             } else {
                 expression = null;
                 setStatus("");
                 goalStatus.set(Status.NONE);
+                return false;
             }
         }
 
