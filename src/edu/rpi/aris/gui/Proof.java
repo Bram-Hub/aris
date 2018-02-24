@@ -178,8 +178,7 @@ public class Proof {
         if (l.isAssumption || l.status.get() == Status.CORRECT)
             return true;
         if (l.status.get() == Status.NONE) {
-            l.buildClaim();
-            if (l.claim == null || !l.verifyClaim())
+            if (!l.verifyClaim())
                 return false;
             for (Line p : l.premises)
                 if (!recursiveLineVerification(p))
