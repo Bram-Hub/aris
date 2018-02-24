@@ -152,13 +152,19 @@ public class Proof {
             if (g.expression == null && !g.buildExpression())
                 goalStatus.add(Status.INVALID_EXPRESSION);
             else {
-                Line line = findGoal(g.expression);
-                if (line == null) {
+                ArrayList<Line> lines = findGoals(g.expression);
+                if (lines.size() == 0) {
                     g.goalStatus.set(Status.INVALID_CLAIM);
                     g.setStatus("This goal is not a top level statement in the proof");
                     goalStatus.add(Status.INVALID_CLAIM);
                 } else {
-                    boolean valid = recursiveLineVerification(line);
+                    boolean valid = false;
+                    for (Line l : lines) {
+                        if (recursiveLineVerification(l)) {
+                            valid = true;
+                            break;
+                        }
+                    }
                     g.goalStatus.set(valid ? Status.CORRECT : Status.INVALID_CLAIM);
                     g.setStatus(valid ? "Congratulations! You proved the goal!" : "The goal does not follow from the support steps");
                     goalStatus.add(g.goalStatus.get());
@@ -183,17 +189,18 @@ public class Proof {
             return false;
     }
 
-    private Line findGoal(Expression e) {
+    private ArrayList<Line> findGoals(Expression e) {
+        ArrayList<Line> goals = new ArrayList<>();
         if (e == null)
-            return null;
+            return goals;
         for (int i = numLines.get() - 1; i >= 0; --i) {
             Line l = lines.get(i);
             if (l.expression == null)
                 l.buildExpression();
             if (l.subProofLevel.get() == 0 && l.expression != null && l.expression.equals(e))
-                return l;
+                goals.add(l);
         }
-        return null;
+        return goals;
     }
 
     private Line getSubProofConclusion(Line assumption, Line goal) {
