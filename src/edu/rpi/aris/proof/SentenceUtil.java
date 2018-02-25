@@ -129,12 +129,7 @@ public class SentenceUtil {
                 String exp = exprs.get(i);
                 if (exp.length() == 0)
                     throw new ParseException("Binary connective missing expression", -1);
-                Operator opr;
-                if ((opr = getUnaryOpr(exp.charAt(0))) != null)
-                    exp = exp.substring(1);
                 exp = toPolish(removeParen(exp), quantifiers);
-                if (opr != null)
-                    exp = OP + opr.rep + " " + exp + CP;
                 exprs.set(i, exp);
             }
             return OP + oper.rep + " " + join(exprs) + CP;
@@ -144,7 +139,7 @@ public class SentenceUtil {
             if ((opr = getUnaryOpr(exp.charAt(0))) != null) {
                 if (opr.isQuantifier) {
                     String quant = quantifiers.pollFirst();
-                    if(quant == null)
+                    if (quant == null)
                         throw new ParseException("Malformed quantifier in expression", -1);
                     exp = exp.substring(quant.length());
                     exp = toPolish(removeParen(exp), quantifiers);
