@@ -2,7 +2,6 @@ package edu.rpi.aris.proof;
 
 import org.apache.commons.lang.ArrayUtils;
 
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
@@ -24,11 +23,11 @@ public class Expression {
     private Expression parent = null;
     private String[] parentVariables;
 
-    public Expression(String expr) throws ParseException {
+    public Expression(String expr) throws ExpressionParseException {
         this(expr, null, new String[0]);
     }
 
-    public Expression(String expr, Expression parent, String[] parentVariables) throws ParseException {
+    public Expression(String expr, Expression parent, String[] parentVariables) throws ExpressionParseException {
         Objects.requireNonNull(parentVariables);
         this.parent = parent;
         this.parentVariables = parentVariables;
@@ -36,7 +35,7 @@ public class Expression {
     }
 
     //this constructor does not support functional operators
-    public Expression(Expression[] expressions, Operator opr, Expression parent, String[] parentVariables) throws ParseException {
+    public Expression(Expression[] expressions, Operator opr, Expression parent, String[] parentVariables) throws ExpressionParseException {
         Objects.requireNonNull(expressions);
         Objects.requireNonNull(parentVariables);
         this.parent = parent;
@@ -53,42 +52,44 @@ public class Expression {
             init(SentenceUtil.toPolish(this.expressions, opr.rep));
     }
 
-    private void init(String expr) throws ParseException {
+    private void init(String expr) throws ExpressionParseException {
         polishRep = expr;
         expr = SentenceUtil.removeParen(expr);
+        int parenOffset = (polishRep.length() - expr.length()) / 2;
         if (!expr.contains(" ")) {
+            isLiteral = true;
+            expressions = new Expression[0];
             if ((parent == null || !parent.isFunctional) && !LITERAL_PATTERN.matcher(expr).matches()) {
                 if (expr.length() == 0)
-                    throw new ParseException("No expression given", -1);
+                    throw new ExpressionParseException("No expression given", -1, 0);
                 if (Character.isDigit(expr.charAt(0)))
-                    throw new ParseException("Literal cannot start with a number", -1);
+                    throw new ExpressionParseException("Literal cannot start with a number", parenOffset, 1);
                 Matcher matcher = NOT_LITERAL_PATTERN.matcher(expr);
                 if (matcher.find()) {
                     String symbol = matcher.group();
-                    throw new ParseException("Unknown symbol in expression: " + symbol, -1);
+                    int start = matcher.start();
+                    int end = matcher.end();
+                    throw new ExpressionParseException("Unknown symbol in expression: \"" + symbol + "\"", start + parenOffset, end - start + 1);
                 }
-                throw new ParseException("Not a literal: " + expr, -1);
-            } else if(parent != null && parent.isFunctional && !SentenceUtil.VARIABLE_PATTERN.matcher(expr).matches()) {
-                throw new ParseException("Invalid function variable: " + expr, -1);
+                throw new ExpressionParseException("Not a literal: \"" + expr + "\"", parenOffset, expr.length());
+            } else if (parent != null && parent.isFunctional && !SentenceUtil.VARIABLE_PATTERN.matcher(expr).matches()) {
+                throw new ExpressionParseException("Invalid function variable: \"" + expr + "\"", parenOffset, expr.length());
             }
-            polishRep = expr;
-            isLiteral = true;
-            expressions = new Expression[0];
             return;
         }
         String oprStr = expr.substring(0, expr.indexOf(' '));
         operator = Operator.getOperator(oprStr);
         if (operator == null) {
             if (!FUNCTION_PATTERN.matcher(oprStr).matches())
-                throw new ParseException("Invalid function name: " + oprStr, -1);
+                throw new ExpressionParseException("Invalid function name: " + oprStr, parenOffset, oprStr.length());
             functionOperator = oprStr;
             isFunctional = true;
         } else if (operator.isQuantifier) {
             String varStr = oprStr.replaceFirst(operator.rep, "");
             if (!SentenceUtil.VARIABLE_PATTERN.matcher(varStr).matches())
-                throw new ParseException("Invalid quantifier variable: " + varStr, -1);
+                throw new ExpressionParseException("Invalid quantifier variable: " + varStr, parenOffset + 1, varStr.length());
             if (ArrayUtils.contains(parentVariables, varStr))
-                throw new ParseException("Quantifier variable introduced twice in expression: " + varStr, -1);
+                throw new ExpressionParseException("Quantifier variable introduced twice in expression: " + varStr, parenOffset + 1, varStr.length());
             quantifierVar = varStr;
         }
         expr = expr.substring(expr.indexOf(' ') + 1);
@@ -110,9 +111,9 @@ public class Expression {
         strExp.add(expr.substring(start));
         if (operator != null) {
             if (operator.isUnary && strExp.size() != 1)
-                throw new ParseException("Multiple expressions given for unary operator", -1);
+                throw new ExpressionParseException("Multiple expressions given for unary operator", parenOffset + oprStr.length() + 1 + strExp.get(0).length() + 1, strExp.get(1).length());
             else if (!operator.canGeneralize && !operator.isUnary && strExp.size() != 2)
-                throw new ParseException("Cannot create generalized " + operator.name(), -1);
+                throw new ExpressionParseException("Cannot create generalized " + operator.name(), parenOffset, polishRep.length() - parenOffset * 2);
         }
         expressions = new Expression[strExp.size()];
         String[] vars = parentVariables;
@@ -121,11 +122,17 @@ public class Expression {
             vars[parentVariables.length] = quantifierVar;
         }
         for (int i = 0; i < strExp.size(); ++i) {
-            Expression exp = new Expression(strExp.get(i), this, vars);
+            Expression exp;
+            int errorOffset = parenOffset + oprStr.length() + (i > 0 ? strExp.subList(0, i - 1).stream().mapToInt(s -> s.length() + 1).sum() : 0) + 1;
+            try {
+                exp = new Expression(strExp.get(i), this, vars);
+            } catch (ExpressionParseException e) {
+                throw new ExpressionParseException(e.getMessage() + (operator != null && operator.isQuantifier ? " Make sure you are not missing a space after your quantifiers" : ""), errorOffset, e.getErrorLength());
+            }
             if (isFunctional && !SentenceUtil.VARIABLE_PATTERN.matcher(exp.polishRep).matches())
-                throw new ParseException("Function must only contain variables", -1);
+                throw new ExpressionParseException("Function must only contain variables", errorOffset, strExp.get(i).length());
             if (exp.isLiteral && !isFunctional && (exp.polishRep.equals(quantifierVar) || ArrayUtils.contains(parentVariables, exp.polishRep)))
-                throw new ParseException("Invalid quantifier expression", -1);
+                throw new ExpressionParseException("Invalid quantifier expression", errorOffset, strExp.get(i).length());
             expressions[i] = exp;
         }
     }
@@ -191,7 +198,7 @@ public class Expression {
         return true;
     }
 
-    public Expression negate() throws ParseException {
+    public Expression negate() throws ExpressionParseException {
         return new Expression(new Expression[]{this}, Operator.NOT, this.parent, parentVariables);
     }
 
@@ -209,7 +216,7 @@ public class Expression {
             return sb.append(")").toString();
         }
         if (operator.isUnary)
-            return operator.logic + expressions[0].toLogicString();
+            return operator.logic + (operator.isQuantifier ? quantifierVar + " " : "") + expressions[0].toLogicString();
         StringBuilder sb = new StringBuilder("(");
         for (int i = 0; i < expressions.length; ++i) {
             sb.append(expressions[i].toLogicString());

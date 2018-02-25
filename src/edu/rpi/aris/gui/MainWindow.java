@@ -14,11 +14,13 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
+import org.apache.commons.lang.math.IntRange;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -37,6 +39,8 @@ public class MainWindow {
     private Label statusLbl;
     @FXML
     private Label goalLbl;
+    @FXML
+    private Label errorRangeLbl;
 
     private ObjectProperty<Font> fontObjectProperty;
     private ArrayList<ProofLine> proofLines = new ArrayList<>();
@@ -53,11 +57,30 @@ public class MainWindow {
         setupScene();
         selectedLine.addListener((observableValue, oldVal, newVal) -> {
             statusLbl.textProperty().unbind();
+            errorRangeLbl.textProperty().unbind();
             if (selectedLine.get() >= 0) {
                 statusLbl.textProperty().bind(proof.getLines().get(selectedLine.get()).statusMsgProperty());
+                errorRangeLbl.textProperty().bind(Bindings.createStringBinding(() -> {
+                    Proof.Line line = proof.getLines().get(selectedLine.get());
+                    if (line.errorRangeProperty().get() == null)
+                        return null;
+                    IntRange range = line.errorRangeProperty().get();
+                    if (range.getMinimumInteger() == range.getMaximumInteger())
+                        return String.valueOf(range.getMinimumInteger() + 1);
+                    return (range.getMinimumInteger() + 1) + " - " + (range.getMaximumInteger() + 1);
+                }, proof.getLines().get(selectedLine.get()).errorRangeProperty()));
                 proof.getLines().get(newVal.intValue()).verifyClaim();
             } else if (selectedLine.get() < -1) {
                 statusLbl.textProperty().bind(proof.getGoals().get(selectedLine.get() * -1 - 2).statusStringProperty());
+                errorRangeLbl.textProperty().bind(Bindings.createStringBinding(() -> {
+                    Proof.Goal goal = proof.getGoals().get(selectedLine.get() * -1 - 2);
+                    if (goal.errorRangeProperty().get() == null)
+                        return null;
+                    IntRange range = goal.errorRangeProperty().get();
+                    if (range.getMinimumInteger() == range.getMaximumInteger())
+                        return String.valueOf(range.getMinimumInteger() + 1);
+                    return (range.getMinimumInteger() + 1) + " - " + (range.getMaximumInteger() + 1);
+                }, proof.getGoals().get(selectedLine.get() * -1 - 2).errorRangeProperty()));
             }
             updateHighlighting(newVal.intValue());
         });
@@ -264,6 +287,16 @@ public class MainWindow {
         addGoal();
         selectedLine.set(-1);
         statusLbl.fontProperty().bind(fontObjectProperty);
+        errorRangeLbl.fontProperty().bind(fontObjectProperty);
+        errorRangeLbl.setOnMouseClicked(mouseEvent -> {
+            if (mouseEvent.getEventType() == MouseEvent.MOUSE_CLICKED) {
+                if (selectedLine.get() >= 0)
+                    proofLines.get(selectedLine.get()).selectError();
+                else if (selectedLine.get() < -1) {
+                    goalLines.get(selectedLine.get() * -1 - 2).selectError();
+                }
+            }
+        });
     }
 
     private synchronized void addProofLine(boolean assumption, int proofLevel, int index) {

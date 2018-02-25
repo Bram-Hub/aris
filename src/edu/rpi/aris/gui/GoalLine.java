@@ -8,6 +8,7 @@ import javafx.scene.control.TextFormatter;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
+import org.apache.commons.lang.math.IntRange;
 
 import java.util.function.UnaryOperator;
 
@@ -75,5 +76,11 @@ public class GoalLine {
 
     public HBox getRootNode() {
         return root;
+    }
+
+    public void selectError() {
+        IntRange error = goal.errorRangeProperty().get();
+        if (error != null)
+            goalText.selectRange(error.getMinimumInteger(), error.getMaximumInteger() + 1);
     }
 }

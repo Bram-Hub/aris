@@ -1,9 +1,6 @@
 package edu.rpi.aris.gui;
 
-import edu.rpi.aris.proof.Claim;
-import edu.rpi.aris.proof.Expression;
-import edu.rpi.aris.proof.Premise;
-import edu.rpi.aris.proof.SentenceUtil;
+import edu.rpi.aris.proof.*;
 import edu.rpi.aris.rules.RuleList;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -11,8 +8,8 @@ import javafx.beans.property.*;
 import javafx.beans.value.ChangeListener;
 import javafx.collections.*;
 import javafx.scene.image.Image;
+import org.apache.commons.lang.math.IntRange;
 
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Timer;
@@ -249,7 +246,7 @@ public class Proof {
         private SimpleBooleanProperty underlined = new SimpleBooleanProperty();
         private SimpleObjectProperty<RuleList> selectedRule = new SimpleObjectProperty<>(null);
         private SimpleObjectProperty<Status> status = new SimpleObjectProperty<>(Status.NONE);
-        private SimpleIntegerProperty errorOffset = new SimpleIntegerProperty(-1);
+        private SimpleObjectProperty<IntRange> errorRange = new SimpleObjectProperty<>(null);
         private Expression expression = null;
         private Claim claim = null;
         private SimpleStringProperty statusMsg = new SimpleStringProperty();
@@ -317,28 +314,40 @@ public class Proof {
         private synchronized void buildExpression() {
             String str = expressionString.get();
             if (str.trim().length() > 0) {
+                claim = null;
                 try {
-                    claim = null;
-                    expression = SentenceUtil.toExpression(str);
+                    String polish = SentenceUtil.toPolishNotation(str);
+                    try {
+                        expression = new Expression(polish);
+                    } catch (ExpressionParseException e) {
+                        SentenceUtil.mapExceptionToStandardForm(polish, str, e);
+                    }
                     setStatus("");
                     status.set(Status.NONE);
-                    errorOffset.set(-1);
-                } catch (ParseException e) {
+                    setErrorRange(null);
+                } catch (ExpressionParseException e) {
                     setStatus(e.getMessage());
                     status.set(Status.INVALID_EXPRESSION);
                     expression = null;
-                    errorOffset.set(e.getErrorOffset());
+                    if (e.getErrorOffset() == -1 || e.getErrorLength() == 0)
+                        setErrorRange(null);
+                    else
+                        setErrorRange(new IntRange(e.getErrorOffset(), e.getErrorOffset() + e.getErrorLength() - 1));
                 }
             } else {
                 expression = null;
                 setStatus("");
                 status.set(Status.NONE);
-                errorOffset.set(-1);
+                setErrorRange(null);
             }
         }
 
         private void setStatus(String status) {
             Platform.runLater(() -> statusMsg.set(status));
+        }
+
+        private void setErrorRange(IntRange range) {
+            Platform.runLater(() -> errorRange.set(range));
         }
 
         public Premise[] getClaimPremises() {
@@ -445,8 +454,8 @@ public class Proof {
             }
         }
 
-        public SimpleIntegerProperty errorOffsetProperty() {
-            return errorOffset;
+        public SimpleObjectProperty<IntRange> errorRangeProperty() {
+            return errorRange;
         }
     }
 
@@ -455,6 +464,7 @@ public class Proof {
         private SimpleStringProperty goalString = new SimpleStringProperty();
         private SimpleStringProperty statusString = new SimpleStringProperty();
         private SimpleObjectProperty<Status> goalStatus = new SimpleObjectProperty<>(Status.NONE);
+        private SimpleObjectProperty<IntRange> errorRange = new SimpleObjectProperty<>(null);
         private Expression expression = null;
         private Timer parseTimer = null;
 
@@ -486,22 +496,37 @@ public class Proof {
             String str = goalString.get();
             if (str.trim().length() > 0) {
                 try {
-                    expression = SentenceUtil.toExpression(str);
+                    String polish = SentenceUtil.toPolishNotation(str);
+                    try {
+                        expression = new Expression(polish);
+                    } catch (ExpressionParseException e) {
+                        SentenceUtil.mapExceptionToStandardForm(polish, str, e);
+                    }
                     setStatus("");
                     goalStatus.set(Status.NONE);
+                    setErrorRange(null);
                     return true;
-                } catch (ParseException e) {
+                } catch (ExpressionParseException e) {
                     setStatus(e.getMessage());
                     goalStatus.set(Status.INVALID_EXPRESSION);
                     expression = null;
+                    if (e.getErrorOffset() == -1 || e.getErrorLength() == 0)
+                        setErrorRange(null);
+                    else
+                        setErrorRange(new IntRange(e.getErrorOffset(), e.getErrorOffset() + e.getErrorLength() - 1));
                     return false;
                 }
             } else {
                 expression = null;
                 setStatus("");
                 goalStatus.set(Status.NONE);
+                setErrorRange(null);
                 return false;
             }
+        }
+
+        private void setErrorRange(IntRange range) {
+            Platform.runLater(() -> errorRange.set(range));
         }
 
         private void setStatus(String status) {
@@ -532,6 +557,9 @@ public class Proof {
             }
         }
 
+        public SimpleObjectProperty<IntRange> errorRangeProperty() {
+            return errorRange;
+        }
     }
 
 }

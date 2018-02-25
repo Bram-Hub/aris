@@ -1,11 +1,10 @@
 package edu.rpi.aris.proof;
 
 
+import javafx.util.Pair;
+
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.Objects;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -29,8 +28,6 @@ public class SentenceUtil {
     }
 
     public static int checkParen(String expr) {
-        if (expr.startsWith(Character.toString(OP)) && !expr.endsWith(Character.toString(CP)))
-            return 0;
         int opCount = 0;
         int cpCount = 0;
         char[] chars = expr.toCharArray();
@@ -65,7 +62,7 @@ public class SentenceUtil {
         return expr.replaceAll("\\s", "");
     }
 
-    public static String removeParen(String expr) throws ParseException {
+    public static String removeParen(String expr) throws ExpressionParseException {
         if (expr.startsWith(Character.toString(OP))) {
             boolean rmParen = true;
             int count = 0;
@@ -83,7 +80,7 @@ public class SentenceUtil {
                 if (count == 0)
                     return removeParen(expr.substring(0, expr.length() - 1).substring(1));
                 else
-                    throw new ParseException("Unbalanced parentheses in expression", -1);
+                    throw new ExpressionParseException("Unbalanced parentheses in expression", -1, 0);
             }
         }
         return expr;
@@ -93,26 +90,29 @@ public class SentenceUtil {
         return new Expression(toPolishNotation(expr));
     }
 
-    public static String toPolishNotation(String expr) throws ParseException {
+    public static String toPolishNotation(String expr) throws ExpressionParseException {
         int parenLoc;
         if ((parenLoc = checkParen(expr)) != -1)
-            throw new ParseException("Unbalanced parentheses in expression", parenLoc);
+            throw new ExpressionParseException("Unbalanced parentheses in expression", parenLoc, 1);
         String noParen = removeParen(removeWhitespace(expr));
         try {
             return toPolish(noParen, findQuantifiers(expr));
-        } catch (ParseException e) {
+        } catch (ExpressionParseException e) {
             int offset = e.getErrorOffset();
+            int length = e.getErrorLength();
             if (offset == -1)
                 throw e;
             int j = 0;
-            for (int i = 0; i < e.getErrorOffset() && j < expr.length() && i < noParen.length(); ++i) {
+            for (int i = 0; i < e.getErrorOffset() + e.getErrorLength() && j < expr.length() && i < noParen.length(); ++i) {
                 while (noParen.charAt(i) != expr.charAt(j)) {
-                    ++offset;
+                    if (i < e.getErrorOffset())
+                        ++offset;
+                    ++length;
                     ++j;
                 }
                 ++j;
             }
-            throw new ParseException(e.getMessage(), offset);
+            throw new ExpressionParseException(e.getMessage(), offset, length);
         }
     }
 
@@ -124,9 +124,177 @@ public class SentenceUtil {
         return quantifiers;
     }
 
-    private static String toPolish(String expr, LinkedList<String> quantifiers) throws ParseException {
+    private static Pair<String, HashMap<Integer, Integer>> fromPolishNotation(String polish) {
+        try {
+            HashMap<Integer, Integer> parseMap = new HashMap<>();
+            int parenOffset = polish.length();
+            polish = removeParen(polish);
+            parenOffset = (parenOffset - polish.length()) / 2;
+            ArrayList<String> split = new ArrayList<>();
+            int start = 0;
+            int parenDepth = 0;
+            for (int i = 0; i < polish.length(); ++i) {
+                char c = polish.charAt(i);
+                if (c == OP)
+                    ++parenDepth;
+                else if (c == CP)
+                    --parenDepth;
+                else if (c == ' ' && parenDepth == 0) {
+                    split.add(polish.substring(start, i));
+                    start = i + 1;
+                }
+            }
+            if (start < polish.length())
+                split.add(polish.substring(start));
+            String oprStr = split.get(0);
+            Operator opr = Operator.getOperator(oprStr);
+            //noinspection unchecked
+            Pair<String, HashMap<Integer, Integer>>[] convert = new Pair[split.size() - 1];
+            int po = parenOffset + 1 + split.get(0).length();
+            int[] polishOffsets = new int[split.size() - 1];
+            for (int i = 1; i < split.size(); ++i) {
+                polishOffsets[i - 1] = po;
+                convert[i - 1] = fromPolishNotation(split.get(i));
+                po += split.get(i).length() + 1;
+                if (convert[i - 1] == null)
+                    return null;
+            }
+            if (opr == null) {
+                if (convert.length > 0) {
+                    for (int i = 0; i < oprStr.length(); ++i)
+                        parseMap.put(i + parenOffset, i);
+                    StringBuilder str = new StringBuilder(oprStr + OP);
+                    int offset = str.length();
+                    for (int j = 0; j < convert.length; ++j) {
+                        Pair<String, HashMap<Integer, Integer>> p = convert[j];
+                        for (int i = 0; i < p.getKey().length(); ++i) {
+                            Integer o = p.getValue().get(i);
+                            if (o != null) {
+                                parseMap.put(i + polishOffsets[j], o + offset);
+                            }
+                        }
+                        offset += p.getKey().length();
+                        str.append(p.getKey());
+                        if (convert[convert.length - 1] != p) {
+                            str.append(",");
+                            ++offset;
+                        }
+                    }
+                    str.append(CP);
+                    return new Pair<>(str.toString(), parseMap);
+                } else {
+                    for (int i = 0; i < polish.length(); ++i)
+                        parseMap.put(i + parenDepth, i);
+                    return new Pair<>(polish, parseMap);
+                }
+            } else {
+                if (opr.isUnary) {
+                    StringBuilder sb = new StringBuilder(opr.isQuantifier ? oprStr + " " : String.valueOf(opr.logic));
+                    int offset = sb.length();
+                    for (int i = 0; i < offset; ++i)
+                        parseMap.put(i + parenOffset, i);
+                    for (int i = 0; i < convert[0].getKey().length(); ++i) {
+                        Integer o = convert[0].getValue().get(i);
+                        if (o != null) {
+                            parseMap.put(i + polishOffsets[0], o + offset);
+                        }
+                    }
+                    sb.append(convert[0].getKey());
+                    return new Pair<>(sb.toString(), parseMap);
+                }
+                boolean oprMapped = false;
+                int offset = 1;
+                StringBuilder sb = new StringBuilder(String.valueOf(OP));
+                for (int j = 0; j < convert.length; j++) {
+                    Pair<String, HashMap<Integer, Integer>> p = convert[j];
+                    for (int i = 0; i < p.getKey().length(); ++i) {
+                        Integer o = p.getValue().get(i);
+                        if (o != null) {
+                            parseMap.put(i + polishOffsets[j], o + offset);
+                        }
+                    }
+                    offset += p.getKey().length();
+                    sb.append(p.getKey());
+                    if (convert[convert.length - 1] != p) {
+                        if (!oprMapped) {
+                            parseMap.put(parenOffset, offset);
+                            oprMapped = true;
+                        }
+                        ++offset;
+                        sb.append(opr.logic);
+                    }
+                }
+                sb.append(CP);
+                return new Pair<>(sb.toString(), parseMap);
+            }
+        } catch (ExpressionParseException | IndexOutOfBoundsException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public static HashMap<Integer, Integer> createParseMap(String polishNotation, String original) {
+        try {
+            Pair<String, HashMap<Integer, Integer>> converted = fromPolishNotation(polishNotation);
+            if (converted == null)
+                return null;
+            String str = converted.getKey();
+            HashMap<Integer, Integer> parseMap = converted.getValue();
+            int parenOffset = str.length();
+            str = removeParen(str);
+            if (str.length() != parenOffset) {
+                parenOffset = (parenOffset - str.length()) / 2;
+                for (int i = 0; i < polishNotation.length(); ++i) {
+                    Integer o = parseMap.get(i);
+                    if (o == null)
+                        continue;
+                    parseMap.put(i, o - parenOffset);
+                }
+            }
+            int offset = 0;
+            HashMap<Integer, Integer> remap = new HashMap<>();
+            for (int i = 0; i < str.length() && i + offset < original.length(); ++i) {
+                while (str.charAt(i) != original.charAt(i + offset) && !(str.charAt(i) == ' ' && original.charAt(i + offset) == OP))
+                    ++offset;
+                remap.put(i, offset);
+            }
+            for (int i = 0; i < polishNotation.length(); ++i) {
+                Integer o = parseMap.get(i);
+                if (o == null)
+                    continue;
+                Integer r = remap.get(o);
+                if (r == null || r == 0)
+                    continue;
+                parseMap.put(i, o + r);
+            }
+            return parseMap;
+        } catch (Throwable e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public static void mapExceptionToStandardForm(String polish, String standard, ExpressionParseException e) throws ExpressionParseException {
+        if (e == null)
+            return;
+        if (e.getErrorOffset() == -1 || e.getErrorLength() == 0)
+            throw e;
+        int start = e.getErrorOffset();
+        int end = start + e.getErrorLength() - 1;
+        HashMap<Integer, Integer> map = createParseMap(polish, standard);
+        if (map == null)
+            throw new ExpressionParseException(e.getMessage(), -1, 0);
+        start = map.get(start);
+        end = map.get(end);
+        int length = end - start + 1;
+        if (length < 0)
+            throw new ExpressionParseException(e.getMessage(), -1, 0);
+        throw new ExpressionParseException(e.getMessage(), start, length);
+    }
+
+    private static String toPolish(String expr, LinkedList<String> quantifiers) throws ExpressionParseException {
         if (expr.length() == 0)
-            throw new ParseException("Empty expression found in sentence", 0);
+            throw new ExpressionParseException("Empty expression found in sentence", 0, 1);
         int parenDepth = 0;
         Operator oper = null;
         ArrayList<String> exprs = new ArrayList<>();
@@ -143,11 +311,11 @@ public class SentenceUtil {
                     oper = tmpOpr;
                 if (tmpOpr == oper) {
                     if (start == i)
-                        throw new ParseException("Binary operator needs to connect 2 expressions", i);
+                        throw new ExpressionParseException("Binary operator needs to connect 2 expressions", i, 1);
                     exprs.add(expr.substring(start, i));
                     start = i + 1;
                 } else
-                    throw new ParseException("Invalid operator in generalized " + oper.name().toLowerCase(), i);
+                    throw new ExpressionParseException("Invalid operator in generalized " + oper.name().toLowerCase(), i, 1);
             }
         }
         exprs.add(expr.substring(start));
@@ -155,17 +323,17 @@ public class SentenceUtil {
             for (int i = 0; i < exprs.size(); ++i) {
                 String exp = exprs.get(i);
                 if (exp.length() == 0)
-                    throw new ParseException("Binary connective missing expression", -1);
+                    throw new ExpressionParseException("Binary connective missing expression", -1, 0);
                 String noParen = removeParen(exp);
                 int offset = (exp.length() - noParen.length()) / 2;
                 try {
                     exp = toPolish(noParen, quantifiers);
-                } catch (ParseException e) {
+                } catch (ExpressionParseException e) {
                     shiftParseException(e, offset);
                 }
                 exprs.set(i, exp);
             }
-            return OP + oper.rep + " " + join(exprs) + CP;
+            return OP + oper.rep + " " + join(exprs, " ") + CP;
         } else {
             String exp = expr;
             Operator opr;
@@ -173,13 +341,13 @@ public class SentenceUtil {
                 if (opr.isQuantifier) {
                     String quantifier = quantifiers.pollFirst();
                     if (quantifier == null)
-                        throw new ParseException("Malformed quantifier in expression", 0);
+                        throw new ExpressionParseException("Malformed quantifier in expression", 0, 1);
                     exp = exp.substring(quantifier.length());
                     String noParen = removeParen(exp);
                     int offset = (exp.length() - noParen.length()) / 2;
                     try {
                         exp = toPolish(noParen, quantifiers);
-                    } catch (ParseException e) {
+                    } catch (ExpressionParseException e) {
                         shiftParseException(e, offset);
                     }
                     exp = OP + quantifier + " " + exp + CP;
@@ -189,7 +357,7 @@ public class SentenceUtil {
                     int offset = (exp.length() - noParen.length()) / 2;
                     try {
                         exp = toPolish(noParen, quantifiers);
-                    } catch (ParseException e) {
+                    } catch (ExpressionParseException e) {
                         shiftParseException(e, offset);
                     }
                     exp = OP + opr.rep + " " + exp + CP;
@@ -202,25 +370,25 @@ public class SentenceUtil {
                     char c = exp.charAt(i);
                     if (c == OP) {
                         if (argStart != -1)
-                            throw new ParseException("Functions can only contain comma separated literals", i);
+                            throw new ExpressionParseException("Functions can only contain comma separated literals", argStart, i - argStart + 1);
                         fun = exp.substring(0, i);
                         argStart = i + 1;
                     } else if (c == CP) {
                         if (argStart == -1)
-                            throw new ParseException("No matching open parentheses for closing parentheses", i);
+                            throw new ExpressionParseException("No matching open parentheses for closing parentheses", i, 1);
                         if (exp.substring(i).length() > 1)
-                            throw new ParseException("Invalid function definition", i + 1);
+                            throw new ExpressionParseException("Invalid function definition", i + 1, exp.substring(i + 1).length());
                         if (exp.substring(argStart, i).startsWith(","))
-                            throw new ParseException("Missing first function parameter", argStart);
+                            throw new ExpressionParseException("Missing first function parameter", argStart, 1);
                         if (exp.substring(argStart, i).endsWith(","))
-                            throw new ParseException("Missing last function parameter", i - 1);
+                            throw new ExpressionParseException("Missing last function parameter", i - 1, 1);
                         args = exp.substring(argStart, i).split(",");
                     }
                 }
                 if (argStart != -1) {
                     if (args == null)
-                        throw new ParseException("Failed to parse function", 0);
-                    exp = OP + fun + " " + join(args) + CP;
+                        throw new ExpressionParseException("Failed to parse function", -1, 0);
+                    exp = OP + fun + " " + join(args, " ") + CP;
                 }
             }
             return exp;
@@ -231,25 +399,25 @@ public class SentenceUtil {
         Objects.requireNonNull(exprs);
         Objects.requireNonNull(opr);
         ArrayList<String> polish = Arrays.stream(exprs).map(Expression::toString).collect(Collectors.toCollection(ArrayList::new));
-        return OP + opr + " " + join(polish) + CP;
+        return OP + opr + " " + join(polish, " ") + CP;
     }
 
-    public static String join(ArrayList<String> list) {
+    public static String join(ArrayList<String> list, String joinStr) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < list.size(); ++i) {
             sb.append(list.get(i));
             if (i < list.size() - 1)
-                sb.append(" ");
+                sb.append(joinStr);
         }
         return sb.toString();
     }
 
-    public static String join(String[] arr) {
+    public static String join(String[] arr, String joinStr) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < arr.length; ++i) {
             sb.append(arr[i]);
             if (i < arr.length - 1)
-                sb.append(" ");
+                sb.append(joinStr);
         }
         return sb.toString();
     }
@@ -268,8 +436,8 @@ public class SentenceUtil {
         return null;
     }
 
-    private static void shiftParseException(ParseException e, int offset) throws ParseException {
-        throw new ParseException(e.getMessage(), e.getErrorOffset() == -1 ? -1 : e.getErrorOffset() + offset);
+    private static void shiftParseException(ExpressionParseException e, int offset) throws ExpressionParseException {
+        throw new ExpressionParseException(e.getMessage(), e.getErrorOffset() == -1 ? -1 : e.getErrorOffset() + offset, e.getErrorOffset() == -1 ? 0 : e.getErrorLength() + offset);
     }
 
 }

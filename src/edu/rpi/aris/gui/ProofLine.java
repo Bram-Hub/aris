@@ -16,6 +16,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.IntRange;
 
 import java.util.Arrays;
 import java.util.function.UnaryOperator;
@@ -203,5 +204,11 @@ public class ProofLine {
     public void setText(String text) {
         textField.setText(text);
         textField.positionCaret(text.length());
+    }
+
+    public void selectError() {
+        IntRange error = proofLine.errorRangeProperty().get();
+        if (error != null)
+            textField.selectRange(error.getMinimumInteger(), error.getMaximumInteger() + 1);
     }
 }
