@@ -9,7 +9,7 @@ import java.util.HashMap;
 public class ConfigurationManager {
 
     private static final HashMap<String, String> KEY_MAP = new HashMap<>();
-    private static final String[][] keyMap = new String[][]{{"&", "∧"}, {"|", "∨"}, {"!", "¬"}, {"~", "¬"}, {"$", "→"}, {"%", "↔"}, {"^", "⊥"}};
+    private static final String[][] keyMap = new String[][]{{"&", "∧"}, {"|", "∨"}, {"!", "≠"}, {"~", "¬"}, {"$", "→"}, {"%", "↔"}, {"^", "⊥"}, {"@", "∀"}, {"#", "∃"}};
 
     static {
         for (String[] s : keyMap)

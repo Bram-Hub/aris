@@ -4,10 +4,15 @@ package edu.rpi.aris.proof;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class SentenceUtil {
+
+    public static final Pattern VARIABLE_PATTERN = Pattern.compile("[a-z][A-Za-z0-9]*");
 
     public static final char OP = '(';
     public static final char CP = ')';
@@ -74,10 +79,25 @@ public class SentenceUtil {
     }
 
     public static String toPolishNotation(String expr) throws ParseException {
-        return toPolish(removeParen(removeWhitespace(expr)));
+        return toPolish(removeParen(removeWhitespace(expr)), findQuantifiers(expr));
     }
 
-    private static String toPolish(String expr) throws ParseException {
+    private static LinkedList<String> findQuantifiers(String expr) {
+        LinkedList<String> quantifiers = new LinkedList<>();
+        StringBuilder quantifierPattern = new StringBuilder();
+        for (Operator o : Operator.QUANTIFIER_OPERATOR) {
+            quantifierPattern.append(o.logic);
+        }
+        String q = quantifierPattern.toString();
+        quantifierPattern.insert(0, "[");
+        quantifierPattern.append("]").append(VARIABLE_PATTERN.pattern()).append("(?=[ (").append(q).append("])");
+        Matcher m = Pattern.compile(quantifierPattern.toString()).matcher(expr);
+        while (m.find())
+            quantifiers.add(m.group());
+        return quantifiers;
+    }
+
+    private static String toPolish(String expr, LinkedList<String> quantifiers) throws ParseException {
         if (expr.length() == 0)
             throw new ParseException("Empty expression found in sentence", -1);
         int parenDepth = 0;
@@ -112,7 +132,7 @@ public class SentenceUtil {
                 Operator opr;
                 if ((opr = getUnaryOpr(exp.charAt(0))) != null)
                     exp = exp.substring(1);
-                exp = toPolish(removeParen(exp));
+                exp = toPolish(removeParen(exp), quantifiers);
                 if (opr != null)
                     exp = OP + opr.rep + " " + exp + CP;
                 exprs.set(i, exp);
@@ -122,9 +142,18 @@ public class SentenceUtil {
             String exp = expr;
             Operator opr;
             if ((opr = getUnaryOpr(exp.charAt(0))) != null) {
-                exp = exp.substring(1);
-                exp = toPolish(removeParen(exp));
-                exp = OP + opr.rep + " " + exp + CP;
+                if (opr.isQuantifier) {
+                    String quant = quantifiers.pollFirst();
+                    if(quant == null)
+                        throw new ParseException("Malformed quantifier in expression", -1);
+                    exp = exp.substring(quant.length());
+                    exp = toPolish(removeParen(exp), quantifiers);
+                    exp = OP + quant + " " + exp + CP;
+                } else {
+                    exp = exp.substring(1);
+                    exp = toPolish(removeParen(exp), quantifiers);
+                    exp = OP + opr.rep + " " + exp + CP;
+                }
             } else if (exp.charAt(0) != OP) {
                 int argStart = -1;
                 String[] args = null;
@@ -182,14 +211,14 @@ public class SentenceUtil {
     }
 
     private static Operator getBoolOpr(char c) {
-        for (Operator opr : Operator.BINARY_OPER)
+        for (Operator opr : Operator.BINARY_OPERATOR)
             if (c == opr.logic)
                 return opr;
         return null;
     }
 
     private static Operator getUnaryOpr(char c) {
-        for (Operator opr : Operator.UNARY_OPER)
+        for (Operator opr : Operator.UNARY_OPERATOR)
             if (c == opr.logic)
                 return opr;
         return null;

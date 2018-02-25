@@ -9,8 +9,8 @@ import static org.junit.Assert.assertNull;
 
 public class SentenceUtilTest {
 
-    private static final String[] logicExpr = {"A", "A ∧ B", "(A ∧ B)", "(((((A∧ B)))))", "¬¬¬(A ∨¬B)", "()"};
-    private static final String[] polishExpr = {"A", "(& A B)", "(& A B)", "(& A B)", "(! (! (! (| A (! B)))))", null};
+    private static final String[] logicExpr = {"A", "A ∧ B", "(A ∧ B)", "(((((A∧ B)))))", "¬¬¬(A ∨¬B)", "()", "∀a∃b(F(a))"};
+    private static final String[] polishExpr = {"A", "(& A B)", "(& A B)", "(& A B)", "(! (! (! (| A (! B)))))", null, "(∀a (∃b (F a)))"};
 
     @Test
     public void toPolishNotation() {

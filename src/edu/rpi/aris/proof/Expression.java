@@ -1,7 +1,10 @@
 package edu.rpi.aris.proof;
 
+import org.apache.commons.lang.ArrayUtils;
+
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -13,27 +16,37 @@ public class Expression {
     private Operator operator = null;
     private String polishRep;
     private String functionOperator = null;
+    private String quantifierVar = null;
     private boolean isFunctional = false;
     private boolean isLiteral = false;
     private Expression[] expressions = null;
+    private String[] parentVariables;
 
     public Expression(String expr) throws ParseException {
+        this(expr, new String[0]);
+    }
+
+    public Expression(String expr, String[] parentVariables) throws ParseException {
+        Objects.requireNonNull(parentVariables);
+        this.parentVariables = parentVariables;
         init(expr);
     }
 
     //this constructor does not support functional operators
-    public Expression(Expression[] exprs, Operator opr) throws ParseException {
-        Objects.requireNonNull(exprs);
+    public Expression(Expression[] expressions, Operator opr, String[] parentVariables) throws ParseException {
+        Objects.requireNonNull(expressions);
+        Objects.requireNonNull(parentVariables);
+        this.parentVariables = parentVariables;
         if (operator == null) {
-            if (exprs.length != 1)
+            if (expressions.length != 1)
                 throw new IllegalArgumentException("Must give exactly one expression if null operator");
-            init(exprs[0].toString());
-        } else if (operator.isUnary && exprs.length != 1) {
+            init(expressions[0].toString());
+        } else if (operator.isUnary && expressions.length != 1) {
             throw new IllegalArgumentException("Must give exactly 1 Expression for unary operator");
-        } else if (!operator.canGeneralize && !operator.isUnary && exprs.length != 2) {
+        } else if (!operator.canGeneralize && !operator.isUnary && expressions.length != 2) {
             throw new IllegalArgumentException("Cannot create generalized " + operator.name());
         } else
-            init(SentenceUtil.toPolish(expressions, opr.rep));
+            init(SentenceUtil.toPolish(this.expressions, opr.rep));
     }
 
     private void init(String expr) throws ParseException {
@@ -62,6 +75,13 @@ public class Expression {
         if (operator == null) {
             functionOperator = oprStr;
             isFunctional = true;
+        } else if (operator.isQuantifier) {
+            String varStr = oprStr.replaceFirst(operator.rep, "");
+            if (!SentenceUtil.VARIABLE_PATTERN.matcher(varStr).matches())
+                throw new ParseException("Invalid quantifier variable: " + varStr, -1);
+            if (ArrayUtils.contains(parentVariables, varStr))
+                throw new ParseException("Quantifier variable introduced twice in expression: " + varStr, -1);
+            quantifierVar = varStr;
         }
         expr = expr.substring(expr.indexOf(' ') + 1);
         ArrayList<String> strExp = new ArrayList<>();
@@ -87,8 +107,19 @@ public class Expression {
                 throw new ParseException("Cannot create generalized " + operator.name(), -1);
         }
         expressions = new Expression[strExp.size()];
-        for (int i = 0; i < strExp.size(); ++i)
-            expressions[i] = new Expression(strExp.get(i));
+        String[] vars = parentVariables;
+        if (operator != null && operator.isQuantifier) {
+            vars = Arrays.copyOf(parentVariables, parentVariables.length + 1);
+            vars[parentVariables.length] = quantifierVar;
+        }
+        for (int i = 0; i < strExp.size(); ++i) {
+            Expression exp = new Expression(strExp.get(i), vars);
+            if (isFunctional && !exp.isLiteral)
+                throw new ParseException("Function must only contain literals", -1);
+            if (exp.isLiteral && !isFunctional && (exp.polishRep.equals(quantifierVar) || ArrayUtils.contains(parentVariables, exp.polishRep)))
+                throw new ParseException("Invalid quantifier expression", -1);
+            expressions[i] = exp;
+        }
     }
 
     public Operator getOperator() {
@@ -97,6 +128,10 @@ public class Expression {
 
     public String getFunctionOperator() {
         return functionOperator;
+    }
+
+    public String getQuantifierVariable() {
+        return quantifierVar;
     }
 
     public boolean isFunctional() {
@@ -149,7 +184,7 @@ public class Expression {
     }
 
     public Expression negate() throws ParseException {
-        return new Expression(new Expression[]{this}, Operator.NOT);
+        return new Expression(new Expression[]{this}, Operator.NOT, parentVariables);
     }
 
     public String toLogicString() {

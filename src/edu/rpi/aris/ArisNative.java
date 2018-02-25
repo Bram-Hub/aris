@@ -21,7 +21,7 @@ public class ArisNative {
     public static void main(String[] args) {
         try {
             System.out.println(new Expression("(! A B)"));
-            System.out.println(process_sentence("B", new String[]{"(<i> A B)", "A"}, "Modus Ponens", new String[]{}));
+            System.out.println(process_sentence("B", new String[]{"(<i> A B)", "A"}, "Modus Ponens", new String[0]));
             Expression premise = new Expression(SentenceUtil.toPolishNotation("(((Home(max,test) ∨ Happy(carl)) ∧ (Home(claire) ∨ Happy(scruffy))))"));
             Premise[] p = new Premise[]{new Premise(premise)};
             System.out.println(premise);

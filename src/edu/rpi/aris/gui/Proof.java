@@ -318,7 +318,7 @@ public class Proof {
             if (str.trim().length() > 0) {
                 try {
                     claim = null;
-                    expression = new Expression(SentenceUtil.toPolishNotation(str));
+                    expression = SentenceUtil.toExpression(str);
                     setStatus("");
                     status.set(Status.NONE);
                 } catch (ParseException e) {
@@ -477,7 +477,7 @@ public class Proof {
             String str = goalString.get();
             if (str.trim().length() > 0) {
                 try {
-                    expression = new Expression(SentenceUtil.toPolishNotation(str));
+                    expression = SentenceUtil.toExpression(str);
                     setStatus("");
                     goalStatus.set(Status.NONE);
                     return true;
