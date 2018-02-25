@@ -249,6 +249,7 @@ public class Proof {
         private SimpleBooleanProperty underlined = new SimpleBooleanProperty();
         private SimpleObjectProperty<RuleList> selectedRule = new SimpleObjectProperty<>(null);
         private SimpleObjectProperty<Status> status = new SimpleObjectProperty<>(Status.NONE);
+        private SimpleIntegerProperty errorOffset = new SimpleIntegerProperty(-1);
         private Expression expression = null;
         private Claim claim = null;
         private SimpleStringProperty statusMsg = new SimpleStringProperty();
@@ -321,15 +322,18 @@ public class Proof {
                     expression = SentenceUtil.toExpression(str);
                     setStatus("");
                     status.set(Status.NONE);
+                    errorOffset.set(-1);
                 } catch (ParseException e) {
                     setStatus(e.getMessage());
                     status.set(Status.INVALID_EXPRESSION);
                     expression = null;
+                    errorOffset.set(e.getErrorOffset());
                 }
             } else {
                 expression = null;
                 setStatus("");
                 status.set(Status.NONE);
+                errorOffset.set(-1);
             }
         }
 
@@ -374,7 +378,7 @@ public class Proof {
                 return;
             }
             Premise[] premises = getClaimPremises();
-            if(premises == null)
+            if (premises == null)
                 return;
             claim = new Claim(expression, premises, selectedRule.get().rule);
         }
@@ -441,6 +445,9 @@ public class Proof {
             }
         }
 
+        public SimpleIntegerProperty errorOffsetProperty() {
+            return errorOffset;
+        }
     }
 
     public static class Goal {

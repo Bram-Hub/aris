@@ -14,6 +14,8 @@ public class SentenceUtil {
 
     public static final Pattern VARIABLE_PATTERN = Pattern.compile("[a-z][A-Za-z0-9]*");
     public static final Pattern QUANTIFIER_PATTERN;
+    public static final char OP = '(';
+    public static final char CP = ')';
 
     static {
         StringBuilder quantifierPattern = new StringBuilder();
@@ -25,9 +27,6 @@ public class SentenceUtil {
         quantifierPattern.append("] *").append(VARIABLE_PATTERN.pattern()).append("(?=[ (").append(q).append("])");
         QUANTIFIER_PATTERN = Pattern.compile(quantifierPattern.toString());
     }
-
-    public static final char OP = '(';
-    public static final char CP = ')';
 
     public static int checkParen(String expr) {
         if (expr.startsWith(Character.toString(OP)) && !expr.endsWith(Character.toString(CP)))
@@ -95,11 +94,26 @@ public class SentenceUtil {
     }
 
     public static String toPolishNotation(String expr) throws ParseException {
-        int i;
-
-        if((i = checkParen(expr)) != -1)
-            throw new ParseException("Unbalanced parentheses in expression", i);
-        return toPolish(removeParen(removeWhitespace(expr)), findQuantifiers(expr));
+        int parenLoc;
+        if ((parenLoc = checkParen(expr)) != -1)
+            throw new ParseException("Unbalanced parentheses in expression", parenLoc);
+        String noParen = removeParen(removeWhitespace(expr));
+        try {
+            return toPolish(noParen, findQuantifiers(expr));
+        } catch (ParseException e) {
+            int offset = e.getErrorOffset();
+            if (offset == -1)
+                throw e;
+            int j = 0;
+            for (int i = 0; i < e.getErrorOffset() && j < expr.length() && i < noParen.length(); ++i) {
+                while (noParen.charAt(i) != expr.charAt(j)) {
+                    ++offset;
+                    ++j;
+                }
+                ++j;
+            }
+            throw new ParseException(e.getMessage(), offset);
+        }
     }
 
     private static LinkedList<String> findQuantifiers(String expr) {
@@ -112,7 +126,7 @@ public class SentenceUtil {
 
     private static String toPolish(String expr, LinkedList<String> quantifiers) throws ParseException {
         if (expr.length() == 0)
-            throw new ParseException("Empty expression found in sentence", -1);
+            throw new ParseException("Empty expression found in sentence", 0);
         int parenDepth = 0;
         Operator oper = null;
         ArrayList<String> exprs = new ArrayList<>();
@@ -142,7 +156,13 @@ public class SentenceUtil {
                 String exp = exprs.get(i);
                 if (exp.length() == 0)
                     throw new ParseException("Binary connective missing expression", -1);
-                exp = toPolish(removeParen(exp), quantifiers);
+                String noParen = removeParen(exp);
+                int offset = (exp.length() - noParen.length()) / 2;
+                try {
+                    exp = toPolish(noParen, quantifiers);
+                } catch (ParseException e) {
+                    shiftParseException(e, offset);
+                }
                 exprs.set(i, exp);
             }
             return OP + oper.rep + " " + join(exprs) + CP;
@@ -153,13 +173,25 @@ public class SentenceUtil {
                 if (opr.isQuantifier) {
                     String quantifier = quantifiers.pollFirst();
                     if (quantifier == null)
-                        throw new ParseException("Malformed quantifier in expression", -1);
+                        throw new ParseException("Malformed quantifier in expression", 0);
                     exp = exp.substring(quantifier.length());
-                    exp = toPolish(removeParen(exp), quantifiers);
+                    String noParen = removeParen(exp);
+                    int offset = (exp.length() - noParen.length()) / 2;
+                    try {
+                        exp = toPolish(noParen, quantifiers);
+                    } catch (ParseException e) {
+                        shiftParseException(e, offset);
+                    }
                     exp = OP + quantifier + " " + exp + CP;
                 } else {
                     exp = exp.substring(1);
-                    exp = toPolish(removeParen(exp), quantifiers);
+                    String noParen = removeParen(exp);
+                    int offset = (exp.length() - noParen.length()) / 2;
+                    try {
+                        exp = toPolish(noParen, quantifiers);
+                    } catch (ParseException e) {
+                        shiftParseException(e, offset);
+                    }
                     exp = OP + opr.rep + " " + exp + CP;
                 }
             } else if (exp.charAt(0) != OP) {
@@ -176,12 +208,12 @@ public class SentenceUtil {
                     } else if (c == CP) {
                         if (argStart == -1)
                             throw new ParseException("No matching open parentheses for closing parentheses", i);
-                        if(exp.substring(i).length() > 1)
-                            throw new ParseException("Invalid function definition", -1);
-                        if(exp.substring(argStart, i).startsWith(","))
-                            throw new ParseException("Missing first function parameter", -1);
-                        if(exp.substring(argStart, i).endsWith(","))
-                            throw new ParseException("Missing last function parameter", -1);
+                        if (exp.substring(i).length() > 1)
+                            throw new ParseException("Invalid function definition", i + 1);
+                        if (exp.substring(argStart, i).startsWith(","))
+                            throw new ParseException("Missing first function parameter", argStart);
+                        if (exp.substring(argStart, i).endsWith(","))
+                            throw new ParseException("Missing last function parameter", i - 1);
                         args = exp.substring(argStart, i).split(",");
                     }
                 }
@@ -234,6 +266,10 @@ public class SentenceUtil {
             if (c == opr.logic)
                 return opr;
         return null;
+    }
+
+    private static void shiftParseException(ParseException e, int offset) throws ParseException {
+        throw new ParseException(e.getMessage(), e.getErrorOffset() == -1 ? -1 : e.getErrorOffset() + offset);
     }
 
 }

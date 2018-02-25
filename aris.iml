@@ -22,5 +22,6 @@
     <orderEntry type="library" name="org.apache.logging.log4j:log4j-core:2.10.0" level="project" />
     <orderEntry type="library" name="commons-lang:commons-lang:2.6" level="project" />
     <orderEntry type="library" name="commons-collections:commons-collections:3.2.2" level="project" />
+    <orderEntry type="library" name="org.fxmisc.richtext:richtextfx:1.0.0-SNAPSHOT" level="project" />
   </component>
 </module>
