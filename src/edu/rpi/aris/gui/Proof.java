@@ -374,6 +374,8 @@ public class Proof {
                 return;
             }
             Premise[] premises = getClaimPremises();
+            if(premises == null)
+                return;
             claim = new Claim(expression, premises, selectedRule.get().rule);
         }
 

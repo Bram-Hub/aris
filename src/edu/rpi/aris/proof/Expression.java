@@ -11,8 +11,9 @@ import java.util.regex.Pattern;
 
 public class Expression {
 
-    private static final Pattern LITERAL_PATTERN = Pattern.compile("[A-Za-z0-9]+|⊥");
+    private static final Pattern LITERAL_PATTERN = Pattern.compile("[A-Z][A-Za-z0-9]*|⊥");
     private static final Pattern NOT_LITERAL_PATTERN = Pattern.compile("[^A-Za-z0-9⊥]");
+    private static final Pattern FUNCTION_PATTERN = Pattern.compile("[A-Z][A-Za-z0-9]*");
     private Operator operator = null;
     private String polishRep;
     private String functionOperator = null;
@@ -20,22 +21,25 @@ public class Expression {
     private boolean isFunctional = false;
     private boolean isLiteral = false;
     private Expression[] expressions = null;
+    private Expression parent = null;
     private String[] parentVariables;
 
     public Expression(String expr) throws ParseException {
-        this(expr, new String[0]);
+        this(expr, null, new String[0]);
     }
 
-    public Expression(String expr, String[] parentVariables) throws ParseException {
+    public Expression(String expr, Expression parent, String[] parentVariables) throws ParseException {
         Objects.requireNonNull(parentVariables);
+        this.parent = parent;
         this.parentVariables = parentVariables;
         init(expr);
     }
 
     //this constructor does not support functional operators
-    public Expression(Expression[] expressions, Operator opr, String[] parentVariables) throws ParseException {
+    public Expression(Expression[] expressions, Operator opr, Expression parent, String[] parentVariables) throws ParseException {
         Objects.requireNonNull(expressions);
         Objects.requireNonNull(parentVariables);
+        this.parent = parent;
         this.parentVariables = parentVariables;
         if (operator == null) {
             if (expressions.length != 1)
@@ -53,7 +57,7 @@ public class Expression {
         polishRep = expr;
         expr = SentenceUtil.removeParen(expr);
         if (!expr.contains(" ")) {
-            if (!LITERAL_PATTERN.matcher(expr).matches()) {
+            if ((parent == null || !parent.isFunctional) && !LITERAL_PATTERN.matcher(expr).matches()) {
                 if (expr.length() == 0)
                     throw new ParseException("No expression given", -1);
                 if (Character.isDigit(expr.charAt(0)))
@@ -63,7 +67,9 @@ public class Expression {
                     String symbol = matcher.group();
                     throw new ParseException("Unknown symbol in expression: " + symbol, -1);
                 }
-                throw new ParseException("Failed to parse expression", -1);
+                throw new ParseException("Not a literal: " + expr, -1);
+            } else if(parent != null && parent.isFunctional && !SentenceUtil.VARIABLE_PATTERN.matcher(expr).matches()) {
+                throw new ParseException("Invalid function variable: " + expr, -1);
             }
             polishRep = expr;
             isLiteral = true;
@@ -73,6 +79,8 @@ public class Expression {
         String oprStr = expr.substring(0, expr.indexOf(' '));
         operator = Operator.getOperator(oprStr);
         if (operator == null) {
+            if (!FUNCTION_PATTERN.matcher(oprStr).matches())
+                throw new ParseException("Invalid function name: " + oprStr, -1);
             functionOperator = oprStr;
             isFunctional = true;
         } else if (operator.isQuantifier) {
@@ -113,9 +121,9 @@ public class Expression {
             vars[parentVariables.length] = quantifierVar;
         }
         for (int i = 0; i < strExp.size(); ++i) {
-            Expression exp = new Expression(strExp.get(i), vars);
-            if (isFunctional && !exp.isLiteral)
-                throw new ParseException("Function must only contain literals", -1);
+            Expression exp = new Expression(strExp.get(i), this, vars);
+            if (isFunctional && !SentenceUtil.VARIABLE_PATTERN.matcher(exp.polishRep).matches())
+                throw new ParseException("Function must only contain variables", -1);
             if (exp.isLiteral && !isFunctional && (exp.polishRep.equals(quantifierVar) || ArrayUtils.contains(parentVariables, exp.polishRep)))
                 throw new ParseException("Invalid quantifier expression", -1);
             expressions[i] = exp;
@@ -184,7 +192,7 @@ public class Expression {
     }
 
     public Expression negate() throws ParseException {
-        return new Expression(new Expression[]{this}, Operator.NOT, parentVariables);
+        return new Expression(new Expression[]{this}, Operator.NOT, this.parent, parentVariables);
     }
 
     public String toLogicString() {

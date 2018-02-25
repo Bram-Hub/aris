@@ -13,6 +13,18 @@ import java.util.stream.Collectors;
 public class SentenceUtil {
 
     public static final Pattern VARIABLE_PATTERN = Pattern.compile("[a-z][A-Za-z0-9]*");
+    public static final Pattern QUANTIFIER_PATTERN;
+
+    static {
+        StringBuilder quantifierPattern = new StringBuilder();
+        for (Operator o : Operator.QUANTIFIER_OPERATOR) {
+            quantifierPattern.append(o.logic);
+        }
+        String q = quantifierPattern.toString();
+        quantifierPattern.insert(0, "[");
+        quantifierPattern.append("] *").append(VARIABLE_PATTERN.pattern()).append("(?=[ (").append(q).append("])");
+        QUANTIFIER_PATTERN = Pattern.compile(quantifierPattern.toString());
+    }
 
     public static final char OP = '(';
     public static final char CP = ')';
@@ -42,7 +54,7 @@ public class SentenceUtil {
         int count = 0;
         for (int i = 0; i < expr.length(); ++i) {
             if (expr.charAt(i) == P) {
-                if (count > target)
+                if (count >= target)
                     return i;
                 count++;
             }
@@ -54,7 +66,7 @@ public class SentenceUtil {
         return expr.replaceAll("\\s", "");
     }
 
-    public static String removeParen(String expr) {
+    public static String removeParen(String expr) throws ParseException {
         if (expr.startsWith(Character.toString(OP))) {
             boolean rmParen = true;
             int count = 0;
@@ -68,8 +80,12 @@ public class SentenceUtil {
                     break;
                 }
             }
-            if (rmParen)
-                return removeParen(expr.substring(0, expr.length() - 1).substring(1));
+            if (rmParen) {
+                if (count == 0)
+                    return removeParen(expr.substring(0, expr.length() - 1).substring(1));
+                else
+                    throw new ParseException("Unbalanced parentheses in expression", -1);
+            }
         }
         return expr;
     }
@@ -79,21 +95,18 @@ public class SentenceUtil {
     }
 
     public static String toPolishNotation(String expr) throws ParseException {
+        int i;
+
+        if((i = checkParen(expr)) != -1)
+            throw new ParseException("Unbalanced parentheses in expression", i);
         return toPolish(removeParen(removeWhitespace(expr)), findQuantifiers(expr));
     }
 
     private static LinkedList<String> findQuantifiers(String expr) {
         LinkedList<String> quantifiers = new LinkedList<>();
-        StringBuilder quantifierPattern = new StringBuilder();
-        for (Operator o : Operator.QUANTIFIER_OPERATOR) {
-            quantifierPattern.append(o.logic);
-        }
-        String q = quantifierPattern.toString();
-        quantifierPattern.insert(0, "[");
-        quantifierPattern.append("]").append(VARIABLE_PATTERN.pattern()).append("(?=[ (").append(q).append("])");
-        Matcher m = Pattern.compile(quantifierPattern.toString()).matcher(expr);
+        Matcher m = QUANTIFIER_PATTERN.matcher(expr);
         while (m.find())
-            quantifiers.add(m.group());
+            quantifiers.add(m.group().replace(" ", ""));
         return quantifiers;
     }
 
@@ -138,12 +151,12 @@ public class SentenceUtil {
             Operator opr;
             if ((opr = getUnaryOpr(exp.charAt(0))) != null) {
                 if (opr.isQuantifier) {
-                    String quant = quantifiers.pollFirst();
-                    if (quant == null)
+                    String quantifier = quantifiers.pollFirst();
+                    if (quantifier == null)
                         throw new ParseException("Malformed quantifier in expression", -1);
-                    exp = exp.substring(quant.length());
+                    exp = exp.substring(quantifier.length());
                     exp = toPolish(removeParen(exp), quantifiers);
-                    exp = OP + quant + " " + exp + CP;
+                    exp = OP + quantifier + " " + exp + CP;
                 } else {
                     exp = exp.substring(1);
                     exp = toPolish(removeParen(exp), quantifiers);
@@ -157,14 +170,18 @@ public class SentenceUtil {
                     char c = exp.charAt(i);
                     if (c == OP) {
                         if (argStart != -1)
-                            throw new ParseException("Missing closing parentheses in function", i);
+                            throw new ParseException("Functions can only contain comma separated literals", i);
                         fun = exp.substring(0, i);
                         argStart = i + 1;
                     } else if (c == CP) {
                         if (argStart == -1)
                             throw new ParseException("No matching open parentheses for closing parentheses", i);
-                        if (args != null)
-                            throw new ParseException("Double closing parentheses found", i);
+                        if(exp.substring(i).length() > 1)
+                            throw new ParseException("Invalid function definition", -1);
+                        if(exp.substring(argStart, i).startsWith(","))
+                            throw new ParseException("Missing first function parameter", -1);
+                        if(exp.substring(argStart, i).endsWith(","))
+                            throw new ParseException("Missing last function parameter", -1);
                         args = exp.substring(argStart, i).split(",");
                     }
                 }

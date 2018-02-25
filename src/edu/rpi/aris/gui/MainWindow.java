@@ -126,8 +126,11 @@ public class MainWindow {
         addLine.setOnAction(actionEvent -> {
             if (selectedLine.get() < 0)
                 return;
-            addProofLine(false, proof.getLines().get(selectedLine.get()).subProofLevelProperty().get(), selectedLine.get() + 1);
-            selectedLine.set(selectedLine.get() + 1);
+            int line = selectedLine.get() + 1;
+            line = line < proof.numPremises().get() ? proof.numPremises().get() : line;
+            addProofLine(false, proof.getLines().get(selectedLine.get()).subProofLevelProperty().get(), line);
+            selectedLine.set(-1);
+            selectedLine.set(line);
         });
 
         deleteLine.setOnAction(actionEvent -> deleteLine(selectedLine.get()));

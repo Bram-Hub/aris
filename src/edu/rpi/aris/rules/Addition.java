@@ -5,6 +5,7 @@ import edu.rpi.aris.proof.Operator;
 import edu.rpi.aris.proof.Premise;
 import edu.rpi.aris.proof.SentenceUtil;
 
+import java.text.ParseException;
 import java.util.ArrayList;
 
 public class Addition extends Rule {
@@ -37,8 +38,14 @@ public class Addition extends Rule {
         if (premises[0].isSubproof())
             return null;
         String str = premises[0].getPremise().toLogicString();
-        if (premises[0].getPremise().getOperator() == Operator.OR)
-            str = SentenceUtil.removeParen(str);
+        if (premises[0].getPremise().getOperator() == Operator.OR) {
+            try {
+                str = SentenceUtil.removeParen(str);
+            } catch (ParseException e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
         ArrayList<String> list = new ArrayList<>();
         list.add(str + " " + Operator.OR.logic + " ");
         return list;
