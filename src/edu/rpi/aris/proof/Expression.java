@@ -69,7 +69,7 @@ public class Expression {
                     String symbol = matcher.group();
                     int start = matcher.start();
                     int end = matcher.end();
-                    throw new ExpressionParseException("Unknown symbol in expression: \"" + symbol + "\"", start + parenOffset, end - start + 1);
+                    throw new ExpressionParseException("Unknown symbol in expression: \"" + symbol + "\"", start + parenOffset, end - start);
                 }
                 throw new ExpressionParseException("Not a literal: \"" + expr + "\"", parenOffset, expr.length());
             } else if (parent != null && parent.isFunctional && !SentenceUtil.VARIABLE_PATTERN.matcher(expr).matches()) {
@@ -123,11 +123,11 @@ public class Expression {
         }
         for (int i = 0; i < strExp.size(); ++i) {
             Expression exp;
-            int errorOffset = parenOffset + oprStr.length() + (i > 0 ? strExp.subList(0, i - 1).stream().mapToInt(s -> s.length() + 1).sum() : 0) + 1;
+            int errorOffset = parenOffset + oprStr.length() + (i > 0 ? strExp.subList(0, i).stream().mapToInt(s -> s.length() + 1).sum() : 0) + 1;
             try {
                 exp = new Expression(strExp.get(i), this, vars);
             } catch (ExpressionParseException e) {
-                throw new ExpressionParseException(e.getMessage() + (operator != null && operator.isQuantifier ? " Make sure you are not missing a space after your quantifiers" : ""), errorOffset, e.getErrorLength());
+                throw new ExpressionParseException(e.getMessage() + (operator != null && operator.isQuantifier ? " Make sure you are not missing a space after your quantifiers" : ""), errorOffset + e.getErrorOffset(), e.getErrorLength());
             }
             if (isFunctional && !SentenceUtil.VARIABLE_PATTERN.matcher(exp.polishRep).matches())
                 throw new ExpressionParseException("Function must only contain variables", errorOffset, strExp.get(i).length());
