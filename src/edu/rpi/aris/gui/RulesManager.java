@@ -4,6 +4,7 @@ import edu.rpi.aris.rules.Rule;
 import edu.rpi.aris.rules.RuleList;
 import javafx.application.Platform;
 import javafx.event.EventHandler;
+import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
@@ -18,7 +19,7 @@ public class RulesManager {
     private HashSet<EventHandler<RuleSelectEvent>> eventHandlers = new HashSet<>();
     private ContextMenu ruleDropdown = null;
     private ScrollPane ruleTable;
-    private HashMap<Rule.Type, Pair<TitledPane, GridPane>> ruleTypePanes = new HashMap<>();
+    private HashMap<Rule.Type, Pair<TitledPane, VBox>> ruleTypePanes = new HashMap<>();
 
     public RulesManager() {
         this(ConfigurationManager.getConfigManager().getDefaultRuleSet());
@@ -36,16 +37,16 @@ public class RulesManager {
         ruleTable.setFitToHeight(true);
         ruleTable.setFitToWidth(true);
         for (Rule.Type t : Rule.Type.values()) {
-            GridPane gridPane = new GridPane();
-            TitledPane pane = new TitledPane(t.name, gridPane);
+            VBox box = new VBox();
+            TitledPane pane = new TitledPane(t.name, box);
             pane.setOnMouseClicked(mouseEvent -> {
                 if (mouseEvent.getEventType() == MouseEvent.MOUSE_CLICKED)
                     pane.setExpanded(!pane.isExpanded());
             });
             vbox.getChildren().add(pane);
-            gridPane.setHgap(3);
-            gridPane.setVgap(3);
-            ruleTypePanes.put(t, new Pair<>(pane, gridPane));
+            box.setSpacing(3);
+            box.setPadding(new Insets(3));
+            ruleTypePanes.put(t, new Pair<>(pane, box));
         }
     }
 
@@ -63,14 +64,14 @@ public class RulesManager {
 
     private synchronized void buildRuleUI() {
         ruleDropdown.getItems().clear();
-        for (Pair<TitledPane, GridPane> v : ruleTypePanes.values()) {
+        for (Pair<TitledPane, VBox> v : ruleTypePanes.values()) {
             v.getKey().setVisible(false);
             v.getKey().setManaged(false);
             v.getValue().getChildren().clear();
         }
         for (Map.Entry<Rule.Type, SortedSet<RuleList>> e : availableRules.entrySet()) {
             if (e.getValue().size() > 0) {
-                Pair<TitledPane, GridPane> tPanes = ruleTypePanes.get(e.getKey());
+                Pair<TitledPane, VBox> tPanes = ruleTypePanes.get(e.getKey());
                 tPanes.getKey().setManaged(true);
                 tPanes.getKey().setVisible(true);
                 Menu m = new Menu(e.getKey().name);
@@ -84,11 +85,7 @@ public class RulesManager {
                     btn.setMaxWidth(Double.MAX_VALUE);
                     GridPane.setFillWidth(btn, true);
                     btn.setOnAction(actionEvent -> ruleSelected(r));
-                    tPanes.getValue().add(btn, i++, j);
-                    if (i > 1) {
-                        ++j;
-                        i = 0;
-                    }
+                    tPanes.getValue().getChildren().add(btn);
                 }
                 ruleDropdown.getItems().add(m);
             }

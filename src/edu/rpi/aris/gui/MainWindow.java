@@ -9,6 +9,7 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Bounds;
+import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -41,9 +42,11 @@ public class MainWindow {
     @FXML
     private Label errorRangeLbl;
     @FXML
-    private Pane operatorPane;
+    private GridPane operatorPane;
     @FXML
     private VBox rulesPane;
+    @FXML
+    private TitledPane oprTitlePane;
 
     private ObjectProperty<Font> fontObjectProperty;
     private ArrayList<ProofLine> proofLines = new ArrayList<>();
@@ -311,6 +314,36 @@ public class MainWindow {
         });
         rulesPane.getChildren().add(rulesManager.getRulesTable());
         VBox.setVgrow(rulesManager.getRulesTable(), Priority.ALWAYS);
+        populateOperatorPane();
+    }
+
+    private void populateOperatorPane() {
+        oprTitlePane.setOnMouseClicked(mouseEvent -> {
+            if (mouseEvent.getEventType() == MouseEvent.MOUSE_CLICKED)
+                oprTitlePane.setExpanded(!oprTitlePane.isExpanded());
+        });
+        operatorPane.setPadding(new Insets(3));
+        operatorPane.setVgap(3);
+        operatorPane.setHgap(3);
+        for (int i = 0; i < ConfigurationManager.SYMBOL_BUTTONS.length; i++) {
+            String sym = ConfigurationManager.SYMBOL_BUTTONS[i];
+            Button btn = new Button(sym);
+            operatorPane.add(btn, i % 5, i / 5);
+            btn.setMaxWidth(Double.MAX_VALUE);
+            GridPane.setHgrow(btn, Priority.ALWAYS);
+            GridPane.setFillWidth(btn, true);
+            btn.setOnAction(actionEvent -> insertString(sym));
+        }
+    }
+
+    private void insertString(String str) {
+        if (selectedLine.get() > -1) {
+            ProofLine line = proofLines.get(selectedLine.get());
+            line.insertText(str);
+        } else if (selectedLine.get() < -1) {
+            GoalLine line = goalLines.get(selectedLine.get() * -1 - 2);
+            line.insertText(str);
+        }
     }
 
     private synchronized void addProofLine(boolean assumption, int proofLevel, int index) {

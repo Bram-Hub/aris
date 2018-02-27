@@ -83,4 +83,8 @@ public class GoalLine {
         if (error != null)
             goalText.selectRange(error.getMinimumInteger(), error.getMaximumInteger() + 1);
     }
+
+    public void insertText(String str) {
+        goalText.insertText(goalText.getCaretPosition(), str);
+    }
 }

@@ -11,12 +11,13 @@ import java.util.List;
 
 public class ConfigurationManager {
 
+    public static final String[] SYMBOL_BUTTONS = new String[]{"∧", "∨", "¬", "→", "↔", "⊥", "∀", "∃", "=", "≠"};
     private static final HashMap<String, String> KEY_MAP = new HashMap<>();
-    private static final String[][] keyMap = new String[][]{{"&", "∧"}, {"|", "∨"}, {"!", "≠"}, {"~", "¬"}, {"$", "→"}, {"%", "↔"}, {"^", "⊥"}, {"@", "∀"}, {"#", "∃"}};
+    private static final String[][] defaultKeyMap = new String[][]{{"&", "∧"}, {"|", "∨"}, {"!", "≠"}, {"~", "¬"}, {"$", "→"}, {"%", "↔"}, {"^", "⊥"}, {"@", "∀"}, {"#", "∃"}};
     private static final ConfigurationManager configManager;
 
     static {
-        for (String[] s : keyMap)
+        for (String[] s : defaultKeyMap)
             KEY_MAP.put(s[0], s[1]);
         configManager = new ConfigurationManager();
     }

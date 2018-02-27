@@ -1,24 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.TitledPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
 <BorderPane stylesheets="@main_window.css" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1">
     <center>
         <BorderPane>
             <top>
-                <HBox BorderPane.alignment="CENTER"/>
+                <HBox BorderPane.alignment="CENTER" />
             </top>
             <bottom>
                 <HBox alignment="CENTER_LEFT" BorderPane.alignment="CENTER">
                     <Label fx:id="statusLbl">
                         <padding>
-                            <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
+                            <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
                         </padding>
                     </Label>
                     <Label fx:id="errorRangeLbl" styleClass="error-range">
                         <padding>
-                            <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
+                            <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
                         </padding>
                     </Label>
                 </HBox>
@@ -26,13 +33,13 @@
             <center>
                 <SplitPane dividerPositions="0.5" orientation="VERTICAL" BorderPane.alignment="CENTER">
                     <ScrollPane fx:id="scrollPane" fitToWidth="true">
-                        <VBox fx:id="proofTable" alignment="CENTER"/>
+                        <VBox fx:id="proofTable" alignment="CENTER" />
                     </ScrollPane>
                     <ScrollPane fx:id="goalScroll" fitToHeight="true" fitToWidth="true" hbarPolicy="NEVER">
                         <VBox>
                             <Label fx:id="goalLbl" text="Goals:">
                                 <padding>
-                                    <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
+                                    <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
                                 </padding>
                             </Label>
                         </VBox>
@@ -43,16 +50,10 @@
     </center>
     <right>
         <VBox BorderPane.alignment="CENTER">
-            <Accordion>
-                <panes>
-                    <TitledPane animated="false">
-                        <graphic>
-                            <Pane fx:id="operatorPane"/>
-                        </graphic>
-                    </TitledPane>
-                </panes>
-            </Accordion>
-            <VBox fx:id="rulesPane" VBox.vgrow="ALWAYS"/>
+            <TitledPane fx:id="oprTitlePane" text="Operators">
+                <GridPane fx:id="operatorPane" />
+            </TitledPane>
+            <VBox fx:id="rulesPane" VBox.vgrow="ALWAYS" />
         </VBox>
     </right>
 </BorderPane>

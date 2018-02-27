@@ -205,4 +205,8 @@ public class ProofLine {
         if (error != null)
             textField.selectRange(error.getMinimumInteger(), error.getMaximumInteger() + 1);
     }
+
+    public void insertText(String str) {
+        textField.insertText(textField.getCaretPosition(), str);
+    }
 }

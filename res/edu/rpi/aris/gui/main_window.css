@@ -7,3 +7,4 @@
 .highlight-premise { -fx-background-color: -fx-hcolor; }
 .error-range { -fx-text-fill: #0000EE; -fx-font-weight: bold; }
 .error-range:hover { -fx-text-fill: #0000EE; -fx-font-weight: bold; -fx-underline: true; }
+.titled-pane > .title  { -fx-font-weight: bold; }
