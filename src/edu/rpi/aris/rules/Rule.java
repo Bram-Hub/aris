@@ -66,10 +66,18 @@ public abstract class Rule {
     protected abstract String verifyClaim(Expression conclusion, Premise[] premises);
 
     public enum Type {
-        INFERENCE,
-        EQUIVALENCE,
-        ELIM,
-        INTRO
+
+        INTRO("Introduction"),
+        ELIM("Elimination"),
+        INFERENCE("Inference"),
+        EQUIVALENCE("Equivalence");
+
+        public final String name;
+
+        Type(String name) {
+            this.name = name;
+        }
+
     }
 
 }

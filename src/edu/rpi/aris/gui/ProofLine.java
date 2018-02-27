@@ -6,7 +6,10 @@ import javafx.beans.binding.Bindings;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
-import javafx.scene.control.*;
+import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TextFormatter;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyEvent;
@@ -18,9 +21,7 @@ import javafx.scene.layout.VBox;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.IntRange;
 
-import java.util.Arrays;
 import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
 
 public class ProofLine {
 
@@ -47,8 +48,6 @@ public class ProofLine {
     private ImageView validImage;
     @FXML
     private ImageView selectedLine;
-    @FXML
-    private ContextMenu ruleMenu;
 
     private MainWindow window;
     private Proof.Line proofLine;
@@ -125,7 +124,6 @@ public class ProofLine {
             }
         });
         textField.editableProperty().bind(Bindings.createBooleanBinding(() -> proofLine.lineNumberProperty().get() == window.selectedLineProperty().get(), proofLine.lineNumberProperty(), window.selectedLineProperty()));
-        setUpRules();
         proofLine.expressionStringProperty().bind(textField.textProperty());
         proofLine.isUnderlined().addListener((observableValue, oldVal, newVal) -> {
             if (newVal && !textVBox.getStyleClass().contains(UNDERLINE)) {
@@ -146,6 +144,7 @@ public class ProofLine {
         proofLine.subProofLevelProperty().addListener((observableValue, oldVal, newVal) -> setIndent(newVal.intValue()));
         root.setOnMouseClicked(highlightListener);
         validImage.imageProperty().bind(Bindings.createObjectBinding(() -> proofLine.statusProperty().get().img, proofLine.statusProperty()));
+        ruleChoose.setContextMenu(window.getRulesManager().getRulesDropdown());
     }
 
     public void setHighlighted(boolean highlighted) {
@@ -158,11 +157,6 @@ public class ProofLine {
             root.getStyleClass().remove(HIGHLIGHT_STYLE);
             textVBox.getStyleClass().remove(HIGHLIGHT_STYLE);
         }
-    }
-
-    private void setUpRules() {
-        //TODO: Change this to separate rules into sections and allow choosing logic system
-        ruleMenu.getItems().addAll(Arrays.stream(RuleList.values()).map(this::getRuleMenu).collect(Collectors.toList()));
     }
 
     private void setIndent(int level) {

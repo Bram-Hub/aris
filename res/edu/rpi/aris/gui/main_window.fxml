@@ -1,44 +1,58 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ScrollPane?>
-<?import javafx.scene.control.SplitPane?>
-<?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.VBox?>
-
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
 <BorderPane stylesheets="@main_window.css" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1">
-    <top>
-        <HBox BorderPane.alignment="CENTER" />
-    </top>
-    <bottom>
-        <HBox alignment="CENTER_LEFT" BorderPane.alignment="CENTER">
-            <Label fx:id="statusLbl">
-                <padding>
-                    <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
-                </padding>
-            </Label>
-         <Label fx:id="errorRangeLbl" styleClass="error-range">
-            <padding>
-               <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
-            </padding></Label>
-        </HBox>
-    </bottom>
     <center>
-        <SplitPane dividerPositions="0.5" orientation="VERTICAL" BorderPane.alignment="CENTER">
-            <ScrollPane fx:id="scrollPane" fitToWidth="true">
-                <VBox fx:id="proofTable" alignment="CENTER" />
-            </ScrollPane>
-            <ScrollPane fx:id="goalScroll" fitToHeight="true" fitToWidth="true" hbarPolicy="NEVER">
-                <VBox>
-                    <Label fx:id="goalLbl" text="Goals:">
+        <BorderPane>
+            <top>
+                <HBox BorderPane.alignment="CENTER"/>
+            </top>
+            <bottom>
+                <HBox alignment="CENTER_LEFT" BorderPane.alignment="CENTER">
+                    <Label fx:id="statusLbl">
                         <padding>
-                            <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+                            <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
                         </padding>
                     </Label>
-                </VBox>
-            </ScrollPane>
-        </SplitPane>
+                    <Label fx:id="errorRangeLbl" styleClass="error-range">
+                        <padding>
+                            <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
+                        </padding>
+                    </Label>
+                </HBox>
+            </bottom>
+            <center>
+                <SplitPane dividerPositions="0.5" orientation="VERTICAL" BorderPane.alignment="CENTER">
+                    <ScrollPane fx:id="scrollPane" fitToWidth="true">
+                        <VBox fx:id="proofTable" alignment="CENTER"/>
+                    </ScrollPane>
+                    <ScrollPane fx:id="goalScroll" fitToHeight="true" fitToWidth="true" hbarPolicy="NEVER">
+                        <VBox>
+                            <Label fx:id="goalLbl" text="Goals:">
+                                <padding>
+                                    <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
+                                </padding>
+                            </Label>
+                        </VBox>
+                    </ScrollPane>
+                </SplitPane>
+            </center>
+        </BorderPane>
     </center>
+    <right>
+        <VBox BorderPane.alignment="CENTER">
+            <Accordion>
+                <panes>
+                    <TitledPane animated="false">
+                        <graphic>
+                            <Pane fx:id="operatorPane"/>
+                        </graphic>
+                    </TitledPane>
+                </panes>
+            </Accordion>
+            <VBox fx:id="rulesPane" VBox.vgrow="ALWAYS"/>
+        </VBox>
+    </right>
 </BorderPane>

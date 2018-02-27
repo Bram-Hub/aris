@@ -15,9 +15,7 @@ import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
@@ -42,6 +40,10 @@ public class MainWindow {
     private Label goalLbl;
     @FXML
     private Label errorRangeLbl;
+    @FXML
+    private Pane operatorPane;
+    @FXML
+    private VBox rulesPane;
 
     private ObjectProperty<Font> fontObjectProperty;
     private ArrayList<ProofLine> proofLines = new ArrayList<>();
@@ -49,12 +51,21 @@ public class MainWindow {
     private SimpleIntegerProperty selectedLine = new SimpleIntegerProperty(-1);
     private Proof proof = new Proof();
     private Stage primaryStage;
-    private ConfigurationManager configuration = new ConfigurationManager();
+    private ConfigurationManager configuration = ConfigurationManager.getConfigManager();
+    private RulesManager rulesManager;
 
     public MainWindow(Stage primaryStage) throws IOException {
         this.primaryStage = primaryStage;
         primaryStage.setTitle("ARIS");
         fontObjectProperty = new SimpleObjectProperty<>(new Font(14));
+        rulesManager = new RulesManager();
+        rulesManager.addRuleSelectionHandler(ruleSelectEvent -> {
+            if (selectedLine.get() > -1) {
+                Proof.Line line = proof.getLines().get(selectedLine.get());
+                if (!line.isAssumption())
+                    line.selectedRuleProperty().set(ruleSelectEvent.getRule());
+            }
+        });
         setupScene();
         selectedLine.addListener((observableValue, oldVal, newVal) -> {
             statusLbl.textProperty().unbind();
@@ -298,6 +309,8 @@ public class MainWindow {
                 }
             }
         });
+        rulesPane.getChildren().add(rulesManager.getRulesTable());
+        VBox.setVgrow(rulesManager.getRulesTable(), Priority.ALWAYS);
     }
 
     private synchronized void addProofLine(boolean assumption, int proofLevel, int index) {
@@ -459,4 +472,7 @@ public class MainWindow {
     }
 
 
+    public RulesManager getRulesManager() {
+        return rulesManager;
+    }
 }
