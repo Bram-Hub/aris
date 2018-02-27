@@ -19,6 +19,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import org.apache.commons.lang.math.IntRange;
 
@@ -287,7 +288,7 @@ public class MainWindow {
         addGoal();
         selectedLine.set(-1);
         statusLbl.fontProperty().bind(fontObjectProperty);
-        errorRangeLbl.fontProperty().bind(fontObjectProperty);
+        errorRangeLbl.fontProperty().bind(Bindings.createObjectBinding(() -> Font.font(fontObjectProperty.get().getFamily(), FontWeight.BOLD, fontObjectProperty.get().getSize()), fontObjectProperty));
         errorRangeLbl.setOnMouseClicked(mouseEvent -> {
             if (mouseEvent.getEventType() == MouseEvent.MOUSE_CLICKED) {
                 if (selectedLine.get() >= 0)
