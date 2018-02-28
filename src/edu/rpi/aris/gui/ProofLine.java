@@ -1,17 +1,17 @@
 package edu.rpi.aris.gui;
 
-import edu.rpi.aris.rules.RuleList;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
+import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
-import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.ContextMenuEvent;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
@@ -83,13 +83,13 @@ public class ProofLine {
             return StringUtils.repeat("  ", spaces) + num + '.';
         }, window.numLines(), proofLine.lineNumberProperty()));
         ruleChoose.setOnMouseClicked(e -> {
-            window.requestFocus(this);
+            requestFocus(e);
             if (e.getButton() == MouseButton.PRIMARY)
                 ruleChoose.getContextMenu().show(ruleChoose, e.getScreenX(), e.getScreenY());
         });
-        selectedLine.setOnMouseClicked(e -> window.requestFocus(this));
-        selectedHBox.setOnMouseClicked(e -> window.requestFocus(this));
-        numberLbl.setOnMouseClicked(e -> window.requestFocus(this));
+        selectedLine.setOnMouseClicked(this::requestFocus);
+        selectedHBox.setOnMouseClicked(this::requestFocus);
+        numberLbl.setOnMouseClicked(this::requestFocus);
         textField.focusedProperty().addListener((observableValue, oldVal, newVal) -> {
             if (newVal)
                 Platform.runLater(() -> {
@@ -107,7 +107,8 @@ public class ProofLine {
                 textField.requestFocus();
             selectedLine.imageProperty().setValue(newVal ? SELECTED_IMAGE : null);
         });
-        textField.setOnMouseClicked(highlightListener);
+        textField.setOnMouseClicked(this::requestFocus);
+        textField.addEventFilter(ContextMenuEvent.CONTEXT_MENU_REQUESTED, Event::consume);
         UnaryOperator<TextFormatter.Change> filter = t -> {
             t.setText(ConfigurationManager.replaceText(t.getText()));
             return t;
@@ -177,12 +178,6 @@ public class ProofLine {
         }
     }
 
-    private MenuItem getRuleMenu(RuleList rule) {
-        MenuItem menuItem = new MenuItem(rule.name);
-        menuItem.setOnAction(actionEvent -> proofLine.selectedRuleProperty().set(rule));
-        return menuItem;
-    }
-
     public HBox getRootNode() {
         return root;
     }
@@ -209,4 +204,13 @@ public class ProofLine {
     public void insertText(String str) {
         textField.insertText(textField.getCaretPosition(), str);
     }
+
+    private void requestFocus(MouseEvent e) {
+        if (e.getButton() == MouseButton.PRIMARY)
+            window.requestFocus(this);
+        else if (e.getButton() == MouseButton.SECONDARY && !textField.isEditable())
+            window.requestSelect(this);
+        e.consume();
+    }
+
 }

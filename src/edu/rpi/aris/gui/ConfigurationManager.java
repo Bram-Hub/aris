@@ -11,9 +11,9 @@ import java.util.List;
 
 public class ConfigurationManager {
 
-    public static final String[] SYMBOL_BUTTONS = new String[]{"∧", "∨", "¬", "→", "↔", "⊥", "∀", "∃", "=", "≠"};
+    public static final String[] SYMBOL_BUTTONS = new String[]{"∧", "∨", "¬", "→", "↔", "⊥", "∀", "∃", "×", "≠", "⊆", "∈"};
     private static final HashMap<String, String> KEY_MAP = new HashMap<>();
-    private static final String[][] defaultKeyMap = new String[][]{{"&", "∧"}, {"|", "∨"}, {"!", "≠"}, {"~", "¬"}, {"$", "→"}, {"%", "↔"}, {"^", "⊥"}, {"@", "∀"}, {"#", "∃"}};
+    private static final String[][] defaultKeyMap = new String[][]{{"&", "∧"}, {"|", "∨"}, {"!", "≠"}, {"~", "¬"}, {"$", "→"}, {"%", "↔"}, {"^", "⊥"}, {"@", "∀"}, {"#", "∃"}, {"*", "×"}};
     private static final ConfigurationManager configManager;
 
     static {

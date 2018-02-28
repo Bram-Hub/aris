@@ -11,8 +11,11 @@ public enum Operator {
     BICONDITIONAL("↔", '↔', false, false, false),
     EQUALS("=", '=', false, false, false),
     NOT_EQUALS("≠", '≠', false, false, false),
+    MULTIPLICATION("*", '×', false, false, false),
     EXISTENTIAL("∃", '∃', true, false, true),
-    UNIVERSAL("∀", '∀', true, false, true);
+    UNIVERSAL("∀", '∀', true, false, true),
+    ELEMENT_OF("∈", '∈', false, false, false),
+    SUBSET("⊆", '⊆', false, false, false);
 
     public static final Operator[] BINARY_OPERATOR = Arrays.stream(Operator.values()).filter(opr -> !opr.isUnary).toArray(Operator[]::new);
     public static final Operator[] UNARY_OPERATOR = Arrays.stream(Operator.values()).filter(opr -> opr.isUnary).toArray(Operator[]::new);

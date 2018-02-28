@@ -328,7 +328,7 @@ public class MainWindow {
         for (int i = 0; i < ConfigurationManager.SYMBOL_BUTTONS.length; i++) {
             String sym = ConfigurationManager.SYMBOL_BUTTONS[i];
             Button btn = new Button(sym);
-            operatorPane.add(btn, i % 5, i / 5);
+            operatorPane.add(btn, i % 6, i / 6);
             btn.setMaxWidth(Double.MAX_VALUE);
             GridPane.setHgrow(btn, Priority.ALWAYS);
             GridPane.setFillWidth(btn, true);
