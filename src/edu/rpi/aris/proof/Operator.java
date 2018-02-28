@@ -15,6 +15,7 @@ public enum Operator {
     EQUALS("=", '=', new Type[]{Type.EQUIVALENCE}),
     NOT_EQUALS("≠", '≠', new Type[]{Type.EQUIVALENCE}),
     MULTIPLICATION("*", '×', new Type[]{Type.BINARY, Type.MATH}),
+    ADDITION("+", '+', new Type[]{Type.BINARY, Type.MATH}),
     EXISTENTIAL("∃", '∃', new Type[]{Type.UNARY, Type.QUANTIFIER}),
     UNIVERSAL("∀", '∀', new Type[]{Type.UNARY, Type.QUANTIFIER}),
     ELEMENT_OF("∈", '∈', new Type[]{Type.BINARY, Type.SET}),
@@ -62,14 +63,29 @@ public enum Operator {
         return ArrayUtils.contains(this.types, type);
     }
 
+    public boolean isVariableOperator() {
+        for (Type t : types)
+            if (t.isVariableType)
+                return true;
+        return false;
+    }
+
     public enum Type {
-        BINARY,
-        GENERALIZABLE,
-        QUANTIFIER,
-        EQUIVALENCE,
-        UNARY,
-        SET,
-        MATH
+        BINARY(false),
+        GENERALIZABLE(false),
+        QUANTIFIER(false),
+        EQUIVALENCE(true),
+        UNARY(false),
+        SET(true),
+        MATH(true);
+
+        //Determines whether operators of this type are restricted to having constants and variables instead of literals
+        public final boolean isVariableType;
+
+        Type(boolean isVariableType) {
+            this.isVariableType = isVariableType;
+        }
+
     }
 
 }

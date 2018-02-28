@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 public class SentenceUtil {
 
     public static final Pattern VARIABLE_PATTERN = Pattern.compile("[t-z][A-Za-z0-9]*");
-    public static final Pattern CONSTANT_PATTERN = Pattern.compile("[a-s][A-Za-z0-9]*");
+    public static final Pattern CONSTANT_PATTERN = Pattern.compile("[a-s][A-Za-z0-9]*|[0-9]+");
     public static final Pattern LITERAL_PATTERN = Pattern.compile("[A-Z][A-Za-z0-9]*|⊥");
     public static final char OP = '(';
     public static final char CP = ')';
@@ -226,7 +226,7 @@ public class SentenceUtil {
                 StringBuilder sb = new StringBuilder(String.valueOf(OP));
                 for (int j = 0; j < convert.length; j++) {
                     Pair<String, HashMap<Integer, Integer>> p = convert[j];
-                    for (int i = 0; i < p.getKey().length(); ++i) {
+                    for (int i = 0; i < split.get(j + 1).length(); ++i) {
                         Integer o = p.getValue().get(i);
                         if (o != null) {
                             parseMap.put(i + polishOffsets[j], o + offset);
@@ -331,6 +331,8 @@ public class SentenceUtil {
             if (!m.find() || (opr = Operator.getOperator(m.group())) == null)
                 throw new ExpressionParseException("Failed to parse expression", -1, 0);
             String[] split = expr.split(String.valueOf(opr.logic));
+            if (split.length != 2 || split[0].length() == 0 || split[1].length() == 0)
+                throw new ExpressionParseException("Equivalence operator must join 2 expressions", expr.indexOf(opr.logic), 1);
             split[0] = removeParen(split[0]);
             split[1] = removeParen(split[1]);
 

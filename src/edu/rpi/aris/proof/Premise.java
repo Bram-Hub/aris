@@ -5,13 +5,13 @@ public class Premise {
     private boolean isSubproof;
     private Expression p1, p2;
 
-    public Premise(Expression premis) {
-        p1 = premis;
+    public Premise(Expression premise) {
+        p1 = premise;
         isSubproof = false;
     }
 
-    public Premise(Expression assumtion, Expression conclusion) {
-        p1 = assumtion;
+    public Premise(Expression assumption, Expression conclusion) {
+        p1 = assumption;
         p2 = conclusion;
         isSubproof = true;
     }

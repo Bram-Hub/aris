@@ -5,12 +5,10 @@ import org.apache.commons.lang.ArrayUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Expression {
 
-    private static final Pattern NOT_LITERAL_PATTERN = Pattern.compile("[^A-Za-z0-9⊥]");
     private static final Pattern FUNCTION_PATTERN = Pattern.compile("[A-Z][A-Za-z0-9]*");
     private Operator operator = null;
     private String polishRep;
@@ -51,49 +49,77 @@ public class Expression {
             init(SentenceUtil.toPolish(this.expressions, opr.rep));
     }
 
-    private void init(String expr) throws ExpressionParseException {
+    private void init
+            (String expr) throws ExpressionParseException {
         polishRep = expr;
         expr = SentenceUtil.removeParen(expr);
         int parenOffset = (polishRep.length() - expr.length()) / 2;
         if (!expr.contains(" ")) {
-            isLiteral = true;
-            expressions = new Expression[0];
-            if ((parent == null || !parent.isFunctional) && !SentenceUtil.LITERAL_PATTERN.matcher(expr).matches()) {
-                if (expr.length() == 0)
-                    throw new ExpressionParseException("No expression given", -1, 0);
-                if (Character.isDigit(expr.charAt(0)))
-                    throw new ExpressionParseException("Literal cannot start with a number", parenOffset, 1);
-                Matcher matcher = NOT_LITERAL_PATTERN.matcher(expr);
-                if (matcher.find()) {
-                    String symbol = matcher.group();
-                    int start = matcher.start();
-                    int end = matcher.end();
-                    throw new ExpressionParseException("Unknown symbol in expression: \"" + symbol + "\"", start + parenOffset, end - start);
-                }
-                throw new ExpressionParseException("Not a literal: \"" + expr + "\"", parenOffset, expr.length());
-            } else if (parent != null && parent.isFunctional && !SentenceUtil.CONSTANT_PATTERN.matcher(expr).matches() && !(SentenceUtil.VARIABLE_PATTERN.matcher(expr).matches() && (expr.equals(quantifierVar) || ArrayUtils.contains(parentVariables, expr)))) {
-                throw new ExpressionParseException("Invalid function parameter: \"" + expr + "\" must be a constant or an introduced variable.", parenOffset, expr.length());
-            }
+            validateLiteral(expr, parenOffset);
             return;
         }
         String oprStr = expr.substring(0, expr.indexOf(' '));
-        operator = Operator.getOperator(oprStr);
-        if (operator == null) {
-            if (!FUNCTION_PATTERN.matcher(oprStr).matches())
-                throw new ExpressionParseException("Invalid function name: " + oprStr, parenOffset, oprStr.length());
-            functionOperator = oprStr;
-            isFunctional = true;
-        } else if (operator.isType(Operator.Type.QUANTIFIER)) {
-            String varStr = oprStr.replaceFirst(operator.rep, "");
-            if (!SentenceUtil.VARIABLE_PATTERN.matcher(varStr).matches())
-                throw new ExpressionParseException("Invalid quantifier variable: " + varStr, parenOffset + 1, varStr.length());
-            if (ArrayUtils.contains(parentVariables, varStr))
-                throw new ExpressionParseException("Quantifier variable introduced twice in expression: " + varStr, parenOffset + 1, varStr.length());
-            quantifierVar = varStr;
-        }
+
+        validateOperatorString(oprStr, parenOffset);
+
+        //remove the operator from the expression
         expr = expr.substring(expr.indexOf(' ') + 1);
+
+        ArrayList<String> strExp = depthAwareSplit(expr);
+        validateSubExpressionCount(strExp, oprStr, parenOffset);
+
+        expressions = new Expression[strExp.size()];
+        String[] vars = parentVariables;
+        if (operator != null && operator.isType(Operator.Type.QUANTIFIER)) {
+            vars = Arrays.copyOf(parentVariables, parentVariables.length + 1);
+            vars[parentVariables.length] = quantifierVar;
+        }
+        for (int i = 0; i < strExp.size(); ++i) {
+            int errorOffset = parenOffset + oprStr.length() + (i > 0 ? strExp.subList(0, i).stream().mapToInt(s -> s.length() + 1).sum() : 0) + 1;
+            expressions[i] = validateChildExpression(strExp.get(i), vars, errorOffset);
+        }
+    }
+
+    private Expression validateChildExpression(String strExp, String[] vars, int errorOffset) throws ExpressionParseException {
+        Expression exp;
+        try {
+            exp = new Expression(strExp, this, vars);
+        } catch (ExpressionParseException e) {
+            throw new ExpressionParseException(e.getMessage() + (operator != null && operator.isType(Operator.Type.QUANTIFIER) ? " Make sure you are not missing a space after your quantifiers" : ""), errorOffset + e.getErrorOffset(), e.getErrorLength());
+        }
+        int offset = (strExp.startsWith(String.valueOf(SentenceUtil.OP)) ? 1 : 0) + (exp.isLiteral ? 0 : (exp.isFunctional ? exp.functionOperator.length() : (exp.operator.rep.length() + (exp.quantifierVar == null ? 0 : exp.quantifierVar.length()) + 1)));
+        int length = strExp.length() - (strExp.startsWith(String.valueOf(SentenceUtil.OP)) ? 1 : 0) - offset;
+        offset += errorOffset;
+        if (isFunctional) {
+            if (!SentenceUtil.CONSTANT_PATTERN.matcher(exp.polishRep).matches() && !(SentenceUtil.VARIABLE_PATTERN.matcher(exp.polishRep).matches() && ArrayUtils.contains(vars, exp.polishRep)))
+                throw new ExpressionParseException("Function must only contain introduced variables or constants", offset, length);
+        } else if (operator.isType(Operator.Type.MATH)) {
+            if (!exp.isLiteral && !exp.operator.isType(Operator.Type.MATH) && !exp.isFunctional)
+                throw new ExpressionParseException("Unexpected subexpression in math expression", offset, length);
+        } else if (operator.isType(Operator.Type.SET)) {
+            if (!exp.isLiteral)
+                throw new ExpressionParseException("Set operations can only join constants and variables", offset, length);
+        } else if (operator.isType(Operator.Type.EQUIVALENCE)) {
+            if (!exp.isLiteral && !exp.isFunctional && !exp.operator.isType(Operator.Type.MATH))
+                throw new ExpressionParseException("Equivalence operators can only join functional and math operators", offset, length);
+        }
+        return exp;
+    }
+
+    private void validateSubExpressionCount(ArrayList<String> strExp, String oprStr, int errorOffset) throws ExpressionParseException {
+        if (operator != null) {
+            if (operator.isType(Operator.Type.UNARY) && strExp.size() != 1)
+                throw new ExpressionParseException("Multiple expressions given for unary operator", errorOffset + oprStr.length() + 1 + strExp.get(0).length() + 1, strExp.get(1).length());
+            else if (!operator.isType(Operator.Type.GENERALIZABLE) && !operator.isType(Operator.Type.UNARY) && strExp.size() != 2)
+                throw new ExpressionParseException("Cannot create generalized " + operator.name().toLowerCase(), errorOffset + 2, polishRep.length() - errorOffset * 2 - 2);
+            else if (operator.isType(Operator.Type.GENERALIZABLE) && strExp.size() < 2)
+                throw new ExpressionParseException("Must have at least 2 parameters for operator " + operator.name().toLowerCase(), errorOffset + 2, polishRep.length() - errorOffset * 2 - 2);
+        }
+    }
+
+    private ArrayList<String> depthAwareSplit(String expression) {
         ArrayList<String> strExp = new ArrayList<>();
-        char[] charExp = expr.toCharArray();
+        char[] charExp = expression.toCharArray();
         int parenDepth = 0;
         int start = 0;
         for (int i = 0; i < charExp.length; ++i) {
@@ -103,36 +129,50 @@ public class Expression {
             else if (c == SentenceUtil.CP)
                 parenDepth--;
             else if (c == ' ' && parenDepth == 0) {
-                strExp.add(expr.substring(start, i));
+                strExp.add(expression.substring(start, i));
                 start = i + 1;
             }
         }
-        strExp.add(expr.substring(start));
-        if (operator != null) {
-            if (operator.isType(Operator.Type.UNARY) && strExp.size() != 1)
-                throw new ExpressionParseException("Multiple expressions given for unary operator", parenOffset + oprStr.length() + 1 + strExp.get(0).length() + 1, strExp.get(1).length());
-            else if (!operator.isType(Operator.Type.GENERALIZABLE) && !operator.isType(Operator.Type.UNARY) && strExp.size() != 2)
-                throw new ExpressionParseException("Cannot create generalized " + operator.name().toLowerCase(), parenOffset + 2, polishRep.length() - parenOffset * 2 - 2);
+        strExp.add(expression.substring(start));
+        return strExp;
+    }
+
+    private void validateOperatorString(String oprStr, int errorOffset) throws ExpressionParseException {
+        operator = Operator.getOperator(oprStr);
+        if (operator == null) {
+            if (!FUNCTION_PATTERN.matcher(oprStr).matches())
+                throw new ExpressionParseException("Invalid function name: " + oprStr, errorOffset, oprStr.length());
+            functionOperator = oprStr;
+            isFunctional = true;
+        } else if (operator.isType(Operator.Type.QUANTIFIER)) {
+            String varStr = oprStr.replaceFirst(operator.rep, "");
+            if (!SentenceUtil.VARIABLE_PATTERN.matcher(varStr).matches())
+                throw new ExpressionParseException("Invalid quantifier variable: " + varStr, errorOffset + 1, varStr.length());
+            if (ArrayUtils.contains(parentVariables, varStr))
+                throw new ExpressionParseException("Quantifier variable introduced twice in expression: " + varStr, errorOffset + 1, varStr.length());
+            quantifierVar = varStr;
+        } else if (operator.isType(Operator.Type.MATH)) {
+            if (parent == null)
+                throw new ExpressionParseException("Math expression cannot be top level expression", errorOffset, oprStr.length());
+            else if (parent.operator == null || (!parent.operator.isType(Operator.Type.MATH) && !parent.operator.isType(Operator.Type.EQUIVALENCE)))
+                throw new ExpressionParseException("Math expressions can only be joined with other math operators and equivalence operators", errorOffset, oprStr.length());
+        } else if (operator.isType(Operator.Type.EQUIVALENCE)) {
+            if (parent != null)
+                throw new ExpressionParseException("Equivalence expression must be top level expression", errorOffset, oprStr.length());
         }
-        expressions = new Expression[strExp.size()];
-        String[] vars = parentVariables;
-        if (operator != null && operator.isType(Operator.Type.QUANTIFIER)) {
-            vars = Arrays.copyOf(parentVariables, parentVariables.length + 1);
-            vars[parentVariables.length] = quantifierVar;
-        }
-        for (int i = 0; i < strExp.size(); ++i) {
-            Expression exp;
-            int errorOffset = parenOffset + oprStr.length() + (i > 0 ? strExp.subList(0, i).stream().mapToInt(s -> s.length() + 1).sum() : 0) + 1;
-            try {
-                exp = new Expression(strExp.get(i), this, vars);
-            } catch (ExpressionParseException e) {
-                throw new ExpressionParseException(e.getMessage() + (operator != null && operator.isType(Operator.Type.QUANTIFIER) ? " Make sure you are not missing a space after your quantifiers" : ""), errorOffset + e.getErrorOffset(), e.getErrorLength());
-            }
-            if (isFunctional && !SentenceUtil.CONSTANT_PATTERN.matcher(exp.polishRep).matches() && !(SentenceUtil.VARIABLE_PATTERN.matcher(exp.polishRep).matches() && (exp.polishRep.equals(quantifierVar) || ArrayUtils.contains(parentVariables, exp.polishRep))))
-                throw new ExpressionParseException("Function must only contain introduced variables or constants", errorOffset, strExp.get(i).length());
-            if (exp.isLiteral && !isFunctional && (exp.polishRep.equals(quantifierVar) || ArrayUtils.contains(parentVariables, exp.polishRep)))
-                throw new ExpressionParseException("Invalid quantifier expression", errorOffset, strExp.get(i).length());
-            expressions[i] = exp;
+    }
+
+    private void validateLiteral(String expr, int errorOffset) throws ExpressionParseException {
+        isLiteral = true;
+        expressions = new Expression[0];
+        if (expr.length() == 0)
+            throw new ExpressionParseException("No expression given", -1, 0);
+        if (parent != null && (parent.isFunctional || parent.operator.isVariableOperator())) {
+            if (!SentenceUtil.CONSTANT_PATTERN.matcher(expr).matches() && !(ArrayUtils.contains(parentVariables, expr) && SentenceUtil.VARIABLE_PATTERN.matcher(expr).matches()))
+                throw new ExpressionParseException("Invalid expression \"" + expr + "\" must be a constant or an introduced variable", errorOffset, expr.length());
+        } else {
+            if (!SentenceUtil.LITERAL_PATTERN.matcher(expr).matches())
+                throw new ExpressionParseException("Invalid literal in expression \"" + expr + "\"", errorOffset, expr.length());
         }
     }
 
