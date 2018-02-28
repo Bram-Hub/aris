@@ -15,14 +15,19 @@ public class RegexMatcher {
         int depth;
         if (rule.contains("...")) {
             depth = 0;
+            label:
             for (int i = 0; i < rule.length(); ++i) {
                 char c = rule.charAt(i);
-                if (c == SentenceUtil.OP)
-                    depth++;
-                else if (c == SentenceUtil.CP)
-                    depth--;
-                else if (c == '.')
-                    break;
+                switch (c) {
+                    case SentenceUtil.OP:
+                        depth++;
+                        break;
+                    case SentenceUtil.CP:
+                        depth--;
+                        break;
+                    case '.':
+                        break label;
+                }
             }
             rule = toRegexString(rule, depth);
         } else
@@ -132,13 +137,17 @@ public class RegexMatcher {
         char[] arr = str.toCharArray();
         for (int i = 0; i < arr.length; ++i) {
             char c = arr[i];
-            if (c == SentenceUtil.OP)
-                depth++;
-            else if (c == SentenceUtil.CP)
-                depth--;
-            else if (c == ' ') {
-                if (depth > target)
-                    arr[i] = REGEX_SPACE;
+            switch (c) {
+                case SentenceUtil.OP:
+                    depth++;
+                    break;
+                case SentenceUtil.CP:
+                    depth--;
+                    break;
+                case ' ':
+                    if (depth > target)
+                        arr[i] = REGEX_SPACE;
+                    break;
             }
         }
         return String.valueOf(arr);

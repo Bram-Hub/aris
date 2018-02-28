@@ -6,7 +6,6 @@ import edu.rpi.aris.proof.Premise;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class Simplification extends Rule {

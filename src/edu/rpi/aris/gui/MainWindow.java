@@ -115,12 +115,16 @@ public class MainWindow {
     }
 
     public boolean handleKeyEvent(KeyEvent keyEvent) {
-        if (keyEvent.getCode() == KeyCode.UP)
-            lineUp();
-        else if (keyEvent.getCode() == KeyCode.DOWN)
-            lineDown();
-        else
-            return false;
+        switch (keyEvent.getCode()) {
+            case UP:
+                lineUp();
+                break;
+            case DOWN:
+                lineDown();
+                break;
+            default:
+                return false;
+        }
         return true;
     }
 
