@@ -11,7 +11,8 @@ import java.util.stream.Collectors;
 
 public class SentenceUtil {
 
-    public static final Pattern VARIABLE_PATTERN = Pattern.compile("[a-z][A-Za-z0-9]*");
+    public static final Pattern VARIABLE_PATTERN = Pattern.compile("[t-z][A-Za-z0-9]*");
+    public static final Pattern CONSTANT_PATTERN = Pattern.compile("[a-s][A-Za-z0-9]*");
     public static final Pattern QUANTIFIER_PATTERN;
     public static final char OP = '(';
     public static final char CP = ')';
@@ -341,7 +342,7 @@ public class SentenceUtil {
                 if (opr.isQuantifier) {
                     String quantifier = quantifiers.pollFirst();
                     if (quantifier == null)
-                        throw new ExpressionParseException("Malformed quantifier in expression", 0, 1);
+                        throw new ExpressionParseException("Malformed quantifier in expression. Valid quantifier variables can start with the letters t-z", 0, 1);
                     exp = exp.substring(quantifier.length());
                     String noParen = removeParen(exp);
                     int offset = (exp.length() - noParen.length()) / 2;

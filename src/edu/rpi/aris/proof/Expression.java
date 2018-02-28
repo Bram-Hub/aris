@@ -72,8 +72,8 @@ public class Expression {
                     throw new ExpressionParseException("Unknown symbol in expression: \"" + symbol + "\"", start + parenOffset, end - start);
                 }
                 throw new ExpressionParseException("Not a literal: \"" + expr + "\"", parenOffset, expr.length());
-            } else if (parent != null && parent.isFunctional && !SentenceUtil.VARIABLE_PATTERN.matcher(expr).matches()) {
-                throw new ExpressionParseException("Invalid function variable: \"" + expr + "\"", parenOffset, expr.length());
+            } else if (parent != null && parent.isFunctional && !SentenceUtil.CONSTANT_PATTERN.matcher(expr).matches() && !(SentenceUtil.VARIABLE_PATTERN.matcher(expr).matches() && (expr.equals(quantifierVar) || ArrayUtils.contains(parentVariables, expr)))) {
+                throw new ExpressionParseException("Invalid function parameter: \"" + expr + "\" must be a constant or an introduced variable.", parenOffset, expr.length());
             }
             return;
         }
@@ -129,8 +129,8 @@ public class Expression {
             } catch (ExpressionParseException e) {
                 throw new ExpressionParseException(e.getMessage() + (operator != null && operator.isQuantifier ? " Make sure you are not missing a space after your quantifiers" : ""), errorOffset + e.getErrorOffset(), e.getErrorLength());
             }
-            if (isFunctional && !SentenceUtil.VARIABLE_PATTERN.matcher(exp.polishRep).matches())
-                throw new ExpressionParseException("Function must only contain variables", errorOffset, strExp.get(i).length());
+            if (isFunctional && !SentenceUtil.CONSTANT_PATTERN.matcher(exp.polishRep).matches() && !(SentenceUtil.VARIABLE_PATTERN.matcher(exp.polishRep).matches() && (exp.polishRep.equals(quantifierVar) || ArrayUtils.contains(parentVariables, exp.polishRep))))
+                throw new ExpressionParseException("Function must only contain introduced variables or constants", errorOffset, strExp.get(i).length());
             if (exp.isLiteral && !isFunctional && (exp.polishRep.equals(quantifierVar) || ArrayUtils.contains(parentVariables, exp.polishRep)))
                 throw new ExpressionParseException("Invalid quantifier expression", errorOffset, strExp.get(i).length());
             expressions[i] = exp;
