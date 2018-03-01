@@ -35,6 +35,8 @@ public class RulesManager {
     private synchronized void initRuleTable() {
         VBox vbox = new VBox();
         ruleTable = new ScrollPane(vbox);
+        ruleTable.visibleProperty().bind(ConfigurationManager.getConfigManager().hideRulesPanel.not());
+        ruleTable.managedProperty().bind(ConfigurationManager.getConfigManager().hideRulesPanel.not());
         ruleTable.setFitToHeight(true);
         ruleTable.setFitToWidth(true);
         for (Rule.Type t : Rule.Type.values()) {

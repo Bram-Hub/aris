@@ -367,6 +367,8 @@ public class MainWindow {
     }
 
     private void populateOperatorPane() {
+        oprTitlePane.visibleProperty().bind(configuration.hideOperatorsPanel.not());
+        oprTitlePane.managedProperty().bind(configuration.hideOperatorsPanel.not());
         oprTitlePane.setOnMouseClicked(mouseEvent -> {
             if (mouseEvent.getEventType() == MouseEvent.MOUSE_CLICKED)
                 oprTitlePane.setExpanded(!oprTitlePane.isExpanded());
