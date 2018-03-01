@@ -63,7 +63,7 @@ public class Expression {
         //remove the operator from the expression
         expr = expr.substring(expr.indexOf(' ') + 1);
 
-        ArrayList<String> strExp = depthAwareSplit(expr);
+        ArrayList<String> strExp = SentenceUtil.depthAwareSplit(expr);
         validateSubExpressionCount(strExp, oprStr, parenOffset);
 
         expressions = new Expression[strExp.size()];
@@ -113,26 +113,6 @@ public class Expression {
             else if (operator.isType(Operator.Type.GENERALIZABLE) && strExp.size() < 2)
                 throw new ExpressionParseException("Must have at least 2 parameters for operator " + operator.name().toLowerCase(), errorOffset + 2, polishRep.length() - errorOffset * 2 - 2);
         }
-    }
-
-    private ArrayList<String> depthAwareSplit(String expression) {
-        ArrayList<String> strExp = new ArrayList<>();
-        char[] charExp = expression.toCharArray();
-        int parenDepth = 0;
-        int start = 0;
-        for (int i = 0; i < charExp.length; ++i) {
-            char c = charExp[i];
-            if (c == SentenceUtil.OP)
-                parenDepth++;
-            else if (c == SentenceUtil.CP)
-                parenDepth--;
-            else if (c == ' ' && parenDepth == 0) {
-                strExp.add(expression.substring(start, i));
-                start = i + 1;
-            }
-        }
-        strExp.add(expression.substring(start));
-        return strExp;
     }
 
     private void validateOperatorString(String oprStr, int errorOffset) throws ExpressionParseException {
