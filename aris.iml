@@ -23,5 +23,6 @@
     <orderEntry type="library" name="commons-lang:commons-lang:2.6" level="project" />
     <orderEntry type="library" name="commons-collections:commons-collections:3.2.2" level="project" />
     <orderEntry type="library" name="org.fxmisc.richtext:richtextfx:1.0.0-SNAPSHOT" level="project" />
+    <orderEntry type="library" name="commons-io:commons-io:2.6" level="project" />
   </component>
 </module>

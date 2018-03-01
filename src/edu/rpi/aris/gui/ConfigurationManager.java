@@ -6,6 +6,7 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.input.KeyEvent;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -22,6 +23,8 @@ public class ConfigurationManager {
             KEY_MAP.put(s[0], s[1]);
         configManager = new ConfigurationManager();
     }
+
+    private File saveDirectory = new File(System.getProperty("user.home"));
 
     public final SimpleBooleanProperty hideRulesPanel = new SimpleBooleanProperty(false);
     public final SimpleBooleanProperty hideOperatorsPanel = new SimpleBooleanProperty(false);
@@ -44,7 +47,9 @@ public class ConfigurationManager {
     public final SimpleObjectProperty<KeyCombination> cutKey = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+X"));
     public final SimpleObjectProperty<KeyCombination> pasteKey = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+V"));
 
-    private SimpleObjectProperty[] accelerators = new SimpleObjectProperty[]{newProofLineKey, deleteProofLineKey, startSubProofKey, endSubProofKey, newPremiseKey, verifyLineKey, addGoalKey, verifyProofKey};
+    private SimpleObjectProperty[] accelerators = new SimpleObjectProperty[]{newProofLineKey, deleteProofLineKey,
+            startSubProofKey, endSubProofKey, newPremiseKey, verifyLineKey, addGoalKey, verifyProofKey, newProofKey,
+            openProofKey, saveProofKey, saveAsProofKey, undoKey, redoKey, copyKey, cutKey, pasteKey};
 
     private ConfigurationManager() {
     }
@@ -72,4 +77,15 @@ public class ConfigurationManager {
     public List<RuleList> getDefaultRuleSet() {
         return Arrays.asList(RuleList.values());
     }
+
+    public File getSaveDirectory() {
+        return saveDirectory;
+    }
+
+    public void setSaveDirectory(File file) {
+        if (file == null)
+            saveDirectory = new File(System.getProperty("user.home"));
+        saveDirectory = file;
+    }
+
 }

@@ -1,5 +1,6 @@
 package edu.rpi.aris.gui;
 
+import edu.rpi.aris.proof.SaveManager;
 import edu.rpi.aris.rules.Rule;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.IntegerProperty;
@@ -22,6 +23,8 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import org.apache.commons.lang.math.IntRange;
 
+import javax.xml.transform.TransformerException;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -56,6 +59,7 @@ public class MainWindow {
     private Stage primaryStage;
     private ConfigurationManager configuration = ConfigurationManager.getConfigManager();
     private RulesManager rulesManager;
+    private File saveFile = null;
 
     public MainWindow(Stage primaryStage) throws IOException {
         this.primaryStage = primaryStage;
@@ -168,6 +172,8 @@ public class MainWindow {
         MenuItem quit = new MenuItem("Quit");
 
         newProof.setOnAction(actionEvent -> newProof());
+        saveAsProof.setOnAction(actionEvent -> saveProof(true));
+        saveProof.setOnAction(actionEvent -> saveProof(false));
 
         newProof.acceleratorProperty().bind(configuration.newProofKey);
         openProof.acceleratorProperty().bind(configuration.openProofKey);
@@ -256,6 +262,20 @@ public class MainWindow {
         bar.getMenus().addAll(file, edit, proof, help);
 
         return bar;
+    }
+
+    private void saveProof(boolean saveAs) {
+        try {
+            if (saveAs || saveFile == null) {
+                File f = SaveManager.showSaveDialog(primaryStage.getScene().getWindow(), saveFile == null ? "" : saveFile.getName());
+                if (f != null)
+                    saveFile = f;
+            }
+            SaveManager.saveProof(proof, saveFile);
+        } catch (TransformerException | IOException e) {
+            // TODO: Show save error
+            e.printStackTrace();
+        }
     }
 
     private void newProof() {

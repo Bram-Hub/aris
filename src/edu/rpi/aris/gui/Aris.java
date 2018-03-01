@@ -10,6 +10,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -20,6 +21,8 @@ import java.io.StringWriter;
 public class Aris extends Application implements Thread.UncaughtExceptionHandler {
 
     public static final String VERSION = "0.1";
+
+    public static Aris instance = null;
 
     private static Logger logger = LogManager.getLogger(Aris.class);
 
@@ -41,8 +44,13 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
         return window;
     }
 
+    public static Aris getInstance() {
+        return instance;
+    }
+
     @Override
     public void start(Stage stage) throws IOException {
+        instance = this;
         Thread.setDefaultUncaughtExceptionHandler(this);
         GUI = true;
         mainWindow = showProofWindow(stage);
@@ -54,8 +62,20 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
 
     @Override
     public void uncaughtException(Thread t, Throwable e) {
-        logger.error("He's dead, Jim!");
-        logger.catching(e);
+        showExceptionError(t, e, false);
+    }
+
+    public void showExceptionError(Thread t, Throwable e, boolean fatal) {
+        if (fatal) {
+            logger.fatal("He's dead, Jim!");
+            logger.catching(Level.FATAL, e);
+        } else {
+            logger.error("99 little bugs in the code");
+            logger.error("99 little bugs");
+            logger.error("Take one down, patch it around");
+            logger.error("137 little bugs in the code");
+            logger.catching(e);
+        }
         Thread bugReportThread = new Thread(() -> generateBugReport(t, e));
         bugReportThread.start();
         if (GUI) {
@@ -72,10 +92,19 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
                 alert.getDialogPane().setPrefHeight(500);
 
                 alert.setTitle("Critical Error");
-                alert.setHeaderText("He's dead, Jim!");
-                alert.setContentText("An error has occurred and Aris has attempted to recover\n" +
-                        "A bug report was generated and sent to the Aris developers\n" +
-                        "It is recommended to restart the program in case Aris was unable to fully recover");
+                if (fatal) {
+                    alert.setHeaderText("He's dead, Jim!");
+                    alert.setContentText("An error has occurred and Aris was unable to recover\n" +
+                            "A bug report was generated and sent to the Aris developers");
+                } else {
+                    alert.setHeaderText("99 little bugs in the code\n" +
+                            "99 little bugs\n" +
+                            "Take one down, patch it around\n" +
+                            "137 little bugs in the code");
+                    alert.setContentText("An error has occurred and Aris has attempted to recover\n" +
+                            "A bug report was generated and sent to the Aris developers\n" +
+                            "It is recommended to restart the program in case Aris was unable to fully recover");
+                }
 
                 StringWriter sw = new StringWriter();
                 PrintWriter pw = new PrintWriter(sw);
@@ -112,5 +141,7 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
         } catch (InterruptedException e1) {
             logger.error("Interrupted while sending bug report", e1);
         }
+        if (fatal)
+            System.exit(1);
     }
 }
