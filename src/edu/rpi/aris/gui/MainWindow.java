@@ -167,6 +167,8 @@ public class MainWindow {
         MenuItem saveAsProof = new MenuItem("Save Proof As");
         MenuItem quit = new MenuItem("Quit");
 
+        newProof.setOnAction(actionEvent -> newProof());
+
         newProof.acceleratorProperty().bind(configuration.newProofKey);
         openProof.acceleratorProperty().bind(configuration.openProofKey);
         saveProof.acceleratorProperty().bind(configuration.saveProofKey);
@@ -254,6 +256,14 @@ public class MainWindow {
         bar.getMenus().addAll(file, edit, proof, help);
 
         return bar;
+    }
+
+    private void newProof() {
+        try {
+            Aris.showProofWindow(new Stage());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private synchronized void verifyLine() {

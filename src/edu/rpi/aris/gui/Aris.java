@@ -35,12 +35,17 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
         return GUI;
     }
 
+    public static MainWindow showProofWindow(Stage stage) throws IOException {
+        MainWindow window = new MainWindow(stage);
+        window.show();
+        return window;
+    }
+
     @Override
     public void start(Stage stage) throws IOException {
         Thread.setDefaultUncaughtExceptionHandler(this);
         GUI = true;
-        mainWindow = new MainWindow(stage);
-        mainWindow.show();
+        mainWindow = showProofWindow(stage);
     }
 
     private void generateBugReport(Thread t, Throwable e) {
