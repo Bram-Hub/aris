@@ -15,6 +15,7 @@ public class SentenceUtil {
     public static final Pattern VARIABLE_PATTERN = Pattern.compile("[t-z][A-Za-z0-9]*");
     public static final Pattern CONSTANT_PATTERN = Pattern.compile("[a-s][A-Za-z0-9]*|[0-9]+");
     public static final Pattern LITERAL_PATTERN = Pattern.compile("[A-Z][A-Za-z0-9]*|⊥");
+    public static final Pattern FUNCTION_PATTERN = Pattern.compile("[A-Z][A-Za-z0-9]*");
     public static final char OP = '(';
     public static final char CP = ')';
     private static final Pattern QUANTIFIER_PATTERN;

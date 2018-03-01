@@ -5,11 +5,9 @@ import org.apache.commons.lang.ArrayUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.regex.Pattern;
 
 public class Expression {
 
-    private static final Pattern FUNCTION_PATTERN = Pattern.compile("[A-Z][A-Za-z0-9]*");
     private Operator operator = null;
     private String polishRep;
     private String functionOperator = null;
@@ -140,7 +138,7 @@ public class Expression {
     private void validateOperatorString(String oprStr, int errorOffset) throws ExpressionParseException {
         operator = Operator.getOperator(oprStr);
         if (operator == null) {
-            if (!FUNCTION_PATTERN.matcher(oprStr).matches())
+            if (!SentenceUtil.FUNCTION_PATTERN.matcher(oprStr).matches())
                 throw new ExpressionParseException("Invalid function name: " + oprStr, errorOffset, oprStr.length());
             functionOperator = oprStr;
             isFunctional = true;
