@@ -155,22 +155,59 @@ public class MainWindow {
         MenuBar bar = new MenuBar();
 
         Menu file = new Menu("File");
+        Menu edit = new Menu("Edit");
+        Menu proof = new Menu("Proof");
+        Menu help = new Menu("Help");
+
+        // File menu items
+
+        MenuItem newProof = new MenuItem("New Proof");
+        MenuItem openProof = new MenuItem("Open Proof");
+        MenuItem saveProof = new MenuItem("Save Proof");
+        MenuItem saveAsProof = new MenuItem("Save Proof As");
+        MenuItem quit = new MenuItem("Quit");
+
+        newProof.acceleratorProperty().bind(configuration.newProofKey);
+        openProof.acceleratorProperty().bind(configuration.openProofKey);
+        saveProof.acceleratorProperty().bind(configuration.saveProofKey);
+        saveAsProof.acceleratorProperty().bind(configuration.saveAsProofKey);
+
+        file.getItems().addAll(newProof, openProof, saveProof, saveAsProof, quit);
+
+        // Edit menu items
+
+        MenuItem undo = new MenuItem("Undo");
+        MenuItem redo = new MenuItem("Redo");
+        MenuItem copy = new MenuItem("Copy");
+        MenuItem cut = new MenuItem("Cut");
+        MenuItem paste = new MenuItem("Paste");
+        MenuItem settings = new MenuItem("Settings");
+
+        undo.acceleratorProperty().bind(configuration.undoKey);
+        redo.acceleratorProperty().bind(configuration.redoKey);
+        copy.acceleratorProperty().bind(configuration.copyKey);
+        cut.acceleratorProperty().bind(configuration.cutKey);
+        paste.acceleratorProperty().bind(configuration.pasteKey);
+
+        edit.getItems().addAll(undo, redo, copy, cut, paste, settings);
+
+        // Proof menu items
 
         MenuItem addLine = new MenuItem("Add Line");
         MenuItem deleteLine = new MenuItem("Delete Line");
         MenuItem startSubProof = new MenuItem("Start Subproof");
         MenuItem endSubProof = new MenuItem("End Subproof");
         MenuItem newPremise = new MenuItem("Add Premise");
-        MenuItem verifyLine = new MenuItem("Verify Line");
         MenuItem addGoal = new MenuItem("Add Goal");
+        MenuItem verifyLine = new MenuItem("Verify Line");
         MenuItem verifyProof = new MenuItem("Verify Proof");
 
         addLine.setOnAction(actionEvent -> {
             if (selectedLine.get() < 0)
                 return;
             int line = selectedLine.get() + 1;
-            line = line < proof.numPremises().get() ? proof.numPremises().get() : line;
-            addProofLine(false, proof.getLines().get(selectedLine.get()).subProofLevelProperty().get(), line);
+            line = line < this.proof.numPremises().get() ? this.proof.numPremises().get() : line;
+            addProofLine(false, this.proof.getLines().get(selectedLine.get()).subProofLevelProperty().get(), line);
             selectedLine.set(-1);
             selectedLine.set(line);
         });
@@ -186,27 +223,35 @@ public class MainWindow {
             selectedLine.set(addPremise());
         });
 
-        verifyLine.setOnAction(actionEvent -> verifyLine());
-
         addGoal.setOnAction(actionEvent -> {
             selectedLine.set(-1);
             selectedLine.set(-2 - addGoal());
         });
 
-        verifyProof.setOnAction(actionEvent -> proof.verifyProof());
+        verifyLine.setOnAction(actionEvent -> verifyLine());
+
+        verifyProof.setOnAction(actionEvent -> this.proof.verifyProof());
 
         addLine.acceleratorProperty().bind(configuration.newProofLineKey);
         deleteLine.acceleratorProperty().bind(configuration.deleteProofLineKey);
         startSubProof.acceleratorProperty().bind(configuration.startSubProofKey);
         endSubProof.acceleratorProperty().bind(configuration.endSubProofKey);
         newPremise.acceleratorProperty().bind(configuration.newPremiseKey);
-        verifyLine.acceleratorProperty().bind(configuration.verifyLineKey);
         addGoal.acceleratorProperty().bind(configuration.addGoalKey);
+        verifyLine.acceleratorProperty().bind(configuration.verifyLineKey);
         verifyProof.acceleratorProperty().bind(configuration.verifyProofKey);
 
-        file.getItems().addAll(addLine, deleteLine, startSubProof, endSubProof, newPremise, verifyLine, addGoal, verifyProof);
+        proof.getItems().addAll(addLine, deleteLine, startSubProof, endSubProof, newPremise, addGoal, verifyLine, verifyProof);
 
-        bar.getMenus().addAll(file);
+        // Help menu items
+
+        MenuItem checkUpdate = new MenuItem("Check for updates");
+        MenuItem helpItem = new MenuItem("Aris Help");
+        MenuItem about = new MenuItem("About Aris");
+
+        help.getItems().addAll(checkUpdate, helpItem, about);
+
+        bar.getMenus().addAll(file, edit, proof, help);
 
         return bar;
     }
