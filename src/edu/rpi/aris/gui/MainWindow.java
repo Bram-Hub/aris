@@ -6,6 +6,7 @@ import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.event.Event;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Bounds;
@@ -325,6 +326,7 @@ public class MainWindow {
             if (mouseEvent.getEventType() == MouseEvent.MOUSE_CLICKED)
                 oprTitlePane.setExpanded(!oprTitlePane.isExpanded());
         });
+        operatorPane.setOnMouseClicked(Event::consume);
         operatorPane.setPadding(new Insets(3));
         operatorPane.setVgap(3);
         operatorPane.setHgap(3);

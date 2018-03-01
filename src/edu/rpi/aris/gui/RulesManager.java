@@ -3,6 +3,7 @@ package edu.rpi.aris.gui;
 import edu.rpi.aris.rules.Rule;
 import edu.rpi.aris.rules.RuleList;
 import javafx.application.Platform;
+import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
@@ -44,6 +45,7 @@ public class RulesManager {
                     pane.setExpanded(!pane.isExpanded());
             });
             vbox.getChildren().add(pane);
+            box.setOnMouseClicked(Event::consume);
             box.setSpacing(3);
             box.setPadding(new Insets(3));
             ruleTypePanes.put(t, new Pair<>(pane, box));

@@ -199,7 +199,7 @@ public class SentenceUtil {
                     // we have a function so lets do a direct mapping of the function name
                     for (int i = 0; i < oprStr.length(); ++i)
                         parseMap.put(i + parenOffset, i);
-                    // Create a string builder to store out standardized expression string in
+                    // Create a string builder to store our standardized expression string in
                     //  initialize it with the function name and an opening parentheses
                     StringBuilder str = new StringBuilder(oprStr + OP);
                     // Set the initial standard notation offset to be the initial length of the string builder
