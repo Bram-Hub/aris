@@ -86,7 +86,10 @@ public class ProofLine {
             requestFocus(e);
             if (e.getButton() == MouseButton.PRIMARY)
                 ruleChoose.getContextMenu().show(ruleChoose, e.getScreenX(), e.getScreenY());
+            else
+                e.consume();
         });
+        ruleChoose.addEventFilter(ContextMenuEvent.CONTEXT_MENU_REQUESTED, Event::consume);
         selectedLine.setOnMouseClicked(this::requestFocus);
         selectedHBox.setOnMouseClicked(this::requestFocus);
         numberLbl.setOnMouseClicked(this::requestFocus);
