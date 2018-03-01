@@ -320,7 +320,6 @@ public class SentenceUtil {
         }
         if (start < expression.length())
             strExp.add(expression.substring(start));
-        strExp.add(expression.substring(start));
         return strExp;
     }
 
