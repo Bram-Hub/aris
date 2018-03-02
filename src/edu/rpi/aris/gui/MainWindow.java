@@ -128,20 +128,6 @@ public class MainWindow {
         scene.setOnKeyPressed(this::handleKeyEvent);
     }
 
-    public boolean handleKeyEvent(KeyEvent keyEvent) {
-        switch (keyEvent.getCode()) {
-            case UP:
-                lineUp();
-                break;
-            case DOWN:
-                lineDown();
-                break;
-            default:
-                return false;
-        }
-        return true;
-    }
-
     private synchronized void lineUp() {
         if (selectedLine.get() > 0) {
             requestFocus(selectedLine.get() - 1);
@@ -163,6 +149,20 @@ public class MainWindow {
             requestFocus(selectedLine.get() - 1);
             autoScroll(goalScroll.getContent().getBoundsInLocal());
         }
+    }
+
+    public boolean handleKeyEvent(KeyEvent keyEvent) {
+        switch (keyEvent.getCode()) {
+            case UP:
+                lineUp();
+                break;
+            case DOWN:
+                lineDown();
+                break;
+            default:
+                return false;
+        }
+        return true;
     }
 
     private MenuBar setupMenu() {

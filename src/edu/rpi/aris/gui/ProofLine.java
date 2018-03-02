@@ -117,7 +117,7 @@ public class ProofLine {
             return t;
         };
         textField.setTextFormatter(new TextFormatter<>(filter));
-        textField.addEventHandler(KeyEvent.ANY, keyEvent -> {
+        textField.addEventFilter(KeyEvent.ANY, keyEvent -> {
             if (keyEvent.getEventType() == KeyEvent.KEY_PRESSED) {
                 if (window.ignoreKeyEvent(keyEvent)) {
                     textField.getParent().fireEvent(keyEvent);
