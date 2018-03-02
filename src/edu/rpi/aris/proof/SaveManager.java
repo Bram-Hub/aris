@@ -279,7 +279,7 @@ public class SaveManager {
             }
             if (num != i)
                 throw new IOException("Invalid file format");
-            Proof.Goal goal = p.addGoal();
+            Proof.Goal goal = p.addGoal(num);
             goal.goalStringProperty().set(e.getTextContent());
         }
 

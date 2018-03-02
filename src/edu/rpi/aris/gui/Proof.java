@@ -51,6 +51,8 @@ public class Proof {
             for (int i = index + 1; i < lines.size(); ++i)
                 lineLookup.put(lines.get(i), i);
             l.lineNumberProperty().bind(Bindings.createIntegerBinding(() -> lineLookup.get(l), lineLookup));
+            if (isAssumption && subProofLevel == 0)
+                numPremises.set(numPremises.get() + 1);
             return l;
         } else
             return null;
@@ -59,11 +61,10 @@ public class Proof {
     public Proof.Line addPremise() {
         Line line = addLine(numPremises.get(), true, 0);
         line.isUnderlined().bind(Bindings.createBooleanBinding(() -> line.lineNumber.get() == numPremises.get() - 1, numPremises));
-        numPremises.set(numPremises.get() + 1);
         return line;
     }
 
-    public Goal addGoal() {
+    public Goal addGoal(int index) {
         Goal goal = new Goal();
         goal.goalNum.bind(Bindings.createIntegerBinding(() -> goals.indexOf(goal), goals));
         goals.add(goal);

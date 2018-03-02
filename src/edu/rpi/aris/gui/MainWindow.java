@@ -1,5 +1,7 @@
 package edu.rpi.aris.gui;
 
+import edu.rpi.aris.gui.event.GoalChangedEvent;
+import edu.rpi.aris.gui.event.LineChangedEvent;
 import edu.rpi.aris.proof.SaveManager;
 import edu.rpi.aris.rules.Rule;
 import javafx.beans.binding.Bindings;
@@ -26,10 +28,7 @@ import org.apache.commons.lang.math.IntRange;
 import javax.xml.transform.TransformerException;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class MainWindow {
@@ -62,6 +61,8 @@ public class MainWindow {
     private ConfigurationManager configuration = ConfigurationManager.getConfigManager();
     private RulesManager rulesManager;
     private File saveFile = null;
+    private HistoryManager history = new HistoryManager(this);
+    private boolean loaded = false;
 
     public MainWindow(Stage primaryStage) throws IOException {
         this(primaryStage, new Proof());
@@ -200,6 +201,12 @@ public class MainWindow {
         MenuItem cut = new MenuItem("Cut");
         MenuItem paste = new MenuItem("Paste");
         MenuItem settings = new MenuItem("Settings");
+
+        undo.disableProperty().bind(history.canUndo().not());
+        redo.disableProperty().bind(history.canRedo().not());
+
+        undo.setOnAction(actionEvent -> history.undo());
+        redo.setOnAction(actionEvent -> history.redo());
 
         undo.acceleratorProperty().bind(configuration.undoKey);
         redo.acceleratorProperty().bind(configuration.redoKey);
@@ -460,6 +467,9 @@ public class MainWindow {
             proof.verifyProof();
         }
         selectedLine.set(-1);
+
+        // This should be the last thing in the initialize method
+        loaded = true;
     }
 
     private void populateOperatorPane() {
@@ -500,7 +510,7 @@ public class MainWindow {
         addProofLine(proof.addLine(index, assumption, proofLevel));
     }
 
-    private synchronized void addProofLine(Proof.Line line) {
+    public synchronized void addProofLine(Proof.Line line) {
         FXMLLoader loader = new FXMLLoader(MainWindow.class.getResource("proof_line.fxml"));
         ProofLine controller = new ProofLine(this, line);
         loader.setController(controller);
@@ -513,6 +523,10 @@ public class MainWindow {
         int index = line.lineNumberProperty().get();
         proofTable.getChildren().add(index, box);
         proofLines.add(index, controller);
+        TreeMap<Integer, Proof.Line> added = new TreeMap<>();
+        added.put(index, line);
+        LineChangedEvent event = new LineChangedEvent(added, false);
+        history.addHistoryEvent(event);
     }
 
     private synchronized int addPremise() {
@@ -522,11 +536,11 @@ public class MainWindow {
     }
 
     private synchronized int addGoal() {
-        Proof.Goal goal = proof.addGoal();
+        Proof.Goal goal = proof.addGoal(proof.getGoals().size());
         return addGoal(goal);
     }
 
-    private int addGoal(Proof.Goal goal) {
+    public int addGoal(Proof.Goal goal) {
         FXMLLoader loader = new FXMLLoader(MainWindow.class.getResource("goal_line.fxml"));
         GoalLine controller = new GoalLine(this, goal);
         loader.setController(controller);
@@ -540,6 +554,8 @@ public class MainWindow {
         VBox content = (VBox) goalScroll.getContent();
         content.getChildren().add(index + 1, box);
         goalLines.add(index, controller);
+        GoalChangedEvent event = new GoalChangedEvent(index, goal, false);
+        history.addHistoryEvent(event);
         return index;
     }
 
@@ -596,14 +612,16 @@ public class MainWindow {
         }
     }
 
-    private synchronized void deleteLine(int lineNum) {
+    public synchronized void deleteLine(int lineNum) {
         if (lineNum > 0 || (proof.numPremises().get() > 1 && lineNum >= 0)) {
+            TreeMap<Integer, Proof.Line> deleted = new TreeMap<>();
             if (lineNum >= proof.numPremises().get()) {
                 Proof.Line line = proof.getLines().get(lineNum);
                 if (line.isAssumption() && lineNum + 1 < proof.getLines().size()) {
                     int indent = line.subProofLevelProperty().get();
                     Proof.Line l = proof.getLines().get(lineNum + 1);
                     while (l != null && (l.subProofLevelProperty().get() > indent || (l.subProofLevelProperty().get() == indent && !l.isAssumption()))) {
+                        deleted.put(lineNum + 1 + deleted.size(), l);
                         removeLine(l.lineNumberProperty().get());
                         if (lineNum + 1 == proof.getLines().size())
                             l = null;
@@ -612,22 +630,28 @@ public class MainWindow {
                     }
                 }
             }
+            deleted.put(lineNum, proof.getLines().get(lineNum));
             removeLine(lineNum);
+            LineChangedEvent event = new LineChangedEvent(deleted, true);
+            history.addHistoryEvent(event);
         } else if (lineNum < -1) {
             if (proof.getGoals().size() <= 1)
                 return;
             lineNum = lineNum * -1 - 2;
             selectedLine.set(-1);
+            Proof.Goal goal = proof.getGoals().get(lineNum);
             proof.removeGoal(lineNum);
             goalLines.remove(lineNum);
+            GoalChangedEvent event = new GoalChangedEvent(lineNum, goal, true);
             ((VBox) goalScroll.getContent()).getChildren().remove(lineNum + 1);
             if (lineNum >= proof.getGoals().size())
                 lineNum = proof.getGoals().size() - 1;
             selectedLine.set(-2 - lineNum);
+            history.addHistoryEvent(event);
         }
     }
 
-    private synchronized void removeLine(int lineNum) {
+    public synchronized void removeLine(int lineNum) {
         int selected = selectedLine.get();
         selectedLine.set(-1);
         proofLines.remove(lineNum);
@@ -659,5 +683,21 @@ public class MainWindow {
 
     public RulesManager getRulesManager() {
         return rulesManager;
+    }
+
+    public Proof getProof() {
+        return proof;
+    }
+
+    public boolean isLoaded() {
+        return loaded;
+    }
+
+    public ArrayList<ProofLine> getProofLines() {
+        return proofLines;
+    }
+
+    public ArrayList<GoalLine> getGoalLines() {
+        return goalLines;
     }
 }
