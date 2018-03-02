@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class MainWindow {
@@ -274,36 +275,67 @@ public class MainWindow {
     }
 
     private void openProof() {
+        String error = null;
         try {
             File f = SaveManager.showOpenDialog(primaryStage.getScene().getWindow());
-            if (f == null || !f.exists()) {
-                // TODO: show error
-            } else {
+            if (f != null && !f.exists()) {
+                error = "The selected file does not exist";
+            } else if (f != null) {
                 Proof p = SaveManager.loadFile(f);
                 if (p == null) {
-                    // TODO: show open error
+                    error = "Invalid file format";
                 } else {
                     Aris.showProofWindow(new Stage(), p);
                 }
             }
         } catch (IOException | TransformerException e) {
-            // TODO: Show open error
+            error = "An error occurred while attempting to load the file";
             e.printStackTrace();
+        }
+        if (error != null) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Failed to load file");
+            alert.setHeaderText("Failed to load file");
+            alert.setContentText(error);
+            alert.showAndWait();
         }
     }
 
-    private void saveProof(boolean saveAs) {
+    private boolean saveProof(boolean saveAs) {
+        boolean error;
         try {
             if (saveAs || saveFile == null) {
                 File f = SaveManager.showSaveDialog(primaryStage.getScene().getWindow(), saveFile == null ? "" : saveFile.getName());
+                if (f != null && !f.getName().toLowerCase().endsWith("." + SaveManager.FILE_EXTENSION)) {
+                    f = new File(f.getParentFile(), f.getName() + "." + SaveManager.FILE_EXTENSION);
+                    if (f.exists()) {
+                        Alert exists = new Alert(Alert.AlertType.CONFIRMATION);
+                        exists.setTitle("File exists");
+                        exists.setHeaderText("The selected file already exists");
+                        exists.setContentText("Would you like to replace the selected file?");
+                        Optional<ButtonType> result = exists.showAndWait();
+                        if (result.isPresent() && result.get() == ButtonType.CANCEL) {
+                            saveProof(saveAs);
+                            return false;
+                        } else if (!result.isPresent())
+                            return false;
+                    }
+                }
                 if (f != null)
                     saveFile = f;
             }
-            SaveManager.saveProof(proof, saveFile);
+            error = !SaveManager.saveProof(proof, saveFile);
         } catch (TransformerException | IOException e) {
-            // TODO: Show save error
             e.printStackTrace();
+            error = true;
         }
+        if (error) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Error saving file");
+            alert.setHeaderText("Error saving file");
+            alert.setContentText("An error occurred while attempting to save the proof");
+        }
+        return !error;
     }
 
     private void newProof() {

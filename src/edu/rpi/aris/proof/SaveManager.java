@@ -5,6 +5,7 @@ import edu.rpi.aris.gui.ConfigurationManager;
 import edu.rpi.aris.gui.Proof;
 import edu.rpi.aris.rules.RuleList;
 import javafx.collections.ObservableList;
+import javafx.scene.control.Alert;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import org.apache.commons.io.IOUtils;
@@ -33,6 +34,7 @@ import java.util.regex.Pattern;
 
 public class SaveManager {
 
+    @SuppressWarnings("SpellCheckingInspection")
     public static final String FILE_EXTENSION = "aprf";
 
     private static DocumentBuilder documentBuilder;
@@ -63,8 +65,6 @@ public class SaveManager {
         if (f != null) {
             f = f.getCanonicalFile();
             ConfigurationManager.getConfigManager().setSaveDirectory(f.getParentFile());
-            if (!f.getName().toLowerCase().endsWith("." + FILE_EXTENSION))
-                f = new File(f.getParent(), f.getName() + "." + FILE_EXTENSION);
         }
         return f;
     }
@@ -176,7 +176,16 @@ public class SaveManager {
             System.err.println("Invalid hash");
             authors.clear();
             authors.add("UNKNOWN");
-            // TODO: show file integrity check failed
+            if (Aris.isGUI()) {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("File integrity check failed");
+                alert.setHeaderText("File integrity check failed");
+                alert.setContentText("This file may be corrupted or may have been tampered with.\n" +
+                        "If this file successfully loads the author will be marked as UNKNOWN.\n" +
+                        "This will show up if this file is submitted and may affect your grade.");
+                alert.getDialogPane().setPrefWidth(500);
+                alert.showAndWait();
+            }
         }
 
         Proof p = new Proof(authors);
@@ -333,13 +342,8 @@ public class SaveManager {
     }
 
     public static void main(String[] args) throws IOException, TransformerException {
+        //noinspection SpellCheckingInspection
         loadFile(new File(System.getProperty("user.home"), "test.aprf"));
-    }
-
-    private void checkAttributesPresent(Collection<Element> elements, String attrName) throws IOException {
-        for (Element e : elements)
-            if (e.getAttribute(attrName).length() == 0)
-                throw new IOException("Invalid file format");
     }
 
 }
