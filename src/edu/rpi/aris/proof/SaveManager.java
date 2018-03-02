@@ -3,10 +3,12 @@ package edu.rpi.aris.proof;
 import edu.rpi.aris.gui.Aris;
 import edu.rpi.aris.gui.ConfigurationManager;
 import edu.rpi.aris.gui.Proof;
+import edu.rpi.aris.rules.RuleList;
 import javafx.collections.ObservableList;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -25,6 +27,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -66,6 +69,21 @@ public class SaveManager {
         return f;
     }
 
+    public static File showOpenDialog(Window parent) throws IOException {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setInitialDirectory(ConfigurationManager.getConfigManager().getSaveDirectory());
+        fileChooser.setSelectedExtensionFilter(extensionFilter);
+        fileChooser.setTitle("Open Proof");
+        File f = fileChooser.showOpenDialog(parent);
+        if (f != null) {
+            f = f.getCanonicalFile();
+            ConfigurationManager.getConfigManager().setSaveDirectory(f.getParentFile());
+            if (!f.getName().toLowerCase().endsWith("." + FILE_EXTENSION))
+                f = new File(f.getParent(), f.getName() + "." + FILE_EXTENSION);
+        }
+        return f;
+    }
+
     public static synchronized boolean saveProof(Proof proof, File file) throws TransformerException, IOException {
         if (proof == null || file == null)
             return false;
@@ -76,6 +94,12 @@ public class SaveManager {
         Element version = doc.createElement("version");
         version.appendChild(doc.createTextNode(Aris.VERSION));
         root.appendChild(version);
+
+        for (String author : proof.getAuthors()) {
+            Element a = doc.createElement("author");
+            a.appendChild(doc.createTextNode(author));
+            root.appendChild(a);
+        }
 
         Element prf = doc.createElement("proof");
         root.appendChild(prf);
@@ -110,8 +134,7 @@ public class SaveManager {
         StreamResult result = new StreamResult(writer);
         transformer.transform(src, result);
         String xml = writer.toString();
-        xml += "<hash>" + computeHash(xml) + "</hash>";
-        hash.reset();
+        xml += "<hash>" + computeHash(xml, proof.getAuthors()) + "</hash>";
         FileWriter fileWriter = new FileWriter(file);
         fileWriter.write(xml);
         fileWriter.close();
@@ -119,20 +142,14 @@ public class SaveManager {
     }
 
     public static Proof loadFile(File file) throws IOException, TransformerException {
-        Proof p = new Proof();
         String xml = IOUtils.toString(new FileReader(file));
 
         Matcher matcher = hashPattern.matcher(xml);
+        String hash = null;
         if (matcher.find()) {
-            String hash = matcher.group(0);
+            hash = matcher.group(0);
             xml = matcher.replaceAll("");
             xml = xml.replaceAll("<hash></hash>", "");
-            if (!verifyHash(xml, hash)) {
-                System.err.println("Invalid hash");
-                // TODO: show invalid hash warning
-            }
-        } else {
-            // TODO: show no hash warning
         }
         StreamSource src = new StreamSource(new StringReader(xml));
         DOMResult result = new DOMResult();
@@ -147,6 +164,22 @@ public class SaveManager {
         if (list.getLength() != 1 || !(list.item(0) instanceof Element))
             throw new IOException("Invalid file format");
         Element root = (Element) list.item(0);
+
+        ArrayList<Element> authorElements = getElementsByTag(root, "author");
+        ArrayList<String> authors = new ArrayList<>();
+        for (Element e : authorElements)
+            authors.add(e.getTextContent());
+
+        boolean validAuthor = hash != null && verifyHash(xml, hash, authors);
+
+        if (!validAuthor) {
+            System.err.println("Invalid hash");
+            authors.clear();
+            authors.add("UNKNOWN");
+            // TODO: show file integrity check failed
+        }
+
+        Proof p = new Proof(authors);
 
         Element proof = getElementByTag(root, "proof");
 
@@ -166,7 +199,8 @@ public class SaveManager {
             if (num != i)
                 throw new IOException("Invalid file format");
             Proof.Line premise = p.addPremise();
-            premise.expressionStringProperty().set(e.getTextContent());
+            Element expr = getElementByTag(e, "expr");
+            premise.expressionStringProperty().set(expr.getTextContent());
         }
 
         Element lines = getElementByTag(proof, "lines");
@@ -175,7 +209,9 @@ public class SaveManager {
 
         int numPremises = p.numPremises().get();
 
-        for (int i = 0; i < premiseList.size(); ++i) {
+        int lastIndent = 0;
+
+        for (int i = 0; i < lineList.size(); ++i) {
             Element e = lineList.get(i);
             String numStr = e.getAttribute("num");
             String indentStr = e.getAttribute("indent");
@@ -189,20 +225,68 @@ public class SaveManager {
                 assumption = Boolean.parseBoolean(assumptionStr);
             } catch (NumberFormatException ignored) {
             }
-
-            if (num != i + numPremises || num == -1 || indent == -1)
+            if (num != i + numPremises || num == -1 || indent < 0 || (!assumption && !assumptionStr.equals("false")) ||
+                    lastIndent + 1 < indent || (indent == 0 && assumption) || (indent == lastIndent && assumption) ||
+                    (indent > lastIndent && !assumption))
                 throw new IOException("Invalid file format");
+            Element expr = getElementByTag(e, "expr");
+            Element rule = getElementByTag(e, "rule");
+            Proof.Line line = p.addLine(num, assumption, indent);
+            line.expressionStringProperty().set(expr.getTextContent());
+            RuleList r = null;
+            try {
+                r = RuleList.valueOf(rule.getTextContent());
+            } catch (IllegalArgumentException ignored) {
+            }
+            line.selectedRuleProperty().set(r);
+            ArrayList<Element> premList = getElementsByTag(e, "premise");
+            for (Element e1 : premList) {
+                if (assumption)
+                    throw new IOException("Invalid file format");
+                String nStr = e1.getTextContent();
+                int n = -1;
+                try {
+                    n = Integer.parseInt(nStr);
+                } catch (NumberFormatException ignored) {
+                }
+                if (n == -1 || n >= i + numPremises)
+                    throw new IOException("Invalid file format");
+                p.togglePremise(i + numPremises, p.getLines().get(n));
+            }
+            lastIndent = indent;
+        }
+
+        Element goals = getElementByTag(proof, "goals");
+
+        ArrayList<Element> goalList = getElementsByTag(goals, "goal");
+
+        for (int i = 0; i < goalList.size(); ++i) {
+            Element e = goalList.get(i);
+            String numStr = e.getAttribute("num");
+            int num = -1;
+            try {
+                num = Integer.parseInt(numStr);
+            } catch (NumberFormatException ignored) {
+            }
+            if (num != i)
+                throw new IOException("Invalid file format");
+            Proof.Goal goal = p.addGoal();
+            goal.goalStringProperty().set(e.getTextContent());
         }
 
         return p;
     }
 
-    private static String computeHash(String xml) {
-        return Base64.getEncoder().encodeToString(hash.digest(xml.getBytes()));
+    private static synchronized String computeHash(String xml, Collection<String> authorCollection) {
+        ArrayList<String> authors = new ArrayList<>(authorCollection);
+        Collections.sort(authors);
+        String hashStr = Base64.getEncoder().encodeToString(hash.digest((xml + StringUtils.join(authors, "")).getBytes()));
+        hash.reset();
+        return hashStr;
     }
 
-    private static boolean verifyHash(String xml, String hash) {
-        return computeHash(xml).equals(hash);
+    private static boolean verifyHash(String xml, String hash, Collection<String> authors) {
+        return computeHash(xml, authors).equals(hash);
     }
 
     private static Element createLineElement(Proof.Line line, Document doc) {
@@ -219,6 +303,12 @@ public class SaveManager {
         Element rule = doc.createElement("rule");
         rule.appendChild(doc.createTextNode(line.selectedRuleProperty().get() == null ? "" : line.selectedRuleProperty().get().name()));
         e.appendChild(rule);
+
+        for (Proof.Line p : line.getPremises()) {
+            Element premise = doc.createElement("premise");
+            premise.appendChild(doc.createTextNode(String.valueOf(p.lineNumberProperty().get())));
+            e.appendChild(premise);
+        }
 
         return e;
 

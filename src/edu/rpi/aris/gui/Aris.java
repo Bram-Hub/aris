@@ -38,8 +38,8 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
         return GUI;
     }
 
-    public static MainWindow showProofWindow(Stage stage) throws IOException {
-        MainWindow window = new MainWindow(stage);
+    public static MainWindow showProofWindow(Stage stage, Proof p) throws IOException {
+        MainWindow window = p == null ? new MainWindow(stage) : new MainWindow(stage, p);
         window.show();
         return window;
     }
@@ -53,7 +53,7 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
         instance = this;
         Thread.setDefaultUncaughtExceptionHandler(this);
         GUI = true;
-        mainWindow = showProofWindow(stage);
+        mainWindow = showProofWindow(stage, null);
     }
 
     private void generateBugReport(Thread t, Throwable e) {

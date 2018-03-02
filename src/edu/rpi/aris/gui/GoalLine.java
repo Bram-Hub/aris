@@ -33,6 +33,7 @@ public class GoalLine {
 
     @FXML
     public void initialize() {
+        goalText.setText(goal.goalStringProperty().get());
         goal.goalStringProperty().bind(goalText.textProperty());
         goalValidImg.imageProperty().bind(Bindings.createObjectBinding(() -> goal.goalStatusProperty().get().img, goal.goalStatusProperty()));
         goalText.setOnMouseClicked(mouseEvent -> window.requestFocus(this));

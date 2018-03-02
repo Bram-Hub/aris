@@ -128,6 +128,7 @@ public class ProofLine {
             }
         });
         textField.editableProperty().bind(Bindings.createBooleanBinding(() -> proofLine.lineNumberProperty().get() == window.selectedLineProperty().get(), proofLine.lineNumberProperty(), window.selectedLineProperty()));
+        textField.setText(proofLine.expressionStringProperty().get());
         proofLine.expressionStringProperty().bind(textField.textProperty());
         proofLine.isUnderlined().addListener((observableValue, oldVal, newVal) -> {
             if (newVal && !textVBox.getStyleClass().contains(UNDERLINE)) {

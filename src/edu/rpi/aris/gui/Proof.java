@@ -10,13 +10,11 @@ import javafx.collections.*;
 import javafx.scene.image.Image;
 import org.apache.commons.lang.math.IntRange;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 
 public class Proof {
 
+    private final HashSet<String> authors = new HashSet<>();
     private ObservableMap<Line, Integer> lineLookup = FXCollections.observableHashMap();
     private ObservableList<Line> lines = FXCollections.observableArrayList();
     private ObservableList<Goal> goals = FXCollections.observableArrayList();
@@ -24,7 +22,13 @@ public class Proof {
     private SimpleIntegerProperty numPremises = new SimpleIntegerProperty();
 
     public Proof() {
+        authors.add(ConfigurationManager.getConfigManager().getUserId());
         numLines.bind(Bindings.size(lines));
+    }
+
+    public Proof(Collection<String> authors) {
+        this();
+        this.authors.addAll(authors);
     }
 
     public IntegerProperty numLinesProperty() {
@@ -220,6 +224,10 @@ public class Proof {
         }
     }
 
+    public HashSet<String> getAuthors() {
+        return authors;
+    }
+
     public enum Status {
 
         NONE("no_icon.png"),
@@ -240,7 +248,7 @@ public class Proof {
 
         private final boolean isAssumption;
         private SimpleIntegerProperty lineNumber = new SimpleIntegerProperty();
-        private SimpleStringProperty expressionString = new SimpleStringProperty();
+        private SimpleStringProperty expressionString = new SimpleStringProperty("");
         private ObservableSet<Line> premises = FXCollections.observableSet();
         private SimpleIntegerProperty subProofLevel = new SimpleIntegerProperty();
         private SimpleBooleanProperty underlined = new SimpleBooleanProperty();
@@ -265,6 +273,7 @@ public class Proof {
                     claim = null;
                     startTimer();
                     proof.resetGoalStatus();
+                    status.set(Status.NONE);
                 }
             });
             selectedRule.addListener((observableValue, oldVal, newVal) -> {
@@ -313,32 +322,34 @@ public class Proof {
 
         private synchronized void buildExpression() {
             String str = expressionString.get();
-            if (str.trim().length() > 0) {
-                claim = null;
-                try {
-                    String polish = SentenceUtil.toPolishNotation(str);
+            if (expression == null) {
+                if (str.trim().length() > 0) {
+                    claim = null;
                     try {
-                        expression = new Expression(polish);
+                        String polish = SentenceUtil.toPolishNotation(str);
+                        try {
+                            expression = new Expression(polish);
+                        } catch (ExpressionParseException e) {
+                            SentenceUtil.mapExceptionToStandardForm(polish, str, e);
+                        }
+                        setStatus("");
+                        status.set(Status.NONE);
+                        setErrorRange(null);
                     } catch (ExpressionParseException e) {
-                        SentenceUtil.mapExceptionToStandardForm(polish, str, e);
+                        setStatus(e.getMessage());
+                        status.set(Status.INVALID_EXPRESSION);
+                        expression = null;
+                        if (e.getErrorOffset() == -1 || e.getErrorLength() == 0)
+                            setErrorRange(null);
+                        else
+                            setErrorRange(new IntRange(e.getErrorOffset(), e.getErrorOffset() + e.getErrorLength() - 1));
                     }
+                } else {
+                    expression = null;
                     setStatus("");
                     status.set(Status.NONE);
                     setErrorRange(null);
-                } catch (ExpressionParseException e) {
-                    setStatus(e.getMessage());
-                    status.set(Status.INVALID_EXPRESSION);
-                    expression = null;
-                    if (e.getErrorOffset() == -1 || e.getErrorLength() == 0)
-                        setErrorRange(null);
-                    else
-                        setErrorRange(new IntRange(e.getErrorOffset(), e.getErrorOffset() + e.getErrorLength() - 1));
                 }
-            } else {
-                expression = null;
-                setStatus("");
-                status.set(Status.NONE);
-                setErrorRange(null);
             }
         }
 
@@ -461,7 +472,7 @@ public class Proof {
 
     public static class Goal {
         private SimpleIntegerProperty goalNum = new SimpleIntegerProperty();
-        private SimpleStringProperty goalString = new SimpleStringProperty();
+        private SimpleStringProperty goalString = new SimpleStringProperty("");
         private SimpleStringProperty statusString = new SimpleStringProperty();
         private SimpleObjectProperty<Status> goalStatus = new SimpleObjectProperty<>(Status.NONE);
         private SimpleObjectProperty<IntRange> errorRange = new SimpleObjectProperty<>(null);

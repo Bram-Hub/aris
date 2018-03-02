@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class MainWindow {
@@ -55,14 +56,21 @@ public class MainWindow {
     private ArrayList<ProofLine> proofLines = new ArrayList<>();
     private ArrayList<GoalLine> goalLines = new ArrayList<>();
     private SimpleIntegerProperty selectedLine = new SimpleIntegerProperty(-1);
-    private Proof proof = new Proof();
+    private Proof proof;
     private Stage primaryStage;
     private ConfigurationManager configuration = ConfigurationManager.getConfigManager();
     private RulesManager rulesManager;
     private File saveFile = null;
 
     public MainWindow(Stage primaryStage) throws IOException {
+        this(primaryStage, new Proof());
+    }
+
+    public MainWindow(Stage primaryStage, Proof proof) throws IOException {
+        Objects.requireNonNull(primaryStage);
+        Objects.requireNonNull(proof);
         this.primaryStage = primaryStage;
+        this.proof = proof;
         primaryStage.setTitle("ARIS");
         fontObjectProperty = new SimpleObjectProperty<>(new Font(14));
         rulesManager = new RulesManager();
@@ -172,6 +180,7 @@ public class MainWindow {
         MenuItem quit = new MenuItem("Quit");
 
         newProof.setOnAction(actionEvent -> newProof());
+        openProof.setOnAction(actionEvent -> openProof());
         saveAsProof.setOnAction(actionEvent -> saveProof(true));
         saveProof.setOnAction(actionEvent -> saveProof(false));
 
@@ -264,6 +273,25 @@ public class MainWindow {
         return bar;
     }
 
+    private void openProof() {
+        try {
+            File f = SaveManager.showOpenDialog(primaryStage.getScene().getWindow());
+            if (f == null || !f.exists()) {
+                // TODO: show error
+            } else {
+                Proof p = SaveManager.loadFile(f);
+                if (p == null) {
+                    // TODO: show open error
+                } else {
+                    Aris.showProofWindow(new Stage(), p);
+                }
+            }
+        } catch (IOException | TransformerException e) {
+            // TODO: Show open error
+            e.printStackTrace();
+        }
+    }
+
     private void saveProof(boolean saveAs) {
         try {
             if (saveAs || saveFile == null) {
@@ -280,7 +308,7 @@ public class MainWindow {
 
     private void newProof() {
         try {
-            Aris.showProofWindow(new Stage());
+            Aris.showProofWindow(new Stage(), null);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -377,9 +405,6 @@ public class MainWindow {
                 autoScroll(newBounds);
         });
         goalScroll.maxHeightProperty().bind(Bindings.createDoubleBinding(() -> Math.max(100, goalScroll.getContent().getBoundsInLocal().getHeight()), goalScroll.getContent().boundsInLocalProperty()));
-        addPremise();
-        addGoal();
-        selectedLine.set(-1);
         statusLbl.fontProperty().bind(fontObjectProperty);
         errorRangeLbl.fontProperty().bind(Bindings.createObjectBinding(() -> Font.font(fontObjectProperty.get().getFamily(), FontWeight.BOLD, fontObjectProperty.get().getSize()), fontObjectProperty));
         errorRangeLbl.setOnMouseClicked(mouseEvent -> {
@@ -394,6 +419,15 @@ public class MainWindow {
         rulesPane.getChildren().add(rulesManager.getRulesTable());
         VBox.setVgrow(rulesManager.getRulesTable(), Priority.ALWAYS);
         populateOperatorPane();
+        if (proof.numLinesProperty().get() == 0) {
+            addPremise();
+            addGoal();
+        } else {
+            proof.getLines().forEach(this::addProofLine);
+            proof.getGoals().forEach(this::addGoal);
+            proof.verifyProof();
+        }
+        selectedLine.set(-1);
     }
 
     private void populateOperatorPane() {
@@ -456,8 +490,12 @@ public class MainWindow {
     }
 
     private synchronized int addGoal() {
-        FXMLLoader loader = new FXMLLoader(MainWindow.class.getResource("goal_line.fxml"));
         Proof.Goal goal = proof.addGoal();
+        return addGoal(goal);
+    }
+
+    private int addGoal(Proof.Goal goal) {
+        FXMLLoader loader = new FXMLLoader(MainWindow.class.getResource("goal_line.fxml"));
         GoalLine controller = new GoalLine(this, goal);
         loader.setController(controller);
         HBox box = null;

@@ -24,11 +24,8 @@ public class ConfigurationManager {
         configManager = new ConfigurationManager();
     }
 
-    private File saveDirectory = new File(System.getProperty("user.home"));
-
     public final SimpleBooleanProperty hideRulesPanel = new SimpleBooleanProperty(false);
     public final SimpleBooleanProperty hideOperatorsPanel = new SimpleBooleanProperty(false);
-
     public final SimpleObjectProperty<KeyCombination> newProofLineKey = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+A"));
     public final SimpleObjectProperty<KeyCombination> deleteProofLineKey = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+D"));
     public final SimpleObjectProperty<KeyCombination> newPremiseKey = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+R"));
@@ -46,7 +43,8 @@ public class ConfigurationManager {
     public final SimpleObjectProperty<KeyCombination> copyKey = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+C"));
     public final SimpleObjectProperty<KeyCombination> cutKey = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+X"));
     public final SimpleObjectProperty<KeyCombination> pasteKey = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+V"));
-
+    private File saveDirectory = new File(System.getProperty("user.home"));
+    private String userId = "default";
     private SimpleObjectProperty[] accelerators = new SimpleObjectProperty[]{newProofLineKey, deleteProofLineKey,
             startSubProofKey, endSubProofKey, newPremiseKey, verifyLineKey, addGoalKey, verifyProofKey, newProofKey,
             openProofKey, saveProofKey, saveAsProofKey, undoKey, redoKey, copyKey, cutKey, pasteKey};
@@ -86,6 +84,14 @@ public class ConfigurationManager {
         if (file == null)
             saveDirectory = new File(System.getProperty("user.home"));
         saveDirectory = file;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 
 }
