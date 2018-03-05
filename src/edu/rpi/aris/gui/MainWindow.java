@@ -2,6 +2,7 @@ package edu.rpi.aris.gui;
 
 import edu.rpi.aris.gui.event.GoalChangedEvent;
 import edu.rpi.aris.gui.event.LineChangedEvent;
+import edu.rpi.aris.gui.event.RuleChangeEvent;
 import edu.rpi.aris.proof.SaveManager;
 import edu.rpi.aris.rules.Rule;
 import javafx.beans.binding.Bindings;
@@ -79,8 +80,11 @@ public class MainWindow {
         rulesManager.addRuleSelectionHandler(ruleSelectEvent -> {
             if (selectedLine.get() > -1) {
                 Proof.Line line = proof.getLines().get(selectedLine.get());
-                if (!line.isAssumption())
+                if (!line.isAssumption()) {
+                    RuleChangeEvent event = new RuleChangeEvent(selectedLine.get(), line.selectedRuleProperty().get(), ruleSelectEvent.getRule());
                     line.selectedRuleProperty().set(ruleSelectEvent.getRule());
+                    history.addHistoryEvent(event);
+                }
             }
         });
         setupScene();

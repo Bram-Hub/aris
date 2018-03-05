@@ -79,8 +79,6 @@ public class RulesManager {
                 tPanes.getKey().setManaged(true);
                 tPanes.getKey().setVisible(true);
                 Menu m = new Menu(e.getKey().name);
-                int i = 0;
-                int j = 0;
                 for (RuleList r : e.getValue()) {
                     MenuItem item = new MenuItem(r.name);
                     item.setOnAction(actionEvent -> ruleSelected(r));

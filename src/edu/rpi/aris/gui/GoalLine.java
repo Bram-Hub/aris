@@ -47,7 +47,7 @@ public class GoalLine {
             return goal.goalNumProperty().get() == lineNum;
         }, goal.goalNumProperty(), window.selectedLineProperty()));
         goalText.editableProperty().addListener((observableValue, aBoolean, t1) -> goalText.requestFocus());
-        goalText.addEventHandler(KeyEvent.ANY, keyEvent -> {
+        goalText.addEventFilter(KeyEvent.ANY, keyEvent -> {
             if (keyEvent.getEventType() == KeyEvent.KEY_PRESSED) {
                 if (window.ignoreKeyEvent(keyEvent)) {
                     goalText.getParent().fireEvent(keyEvent);
