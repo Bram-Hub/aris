@@ -260,7 +260,7 @@ public class SaveManager {
                 }
                 if (n == -1 || n >= i + numPremises)
                     throw new IOException("Invalid file format");
-                p.togglePremise(i + numPremises, p.getLines().get(n));
+                p.setPremise(i + numPremises, p.getLines().get(n), true);
             }
             lastIndent = indent;
         }

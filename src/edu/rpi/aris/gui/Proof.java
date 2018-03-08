@@ -1,5 +1,6 @@
 package edu.rpi.aris.gui;
 
+import edu.rpi.aris.gui.event.PremiseChangeEvent;
 import edu.rpi.aris.proof.*;
 import edu.rpi.aris.rules.RuleList;
 import javafx.application.Platform;
@@ -67,7 +68,7 @@ public class Proof {
     public Goal addGoal(int index) {
         Goal goal = new Goal();
         goal.goalNum.bind(Bindings.createIntegerBinding(() -> goals.indexOf(goal), goals));
-        goals.add(goal);
+        goals.add(index, goal);
         return goal;
     }
 
@@ -95,12 +96,12 @@ public class Proof {
         return possiblePremise;
     }
 
-    public void togglePremise(int selected, Line premise) {
+    public PremiseChangeEvent togglePremise(int selected, Line premise) {
         if (selected < 0)
-            return;
+            return null;
         Line line = lines.get(selected);
         if (line.isAssumption || premise.lineNumber.get() >= selected)
-            return;
+            return null;
         HashSet<Integer> canSelect = getPossiblePremiseLines(line);
         for (int i = premise.lineNumber.get(); i >= 0; i--) {
             if (canSelect.contains(i)) {
@@ -108,8 +109,31 @@ public class Proof {
                 break;
             }
         }
-        if (!line.removePremise(premise))
+        boolean wasSelected = line.removePremise(premise);
+        if (!wasSelected)
             line.addPremise(premise);
+        return new PremiseChangeEvent(selected, premise.lineNumber.get(), wasSelected);
+    }
+
+    public PremiseChangeEvent setPremise(int selected, Line premise, boolean isSelected) {
+        if (selected < 0)
+            return null;
+        Line line = lines.get(selected);
+        if (line.isAssumption || premise.lineNumber.get() >= selected)
+            return null;
+        HashSet<Integer> canSelect = getPossiblePremiseLines(line);
+        for (int i = premise.lineNumber.get(); i >= 0; i--) {
+            if (canSelect.contains(i)) {
+                premise = lines.get(i);
+                break;
+            }
+        }
+        boolean wasSelected = line.getPremises().contains(premise);
+        if (isSelected)
+            line.addPremise(premise);
+        else
+            line.removePremise(premise);
+        return new PremiseChangeEvent(selected, premise.lineNumber.get(), wasSelected);
     }
 
     public HashSet<Line> getHighlighted(Line line) {

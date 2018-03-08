@@ -150,6 +150,8 @@ public class ProofLine {
         root.setOnMouseClicked(highlightListener);
         validImage.imageProperty().bind(Bindings.createObjectBinding(() -> proofLine.statusProperty().get().img, proofLine.statusProperty()));
         ruleChoose.setContextMenu(window.getRulesManager().getRulesDropdown());
+        textField.positionCaret(textField.getText().length());
+        caretPos = textField.getText().length();
     }
 
     public void setHighlighted(boolean highlighted) {

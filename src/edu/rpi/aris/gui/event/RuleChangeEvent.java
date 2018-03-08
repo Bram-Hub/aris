@@ -18,14 +18,18 @@ public class RuleChangeEvent extends HistoryEvent {
     @Override
     public void undoEvent(MainWindow window) {
         Proof.Line l = window.getProof().getLines().get(lineNum);
-        if (l != null)
+        if (l != null) {
             l.selectedRuleProperty().set(oldRule);
+            window.requestFocus(window.getProofLines().get(lineNum));
+        }
     }
 
     @Override
     public void redoEvent(MainWindow window) {
         Proof.Line l = window.getProof().getLines().get(lineNum);
-        if (l != null)
+        if (l != null) {
             l.selectedRuleProperty().set(newRule);
+            window.requestFocus(window.getProofLines().get(lineNum));
+        }
     }
 }

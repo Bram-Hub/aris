@@ -76,65 +76,88 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
             logger.error("137 little bugs in the code");
             logger.catching(e);
         }
-        Thread bugReportThread = new Thread(() -> generateBugReport(t, e));
+        Thread bugReportThread = new Thread(() -> {
+            try {
+                generateBugReport(t, e);
+            } catch (Throwable e1) {
+                logger.fatal("An error has occurred while attempting to report a different error");
+                logger.catching(Level.FATAL, e1);
+                logger.fatal("The program will not exit");
+                System.exit(1);
+            }
+        });
         bugReportThread.start();
         if (GUI) {
-            Platform.runLater(() -> {
-                Alert alert = new Alert(Alert.AlertType.ERROR);
+            try {
+                Platform.runLater(() -> {
+                    try {
+                        Alert alert = new Alert(Alert.AlertType.ERROR);
 
-                alert.initModality(Modality.APPLICATION_MODAL);
-                alert.initOwner(mainWindow.getStage().getScene().getWindow());
+                        alert.initModality(Modality.APPLICATION_MODAL);
+                        alert.initOwner(mainWindow.getStage().getScene().getWindow());
 
-                alert.getDialogPane().setPrefHeight(Region.USE_COMPUTED_SIZE);
-                alert.getDialogPane().setPrefWidth(Region.USE_COMPUTED_SIZE);
+                        alert.getDialogPane().setPrefHeight(Region.USE_COMPUTED_SIZE);
+                        alert.getDialogPane().setPrefWidth(Region.USE_COMPUTED_SIZE);
 
-                alert.getDialogPane().setPrefWidth(600);
-                alert.getDialogPane().setPrefHeight(500);
+                        alert.getDialogPane().setPrefWidth(600);
+                        alert.getDialogPane().setPrefHeight(500);
 
-                alert.setTitle("Critical Error");
-                if (fatal) {
-                    alert.setHeaderText("He's dead, Jim!");
-                    alert.setContentText("An error has occurred and Aris was unable to recover\n" +
-                            "A bug report was generated and sent to the Aris developers");
-                } else {
-                    alert.setHeaderText("99 little bugs in the code\n" +
-                            "99 little bugs\n" +
-                            "Take one down, patch it around\n" +
-                            "137 little bugs in the code");
-                    alert.setContentText("An error has occurred and Aris has attempted to recover\n" +
-                            "A bug report was generated and sent to the Aris developers\n" +
-                            "It is recommended to restart the program in case Aris was unable to fully recover");
-                }
+                        alert.setTitle("Critical Error");
+                        if (fatal) {
+                            alert.setHeaderText("He's dead, Jim!");
+                            alert.setContentText("An error has occurred and Aris was unable to recover\n" +
+                                    "A bug report was generated and sent to the Aris developers");
+                        } else {
+                            alert.setHeaderText("99 little bugs in the code\n" +
+                                    "99 little bugs\n" +
+                                    "Take one down, patch it around\n" +
+                                    "137 little bugs in the code");
+                            alert.setContentText("An error has occurred and Aris has attempted to recover\n" +
+                                    "A bug report was generated and sent to the Aris developers\n" +
+                                    "It is recommended to restart the program in case Aris was unable to fully recover");
+                        }
 
-                StringWriter sw = new StringWriter();
-                PrintWriter pw = new PrintWriter(sw);
-                pw.println("ARIS-Java " + VERSION);
-                e.printStackTrace(pw);
-                String exceptionText = sw.toString();
+                        StringWriter sw = new StringWriter();
+                        PrintWriter pw = new PrintWriter(sw);
+                        pw.println("ARIS-Java " + VERSION);
+                        e.printStackTrace(pw);
+                        String exceptionText = sw.toString();
 
-                Label label = new Label("Error details:");
+                        Label label = new Label("Error details:");
 
-                TextArea textArea = new TextArea(exceptionText);
-                textArea.setEditable(false);
-                textArea.setWrapText(false);
+                        TextArea textArea = new TextArea(exceptionText);
+                        textArea.setEditable(false);
+                        textArea.setWrapText(false);
 
-                textArea.setMaxWidth(Double.MAX_VALUE);
-                textArea.setMaxHeight(Double.MAX_VALUE);
+                        textArea.setMaxWidth(Double.MAX_VALUE);
+                        textArea.setMaxHeight(Double.MAX_VALUE);
 
-                GridPane.setVgrow(textArea, Priority.ALWAYS);
-                GridPane.setHgrow(textArea, Priority.ALWAYS);
+                        GridPane.setVgrow(textArea, Priority.ALWAYS);
+                        GridPane.setHgrow(textArea, Priority.ALWAYS);
 
-                GridPane expContent = new GridPane();
-                expContent.setMinHeight(300);
-                expContent.setMaxWidth(Double.MAX_VALUE);
-                expContent.add(label, 0, 0);
-                expContent.add(textArea, 0, 1);
+                        GridPane expContent = new GridPane();
+                        expContent.setMinHeight(300);
+                        expContent.setMaxWidth(Double.MAX_VALUE);
+                        expContent.add(label, 0, 0);
+                        expContent.add(textArea, 0, 1);
 
-                alert.getDialogPane().setExpandableContent(expContent);
-                alert.getDialogPane().setExpanded(true);
+                        alert.getDialogPane().setExpandableContent(expContent);
+                        alert.getDialogPane().setExpanded(true);
 
-                alert.showAndWait();
-            });
+                        alert.showAndWait();
+                    } catch (Throwable e1) {
+                        logger.fatal("An error has occurred while attempting to show the error dialog");
+                        logger.catching(Level.FATAL, e1);
+                        logger.fatal("The program will now exit");
+                        System.exit(1);
+                    }
+                });
+            } catch (Throwable e1) {
+                logger.fatal("An error has occurred while attempting to show the error dialog");
+                logger.catching(Level.FATAL, e1);
+                logger.fatal("The program will now exit");
+                System.exit(1);
+            }
         }
         try {
             bugReportThread.join();

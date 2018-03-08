@@ -37,7 +37,7 @@ public class LineChangedEvent extends HistoryEvent {
             line.expressionStringProperty().set(p.expressionStringProperty().get());
             line.selectedRuleProperty().set(p.selectedRuleProperty().get());
             for (int i : premises.get(l.getKey()))
-                window.getProof().togglePremise(l.getKey(), window.getProof().getLines().get(i));
+                window.getProof().setPremise(l.getKey(), window.getProof().getLines().get(i), true);
             window.addProofLine(line);
         }
         window.requestFocus(window.getProofLines().get(changed.firstKey()));

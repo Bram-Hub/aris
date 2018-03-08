@@ -2,6 +2,7 @@ package edu.rpi.aris.gui;
 
 import edu.rpi.aris.gui.event.GoalChangedEvent;
 import edu.rpi.aris.gui.event.LineChangedEvent;
+import edu.rpi.aris.gui.event.PremiseChangeEvent;
 import edu.rpi.aris.gui.event.RuleChangeEvent;
 import edu.rpi.aris.proof.SaveManager;
 import edu.rpi.aris.rules.Rule;
@@ -587,8 +588,10 @@ public class MainWindow {
     }
 
     public void requestSelect(ProofLine line) {
-        proof.togglePremise(selectedLine.get(), line.getModel());
+        PremiseChangeEvent event = proof.togglePremise(selectedLine.get(), line.getModel());
         updateHighlighting(selectedLine.get());
+        if (event != null)
+            history.addHistoryEvent(event);
     }
 
     public IntegerProperty numLines() {
@@ -603,7 +606,7 @@ public class MainWindow {
         return selectedLine;
     }
 
-    private synchronized void updateHighlighting(int selectedLine) {
+    public synchronized void updateHighlighting(int selectedLine) {
         if (selectedLine >= 0) {
             Proof.Line line = proof.getLines().get(selectedLine);
             HashSet<Proof.Line> highlighted = proof.getHighlighted(line);
