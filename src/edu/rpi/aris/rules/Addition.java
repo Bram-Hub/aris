@@ -47,7 +47,7 @@ public class Addition extends Rule {
             }
         }
         ArrayList<String> list = new ArrayList<>();
-        list.add(str + " " + Operator.OR.logic + " ");
+        list.add(str + " " + Operator.OR.rep + " ");
         return list;
     }
 

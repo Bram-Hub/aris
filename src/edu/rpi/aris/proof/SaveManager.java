@@ -35,13 +35,14 @@ import java.util.regex.Pattern;
 public class SaveManager {
 
     @SuppressWarnings("SpellCheckingInspection")
-    public static final String FILE_EXTENSION = "aprf";
+    public static final String FILE_EXTENSION = "bram";
 
     private static DocumentBuilder documentBuilder;
     private static Transformer transformer;
     private static MessageDigest hash;
     private static Pattern hashPattern = Pattern.compile("(?<=<hash>).+(?=</hash>)");
-    private static FileChooser.ExtensionFilter extensionFilter = new FileChooser.ExtensionFilter("Aris Proof File", FILE_EXTENSION);
+    private static FileChooser.ExtensionFilter extensionFilter = new FileChooser.ExtensionFilter("Bram Proof File (." + FILE_EXTENSION + ")", FILE_EXTENSION);
+    private static FileChooser.ExtensionFilter allFiles = new FileChooser.ExtensionFilter("All Files", "*");
 
     static {
         try {
@@ -58,6 +59,8 @@ public class SaveManager {
     public static File showSaveDialog(Window parent, String defaultFileName) throws IOException {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setInitialDirectory(ConfigurationManager.getConfigManager().getSaveDirectory());
+        fileChooser.getExtensionFilters().add(extensionFilter);
+        fileChooser.getExtensionFilters().add(allFiles);
         fileChooser.setSelectedExtensionFilter(extensionFilter);
         fileChooser.setTitle("Save Proof");
         fileChooser.setInitialFileName(defaultFileName);
@@ -72,6 +75,8 @@ public class SaveManager {
     public static File showOpenDialog(Window parent) throws IOException {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setInitialDirectory(ConfigurationManager.getConfigManager().getSaveDirectory());
+        fileChooser.getExtensionFilters().add(extensionFilter);
+        fileChooser.getExtensionFilters().add(allFiles);
         fileChooser.setSelectedExtensionFilter(extensionFilter);
         fileChooser.setTitle("Open Proof");
         File f = fileChooser.showOpenDialog(parent);
@@ -84,7 +89,126 @@ public class SaveManager {
         return f;
     }
 
-    public static synchronized boolean saveProof(Proof proof, File file) throws TransformerException, IOException {
+    public static synchronized boolean saveProof(Proof proof, File file) throws TransformerException {
+        if (proof == null || file == null)
+            return false;
+        Document doc = documentBuilder.newDocument();
+        Element root = doc.createElement("bram");
+        doc.appendChild(root);
+
+        Element program = doc.createElement("Program");
+        program.appendChild(doc.createTextNode(Aris.NAME));
+        root.appendChild(program);
+
+        Element version = doc.createElement("Version");
+        version.appendChild(doc.createTextNode(Aris.VERSION));
+        root.appendChild(version);
+
+        ArrayList<Element> proofElements = new ArrayList<>();
+
+        createProofElement(proof, 0, doc, root, proofElements);
+
+        Element baseProof = proofElements.get(0);
+
+        for (Proof.Goal g : proof.getGoals()) {
+            Element goal = doc.createElement("goal");
+            Element sen = doc.createElement("sen");
+            g.buildExpression();
+            sen.appendChild(doc.createTextNode(g.getExpression() == null ? "" : g.getExpression().toString()));
+            goal.appendChild(sen);
+            Element raw = doc.createElement("raw");
+            raw.appendChild(doc.createTextNode(g.goalStringProperty().get()));
+            goal.appendChild(raw);
+            baseProof.appendChild(goal);
+        }
+
+        DOMSource src = new DOMSource(doc);
+        StringWriter writer = new StringWriter();
+        StreamResult result = new StreamResult(writer);
+        transformer.transform(src, result);
+
+        Element metadata = doc.createElement("metadata");
+
+        for (String author : proof.getAuthors()) {
+            Element a = doc.createElement("author");
+            a.appendChild(doc.createTextNode(author));
+            metadata.appendChild(a);
+        }
+
+        root.insertBefore(metadata, baseProof);
+
+        String hash = computeHash(result.toString(), proof.getAuthors());
+        Element hashElement = doc.createElement("hash");
+        hashElement.appendChild(doc.createTextNode(hash));
+        metadata.appendChild(hashElement);
+
+        result = new StreamResult(file);
+        transformer.transform(src, result);
+
+        return true;
+    }
+
+    private static synchronized int createProofElement(Proof proof, int lineNum, Document doc, Element root, ArrayList<Element> proofElements) {
+        Element prf = doc.createElement("proof");
+        int id = proofElements.size();
+        prf.setAttribute("id", String.valueOf(id));
+        root.appendChild(prf);
+        proofElements.add(prf);
+
+        int allowedAssumptions = lineNum == 0 ? proof.numPremises().get() : 1;
+        for (int i = lineNum; i < proof.getLines().size(); ++i) {
+            Proof.Line line = proof.getLines().get(i);
+            if (line.isAssumption()) {
+                if (allowedAssumptions == 0) {
+                    Element step = doc.createElement("step");
+                    step.setAttribute("linenum", String.valueOf(i));
+                    Element rule = doc.createElement("rule");
+                    rule.appendChild(doc.createTextNode("subproof"));
+                    step.appendChild(rule);
+                    int subId = createProofElement(proof, i, doc, root, proofElements);
+                    Element premise = doc.createElement("premise");
+                    premise.appendChild(doc.createTextNode(String.valueOf(subId)));
+                    step.appendChild(premise);
+                    prf.appendChild(step);
+                } else {
+                    --allowedAssumptions;
+                    Element assumption = doc.createElement("assumption");
+                    assumption.setAttribute("linenum", String.valueOf(i));
+                    Element sen = doc.createElement("sen");
+                    line.buildExpression();
+                    sen.appendChild(doc.createTextNode(line.getExpression() == null ? "" : line.getExpression().toString()));
+                    assumption.appendChild(sen);
+                    Element raw = doc.createElement("raw");
+                    raw.appendChild(doc.createTextNode(line.expressionStringProperty().get()));
+                    assumption.appendChild(raw);
+                    prf.appendChild(assumption);
+                }
+            } else {
+                allowedAssumptions = 0;
+                Element step = doc.createElement("step");
+                step.setAttribute("linenum", String.valueOf(i));
+                Element sen = doc.createElement("sen");
+                line.buildExpression();
+                sen.appendChild(doc.createTextNode(line.getExpression() == null ? "" : line.getExpression().toString()));
+                step.appendChild(sen);
+                Element raw = doc.createElement("raw");
+                raw.appendChild(doc.createTextNode(line.expressionStringProperty().get()));
+                step.appendChild(raw);
+                Element rule = doc.createElement("rule");
+                rule.appendChild(doc.createTextNode(line.selectedRuleProperty().get() == null ? "" : line.selectedRuleProperty().get().name()));
+                step.appendChild(rule);
+                for (Proof.Line prem : line.getPremises()) {
+                    Element premise = doc.createElement("premise");
+                    premise.appendChild(doc.createTextNode(String.valueOf(prem.lineNumberProperty().get())));
+                    step.appendChild(premise);
+                }
+                prf.appendChild(step);
+            }
+        }
+        return id;
+    }
+
+    public static synchronized boolean saveProofLegacy(Proof proof, File file) throws TransformerException, IOException {
         if (proof == null || file == null)
             return false;
         Document doc = documentBuilder.newDocument();

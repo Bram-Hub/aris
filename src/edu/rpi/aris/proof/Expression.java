@@ -233,12 +233,12 @@ public class Expression {
             return sb.append(")").toString();
         }
         if (operator.isType(Operator.Type.UNARY))
-            return operator.logic + (operator.isType(Operator.Type.QUANTIFIER) ? quantifierVar + " " : "") + expressions[0].toLogicString();
+            return operator.rep + (operator.isType(Operator.Type.QUANTIFIER) ? quantifierVar + " " : "") + expressions[0].toLogicString();
         StringBuilder sb = new StringBuilder("(");
         for (int i = 0; i < expressions.length; ++i) {
             sb.append(expressions[i].toLogicString());
             if (i < expressions.length - 1)
-                sb.append(" ").append(operator.logic).append(" ");
+                sb.append(" ").append(operator.rep).append(" ");
         }
         return sb.append(")").toString();
     }

@@ -7,19 +7,19 @@ import java.util.HashSet;
 
 public enum Operator {
 
-    NOT("!", '¬', new Type[]{Type.UNARY}),
-    AND("&", '∧', new Type[]{Type.BINARY, Type.GENERALIZABLE}),
-    OR("|", '∨', new Type[]{Type.BINARY, Type.GENERALIZABLE}),
-    CONDITIONAL("→", '→', new Type[]{Type.BINARY}),
-    BICONDITIONAL("↔", '↔', new Type[]{Type.BINARY}),
-    EQUALS("=", '=', new Type[]{Type.EQUIVALENCE}),
-    NOT_EQUALS("≠", '≠', new Type[]{Type.EQUIVALENCE}),
-    MULTIPLICATION("*", '×', new Type[]{Type.BINARY, Type.MATH}),
-    ADDITION("+", '+', new Type[]{Type.BINARY, Type.MATH}),
-    EXISTENTIAL("∃", '∃', new Type[]{Type.UNARY, Type.QUANTIFIER}),
-    UNIVERSAL("∀", '∀', new Type[]{Type.UNARY, Type.QUANTIFIER}),
-    ELEMENT_OF("∈", '∈', new Type[]{Type.BINARY, Type.SET}),
-    SUBSET("⊆", '⊆', new Type[]{Type.BINARY, Type.SET});
+    NOT("¬", new Type[]{Type.UNARY}),
+    AND("∧", new Type[]{Type.BINARY, Type.GENERALIZABLE}),
+    OR("∨", new Type[]{Type.BINARY, Type.GENERALIZABLE}),
+    CONDITIONAL("→", new Type[]{Type.BINARY}),
+    BICONDITIONAL("↔", new Type[]{Type.BINARY}),
+    EQUALS("=", new Type[]{Type.EQUIVALENCE}),
+    NOT_EQUALS("≠", new Type[]{Type.EQUIVALENCE}),
+    MULTIPLICATION("*", new Type[]{Type.BINARY, Type.MATH}),
+    ADDITION("+", new Type[]{Type.BINARY, Type.MATH}),
+    EXISTENTIAL("∃", new Type[]{Type.UNARY, Type.QUANTIFIER}),
+    UNIVERSAL("∀", new Type[]{Type.UNARY, Type.QUANTIFIER}),
+    ELEMENT_OF("∈", new Type[]{Type.BINARY, Type.SET}),
+    SUBSET("⊆", new Type[]{Type.BINARY, Type.SET});
 
     public static final HashMap<Type, HashSet<Operator>> OPERATOR_TYPES;
 
@@ -31,12 +31,10 @@ public enum Operator {
     }
 
     public final String rep;
-    public final char logic;
     public final Type[] types;
 
-    Operator(String rep, char logic, Type[] types) {
+    Operator(String rep, Type[] types) {
         this.rep = rep;
-        this.logic = logic;
         this.types = types;
     }
 
@@ -53,7 +51,7 @@ public enum Operator {
     public static boolean containsType(Type type, String str) {
         for (char c : str.toCharArray()) {
             for (Operator o : OPERATOR_TYPES.get(type))
-                if (c == o.logic)
+                if (o.rep.length() == 1 && o.rep.charAt(0) == c)
                     return true;
         }
         return false;

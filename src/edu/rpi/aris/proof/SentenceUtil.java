@@ -23,7 +23,7 @@ public class SentenceUtil {
     static {
         StringBuilder quantifierPattern = new StringBuilder();
         for (Operator o : Operator.OPERATOR_TYPES.get(Operator.Type.QUANTIFIER)) {
-            quantifierPattern.append(o.logic);
+            quantifierPattern.append(o.rep);
         }
         String q = quantifierPattern.toString();
         quantifierPattern.insert(0, "[");
@@ -239,7 +239,7 @@ public class SentenceUtil {
                     // We need to handle unary operators differently
 
                     // Create a string builder containing the operator string
-                    StringBuilder sb = new StringBuilder(opr.isType(Operator.Type.QUANTIFIER) ? oprStr + " " : String.valueOf(opr.logic));
+                    StringBuilder sb = new StringBuilder(opr.isType(Operator.Type.QUANTIFIER) ? oprStr + " " : String.valueOf(opr.rep));
                     // Set the standard notation offset to be the operator string's length
                     int offset = sb.length();
                     // directly map the operator string from polish to standard notation
@@ -288,7 +288,7 @@ public class SentenceUtil {
                         }
                         // increment the offset and add the operator to our output
                         ++offset;
-                        sb.append(opr.logic);
+                        sb.append(opr.rep);
                     }
                 }
                 // add closing parentheses
@@ -392,8 +392,8 @@ public class SentenceUtil {
         int matches = 0;
         StringBuilder regex = new StringBuilder("[");
         for (Operator o : Operator.OPERATOR_TYPES.get(Operator.Type.EQUIVALENCE)) {
-            matches += StringUtils.countMatches(expr, String.valueOf(o.logic));
-            regex.append(o.logic);
+            matches += StringUtils.countMatches(expr, String.valueOf(o.rep));
+            regex.append(o.rep);
         }
         regex.append("]");
         if (matches == 1 && quantifiers.size() == 0) {
@@ -401,9 +401,9 @@ public class SentenceUtil {
             Operator opr;
             if (!m.find() || (opr = Operator.getOperator(m.group())) == null)
                 throw new ExpressionParseException("Failed to parse expression", -1, 0);
-            String[] split = expr.split(String.valueOf(opr.logic));
+            String[] split = expr.split(String.valueOf(opr.rep));
             if (split.length != 2 || split[0].length() == 0 || split[1].length() == 0)
-                throw new ExpressionParseException("Equivalence operator must join 2 expressions", expr.indexOf(opr.logic), 1);
+                throw new ExpressionParseException("Equivalence operator must join 2 expressions", expr.indexOf(opr.rep), 1);
             split[0] = removeParen(split[0]);
             split[1] = removeParen(split[1]);
 
@@ -544,14 +544,14 @@ public class SentenceUtil {
 
     private static Operator getBoolOpr(char c) {
         for (Operator opr : Operator.OPERATOR_TYPES.get(Operator.Type.BINARY))
-            if (c == opr.logic)
+            if (opr.rep.length() == 1 && opr.rep.charAt(0) == c)
                 return opr;
         return null;
     }
 
     private static Operator getUnaryOpr(char c) {
         for (Operator opr : Operator.OPERATOR_TYPES.get(Operator.Type.UNARY))
-            if (c == opr.logic)
+            if (opr.rep.length() == 1 && opr.rep.charAt(0) == c)
                 return opr;
         return null;
     }

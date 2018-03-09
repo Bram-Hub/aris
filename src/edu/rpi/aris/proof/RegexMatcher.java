@@ -189,8 +189,8 @@ public class RegexMatcher {
 //    }
 
 //    public static void main(String[] args) throws ParseException {
-//        String logic = "¬A ∧ ¬B";
-//        logic = SentenceUtil.toPolishNotation(logic);
+//        String rep = "¬A ∧ ¬B";
+//        rep = SentenceUtil.toPolishNotation(rep);
 //        Expression exp = new Expression("(<-> A B)");
 //        Claim c = new Claim(new Expression("B"), new Premise[]{new Premise(exp), new Premise(new Expression("A"))}, RuleList.BICONDITIONAL);
 //        System.out.println(verifyClaim(c));

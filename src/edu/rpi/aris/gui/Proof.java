@@ -345,7 +345,7 @@ public class Proof {
             removePremise(deletedLine);
         }
 
-        private synchronized void buildExpression() {
+        public synchronized void buildExpression() {
             String str = expressionString.get();
             if (expression == null) {
                 if (str.trim().length() > 0) {
@@ -376,6 +376,10 @@ public class Proof {
                     setErrorRange(null);
                 }
             }
+        }
+
+        public synchronized Expression getExpression() {
+            return expression;
         }
 
         private void setStatus(String status) {
@@ -527,7 +531,7 @@ public class Proof {
             return goalStatus;
         }
 
-        private synchronized boolean buildExpression() {
+        public synchronized boolean buildExpression() {
             stopTimer();
             String str = goalString.get();
             if (str.trim().length() > 0) {
@@ -595,6 +599,10 @@ public class Proof {
 
         public SimpleObjectProperty<IntRange> errorRangeProperty() {
             return errorRange;
+        }
+
+        public Expression getExpression() {
+            return expression;
         }
     }
 
