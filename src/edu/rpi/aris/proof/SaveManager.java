@@ -324,6 +324,23 @@ public class SaveManager {
                     throw new IOException("Non sequential id tag found in proof element");
             }
             readProofElement(proof, proofElements, 0, 0, 0);
+            Element baseProof = proofElements.get(0);
+            ArrayList<Element> goals = getElementsByTag(baseProof, "goal");
+            for (Element g : goals) {
+                String raw;
+                try {
+                    raw = getElementByTag(g, "raw").getTextContent();
+                } catch (IOException e) {
+                    String sen = getElementByTag(g, "sen").getTextContent();
+                    try {
+                        raw = new Expression(sen).toLogicString();
+                    } catch (ExpressionParseException e1) {
+                        throw new IOException("Invalid sentence in goal element");
+                    }
+                }
+                Proof.Goal goal = proof.addGoal(proof.getGoals().size());
+                goal.goalStringProperty().set(raw);
+            }
         }
         return proof;
     }
@@ -360,7 +377,7 @@ public class SaveManager {
                     throw new IOException("Invalid sentence in proof element " + elementId);
                 }
             }
-            Proof.Line line = proof.addLine(lineNum, true, indent);
+            Proof.Line line = indent == 0 ? proof.addPremise() : proof.addLine(lineNum, true, indent);
             line.expressionStringProperty().set(raw);
             ++lineNum;
         }
