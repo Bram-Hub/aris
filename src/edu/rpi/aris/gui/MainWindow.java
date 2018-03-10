@@ -707,4 +707,19 @@ public class MainWindow {
     public ArrayList<GoalLine> getGoalLines() {
         return goalLines;
     }
+
+    public HistoryManager getHistory() {
+        return history;
+    }
+
+    public void commitSentenceChanges() {
+        int selected = selectedLine.get();
+        if (selected >= 0) {
+            ProofLine line = proofLines.get(selected);
+            line.commitSentenceChange();
+        } else if (selected < -1) {
+            GoalLine line = goalLines.get(selected * -1 - 2);
+            line.commitSentenceChange();
+        }
+    }
 }

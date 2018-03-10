@@ -1,5 +1,6 @@
 package edu.rpi.aris.gui;
 
+import edu.rpi.aris.gui.event.SentenceChangeEvent;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.event.Event;
@@ -11,16 +12,15 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.ContextMenuEvent;
-import javafx.scene.input.KeyEvent;
-import javafx.scene.input.MouseButton;
-import javafx.scene.input.MouseEvent;
+import javafx.scene.input.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.IntRange;
 
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.function.UnaryOperator;
 
 public class ProofLine {
@@ -52,6 +52,8 @@ public class ProofLine {
     private MainWindow window;
     private Proof.Line proofLine;
     private int caretPos = 0;
+    private String lastVal = "";
+    private Timer historyTimer;
 
     private EventHandler<MouseEvent> highlightListener = new EventHandler<MouseEvent>() {
         @Override
@@ -68,6 +70,7 @@ public class ProofLine {
 
     @FXML
     public void initialize() {
+        lastVal = proofLine.expressionStringProperty().get();
         validImage.fitHeightProperty().bind(selectedLine.fitHeightProperty());
         validImage.fitWidthProperty().bind(validImage.fitHeightProperty());
         textField.fontProperty().bind(window.getFontProperty());
@@ -123,8 +126,20 @@ public class ProofLine {
                     textField.getParent().fireEvent(keyEvent);
                     keyEvent.consume();
                 }
-                if (window.handleKeyEvent(keyEvent))
+                if (window.handleKeyEvent(keyEvent)) {
                     keyEvent.consume();
+                }
+            }
+        });
+        textField.addEventHandler(KeyEvent.ANY, keyEvent -> {
+            if (keyEvent.getEventType() == KeyEvent.KEY_PRESSED) {
+                KeyCode key = keyEvent.getCode();
+                if (key == KeyCode.BACK_SPACE || key == KeyCode.SPACE || key == KeyCode.ENTER)
+                    commitSentenceChange();
+                else {
+                    startHistoryTimer();
+                    window.getHistory().upcomingHistoryEvent(!textField.getText().equals(lastVal));
+                }
             }
         });
         textField.editableProperty().bind(Bindings.createBooleanBinding(() -> proofLine.lineNumberProperty().get() == window.selectedLineProperty().get(), proofLine.lineNumberProperty(), window.selectedLineProperty()));
@@ -217,6 +232,37 @@ public class ProofLine {
         else if (e.getButton() == MouseButton.SECONDARY && !textField.isEditable())
             window.requestSelect(this);
         e.consume();
+    }
+
+    private synchronized void startHistoryTimer() {
+        if (historyTimer != null) {
+            historyTimer.cancel();
+            historyTimer = null;
+        }
+        historyTimer = new Timer();
+        historyTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                commitSentenceChange();
+            }
+        }, 500);
+    }
+
+    public synchronized void commitSentenceChange() {
+        if (historyTimer != null) {
+            historyTimer.cancel();
+            historyTimer = null;
+        }
+        String currentVal = textField.getText();
+        if (!currentVal.equals(lastVal)) {
+            SentenceChangeEvent event = new SentenceChangeEvent(proofLine.lineNumberProperty().get(), lastVal, currentVal);
+            window.getHistory().addHistoryEvent(event);
+            lastVal = currentVal;
+        }
+    }
+
+    public synchronized void resetLastString() {
+        lastVal = textField.getText();
     }
 
 }

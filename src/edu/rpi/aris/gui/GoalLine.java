@@ -1,15 +1,19 @@
 package edu.rpi.aris.gui;
 
+import edu.rpi.aris.gui.event.SentenceChangeEvent;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import org.apache.commons.lang.math.IntRange;
 
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.function.UnaryOperator;
 
 public class GoalLine {
@@ -25,6 +29,8 @@ public class GoalLine {
     private Proof.Goal goal;
     private MainWindow window;
     private int caretPos = 0;
+    private String lastVal = "";
+    private Timer historyTimer;
 
     GoalLine(MainWindow window, Proof.Goal goal) {
         this.goal = goal;
@@ -33,6 +39,7 @@ public class GoalLine {
 
     @FXML
     public void initialize() {
+        lastVal = goal.goalStringProperty().get();
         goalText.setText(goal.goalStringProperty().get());
         goal.goalStringProperty().bind(goalText.textProperty());
         goalValidImg.imageProperty().bind(Bindings.createObjectBinding(() -> goal.goalStatusProperty().get().img, goal.goalStatusProperty()));
@@ -69,6 +76,31 @@ public class GoalLine {
                     goalText.requestFocus();
             }
         });
+        goalText.addEventHandler(KeyEvent.ANY, keyEvent -> {
+            if (keyEvent.getEventType() == KeyEvent.KEY_PRESSED) {
+                KeyCode key = keyEvent.getCode();
+                if (key == KeyCode.BACK_SPACE || key == KeyCode.SPACE || key == KeyCode.ENTER)
+                    commitSentenceChange();
+                else {
+                    startHistoryTimer();
+                    window.getHistory().upcomingHistoryEvent(!goalText.getText().equals(lastVal));
+                }
+            }
+        });
+    }
+
+    private synchronized void startHistoryTimer() {
+        if (historyTimer != null) {
+            historyTimer.cancel();
+            historyTimer = null;
+        }
+        historyTimer = new Timer();
+        historyTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                commitSentenceChange();
+            }
+        }, 500);
     }
 
     public int lineNumber() {
@@ -87,5 +119,26 @@ public class GoalLine {
 
     public void insertText(String str) {
         goalText.insertText(goalText.getCaretPosition(), str);
+    }
+
+    public synchronized void commitSentenceChange() {
+        if (historyTimer != null) {
+            historyTimer.cancel();
+            historyTimer = null;
+        }
+        String currentVal = goalText.getText();
+        if (!currentVal.equals(lastVal)) {
+            SentenceChangeEvent event = new SentenceChangeEvent(goal.goalNumProperty().get(), lastVal, currentVal);
+            window.getHistory().addHistoryEvent(event);
+            lastVal = currentVal;
+        }
+    }
+
+    public synchronized void resetLastString() {
+        lastVal = goalText.getText();
+    }
+
+    public void setText(String text) {
+        goalText.setText(text);
     }
 }

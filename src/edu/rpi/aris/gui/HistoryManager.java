@@ -15,6 +15,7 @@ public class HistoryManager {
     private SimpleBooleanProperty canRedoProperty = new SimpleBooleanProperty(false);
     private MainWindow window;
     private boolean historyEvent = false;
+    private boolean upcomingHistoryEvent = false;
 
     public HistoryManager(MainWindow window) {
         this.window = window;
@@ -23,10 +24,14 @@ public class HistoryManager {
     public synchronized void addHistoryEvent(HistoryEvent event) {
         if (historyEvent || !window.isLoaded())
             return;
+        upcomingHistoryEvent = false;
+        historyEvent = true;
+        window.commitSentenceChanges();
         redoHistory.clear();
         canRedoProperty.set(false);
         undoHistory.push(event);
         canUndoProperty.set(true);
+        historyEvent = false;
     }
 
     public BooleanProperty canUndo() {
@@ -38,6 +43,7 @@ public class HistoryManager {
     }
 
     public synchronized void undo() {
+        window.commitSentenceChanges();
         if (undoHistory.size() == 0)
             return;
         historyEvent = true;
@@ -50,6 +56,7 @@ public class HistoryManager {
     }
 
     public synchronized void redo() {
+        window.commitSentenceChanges();
         if (redoHistory.size() == 0)
             return;
         historyEvent = true;
@@ -59,6 +66,16 @@ public class HistoryManager {
         undoHistory.push(event);
         canUndoProperty.set(true);
         historyEvent = false;
+    }
+
+    public synchronized void upcomingHistoryEvent(boolean isEvent) {
+        if (isEvent) {
+            canUndoProperty.set(true);
+            canRedoProperty.set(false);
+        } else {
+            canUndoProperty.set(undoHistory.size() > 0);
+            canRedoProperty.set(redoHistory.size() > 0);
+        }
     }
 
 }
