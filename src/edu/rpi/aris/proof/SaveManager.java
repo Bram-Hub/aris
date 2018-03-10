@@ -4,14 +4,15 @@ import edu.rpi.aris.gui.Aris;
 import edu.rpi.aris.gui.ConfigurationManager;
 import edu.rpi.aris.gui.Proof;
 import edu.rpi.aris.rules.RuleList;
-import javafx.collections.ObservableList;
 import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
-import org.apache.commons.io.IOUtils;
+import javafx.util.Pair;
 import org.apache.commons.lang.StringUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -22,15 +23,13 @@ import javax.xml.transform.dom.DOMResult;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.StringWriter;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class SaveManager {
 
@@ -40,8 +39,7 @@ public class SaveManager {
     private static DocumentBuilder documentBuilder;
     private static Transformer transformer;
     private static MessageDigest hash;
-    private static Pattern hashPattern = Pattern.compile("(?<=<hash>).+(?=</hash>)");
-    private static FileChooser.ExtensionFilter extensionFilter = new FileChooser.ExtensionFilter("Bram Proof File (." + FILE_EXTENSION + ")", FILE_EXTENSION);
+    private static FileChooser.ExtensionFilter extensionFilter = new FileChooser.ExtensionFilter("Bram Proof File (." + FILE_EXTENSION + ")", "*." + FILE_EXTENSION);
     private static FileChooser.ExtensionFilter allFiles = new FileChooser.ExtensionFilter("All Files", "*");
 
     static {
@@ -96,11 +94,11 @@ public class SaveManager {
         Element root = doc.createElement("bram");
         doc.appendChild(root);
 
-        Element program = doc.createElement("Program");
+        Element program = doc.createElement("program");
         program.appendChild(doc.createTextNode(Aris.NAME));
         root.appendChild(program);
 
-        Element version = doc.createElement("Version");
+        Element version = doc.createElement("version");
         version.appendChild(doc.createTextNode(Aris.VERSION));
         root.appendChild(version);
 
@@ -122,11 +120,6 @@ public class SaveManager {
             baseProof.appendChild(goal);
         }
 
-        DOMSource src = new DOMSource(doc);
-        StringWriter writer = new StringWriter();
-        StreamResult result = new StreamResult(writer);
-        transformer.transform(src, result);
-
         Element metadata = doc.createElement("metadata");
 
         for (String author : proof.getAuthors()) {
@@ -137,7 +130,12 @@ public class SaveManager {
 
         root.insertBefore(metadata, baseProof);
 
-        String hash = computeHash(result.toString(), proof.getAuthors());
+        DOMSource src = new DOMSource(doc);
+        StringWriter writer = new StringWriter();
+        StreamResult result = new StreamResult(writer);
+        transformer.transform(src, result);
+
+        String hash = computeHash(writer.toString(), proof.getAuthors());
         Element hashElement = doc.createElement("hash");
         hashElement.appendChild(doc.createTextNode(hash));
         metadata.appendChild(hashElement);
@@ -148,7 +146,7 @@ public class SaveManager {
         return true;
     }
 
-    private static synchronized int createProofElement(Proof proof, int lineNum, Document doc, Element root, ArrayList<Element> proofElements) {
+    private static synchronized Pair<Integer, Integer> createProofElement(Proof proof, int lineNum, Document doc, Element root, ArrayList<Element> proofElements) {
         Element prf = doc.createElement("proof");
         int id = proofElements.size();
         prf.setAttribute("id", String.valueOf(id));
@@ -161,19 +159,21 @@ public class SaveManager {
             if (line.isAssumption()) {
                 if (allowedAssumptions == 0) {
                     Element step = doc.createElement("step");
-                    step.setAttribute("linenum", String.valueOf(i));
+                    step.setAttribute("linenum", String.valueOf(line.lineNumberProperty().get()));
                     Element rule = doc.createElement("rule");
-                    rule.appendChild(doc.createTextNode("subproof"));
+                    rule.appendChild(doc.createTextNode("SUBPROOF"));
                     step.appendChild(rule);
-                    int subId = createProofElement(proof, i, doc, root, proofElements);
+                    Pair<Integer, Integer> subproofResult = createProofElement(proof, line.lineNumberProperty().get(), doc, root, proofElements);
                     Element premise = doc.createElement("premise");
-                    premise.appendChild(doc.createTextNode(String.valueOf(subId)));
+                    premise.appendChild(doc.createTextNode(String.valueOf(subproofResult.getKey())));
                     step.appendChild(premise);
                     prf.appendChild(step);
+                    i = subproofResult.getValue();
+                    lineNum = i;
                 } else {
                     --allowedAssumptions;
                     Element assumption = doc.createElement("assumption");
-                    assumption.setAttribute("linenum", String.valueOf(i));
+                    assumption.setAttribute("linenum", String.valueOf(line.lineNumberProperty().get()));
                     Element sen = doc.createElement("sen");
                     line.buildExpression();
                     sen.appendChild(doc.createTextNode(line.getExpression() == null ? "" : line.getExpression().toString()));
@@ -182,11 +182,12 @@ public class SaveManager {
                     raw.appendChild(doc.createTextNode(line.expressionStringProperty().get()));
                     assumption.appendChild(raw);
                     prf.appendChild(assumption);
+                    ++lineNum;
                 }
             } else {
                 allowedAssumptions = 0;
                 Element step = doc.createElement("step");
-                step.setAttribute("linenum", String.valueOf(i));
+                step.setAttribute("linenum", String.valueOf(line.lineNumberProperty().get()));
                 Element sen = doc.createElement("sen");
                 line.buildExpression();
                 sen.appendChild(doc.createTextNode(line.getExpression() == null ? "" : line.getExpression().toString()));
@@ -197,217 +198,238 @@ public class SaveManager {
                 Element rule = doc.createElement("rule");
                 rule.appendChild(doc.createTextNode(line.selectedRuleProperty().get() == null ? "" : line.selectedRuleProperty().get().name()));
                 step.appendChild(rule);
-                for (Proof.Line prem : line.getPremises()) {
+                for (Proof.Line p : line.getPremises()) {
                     Element premise = doc.createElement("premise");
-                    premise.appendChild(doc.createTextNode(String.valueOf(prem.lineNumberProperty().get())));
+                    premise.appendChild(doc.createTextNode(String.valueOf(p.lineNumberProperty().get())));
                     step.appendChild(premise);
                 }
                 prf.appendChild(step);
+                ++lineNum;
             }
         }
-        return id;
+        return new Pair<>(id, lineNum);
     }
 
-    public static synchronized boolean saveProofLegacy(Proof proof, File file) throws TransformerException, IOException {
-        if (proof == null || file == null)
-            return false;
-        Document doc = documentBuilder.newDocument();
-        Element root = doc.createElement("aris");
-        doc.appendChild(root);
-
-        Element version = doc.createElement("version");
-        version.appendChild(doc.createTextNode(Aris.VERSION));
-        root.appendChild(version);
-
-        for (String author : proof.getAuthors()) {
-            Element a = doc.createElement("author");
-            a.appendChild(doc.createTextNode(author));
-            root.appendChild(a);
-        }
-
-        Element prf = doc.createElement("proof");
-        root.appendChild(prf);
-
-        Element premises = doc.createElement("premises");
-        prf.appendChild(premises);
-
-        Element allLines = doc.createElement("lines");
-        prf.appendChild(allLines);
-
-        ObservableList<Proof.Line> lines = proof.getLines();
-        for (int i = 0; i < lines.size(); ++i) {
-            Proof.Line l = lines.get(i);
-            if (i < proof.numPremises().get())
-                premises.appendChild(createLineElement(l, doc));
-            else
-                allLines.appendChild(createLineElement(l, doc));
-        }
-
-        Element goals = doc.createElement("goals");
-        prf.appendChild(goals);
-
-        for (Proof.Goal g : proof.getGoals()) {
-            Element goal = doc.createElement("goal");
-            goal.setAttribute("num", String.valueOf(g.goalNumProperty().get()));
-            goal.appendChild(doc.createTextNode(g.goalStringProperty().get()));
-            goals.appendChild(goal);
-        }
-
-        DOMSource src = new DOMSource(doc);
-        StringWriter writer = new StringWriter();
-        StreamResult result = new StreamResult(writer);
-        transformer.transform(src, result);
-        String xml = writer.toString();
-        xml += "<hash>" + computeHash(xml, proof.getAuthors()) + "</hash>";
-        FileWriter fileWriter = new FileWriter(file);
-        fileWriter.write(xml);
-        fileWriter.close();
-        return true;
-    }
-
-    public static Proof loadFile(File file) throws IOException, TransformerException {
-        String xml = IOUtils.toString(new FileReader(file));
-
-        Matcher matcher = hashPattern.matcher(xml);
-        String hash = null;
-        if (matcher.find()) {
-            hash = matcher.group(0);
-            xml = matcher.replaceAll("");
-            xml = xml.replaceAll("<hash></hash>", "");
-        }
-        StreamSource src = new StreamSource(new StringReader(xml));
+    public static synchronized Proof loadFile(File file) throws TransformerException, IOException {
+        StreamSource src = new StreamSource(file);
         DOMResult result = new DOMResult();
-
         transformer.transform(src, result);
 
         if (!(result.getNode() instanceof Document))
             return null;
         Document doc = (Document) result.getNode();
 
-        NodeList list = doc.getElementsByTagName("aris");
+        NodeList list = doc.getElementsByTagName("bram");
         if (list.getLength() != 1 || !(list.item(0) instanceof Element))
             throw new IOException("Invalid file format");
         Element root = (Element) list.item(0);
 
-        ArrayList<Element> authorElements = getElementsByTag(root, "author");
-        ArrayList<String> authors = new ArrayList<>();
-        for (Element e : authorElements)
-            authors.add(e.getTextContent());
-
-        boolean validAuthor = hash != null && verifyHash(xml, hash, authors);
-
-        if (!validAuthor) {
-            System.err.println("Invalid hash");
-            authors.clear();
+        Element program = getElementByTag(root, "program");
+        Element version = getElementByTag(root, "version");
+        boolean isArisFile = program.getTextContent().equals(Aris.NAME);
+        Proof proof;
+        HashSet<String> authors = new HashSet<>();
+        if (!isArisFile) {
+            switch (Aris.getMode()) {
+                case GUI:
+                    Alert noAris = new Alert(Alert.AlertType.CONFIRMATION);
+                    noAris.setTitle("Not Aris File");
+                    noAris.setHeaderText("Not Aris File");
+                    noAris.setContentText("The given file \"" + file.getName() + "\" was written by " + program.getTextContent() + " version " + version.getTextContent() + "\n" +
+                            "Aris may still be able to read this file with varying success\n" +
+                            "Would you like to attempt to load this file?");
+                    Optional<ButtonType> option = noAris.showAndWait();
+                    if (!option.isPresent() || option.get() != ButtonType.YES)
+                        return null;
+                    break;
+                case CMD:
+                    System.out.println("The given file \"" + file.getName() + "\" was written by " + program.getTextContent() + " version " + version.getTextContent());
+                    System.out.println("Aris may still be able to read this file with varying success");
+                    System.out.println("Would you like to attempt to load this file? (Y/n)");
+                    String response = Aris.SYSTEM_IN.readLine();
+                    if (response.equalsIgnoreCase("n") || response.equalsIgnoreCase("no"))
+                        return null;
+                    break;
+                case SERVER:
+                    System.out.println("The given file \"" + file.getName() + "\" was written by " + program.getTextContent() + " version " + version.getTextContent());
+                    System.out.println("Aris will attempt to read the file anyway");
+                    break;
+            }
             authors.add("UNKNOWN");
-            if (Aris.isGUI()) {
-                Alert alert = new Alert(Alert.AlertType.ERROR);
-                alert.setTitle("File integrity check failed");
-                alert.setHeaderText("File integrity check failed");
-                alert.setContentText("This file may be corrupted or may have been tampered with.\n" +
-                        "If this file successfully loads the author will be marked as UNKNOWN.\n" +
-                        "This will show up if this file is submitted and may affect your grade.");
-                alert.getDialogPane().setPrefWidth(500);
-                alert.showAndWait();
-            }
-        }
-
-        Proof p = new Proof(authors);
-
-        Element proof = getElementByTag(root, "proof");
-
-        Element premises = getElementByTag(proof, "premises");
-
-        ArrayList<Element> premiseList = getElementsByTag(premises, "line");
-        if (premiseList.size() == 0)
-            throw new IOException("Invalid file format");
-        for (int i = 0; i < premiseList.size(); ++i) {
-            Element e = premiseList.get(i);
-            String numStr = e.getAttribute("num");
-            int num = -1;
+            proof = new Proof(authors);
+        } else {
+            Element metadata = getElementByTag(root, "metadata");
             try {
-                num = Integer.parseInt(numStr);
-            } catch (NumberFormatException ignored) {
-            }
-            if (num != i)
-                throw new IOException("Invalid file format");
-            Proof.Line premise = p.addPremise();
-            Element expr = getElementByTag(e, "expr");
-            premise.expressionStringProperty().set(expr.getTextContent());
-        }
-
-        Element lines = getElementByTag(proof, "lines");
-
-        ArrayList<Element> lineList = getElementsByTag(lines, "line");
-
-        int numPremises = p.numPremises().get();
-
-        int lastIndent = 0;
-
-        for (int i = 0; i < lineList.size(); ++i) {
-            Element e = lineList.get(i);
-            String numStr = e.getAttribute("num");
-            String indentStr = e.getAttribute("indent");
-            String assumptionStr = e.getAttribute("assumption");
-            int num = -1;
-            int indent = -1;
-            boolean assumption = false;
-            try {
-                num = Integer.parseInt(numStr);
-                indent = Integer.parseInt(indentStr);
-                assumption = Boolean.parseBoolean(assumptionStr);
-            } catch (NumberFormatException ignored) {
-            }
-            if (num != i + numPremises || num == -1 || indent < 0 || (!assumption && !assumptionStr.equals("false")) ||
-                    lastIndent + 1 < indent || (indent == 0 && assumption) || (indent == lastIndent && assumption) ||
-                    (indent > lastIndent && !assumption))
-                throw new IOException("Invalid file format");
-            Element expr = getElementByTag(e, "expr");
-            Element rule = getElementByTag(e, "rule");
-            Proof.Line line = p.addLine(num, assumption, indent);
-            line.expressionStringProperty().set(expr.getTextContent());
-            RuleList r = null;
-            try {
-                r = RuleList.valueOf(rule.getTextContent());
-            } catch (IllegalArgumentException ignored) {
-            }
-            line.selectedRuleProperty().set(r);
-            ArrayList<Element> premList = getElementsByTag(e, "premise");
-            for (Element e1 : premList) {
-                if (assumption)
-                    throw new IOException("Invalid file format");
-                String nStr = e1.getTextContent();
-                int n = -1;
-                try {
-                    n = Integer.parseInt(nStr);
-                } catch (NumberFormatException ignored) {
+                Element hashElement = getElementByTag(metadata, "hash");
+                authors.addAll(getElementsByTag(metadata, "author").stream().map(Node::getTextContent).collect(Collectors.toList()));
+                metadata.removeChild(hashElement);
+                DOMSource s = new DOMSource(doc);
+                StringWriter w = new StringWriter();
+                StreamResult r = new StreamResult(w);
+                transformer.transform(s, r);
+                String xml = w.toString().replaceAll("\n[\t\\s\f\r\\x0B]*\n", "\n");
+                if (!verifyHash(xml, hashElement.getTextContent(), authors)) {
+                    switch (Aris.getMode()) {
+                        case GUI:
+                            Alert alert = new Alert(Alert.AlertType.ERROR);
+                            alert.setTitle("File integrity check failed");
+                            alert.setHeaderText("File integrity check failed");
+                            alert.setContentText("This file may be corrupted or may have been tampered with.\n" +
+                                    "If this file successfully loads the author will be marked as UNKNOWN.\n" +
+                                    "This will show up if this file is submitted and may affect your grade.");
+                            alert.getDialogPane().setPrefWidth(500);
+                            alert.showAndWait();
+                            break;
+                        case CMD:
+                            System.out.println("File integrity check failed for " + file.getName());
+                            System.out.println("This file may be corrupted or may have been tampered with.");
+                            System.out.println("If this file successfully loads the author will be marked as UNKNOWN");
+                            System.out.println("This will show up if this file is submitted and may affect your grade");
+                            System.out.println("Press enter to confirm");
+                            Aris.SYSTEM_IN.readLine();
+                            break;
+                        case SERVER:
+                            System.out.println("File integrity check failed for " + file.getName());
+                            System.out.println("The system will still attempt to load the file and will mark the author as UNKNOWN");
+                            break;
+                    }
+                    authors.clear();
+                    authors.add("UNKNOWN");
                 }
-                if (n == -1 || n >= i + numPremises)
-                    throw new IOException("Invalid file format");
-                p.setPremise(i + numPremises, p.getLines().get(n), true);
+            } catch (IOException ignored) {
+                authors.add("UNKNOWN");
             }
-            lastIndent = indent;
+            proof = new Proof(authors);
+            ArrayList<Element> proofElements = getElementsByTag(root, "proof");
+            if (proofElements.size() == 0)
+                throw new IOException("Missing main proof element");
+            proofElements.sort((e1, e2) -> {
+                try {
+                    int i1 = Integer.valueOf(e1.getAttribute("id"));
+                    int i2 = Integer.valueOf(e2.getAttribute("id"));
+                    return Integer.compare(i1, i2);
+                } catch (NumberFormatException e) {
+                    return 0;
+                }
+            });
+            for (int i = 0; i < proofElements.size(); ++i) {
+                Element e = proofElements.get(i);
+                int id;
+                try {
+                    id = Integer.valueOf(e.getAttribute("id"));
+                } catch (NumberFormatException e1) {
+                    throw new IOException("Invalid id tag in proof element");
+                }
+                if (id != i)
+                    throw new IOException("Non sequential id tag found in proof element");
+            }
+            readProofElement(proof, proofElements, 0, 0, 0);
         }
+        return proof;
+    }
 
-        Element goals = getElementByTag(proof, "goals");
-
-        ArrayList<Element> goalList = getElementsByTag(goals, "goal");
-
-        for (int i = 0; i < goalList.size(); ++i) {
-            Element e = goalList.get(i);
-            String numStr = e.getAttribute("num");
-            int num = -1;
+    private static synchronized int readProofElement(Proof proof, ArrayList<Element> proofElements, int elementId, int indent, int lineNum) throws IOException {
+        Element element = proofElements.get(elementId);
+        ArrayList<Element> assumptions = getElementsByTag(element, "assumption");
+        assumptions.sort((e1, e2) -> {
             try {
-                num = Integer.parseInt(numStr);
-            } catch (NumberFormatException ignored) {
+                int i1 = Integer.valueOf(e1.getAttribute("linenum"));
+                int i2 = Integer.valueOf(e2.getAttribute("linenum"));
+                return Integer.compare(i1, i2);
+            } catch (NumberFormatException e) {
+                return 0;
             }
-            if (num != i)
-                throw new IOException("Invalid file format");
-            Proof.Goal goal = p.addGoal(num);
-            goal.goalStringProperty().set(e.getTextContent());
+        });
+        for (Element assumption : assumptions) {
+            int num;
+            try {
+                num = Integer.parseInt(assumption.getAttribute("linenum"));
+            } catch (NumberFormatException e) {
+                throw new IOException("Invalid assumptions linenum tag");
+            }
+            if (num != lineNum)
+                throw new IOException("Non sequential linenum tags in file");
+            String raw;
+            try {
+                raw = getElementByTag(assumption, "raw").getTextContent();
+            } catch (IOException e) {
+                String sen = getElementByTag(assumption, "sen").getTextContent();
+                try {
+                    raw = new Expression(sen).toLogicString();
+                } catch (ExpressionParseException e1) {
+                    throw new IOException("Invalid sentence in proof element " + elementId);
+                }
+            }
+            Proof.Line line = proof.addLine(lineNum, true, indent);
+            line.expressionStringProperty().set(raw);
+            ++lineNum;
         }
-
-        return p;
+        ArrayList<Element> steps = getElementsByTag(element, "step");
+        steps.sort((e1, e2) -> {
+            try {
+                int i1 = Integer.valueOf(e1.getAttribute("linenum"));
+                int i2 = Integer.valueOf(e2.getAttribute("linenum"));
+                return Integer.compare(i1, i2);
+            } catch (NumberFormatException e) {
+                return 0;
+            }
+        });
+        for (Element step : steps) {
+            int num;
+            try {
+                num = Integer.parseInt(step.getAttribute("linenum"));
+            } catch (NumberFormatException e) {
+                throw new IOException("Invalid step linenum tag");
+            }
+            if (num != lineNum)
+                throw new IOException("Non sequential linenum tags in file");
+            String ruleStr = getElementByTag(step, "rule").getTextContent().toUpperCase();
+            if (ruleStr.equals("SUBPROOF")) {
+                int id;
+                try {
+                    id = Integer.valueOf(getElementByTag(step, "premise").getTextContent());
+                } catch (NumberFormatException e) {
+                    throw new IOException("Invalid proof id in subproof step");
+                }
+                if (id <= elementId || id >= proofElements.size())
+                    throw new IOException("Invalid proof id in subproof step");
+                lineNum = readProofElement(proof, proofElements, id, indent + 1, lineNum);
+            } else {
+                String raw;
+                try {
+                    raw = getElementByTag(step, "raw").getTextContent();
+                } catch (IOException e) {
+                    String sen = getElementByTag(step, "sen").getTextContent();
+                    try {
+                        raw = new Expression(sen).toLogicString();
+                    } catch (ExpressionParseException e1) {
+                        throw new IOException("Invalid sentence in proof element " + elementId);
+                    }
+                }
+                Proof.Line line = proof.addLine(lineNum, false, indent);
+                line.expressionStringProperty().set(raw);
+                RuleList rule = null;
+                try {
+                    rule = RuleList.valueOf(ruleStr);
+                } catch (IllegalArgumentException ignored) {
+                }
+                line.selectedRuleProperty().set(rule);
+                ArrayList<Element> premises = getElementsByTag(step, "premise");
+                for (Element p : premises) {
+                    int pid;
+                    try {
+                        pid = Integer.valueOf(p.getTextContent());
+                    } catch (NumberFormatException e) {
+                        throw new IOException("Invalid premise id in step");
+                    }
+                    if (pid < 0 || pid >= lineNum)
+                        throw new IOException("Invalid premise id in step");
+                    proof.setPremise(lineNum, proof.getLines().get(pid), true);
+                }
+                ++lineNum;
+            }
+        }
+        return lineNum;
     }
 
     private static synchronized String computeHash(String xml, Collection<String> authorCollection) {
@@ -420,31 +442,6 @@ public class SaveManager {
 
     private static boolean verifyHash(String xml, String hash, Collection<String> authors) {
         return computeHash(xml, authors).equals(hash);
-    }
-
-    private static Element createLineElement(Proof.Line line, Document doc) {
-        Element e = doc.createElement("line");
-
-        e.setAttribute("num", String.valueOf(line.lineNumberProperty().get()));
-        e.setAttribute("indent", String.valueOf(line.subProofLevelProperty().get()));
-        e.setAttribute("assumption", String.valueOf(line.isAssumption()));
-
-        Element expr = doc.createElement("expr");
-        expr.appendChild(doc.createTextNode(line.expressionStringProperty().get()));
-        e.appendChild(expr);
-
-        Element rule = doc.createElement("rule");
-        rule.appendChild(doc.createTextNode(line.selectedRuleProperty().get() == null ? "" : line.selectedRuleProperty().get().name()));
-        e.appendChild(rule);
-
-        for (Proof.Line p : line.getPremises()) {
-            Element premise = doc.createElement("premise");
-            premise.appendChild(doc.createTextNode(String.valueOf(p.lineNumberProperty().get())));
-            e.appendChild(premise);
-        }
-
-        return e;
-
     }
 
     private static Element getElementByTag(Element parent, String tag) throws IOException {

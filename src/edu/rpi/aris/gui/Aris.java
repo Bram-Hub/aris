@@ -14,20 +14,33 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
+import java.io.*;
 
 public class Aris extends Application implements Thread.UncaughtExceptionHandler {
 
+    public static final BufferedReader SYSTEM_IN = new BufferedReader(new InputStreamReader(System.in));
+
     public static final String VERSION = "0.1";
     public static final String NAME = "Aris";
+    private static Mode MODE = Mode.CMD;
+
+    static {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                SYSTEM_IN.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }));
+    }
 
     public static Aris instance = null;
 
     private static Logger logger = LogManager.getLogger(Aris.class);
 
-    private static boolean GUI = false;
+    public static Mode getMode() {
+        return MODE;
+    }
 
     private MainWindow mainWindow = null;
 
@@ -35,8 +48,12 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
         Aris.launch(args);
     }
 
-    public static boolean isGUI() {
-        return GUI;
+    @Override
+    public void start(Stage stage) throws IOException {
+        instance = this;
+        Thread.setDefaultUncaughtExceptionHandler(this);
+        MODE = Mode.GUI;
+        mainWindow = showProofWindow(stage, null);
     }
 
     public static MainWindow showProofWindow(Stage stage, Proof p) throws IOException {
@@ -47,23 +64,6 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
 
     public static Aris getInstance() {
         return instance;
-    }
-
-    @Override
-    public void start(Stage stage) throws IOException {
-        instance = this;
-        Thread.setDefaultUncaughtExceptionHandler(this);
-        GUI = true;
-        mainWindow = showProofWindow(stage, null);
-    }
-
-    private void generateBugReport(Thread t, Throwable e) {
-        //TODO
-    }
-
-    @Override
-    public void uncaughtException(Thread t, Throwable e) {
-        showExceptionError(t, e, false);
     }
 
     public void showExceptionError(Thread t, Throwable e, boolean fatal) {
@@ -88,7 +88,7 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
             }
         });
         bugReportThread.start();
-        if (GUI) {
+        if (MODE == Mode.GUI) {
             try {
                 Platform.runLater(() -> {
                     try {
@@ -167,5 +167,20 @@ public class Aris extends Application implements Thread.UncaughtExceptionHandler
         }
         if (fatal)
             System.exit(1);
+    }
+
+    private void generateBugReport(Thread t, Throwable e) {
+        //TODO
+    }
+
+    @Override
+    public void uncaughtException(Thread t, Throwable e) {
+        showExceptionError(t, e, false);
+    }
+
+    public enum Mode {
+        GUI,
+        CMD,
+        SERVER
     }
 }

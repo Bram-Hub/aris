@@ -471,7 +471,7 @@ public class Proof {
         }
 
         private synchronized void startTimer() {
-            if (!Aris.isGUI())
+            if (Aris.getMode() != Aris.Mode.GUI)
                 return;
             stopTimer();
             TimerTask task = new TimerTask() {
@@ -574,7 +574,7 @@ public class Proof {
         }
 
         private synchronized void startTimer() {
-            if (!Aris.isGUI())
+            if (Aris.getMode() != Aris.Mode.GUI)
                 return;
             stopTimer();
             TimerTask task = new TimerTask() {
