@@ -43,10 +43,14 @@ public class Main implements Thread.UncaughtExceptionHandler {
             case SERVER:
                 String ca = cmd.getOptionValue("ca");
                 String key = cmd.getOptionValue("key");
-                if (ca == null || key == null)
-                    throw new IOException("Private key and CA certificate required to run server");
+                if (ca != null && key == null)
+                    throw new IOException("CA certificate specified without private key");
+                else if (ca == null && key != null)
+                    throw new IOException("Private key specified without CA certificate");
+                File caFile = ca == null ? null : new File(ca);
+                File keyFile = key == null ? null : new File(key);
                 System.out.println("Creating server");
-                new Server(9000, new File(ca), new File(key)).run();
+                new Server(9000, caFile, keyFile).run();
                 break;
         }
     }
@@ -57,9 +61,9 @@ public class Main implements Thread.UncaughtExceptionHandler {
 
     private static void parseCommandLineArgs(String[] args) throws ParseException {
         Options options = new Options();
-        options.addOption("s", "server", false, "Runs aris in server mode (Note: Server mode requires you to specify --ca and --key)");
-        options.addOption("ca", true, "Specifies a CA certificate for server mode");
-        options.addOption("key", true, "Specifies a private key for server mode");
+        options.addOption("s", "server", false, "Runs aris in server mode");
+        options.addOption(null, "ca", true, "Specifies a CA certificate for server mode");
+        options.addOption(null, "key", true, "Specifies a private key for server mode");
         options.addOption("h", "help", false, "Displays this help screen");
         CommandLineParser parser = new DefaultParser();
         cmd = parser.parse(options, args);

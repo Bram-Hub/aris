@@ -299,7 +299,7 @@ public class Client {
         switch (Main.getMode()) {
             case CMD:
                 System.out.println("Aris was unable to verify the server's identity");
-                System.out.println("This could be due to an improperly configured server or because someone is attempting to hijack the connection");
+                System.out.println("This could be due to the server running in self signed mode or because someone is attempting to hijack the connection");
                 System.out.print("Would you like to continue this INSECURE connection? (y/N) ");
                 try {
                     if (Main.SYSTEM_IN.readLine().equalsIgnoreCase("y"))
