@@ -1,5 +1,6 @@
 package edu.rpi.aris.gui;
 
+import edu.rpi.aris.Main;
 import edu.rpi.aris.gui.event.PremiseChangeEvent;
 import edu.rpi.aris.proof.*;
 import edu.rpi.aris.rules.RuleList;
@@ -471,7 +472,7 @@ public class Proof {
         }
 
         private synchronized void startTimer() {
-            if (Aris.getMode() != Aris.Mode.GUI)
+            if (Main.getMode() != Main.Mode.GUI)
                 return;
             stopTimer();
             TimerTask task = new TimerTask() {
@@ -574,7 +575,7 @@ public class Proof {
         }
 
         private synchronized void startTimer() {
-            if (Aris.getMode() != Aris.Mode.GUI)
+            if (Main.getMode() != Main.Mode.GUI)
                 return;
             stopTimer();
             TimerTask task = new TimerTask() {

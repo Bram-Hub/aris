@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Class-Path: commons-io-2.6.jar bctls-jdk15on-1.59.jar bcprov-jdk15on-1
+ .59.jar bcprov-jdk15on-1.59.jar commons-cli-1.4.jar commons-lang-2.6.
+ jar log4j-core-2.10.0.jar log4j-api-2.10.0.jar bcpkix-jdk15on-1.59.ja
+ r bcprov-jdk15on-1.59.jar commons-collections-3.2.2.jar
+Main-Class: edu.rpi.aris.Main
+

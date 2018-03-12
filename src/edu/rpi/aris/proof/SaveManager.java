@@ -1,6 +1,6 @@
 package edu.rpi.aris.proof;
 
-import edu.rpi.aris.gui.Aris;
+import edu.rpi.aris.Main;
 import edu.rpi.aris.gui.ConfigurationManager;
 import edu.rpi.aris.gui.Proof;
 import edu.rpi.aris.rules.RuleList;
@@ -50,7 +50,7 @@ public class SaveManager {
             transformer.setOutputProperty(OutputKeys.INDENT, "yes");
             transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
         } catch (ParserConfigurationException | TransformerConfigurationException | NoSuchAlgorithmException e) {
-            Aris.getInstance().showExceptionError(Thread.currentThread(), e, true);
+            Main.instance.showExceptionError(Thread.currentThread(), e, true);
         }
     }
 
@@ -95,11 +95,11 @@ public class SaveManager {
         doc.appendChild(root);
 
         Element program = doc.createElement("program");
-        program.appendChild(doc.createTextNode(Aris.NAME));
+        program.appendChild(doc.createTextNode(Main.NAME));
         root.appendChild(program);
 
         Element version = doc.createElement("version");
-        version.appendChild(doc.createTextNode(Aris.VERSION));
+        version.appendChild(doc.createTextNode(Main.VERSION));
         root.appendChild(version);
 
         ArrayList<Element> proofElements = new ArrayList<>();
@@ -226,11 +226,11 @@ public class SaveManager {
 
         Element program = getElementByTag(root, "program");
         Element version = getElementByTag(root, "version");
-        boolean isArisFile = program.getTextContent().equals(Aris.NAME);
+        boolean isArisFile = program.getTextContent().equals(Main.NAME);
         Proof proof;
         HashSet<String> authors = new HashSet<>();
         if (!isArisFile) {
-            switch (Aris.getMode()) {
+            switch (Main.getMode()) {
                 case GUI:
                     Alert noAris = new Alert(Alert.AlertType.CONFIRMATION);
                     noAris.setTitle("Not Aris File");
@@ -246,7 +246,7 @@ public class SaveManager {
                     System.out.println("The given file \"" + file.getName() + "\" was written by " + program.getTextContent() + " version " + version.getTextContent());
                     System.out.println("Aris may still be able to read this file with varying success");
                     System.out.println("Would you like to attempt to load this file? (Y/n)");
-                    String response = Aris.SYSTEM_IN.readLine();
+                    String response = Main.SYSTEM_IN.readLine();
                     if (response.equalsIgnoreCase("n") || response.equalsIgnoreCase("no"))
                         return null;
                     break;
@@ -269,7 +269,7 @@ public class SaveManager {
                 transformer.transform(s, r);
                 String xml = w.toString().replaceAll("\n[\t\\s\f\r\\x0B]*\n", "\n");
                 if (!verifyHash(xml, hashElement.getTextContent(), authors)) {
-                    switch (Aris.getMode()) {
+                    switch (Main.getMode()) {
                         case GUI:
                             Alert alert = new Alert(Alert.AlertType.ERROR);
                             alert.setTitle("File integrity check failed");
@@ -286,7 +286,7 @@ public class SaveManager {
                             System.out.println("If this file successfully loads the author will be marked as UNKNOWN");
                             System.out.println("This will show up if this file is submitted and may affect your grade");
                             System.out.println("Press enter to confirm");
-                            Aris.SYSTEM_IN.readLine();
+                            Main.SYSTEM_IN.readLine();
                             break;
                         case SERVER:
                             System.out.println("File integrity check failed for " + file.getName());

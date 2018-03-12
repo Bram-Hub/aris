@@ -7,6 +7,10 @@ import javafx.scene.input.KeyCombination;
 import javafx.scene.input.KeyEvent;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -14,6 +18,7 @@ import java.util.List;
 public class ConfigurationManager {
 
     public static final String[] SYMBOL_BUTTONS = new String[]{"∧", "∨", "¬", "→", "↔", "⊥", "∀", "∃", "×", "≠", "⊆", "∈"};
+    public static final File CONFIG_DIR = new File(System.getProperty("user.home"), ".aris-java");
     private static final HashMap<String, String> KEY_MAP = new HashMap<>();
     private static final String[][] defaultKeyMap = new String[][]{{"&", "∧"}, {"|", "∨"}, {"!", "≠"}, {"~", "¬"}, {"$", "→"}, {"%", "↔"}, {"^", "⊥"}, {"@", "∀"}, {"#", "∃"}, {"*", "×"}};
     private static final ConfigurationManager configManager;
@@ -22,6 +27,19 @@ public class ConfigurationManager {
         for (String[] s : defaultKeyMap)
             KEY_MAP.put(s[0], s[1]);
         configManager = new ConfigurationManager();
+        if (!CONFIG_DIR.exists()) {
+            if (!CONFIG_DIR.mkdirs()) {
+                //TODO: error
+            }
+            Path path = CONFIG_DIR.toPath();
+            try {
+                Object hidden = Files.getAttribute(path, "dos:hidden", LinkOption.NOFOLLOW_LINKS);
+                if (hidden != null && hidden instanceof Boolean && !((Boolean) hidden))
+                    Files.setAttribute(path, "dos:hidden", Boolean.TRUE, LinkOption.NOFOLLOW_LINKS);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public final SimpleBooleanProperty hideRulesPanel = new SimpleBooleanProperty(false);
