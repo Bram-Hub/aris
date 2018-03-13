@@ -1,4 +1,4 @@
-package edu.rpi.aris.client;
+package edu.rpi.aris.net;
 
 public interface MessageReceivedListener {
 

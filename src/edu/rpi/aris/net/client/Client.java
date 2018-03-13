@@ -1,18 +1,21 @@
-package edu.rpi.aris.client;
+package edu.rpi.aris.net.client;
 
 import edu.rpi.aris.Main;
 import edu.rpi.aris.gui.ConfigurationManager;
+import edu.rpi.aris.net.MessageReceivedListener;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.asn1.x500.RDN;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x500.style.BCStyle;
 import org.bouncycastle.asn1.x500.style.IETFUtils;
+import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider;
+import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
@@ -24,16 +27,18 @@ import java.io.*;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.security.*;
+import java.security.cert.CertPathBuilderException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Enumeration;
 
 public class Client {
 
     private static final char[] KEYSTORE_PASSWORD = "ARIS_CLIENT".toCharArray();
-    private static final String KEYSTORE_FILENAME = "client.keystore";
-    private static final File KEYSTORE_FILE = new File(ConfigurationManager.CONFIG_DIR, KEYSTORE_FILENAME);
+    private static final File KEYSTORE_FILE = new File(ConfigurationManager.CONFIG_DIR, "client.keystore");
+    private static final File SERVER_KEYSTORE_FILE = new File(ConfigurationManager.CONFIG_DIR, "imported.keystore");
     private static Logger logger = LogManager.getLogger(Client.class);
 
     static {
@@ -50,15 +55,51 @@ public class Client {
     private DataOutputStream out;
     private String errorString = null;
     private ConnectionStatus connectionStatus = ConnectionStatus.DISCONNECTED;
-    private X509Certificate selfSignedCert = null;
-    private CustomTrustManager trustManager;
     private MessageReceivedListener messageListener;
     private boolean ping = false;
+    private boolean allowInsecure;
 
-    public Client(String domainName, int port, MessageReceivedListener messageListener) {
+    public Client(String domainName, int port, boolean allowInsecure, MessageReceivedListener messageListener) {
         serverAddress = domainName;
         this.port = port;
+        this.allowInsecure = allowInsecure;
         this.messageListener = messageListener;
+        if (allowInsecure) {
+            logger.warn("WARNING! The allow-insecure flag has been set. This allows the client to connect to potentially insecure servers and is not recommended");
+            logger.warn("Please consider removing this flag and instead importing the self-signed certificates for any servers you wish to connect to");
+        }
+    }
+
+    public static void importSelfSignedCertificate(File certFile) {
+        try {
+            PEMParser parser = new PEMParser(new FileReader(certFile));
+            X509CertificateHolder certificateHolder = (X509CertificateHolder) parser.readObject();
+            JcaX509CertificateConverter converter = new JcaX509CertificateConverter();
+            X509Certificate cert = converter.getCertificate(certificateHolder);
+            X500Name name = certificateHolder.getSubject();
+            RDN cn = name.getRDNs(BCStyle.CN)[0];
+            String dn = IETFUtils.valueToString(cn.getFirst().getValue());
+            KeyStore ks = KeyStore.getInstance("JKS");
+            if (SERVER_KEYSTORE_FILE.exists()) {
+                FileInputStream fis = new FileInputStream(SERVER_KEYSTORE_FILE);
+                ks.load(fis, KEYSTORE_PASSWORD);
+                fis.close();
+            } else {
+                ks.load(null);
+            }
+            ks.setCertificateEntry(dn, cert);
+            if (!SERVER_KEYSTORE_FILE.getParentFile().exists())
+                if (!SERVER_KEYSTORE_FILE.getParentFile().mkdirs())
+                    throw new IOException("Failed to create keystore file");
+            if (!SERVER_KEYSTORE_FILE.exists())
+                if (!SERVER_KEYSTORE_FILE.createNewFile())
+                    throw new IOException("Failed to create keystore file");
+            FileOutputStream fos = new FileOutputStream(SERVER_KEYSTORE_FILE);
+            ks.store(fos, KEYSTORE_PASSWORD);
+            fos.close();
+        } catch (IOException | CertificateException | KeyStoreException | NoSuchAlgorithmException e) {
+            logger.error("Failed to import given certificate", e);
+        }
     }
 
     private static KeyStore getKeyStore() {
@@ -122,13 +163,7 @@ public class Client {
 
     private TrustManager[] getTrustManagers() {
         try {
-            KeyStore ks = KeyStore.getInstance("JKS");
-            ks.load(null);
-            ks.setCertificateEntry("self_signed", selfSignedCert);
-
-            TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-            trustManagerFactory.init(ks);
-            trustManager = new CustomTrustManager(selfSignedCert);
+            CustomTrustManager trustManager = new CustomTrustManager();
             return new TrustManager[]{trustManager};
         } catch (KeyStoreException | IOException | NoSuchAlgorithmException | CertificateException e) {
             e.printStackTrace();
@@ -201,13 +236,12 @@ public class Client {
                 throw new IOException(errorString);
             case CERTIFICATE_WARNING:
                 if (showCertWarning()) {
-                    selfSignedCert = trustManager.getLastCertificate();
                     socketFactory = null;
                 }
                 socket.close();
                 socket = null;
                 connectionStatus = ConnectionStatus.DISCONNECTED;
-                if (selfSignedCert != null)
+                if (socketFactory == null)
                     setupConnection();
                 else
                     throw new IOException("Failed to verify remote server");
@@ -299,14 +333,8 @@ public class Client {
         switch (Main.getMode()) {
             case CMD:
                 System.out.println("Aris was unable to verify the server's identity");
-                System.out.println("This could be due to the server running in self signed mode or because someone is attempting to hijack the connection");
-                System.out.print("Would you like to continue this INSECURE connection? (y/N) ");
-                try {
-                    if (Main.SYSTEM_IN.readLine().equalsIgnoreCase("y"))
-                        return true;
-                } catch (IOException e) {
-                    logger.error("Error reading from stdin", e);
-                }
+                System.out.println("This could be due to the server using a self signed certificate or due to a third party attempting to intercept this connection");
+                System.out.println("If you would like to connect to this server anyway either import the server's certificate with the --add-cert flag or run aris with the --allow-insecure flag");
                 break;
             case GUI:
                 //TODO
@@ -314,8 +342,7 @@ public class Client {
             case SERVER:
                 logger.fatal("The client is being used while Aris is running in server mode");
                 logger.fatal("This shouldn't happen");
-                logger.fatal("Program will exit");
-                System.exit(1);
+                Main.instance.showExceptionError(Thread.currentThread(), new IllegalStateException("The client is being used while aris is running in server mode"), true);
                 break;
         }
         return false;
@@ -332,18 +359,31 @@ public class Client {
 
     private class CustomTrustManager implements X509TrustManager {
 
-        private X509TrustManager manager;
-        private X509Certificate lastCert;
+        private X509TrustManager manager, managerSS;
 
-        public CustomTrustManager(X509Certificate selfSignedCert) throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException {
-            KeyStore ks = null;
-            if (selfSignedCert != null) {
-                ks = KeyStore.getInstance("JKS");
+        public CustomTrustManager() throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException {
+            if (SERVER_KEYSTORE_FILE.exists()) {
+                KeyStore ks = KeyStore.getInstance("JKS");
                 ks.load(null);
-                ks.setCertificateEntry("self_signed", selfSignedCert);
+                KeyStore importedKeyStore = KeyStore.getInstance("JKS");
+                FileInputStream fis = new FileInputStream(SERVER_KEYSTORE_FILE);
+                importedKeyStore.load(fis, KEYSTORE_PASSWORD);
+                Enumeration<String> aliases = importedKeyStore.aliases();
+                while (aliases.hasMoreElements()) {
+                    String a = aliases.nextElement();
+                    if (importedKeyStore.isCertificateEntry(a))
+                        ks.setCertificateEntry(a, importedKeyStore.getCertificate(a));
+                }
+                TrustManagerFactory factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                factory.init(ks);
+                factory.getTrustManagers();
+                for (TrustManager m : factory.getTrustManagers())
+                    if (m instanceof X509TrustManager)
+                        managerSS = (X509TrustManager) m;
             }
+
             TrustManagerFactory factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-            factory.init(ks);
+            factory.init((KeyStore) null);
             factory.getTrustManagers();
             for (TrustManager m : factory.getTrustManagers()) {
                 if (m instanceof X509TrustManager)
@@ -358,17 +398,33 @@ public class Client {
 
         @Override
         public void checkServerTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
-            lastCert = x509Certificates[0];
-            manager.checkServerTrusted(x509Certificates, s);
+            try {
+                try {
+                    manager.checkServerTrusted(x509Certificates, s);
+                } catch (CertificateException e) {
+                    if (managerSS != null) {
+                        try {
+                            managerSS.checkServerTrusted(x509Certificates, s);
+                        } catch (CertificateException e1) {
+                            throw e;
+                        }
+                    } else {
+                        throw e;
+                    }
+                }
+            } catch (CertificateException e) {
+                if (!allowInsecure || !(e.getCause() instanceof CertPathBuilderException))
+                    throw e;
+                else {
+                    logger.warn("WARNING! The server's certificate chain is not trusted but the connection will continue due to the allow-insecure flag being set");
+                    logger.warn("Using the client in this mode is not recommended. Instead you should add the server's self signed certificate to the trusted certificate store");
+                }
+            }
         }
 
         @Override
         public X509Certificate[] getAcceptedIssuers() {
             return manager.getAcceptedIssuers();
-        }
-
-        X509Certificate getLastCertificate() {
-            return lastCert;
         }
     }
 

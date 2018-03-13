@@ -1,7 +1,8 @@
 package edu.rpi.aris;
 
 import edu.rpi.aris.gui.Aris;
-import edu.rpi.aris.server.Server;
+import edu.rpi.aris.net.client.Client;
+import edu.rpi.aris.net.server.Server;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
@@ -29,6 +30,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
     private Logger logger = LogManager.getLogger(Main.class);
 
     public static void main(String[] args) throws IOException {
+        Thread.setDefaultUncaughtExceptionHandler(instance);
         try {
             parseCommandLineArgs(args);
         } catch (Throwable e) {
@@ -36,6 +38,13 @@ public class Main implements Thread.UncaughtExceptionHandler {
             System.exit(1);
         }
         MODE = cmd.hasOption("server") ? Mode.SERVER : Mode.GUI;
+        if (MODE != Mode.SERVER) {
+            if (cmd.hasOption("add-cert")) {
+                String filename = cmd.getOptionValue("add-cert");
+                File file = new File(filename);
+                Client.importSelfSignedCertificate(file);
+            }
+        }
         switch (MODE) {
             case GUI:
                 Aris.launch(Aris.class, args);
@@ -62,9 +71,11 @@ public class Main implements Thread.UncaughtExceptionHandler {
     private static void parseCommandLineArgs(String[] args) throws ParseException {
         Options options = new Options();
         options.addOption("s", "server", false, "Runs aris in server mode");
-        options.addOption(null, "ca", true, "Specifies a CA certificate for server mode");
+        options.addOption(null, "ca", true, "Specifies an X509 encoded CA certificate for server mode");
         options.addOption(null, "key", true, "Specifies a private key for server mode");
         options.addOption("h", "help", false, "Displays this help screen");
+        options.addOption(null, "allow-insecure", false, "Allows aris to connect to servers using self signed certificates (WARNING! Doing this is not recommended as it allows the connection to be intercepted)");
+        options.addOption(null, "add-cert", true, "Adds the given X509 encoded certificate to the client's trusted certificate store");
         CommandLineParser parser = new DefaultParser();
         cmd = parser.parse(options, args);
         if (cmd.hasOption("help")) {
