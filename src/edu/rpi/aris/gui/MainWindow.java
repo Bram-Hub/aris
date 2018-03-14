@@ -384,6 +384,8 @@ public class MainWindow {
     }
 
     private void startSubProof() {
+        if (selectedLine.get() < 0)
+            return;
         int level = proof.getLines().get(selectedLine.get()).subProofLevelProperty().get() + 1;
         int lineNum = selectedLine.get();
         selectedLine.set(-1);
