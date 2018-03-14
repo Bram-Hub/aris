@@ -1,0 +1,5 @@
+submission(id, class_id, assignment_id, user_id, proof_id, data, timestamp, status)
+assignment(id, class_id, proof_id, name, due_date, assigned_by)
+proof(id, name, data, created_by)
+user(id, username, class_id, user_type, salt, password_hash, access_token)
+class(id, name)

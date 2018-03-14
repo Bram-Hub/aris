@@ -3,6 +3,22 @@ package edu.rpi.aris.net;
 public class NetUtil {
 
     public static final String ARIS_NAME = "Aris-Java";
+    public static final String AUTH_BAN = "AUTH BAN";
+    public static final String AUTH_FAIL = "AUTH FAIL";
+    public static final String AUTH_OK = "AUTH OK";
+    public static final String AUTH_ERR = "AUTH ERROR";
+    public static final String AUTH_INVALID = "AUTH INVALID";
+    public static final String AUTH = "AUTH";
+    public static final String AUTH_PASS = "PASS";
+    public static final String AUTH_ACCESS_TOKEN = "TOKEN";
+
+    public static final String GET_USER_TYPE = "GET_USER_TYPE";
+    public static final String GET_ASSIGNMENTS = "GET_ASSIGNMENTS";
+    public static final String GET_PROOFS = "GET_PROOFS";
+    public static final String LIST_SUBMISSIONS = "LIST_SUBMISSION";
+    public static final String GET_SUBMISSION = "GET_SUBMISSION";
+
+    public static final long MAX_FILE_SIZE = 5242880; // 5MiB
 
     /**
      * Compares two version strings.

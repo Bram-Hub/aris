@@ -23,9 +23,7 @@ import javax.xml.transform.dom.DOMResult;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
-import java.io.File;
-import java.io.IOException;
-import java.io.StringWriter;
+import java.io.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -87,8 +85,15 @@ public class SaveManager {
         return f;
     }
 
-    public static synchronized boolean saveProof(Proof proof, File file) throws TransformerException {
-        if (proof == null || file == null)
+    public static synchronized boolean saveProof(Proof proof, File file) throws IOException, TransformerException {
+        if (!file.exists())
+            if (!file.createNewFile())
+                throw new IOException("Failed to save proof");
+        return saveProof(proof, new FileOutputStream(file));
+    }
+
+    public static synchronized boolean saveProof(Proof proof, OutputStream out) throws TransformerException {
+        if (proof == null || out == null)
             return false;
         Document doc = documentBuilder.newDocument();
         Element root = doc.createElement("bram");
@@ -140,7 +145,7 @@ public class SaveManager {
         hashElement.appendChild(doc.createTextNode(hash));
         metadata.appendChild(hashElement);
 
-        result = new StreamResult(file);
+        result = new StreamResult(out);
         transformer.transform(src, result);
 
         return true;
@@ -210,8 +215,14 @@ public class SaveManager {
         return new Pair<>(id, lineNum);
     }
 
-    public static synchronized Proof loadFile(File file) throws TransformerException, IOException {
-        StreamSource src = new StreamSource(file);
+    public static synchronized Proof loadProof(File file) throws IOException, TransformerException {
+        if (!file.exists())
+            return null;
+        return loadProof(new FileInputStream(file), file.getName());
+    }
+
+    public static synchronized Proof loadProof(InputStream in, String name) throws TransformerException, IOException {
+        StreamSource src = new StreamSource(in);
         DOMResult result = new DOMResult();
         transformer.transform(src, result);
 
@@ -235,7 +246,7 @@ public class SaveManager {
                     Alert noAris = new Alert(Alert.AlertType.CONFIRMATION);
                     noAris.setTitle("Not Aris File");
                     noAris.setHeaderText("Not Aris File");
-                    noAris.setContentText("The given file \"" + file.getName() + "\" was written by " + program.getTextContent() + " version " + version.getTextContent() + "\n" +
+                    noAris.setContentText("The given file \"" + name + "\" was written by " + program.getTextContent() + " version " + version.getTextContent() + "\n" +
                             "Aris may still be able to read this file with varying success\n" +
                             "Would you like to attempt to load this file?");
                     Optional<ButtonType> option = noAris.showAndWait();
@@ -243,7 +254,7 @@ public class SaveManager {
                         return null;
                     break;
                 case CMD:
-                    System.out.println("The given file \"" + file.getName() + "\" was written by " + program.getTextContent() + " version " + version.getTextContent());
+                    System.out.println("The given file \"" + name + "\" was written by " + program.getTextContent() + " version " + version.getTextContent());
                     System.out.println("Aris may still be able to read this file with varying success");
                     System.out.println("Would you like to attempt to load this file? (Y/n)");
                     String response = Main.SYSTEM_IN.readLine();
@@ -251,7 +262,7 @@ public class SaveManager {
                         return null;
                     break;
                 case SERVER:
-                    System.out.println("The given file \"" + file.getName() + "\" was written by " + program.getTextContent() + " version " + version.getTextContent());
+                    System.out.println("The given file \"" + name + "\" was written by " + program.getTextContent() + " version " + version.getTextContent());
                     System.out.println("Aris will attempt to read the file anyway");
                     break;
             }
@@ -281,7 +292,7 @@ public class SaveManager {
                             alert.showAndWait();
                             break;
                         case CMD:
-                            System.out.println("File integrity check failed for " + file.getName());
+                            System.out.println("File integrity check failed for " + name);
                             System.out.println("This file may be corrupted or may have been tampered with.");
                             System.out.println("If this file successfully loads the author will be marked as UNKNOWN");
                             System.out.println("This will show up if this file is submitted and may affect your grade");
@@ -289,7 +300,7 @@ public class SaveManager {
                             Main.SYSTEM_IN.readLine();
                             break;
                         case SERVER:
-                            System.out.println("File integrity check failed for " + file.getName());
+                            System.out.println("File integrity check failed for " + name);
                             System.out.println("The system will still attempt to load the file and will mark the author as UNKNOWN");
                             break;
                     }
@@ -481,7 +492,7 @@ public class SaveManager {
 
     public static void main(String[] args) throws IOException, TransformerException {
         //noinspection SpellCheckingInspection
-        loadFile(new File(System.getProperty("user.home"), "test.aprf"));
+        loadProof(new File(System.getProperty("user.home"), "test.aprf"));
     }
 
 }

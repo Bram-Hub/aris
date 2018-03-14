@@ -29,6 +29,7 @@ import java.net.ServerSocket;
 import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -40,6 +41,7 @@ public class Server implements Runnable {
     private static final char[] KEYSTORE_PASSWORD = "ARIS_SERVER".toCharArray();
     private static final String KEYSTORE_FILENAME = "server.keystore";
     private static final File KEYSTORE_FILE = new File(ConfigurationManager.CONFIG_DIR, KEYSTORE_FILENAME);
+    private static final File DATABASE_FILE = new File(ConfigurationManager.CONFIG_DIR, "server.db");
     private static final File SELF_SIGNED_CERT = new File(ConfigurationManager.CONFIG_DIR, "self-signed-cert.pem");
 
     static {
@@ -52,10 +54,11 @@ public class Server implements Runnable {
     private final File caCertificate;
     private final File privateKey;
     private Logger logger = LogManager.getLogger(Server.class);
-    private ServerSocket serverSocket;
     private boolean selfSign;
+    private DatabaseManager dbManager;
 
     public Server(int port, File caCertificate, File privateKey) throws FileNotFoundException {
+        logger.info("Preparing server");
         this.port = port;
         this.caCertificate = caCertificate;
         this.privateKey = privateKey;
@@ -71,19 +74,26 @@ public class Server implements Runnable {
             if (!privateKey.exists())
                 throw new FileNotFoundException("private key \"" + privateKey.getPath() + "\" does not exist");
         }
-        System.out.println("End create server");
+        try {
+            dbManager = new DatabaseManager(DATABASE_FILE);
+        } catch (IOException | SQLException e) {
+            logger.fatal("Failed to open sql database", e);
+            e.printStackTrace();
+        }
+        logger.info("Server preparation complete");
     }
 
     @Override
     public void run() {
         try {
             logger.info("Server Starting");
-            serverSocket = getServerSocketFactory().createServerSocket(port);
+            ServerSocket serverSocket = getServerSocketFactory().createServerSocket(port);
             ExecutorService threadPool = Executors.newCachedThreadPool();
             logger.info("Server Started");
             logger.info("Waiting for connections");
+            //noinspection InfiniteLoopStatement
             while (true) {
-                threadPool.execute(new ClientHandler((SSLSocket) serverSocket.accept()));
+                threadPool.execute(new ClientHandler((SSLSocket) serverSocket.accept(), dbManager));
             }
         } catch (IOException e) {
             logger.fatal("Failed to start Aris Server", e);

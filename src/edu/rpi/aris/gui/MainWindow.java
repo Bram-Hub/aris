@@ -293,7 +293,7 @@ public class MainWindow {
             if (f != null && !f.exists()) {
                 error = "The selected file does not exist";
             } else if (f != null) {
-                Proof p = SaveManager.loadFile(f);
+                Proof p = SaveManager.loadProof(f);
                 if (p == null) {
                     error = "Invalid file format";
                 } else {
