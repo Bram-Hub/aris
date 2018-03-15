@@ -3,11 +3,15 @@ package edu.rpi.aris.rules;
 import edu.rpi.aris.proof.Expression;
 import edu.rpi.aris.proof.Operator;
 import edu.rpi.aris.proof.Premise;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.text.ParseException;
 import java.util.ArrayList;
 
 public class ExcludedMiddle  extends Rule {
+
+    private static final Logger logger = LogManager.getLogger(ExcludedMiddle.class);
 
     ExcludedMiddle() {
     }
@@ -60,11 +64,13 @@ public class ExcludedMiddle  extends Rule {
             return "The conclusion must have only 2 disjuncts";
         Expression expressions[] = conclusion.getExpressions();
         try {
-            if (!expressions[0].equals(expressions[1].negate()) && !expressions[1].equals(expressions[0].negate()))
+            if (!expressions[0].negate().equals(expressions[1]) && !expressions[1].negate().equals(expressions[0]))
                 return "The 2 disjuncts of the conclusion are not negations of each other";
         }
-        catch(ParseException p) {
-            return p.getMessage();
+        catch(ParseException e) {
+            logger.error("Parse error when checking Law of Excluded Middle", e);
+            e.printStackTrace();
+            return "Parse error when checking Law of Excluded Middle";
         }
         return null;
     }

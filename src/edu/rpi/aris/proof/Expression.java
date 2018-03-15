@@ -35,16 +35,17 @@ public class Expression {
         Objects.requireNonNull(parentVariables);
         this.parent = parent;
         this.parentVariables = parentVariables;
-        if (operator == null) {
+        if (opr == null) {
             if (expressions.length != 1)
                 throw new IllegalArgumentException("Must give exactly one expression if null operator");
             init(expressions[0].toString());
-        } else if (operator.isType(Operator.Type.UNARY) && expressions.length != 1) {
+        } else if (opr.isType(Operator.Type.UNARY) && expressions.length != 1) {
             throw new IllegalArgumentException("Must give exactly 1 Expression for unary operator");
-        } else if (!operator.isType(Operator.Type.GENERALIZABLE) && !operator.isType(Operator.Type.UNARY) && expressions.length != 2) {
-            throw new IllegalArgumentException("Cannot create generalized " + operator.name());
-        } else
-            init(SentenceUtil.toPolish(this.expressions, opr.rep));
+        } else if (!opr.isType(Operator.Type.GENERALIZABLE) && !opr.isType(Operator.Type.UNARY) && expressions.length != 2) {
+            throw new IllegalArgumentException("Cannot create generalized " + opr.name());
+        } else {
+            init(SentenceUtil.toPolish(expressions, opr.rep));
+        }
     }
 
     private void init
