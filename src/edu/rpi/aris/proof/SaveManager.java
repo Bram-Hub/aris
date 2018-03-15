@@ -86,6 +86,8 @@ public class SaveManager {
     }
 
     public static synchronized boolean saveProof(Proof proof, File file) throws IOException, TransformerException {
+        if (proof == null || file == null)
+            return false;
         if (!file.exists())
             if (!file.createNewFile())
                 throw new IOException("Failed to save proof");
@@ -157,10 +159,12 @@ public class SaveManager {
         prf.setAttribute("id", String.valueOf(id));
         root.appendChild(prf);
         proofElements.add(prf);
-
+        int indent = proof.getLines().get(lineNum).subProofLevelProperty().get();
         int allowedAssumptions = lineNum == 0 ? proof.numPremises().get() : 1;
         for (int i = lineNum; i < proof.getLines().size(); ++i) {
             Proof.Line line = proof.getLines().get(i);
+            if (line.subProofLevelProperty().get() < indent || (line.subProofLevelProperty().get() == indent && allowedAssumptions == 0 && line.isAssumption()))
+                break;
             if (line.isAssumption()) {
                 if (allowedAssumptions == 0) {
                     Element step = doc.createElement("step");
@@ -173,8 +177,8 @@ public class SaveManager {
                     premise.appendChild(doc.createTextNode(String.valueOf(subproofResult.getKey())));
                     step.appendChild(premise);
                     prf.appendChild(step);
-                    i = subproofResult.getValue();
-                    lineNum = i;
+                    lineNum = subproofResult.getValue();
+                    i = lineNum - 1;
                 } else {
                     --allowedAssumptions;
                     Element assumption = doc.createElement("assumption");
