@@ -17,8 +17,28 @@ public class NetUtil {
     public static final String GET_PROOFS = "GET_PROOFS";
     public static final String LIST_SUBMISSIONS = "LIST_SUBMISSION";
     public static final String GET_SUBMISSION = "GET_SUBMISSION";
+    public static final String CREATE_SUBMISSION = "CREATE_SUBMISSION";
+    public static final String CREATE_ASSIGNMENT = "CREATE_ASSIGNMENT";
+    public static final String DELETE_ASSIGNMENT = "DELETE_ASSIGNMENT";
+    public static final String UPDATE_ASSIGNMENT = "UPDATE_ASSIGNMENT";
+    public static final String CREATE_PROOF = "CREATE_PROOF";
+    public static final String DELETE_PROOF = "DELETE_PROOF";
+    public static final String UPDATE_PROOF = "UPDATE_PROOF";
+    public static final String CREATE_USER = "CREATE_USER";
+    public static final String DELETE_USER = "DELETE_USER";
+    public static final String UPDATE_USER = "UPDATE_USER";
+    public static final String CREATE_CLASS = "CREATE_CLASS";
+    public static final String DELETE_CLASS = "DELETE_CLASS";
+    public static final String UPDATE_CLASS = "UPDATE_CLASS";
+
+    public static final String USER_STUDENT = "student";
+    public static final String USER_INSTRUCTOR = "instructor";
 
     public static final long MAX_FILE_SIZE = 5242880; // 5MiB
+    public static final String UNAUTHORIZED = "UNAUTHORIZED";
+    public static final String ERROR = "ERROR";
+    public static final String OK = "OK";
+    public static final String INVALID = "INVALID";
 
     /**
      * Compares two version strings.

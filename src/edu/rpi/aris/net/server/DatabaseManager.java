@@ -81,7 +81,8 @@ public class DatabaseManager {
         statement.execute("CREATE TABLE submission (id integer PRIMARY KEY, class_id integer, assignment_id integer, user_id integer, proof_id integer, data blob, time text, status text);");
         statement.execute("CREATE TABLE assignment (id integer, class_id integer, proof_id integer, name text, due_date text, assigned_by integer, PRIMARY KEY(id, class_id, proof_id));");
         statement.execute("CREATE TABLE proof (id integer PRIMARY KEY, name text, data blob, created_by integer);");
-        statement.execute("CREATE TABLE user (id integer, username text, class_id integer, user_type text, salt text, password_hash text, access_token text, PRIMARY KEY(id, class_id));");
+        statement.execute("CREATE TABLE user (id integer PRIMARY KEY, username text, user_type text, salt text, password_hash text, access_token text);");
+        statement.execute("CREATE TABLE user_class (user_id integer, class_id integer");
         statement.execute("CREATE TABLE class (id integer PRIMARY KEY, name text);");
     }
 

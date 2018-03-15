@@ -1,6 +1,5 @@
 package edu.rpi.aris.gui;
 
-import edu.rpi.aris.Main;
 import javafx.application.Application;
 import javafx.stage.Stage;
 import org.apache.logging.log4j.LogManager;
@@ -12,16 +11,6 @@ public class Aris extends Application {
 
     public static Aris instance = null;
     private static Logger logger = LogManager.getLogger(Aris.class);
-
-    static {
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            try {
-                Main.SYSTEM_IN.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }));
-    }
 
     private MainWindow mainWindow = null;
 

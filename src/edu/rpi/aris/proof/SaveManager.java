@@ -220,7 +220,7 @@ public class SaveManager {
     }
 
     public static synchronized Proof loadProof(File file) throws IOException, TransformerException {
-        if (!file.exists())
+        if (file == null || !file.exists())
             return null;
         return loadProof(new FileInputStream(file), file.getName());
     }
