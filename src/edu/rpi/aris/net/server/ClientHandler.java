@@ -44,7 +44,7 @@ public class ClientHandler implements Runnable {
     private int userId;
     private MessageDigest digest;
 
-    public ClientHandler(SSLSocket socket, DatabaseManager dbManager) {
+    ClientHandler(SSLSocket socket, DatabaseManager dbManager) {
         this.socket = socket;
         this.dbManager = dbManager;
         try {
@@ -233,6 +233,39 @@ public class ClientHandler implements Runnable {
                             break;
                         case NetUtil.CREATE_ASSIGNMENT:
                             createAssignment();
+                            break;
+                        case NetUtil.DELETE_ASSIGNMENT:
+                            deleteAssignment();
+                            break;
+                        case NetUtil.UPDATE_ASSIGNMENT:
+                            updateAssignment();
+                            break;
+                        case NetUtil.CREATE_PROOF:
+                            createProof();
+                            break;
+                        case NetUtil.DELETE_PROOF:
+                            deleteProof();
+                            break;
+                        case NetUtil.UPDATE_PROOF:
+                            updateProof();
+                            break;
+                        case NetUtil.CREATE_USER:
+                            createUser();
+                            break;
+                        case NetUtil.DELETE_USER:
+                            deleteUser();
+                            break;
+                        case NetUtil.UPDATE_USER:
+                            updateUser();
+                            break;
+                        case NetUtil.CREATE_CLASS:
+                            createClass();
+                            break;
+                        case NetUtil.DELETE_CLASS:
+                            deleteClass();
+                            break;
+                        case NetUtil.UPDATE_CLASS:
+                            updateClass();
                             break;
                         default:
                             sendMessage("UNKNOWN REQUEST");
@@ -426,8 +459,7 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    public void createAssignment() throws IOException, SQLException {
-        // assignment(id, class_id, proof_id, name, due_date, assigned_by)
+    private void createAssignment() throws IOException, SQLException {
         String[] assignmentData = in.readUTF().split("\\|");
         if (!userType.equals(NetUtil.USER_INSTRUCTOR)) {
             sendMessage(NetUtil.UNAUTHORIZED);
@@ -437,15 +469,15 @@ public class ClientHandler implements Runnable {
             sendMessage(NetUtil.INVALID);
             return;
         }
-        String[] proofIdStrs = assignmentData[1].split(",");
+        String[] proofIdStrings = assignmentData[1].split(",");
         int cid;
-        int[] pids = new int[proofIdStrs.length];
+        int[] proof_ids = new int[proofIdStrings.length];
         long time;
         try {
             cid = Integer.parseInt(assignmentData[0]);
             time = Long.parseLong(assignmentData[3]);
-            for (int i = 0; i < proofIdStrs.length; ++i)
-                pids[i] = Integer.parseInt(proofIdStrs[i]);
+            for (int i = 0; i < proofIdStrings.length; ++i)
+                proof_ids[i] = Integer.parseInt(proofIdStrings[i]);
         } catch (NumberFormatException e) {
             sendMessage(NetUtil.ERROR);
             return;
@@ -457,7 +489,7 @@ public class ClientHandler implements Runnable {
         ResultSet rs;
         if (select.execute() && (rs = select.getResultSet()).next())
             id = rs.getInt(1) + 1;
-        for (int pid : pids) {
+        for (int pid : proof_ids) {
             PreparedStatement statement = dbManager.getStatement("INSERT INTO assignment VALUES(?, ?, ?, ?, ?, ?);");
             statement.setInt(1, id);
             statement.setInt(2, cid);
@@ -470,20 +502,20 @@ public class ClientHandler implements Runnable {
         sendMessage(NetUtil.OK);
     }
 
-    public void deleteAssignment() throws IOException, SQLException {
-        String[] idStrs = in.readUTF().split("\\|");
+    private void deleteAssignment() throws IOException, SQLException {
+        String[] idStrings = in.readUTF().split("\\|");
         if (!userType.equals(NetUtil.USER_INSTRUCTOR)) {
             sendMessage(NetUtil.UNAUTHORIZED);
             return;
         }
-        if (idStrs.length != 2) {
+        if (idStrings.length != 2) {
             sendMessage(NetUtil.INVALID);
             return;
         }
         int cid, aid;
         try {
-            cid = Integer.parseInt(idStrs[0]);
-            aid = Integer.parseInt(idStrs[1]);
+            cid = Integer.parseInt(idStrings[0]);
+            aid = Integer.parseInt(idStrings[1]);
         } catch (NumberFormatException e) {
             sendMessage(NetUtil.ERROR);
             return;
@@ -495,7 +527,7 @@ public class ClientHandler implements Runnable {
         sendMessage(NetUtil.OK);
     }
 
-    public void updateAssignment() throws IOException, SQLException {
+    private void updateAssignment() throws IOException, SQLException {
         String[] str = in.readUTF().split("\\|");
         if (!userType.equals(NetUtil.USER_INSTRUCTOR)) {
             sendMessage(NetUtil.UNAUTHORIZED);
@@ -586,11 +618,46 @@ public class ClientHandler implements Runnable {
         sendMessage("OK");
     }
 
-    public void createProof() {
-
+    private void createProof() throws IOException, SQLException {
+        String[] proofInfo = in.readUTF().split("\\|");
+        if (!userType.equals(NetUtil.USER_INSTRUCTOR)) {
+            sendMessage(NetUtil.UNAUTHORIZED);
+            return;
+        }
+        if (proofInfo.length != 2) {
+            sendMessage(NetUtil.INVALID);
+            return;
+        }
+        long size;
+        try {
+            size = Long.parseLong(proofInfo[1]);
+        } catch (NumberFormatException e) {
+            sendMessage(NetUtil.ERROR);
+            return;
+        }
+        if (size <= 0) {
+            sendMessage(NetUtil.OK);
+            return;
+        }
+        if (size > NetUtil.MAX_FILE_SIZE) {
+            sendMessage("TOO LARGE");
+            return;
+        }
+        byte[] data = new byte[(int) size];
+        if (size != in.read(data)) {
+            sendMessage("FAILED");
+            return;
+        }
+        ByteArrayInputStream bis = new ByteArrayInputStream(data);
+        PreparedStatement statement = dbManager.getStatement("INSERT INTO proof VALUES(NULL, ?, ?, ?)");
+        statement.setString(1, proofInfo[0]);
+        statement.setBinaryStream(2, bis);
+        statement.setInt(3, userId);
+        statement.execute();
+        sendMessage(NetUtil.OK);
     }
 
-    public void deleteProof() throws IOException, SQLException {
+    private void deleteProof() throws IOException, SQLException {
         String idStr = in.readUTF();
         if (!userType.equals(NetUtil.USER_INSTRUCTOR)) {
             sendMessage(NetUtil.UNAUTHORIZED);
@@ -615,7 +682,7 @@ public class ClientHandler implements Runnable {
         sendMessage(NetUtil.OK);
     }
 
-    public void updateProof() throws IOException, SQLException {
+    private void updateProof() throws IOException, SQLException {
         String[] proofData = in.readUTF().split("\\|");
         if (!userType.equals(NetUtil.USER_INSTRUCTOR)) {
             sendMessage(NetUtil.UNAUTHORIZED);
@@ -663,7 +730,7 @@ public class ClientHandler implements Runnable {
         sendMessage(NetUtil.OK);
     }
 
-    public void createUser() throws IOException, SQLException {
+    private void createUser() throws IOException, SQLException {
         String[] userData = in.readUTF().split("\\|");
         if (!userType.equals(NetUtil.USER_INSTRUCTOR)) {
             sendMessage(NetUtil.UNAUTHORIZED);
@@ -697,7 +764,7 @@ public class ClientHandler implements Runnable {
         sendMessage(NetUtil.OK);
     }
 
-    public void deleteUser() throws IOException, SQLException {
+    private void deleteUser() throws IOException, SQLException {
         String strId = in.readUTF();
         if (!userType.equals(NetUtil.USER_INSTRUCTOR)) {
             sendMessage(NetUtil.UNAUTHORIZED);
@@ -722,7 +789,7 @@ public class ClientHandler implements Runnable {
         sendMessage(NetUtil.OK);
     }
 
-    public void updateUser() throws IOException, SQLException {
+    private void updateUser() throws IOException, SQLException {
         String[] userData = in.readUTF().split("\\|");
         if (userData.length != 3) {
             sendMessage(NetUtil.INVALID);
@@ -767,7 +834,7 @@ public class ClientHandler implements Runnable {
         sendMessage(NetUtil.OK);
     }
 
-    public void createClass() throws IOException, SQLException {
+    private void createClass() throws IOException, SQLException {
         String name = in.readUTF();
         if (!userType.equals(NetUtil.USER_INSTRUCTOR)) {
             sendMessage(NetUtil.UNAUTHORIZED);
@@ -791,7 +858,7 @@ public class ClientHandler implements Runnable {
         sendMessage(NetUtil.OK);
     }
 
-    public void deleteClass() throws IOException, SQLException {
+    private void deleteClass() throws IOException, SQLException {
         String idStr = in.readUTF();
         if (!userType.equals(NetUtil.USER_INSTRUCTOR)) {
             sendMessage(NetUtil.UNAUTHORIZED);
@@ -813,7 +880,7 @@ public class ClientHandler implements Runnable {
         sendMessage(NetUtil.OK);
     }
 
-    public void updateClass() throws IOException, SQLException {
+    private void updateClass() throws IOException, SQLException {
         String[] classData = in.readUTF().split("\\|");
         if (!userType.equals(NetUtil.USER_INSTRUCTOR)) {
             sendMessage(NetUtil.UNAUTHORIZED);
@@ -837,7 +904,7 @@ public class ClientHandler implements Runnable {
         sendMessage(NetUtil.OK);
     }
 
-    public void sendMessage(String msg) {
+    private void sendMessage(String msg) {
         try {
             out.writeUTF(msg);
             out.flush();
@@ -848,7 +915,7 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    public void disconnect() {
+    private void disconnect() {
         if (in != null) {
             try {
                 in.close();
