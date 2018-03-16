@@ -27,6 +27,17 @@ public class Main implements Thread.UncaughtExceptionHandler {
     public static final String NAME = "Aris";
     private static CommandLine cmd;
     private static Mode MODE = Mode.CMD;
+
+    static {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                SYSTEM_IN.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }));
+    }
+
     private Logger logger = LogManager.getLogger(Main.class);
 
     public static void main(String[] args) throws IOException {
