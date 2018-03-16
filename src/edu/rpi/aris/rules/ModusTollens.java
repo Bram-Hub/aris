@@ -62,26 +62,33 @@ public class ModusTollens extends Rule {
         Expression p1 = premises[0].getPremise();
         Expression p2 = premises[1].getPremise();
         try {
-            if (p1.getOperator() == Operator.CONDITIONAL && p2.getOperator() == Operator.CONDITIONAL)
-                return check(p1, p2, conclusion) == null ? null : check(p2, p1, conclusion);
-            else if (p1.getOperator() == Operator.CONDITIONAL)
-                return check(p2, p1, conclusion);
-            else
-                return check(p1, p2, conclusion);
+            if ((p1.getOperator() != Operator.CONDITIONAL) && (p2.getOperator() != Operator.CONDITIONAL)) {
+                return "Neither of the premises are a conditional";
+            }
+            else if (p1.getOperator() == Operator.CONDITIONAL) {
+                if (!p1.getExpressions()[1].negate().equalswithoutDNs(p2) || !p1.getExpressions()[0].negate().equalswithoutDNs(conclusion)) {
+                    if (p2.getOperator() == Operator.CONDITIONAL) {
+                        if (!p2.getExpressions()[1].negate().equalswithoutDNs(p1) || !p2.getExpressions()[0].negate().equalswithoutDNs(conclusion)) {
+                            //generic error message
+                            return "Invalid application of Modus Tollens";
+                        }
+                    }
+                    else {//specifc to p1 as conditional
+                        return "\"" + p1.toLogicStringwithoutDNs() + "\" is not the same as \"(" + conclusion.negate().toLogicStringwithoutDNs() + " → " + p2.negate().toLogicStringwithoutDNs() + ")\"";
+                    }
+                }
+            }
+            if (p2.getOperator() == Operator.CONDITIONAL) {
+                if (!p2.getExpressions()[1].negate().equalswithoutDNs(p1) || !p2.getExpressions()[0].negate().equalswithoutDNs(conclusion)) {
+                    //specifc to p2 as conditional
+                    return "\"" + p2.toLogicStringwithoutDNs() + "\" is not the same as \"(" + conclusion.negate().toLogicStringwithoutDNs() + " → " + p1.negate().toLogicStringwithoutDNs() + ")\"";
+                }
+            }
         } catch (ParseException e) {
             logger.error("Parse error when checking Modus Tollens", e);
             e.printStackTrace();
             return "Parse error when checking Modus Tollens";
         }
-    }
-
-    private String check(Expression p, Expression conditional, Expression conc) throws ParseException {
-        if (conditional.getOperator() != Operator.CONDITIONAL)
-            return "Expression is not a conditional expression";
-        if (conditional.getExpressions().length != 2)
-            return "Generalized Implication is not allowed";
-        if (!conditional.getExpressions()[1].negate().equals(p) || !conditional.getExpressions()[0].negate().equals(conc))
-            return "Invalid application of Modus Tollens";
         return null;
     }
 }

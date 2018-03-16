@@ -28,7 +28,7 @@ public class ExcludedMiddle  extends Rule {
 
     @Override
     public Type[] getRuleType() {
-        return new Type[] {};
+        return new Type[] {Type.INFERENCE};
     }
 
     @Override
@@ -59,13 +59,13 @@ public class ExcludedMiddle  extends Rule {
     @Override
     protected String verifyClaim(Expression conclusion, Premise[] premises) {
         if (conclusion.getOperator() != Operator.OR)
-            return "The conclusion must be a disjunction";
+            return "The conclusion is not a disjunction";
         if (conclusion.getNumExpressions() != 2)
             return "The conclusion must have only 2 disjuncts";
         Expression expressions[] = conclusion.getExpressions();
         try {
-            if (!expressions[0].negate().equals(expressions[1]) && !expressions[1].negate().equals(expressions[0]))
-                return "The 2 disjuncts of the conclusion are not negations of each other";
+            if (!expressions[0].negate().equalswithoutDNs(expressions[1]))
+                return "\"" + expressions[0].toLogicStringwithoutDNs() + "\" is not the negation of \"" + expressions[1].toLogicStringwithoutDNs() + "\"";
         }
         catch(ParseException e) {
             logger.error("Parse error when checking Law of Excluded Middle", e);

@@ -190,6 +190,13 @@ public class Expression {
         return false;
     }
 
+    public boolean hasSubExpressionwithoutDNs(Expression exp) {
+        for (Expression e : expressions)
+            if (e.equalswithoutDNs(exp))
+                return true;
+        return false;
+    }
+
     private boolean sameFunOpr(String opr1, String opr2) {
         return opr1 == null && opr2 == null || opr1 != null && opr2 != null && opr1.equals(opr2);
     }
@@ -218,6 +225,23 @@ public class Expression {
 
     public Expression negate() throws ExpressionParseException {
         return new Expression(new Expression[]{this}, Operator.NOT, this.parent, parentVariables);
+    }
+
+    public Expression withoutDNs() {
+        if (operator == Operator.NOT) {
+            Expression expr = expressions[0];
+            if (expr.operator == Operator.NOT) {
+                return expr.expressions[0].withoutDNs();
+            }
+        }
+        return this;
+    }
+
+    public boolean equalswithoutDNs(Expression expr) {
+        return this.withoutDNs().equals(expr.withoutDNs());
+    }
+    public String toLogicStringwithoutDNs() {
+        return this.withoutDNs().toLogicString();
     }
 
     public String toLogicString() {

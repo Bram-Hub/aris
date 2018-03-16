@@ -54,15 +54,25 @@ public class Conjunction extends Rule {
 
     @Override
     protected String verifyClaim(Expression conclusion, Premise[] premises) {
-        Expression p1 = premises[0].getPremise();
-        Expression p2 = premises[1].getPremise();
-        if (conclusion.getOperator() != Operator.AND)
-            return "The conclusion must be a conjunction";
-        if (!conclusion.hasSubExpression(p1) || !conclusion.hasSubExpression(p2))
-            return "One of the premises is not in the conclusion";
-        for (Expression e : conclusion.getExpressions())
-            if (!p1.equals(e) && !p2.equals(e))
-                return "One of the conjuncts in the conclusion is not a premise";
+        if (conclusion.getOperator() != Operator.AND) {
+            return "The conclusion is not a conjunction";
+        }
+        for (int i = 0; i < premises.length; ++i) {
+            if (!conclusion.hasSubExpressionwithoutDNs(premises[i].getPremise())){
+                return "The premise \"" + premises[i].getPremise().toLogicStringwithoutDNs() + "\" is not a conjunct in the conclusion";
+            }
+        }
+        for (Expression e : conclusion.getExpressions()) {
+            boolean found = false;
+            for (int i = 0; i < premises.length; ++i) {
+                if (premises[i].getPremise().equalswithoutDNs(e)){
+                    found = true;
+                }
+            }
+            if (!found) {
+                return "The conjunct \"" + e.toLogicStringwithoutDNs() + "\" in the conclusion is not a premise";
+            }
+        }
         return null;
     }
 }

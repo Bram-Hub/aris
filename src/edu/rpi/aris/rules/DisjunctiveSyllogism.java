@@ -8,6 +8,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 public class DisjunctiveSyllogism extends Rule {
 
@@ -59,40 +61,57 @@ public class DisjunctiveSyllogism extends Rule {
 
     @Override
     protected String verifyClaim(Expression conclusion, Premise[] premises) {
-        if (!(conclusion.getNumExpressions() <= 1) && !(conclusion.getOperator() != Operator.OR))
+        if (!(conclusion.getNumExpressions() <= 1) && !(conclusion.getOperator() != Operator.OR)) {
             return "The conclusion must be either a disjunction or a literal";
+        }
+
         int found = -1;
+        Set<Expression> premiseSet = new HashSet<>();
         for (int i = 0; i < premises.length; ++i) {
             Expression e = premises[i].getPremise();
             if (e.getOperator() == Operator.OR) {
                 found = i;
             }
+            else {
+                premiseSet.add(e.withoutDNs());
+            }
         }
         if (found < 0) {
-            return "One of the premises must be a disjunction";
+            return "None of the premises are disjunctions";
         }
 
+        Set<Expression> premiseSetUsed = new HashSet<>(premiseSet);
         Expression premiseDisjuncts[] = premises[found].getPremise().getExpressions();
         try {
             for (Expression disjunct: premiseDisjuncts) {
-                boolean failed = false;
-                if (!conclusion.hasSubExpression(disjunct) && !conclusion.equals(disjunct)) {
-                    boolean works = false;
-                    for (int i = 0; i < premises.length; ++i) {
-                        if (i != found) {
-                            if (premises[i].getPremise().negate().equals(disjunct) || disjunct.negate().equals(premises[i].getPremise())) {
-                                works = true;
-                                break;
-                            }
+                boolean works = false;
+                if (!conclusion.hasSubExpressionwithoutDNs(disjunct) && !conclusion.equalswithoutDNs(disjunct)) {
+                    for (Expression premise: premiseSet) {
+                        if (premise.negate().equalswithoutDNs(disjunct)) {
+                            premiseSetUsed.remove(premise);
+                            works = true;
+                            break;
                         }
                     }
-                    if (!works) {
-                        failed = true;
-                    }
                 }
-                if (failed) {
-                    return "\"" + disjunct.toString() + "\" is not a disjunct in the conclusion and the negation of it does not appear as a premise";
+                else {
+                    works = true;
                 }
+                if (!works) {
+                    return "\"" + disjunct.toLogicStringwithoutDNs() + "\" is not a disjunct in the conclusion and the negation of it does not appear as a premise";
+                }
+            }
+            if (premiseSetUsed.size() == 1) {
+                return "\"" + premiseSetUsed.iterator().next().toLogicStringwithoutDNs() + "\" is not a disjunct in the premise that is a disjunction";
+            }
+            else if (premiseSetUsed.size() > 0) {
+                String ret = "The premises {";
+                for (Expression expr: premiseSetUsed) {
+                    ret += "\"" + expr.toLogicStringwithoutDNs() + "\", ";
+                }
+                ret = ret.substring(0, ret.length()-2);
+                ret += "} are not disjuncts in the premise that is a disjunction";
+                return ret;
             }
         }
         catch(ParseException e) {

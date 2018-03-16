@@ -56,22 +56,28 @@ public class ModusPonens extends Rule {
     protected String verifyClaim(Expression conclusion, Premise[] premises) {
         Expression p1 = premises[0].getPremise();
         Expression p2 = premises[1].getPremise();
-        if (p1.getOperator() == Operator.CONDITIONAL && p2.getOperator() == Operator.CONDITIONAL)
-            return check(p1, p2, conclusion) == null ? null : check(p2, p1, conclusion);
-        else if (p1.getOperator() == Operator.CONDITIONAL)
-            return check(p2, p1, conclusion);
-        else
-            return check(p1, p2, conclusion);
-    }
-
-    private String check(Expression p, Expression conditional, Expression conc) {
-        if (conditional.getOperator() != Operator.CONDITIONAL)
-            return "Expression is not a conditional expression";
-        if (conditional.getExpressions().length != 2)
-            return "Generalized Implication is not allowed";
-        if (!conditional.getExpressions()[0].equals(p) || !conditional.getExpressions()[1].equals(conc))
-            return "Invalid application of Modus Ponens";
+        if ((p1.getOperator() != Operator.CONDITIONAL) && (p2.getOperator() != Operator.CONDITIONAL)) {
+            return "Neither of the premises are a conditional";
+        }
+        else if (p1.getOperator() == Operator.CONDITIONAL) {
+            if (!p1.getExpressions()[0].equalswithoutDNs(p2) || !p1.getExpressions()[1].equalswithoutDNs(conclusion)) {
+                if (p2.getOperator() == Operator.CONDITIONAL) {
+                    if (!p2.getExpressions()[0].equalswithoutDNs(p1) || !p2.getExpressions()[1].equalswithoutDNs(conclusion)) {
+                        //generic error message
+                        return "Invalid application of Modus Ponens";
+                    }
+                }
+                else {//specifc to p1 as conditional
+                    return "\"" + p1.toLogicStringwithoutDNs() + "\" is not the same as \"" + p2.toLogicStringwithoutDNs() + " → " + conclusion.toLogicStringwithoutDNs() + ")\"";
+                }
+            }
+        }
+        if (p2.getOperator() == Operator.CONDITIONAL) {
+            if (!p2.getExpressions()[0].equalswithoutDNs(p1) || !p2.getExpressions()[1].equalswithoutDNs(conclusion)) {
+                //specifc to p2 as conditional
+                return "\"" + p2.toLogicStringwithoutDNs() + "\" is not the same as \"(" + p1.toLogicStringwithoutDNs() + " → " + conclusion.toLogicStringwithoutDNs() + ")\"";
+            }
+        }
         return null;
     }
-
 }
