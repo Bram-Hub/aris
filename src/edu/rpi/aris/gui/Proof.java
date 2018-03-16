@@ -286,7 +286,10 @@ public class Proof {
         private SimpleStringProperty statusMsg = new SimpleStringProperty();
         private Timer parseTimer = null;
         private Proof proof;
-        private ChangeListener<String> expressionChangeListener = (observableValue, s, t1) -> status.set(Status.NONE);
+        private ChangeListener<String> expressionChangeListener = (observableValue, s, t1) -> {
+            status.set(Status.NONE);
+            claim = null;
+        };
 
         private Line(int subProofLevel, boolean assumption, Proof proof) {
             isAssumption = assumption;
@@ -419,6 +422,7 @@ public class Proof {
         }
 
         private synchronized void buildClaim() {
+            claim = null;
             buildExpression();
             if (expression == null || isAssumption)
                 return;
