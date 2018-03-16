@@ -202,10 +202,10 @@ public class Proof {
     }
 
     private boolean recursiveLineVerification(Line l) {
-        if (l.isAssumption || l.status.get() == Status.CORRECT)
+        if (l.isAssumption)
             return true;
-        if (l.status.get() == Status.NONE) {
-            if (!l.verifyClaim())
+        if (l.status.get() == Status.NONE || l.status.get() == Status.CORRECT) {
+            if (l.status.get() != Status.CORRECT && !l.verifyClaim())
                 return false;
             for (Line p : l.premises)
                 if (!recursiveLineVerification(p))

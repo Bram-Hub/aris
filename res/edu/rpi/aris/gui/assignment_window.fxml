@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+
+<?import javafx.scene.control.ChoiceBox?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<BorderPane xmlns:fx="http://javafx.com/fxml/1" prefHeight="200.0" prefWidth="200.0"
+            xmlns="http://javafx.com/javafx/8.0.121">
+    <top>
+        <HBox BorderPane.alignment="CENTER">
+            <children>
+                <ChoiceBox prefWidth="150.0"/>
+            </children>
+        </HBox>
+    </top>
+</BorderPane>
