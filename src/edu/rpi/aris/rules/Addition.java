@@ -69,10 +69,12 @@ public class Addition extends Rule {
     @Override
     protected String verifyClaim(Expression conclusion, Premise[] premises) {
         Expression premise = premises[0].getPremise();
-        if (conclusion.getOperator() != Operator.OR)
+        if (conclusion.getOperator() != Operator.OR) {
             return "The conclusion is not a disjunction";
-        if (!conclusion.hasSubExpressionwithoutDNs(premise))
+        }
+        if (!conclusion.hasSubExpressionwithoutDNs(premise)) {
             return "the premise is not a disjunct in the conclusion";
+        }
         return null;
     }
 }

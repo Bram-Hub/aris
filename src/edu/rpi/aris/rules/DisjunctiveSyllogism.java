@@ -46,7 +46,7 @@ public class DisjunctiveSyllogism extends Rule {
 
     @Override
     protected int requiredPremises() {
-        return 1;
+        return 2;
     }
 
     @Override
@@ -64,16 +64,20 @@ public class DisjunctiveSyllogism extends Rule {
         if (!(conclusion.getNumExpressions() <= 1) && !(conclusion.getOperator() != Operator.OR)) {
             return "The conclusion must be either a disjunction or a literal";
         }
-
         int found = -1;
         Set<Expression> premiseSet = new HashSet<>();
         for (int i = 0; i < premises.length; ++i) {
-            Expression e = premises[i].getPremise();
-            if (e.getOperator() == Operator.OR) {
-                found = i;
-            }
-            else {
-                premiseSet.add(e.withoutDNs());
+            Expression premise = premises[i].getPremise();
+            if (premise.getOperator() == Operator.OR) {
+                if (found < 0) {
+                    found = i;
+                } else {
+                    return "The premises \"" + premise.toLogicStringwithoutDNs() + "\" and \"" + premises[found].getPremise().toLogicStringwithoutDNs() + "\" are both disjunctions, however only 1 disjunction premise is allowed";
+                }
+            } else {
+                if (!premiseSet.add(premise.withoutDNs())) {
+                    return "The statement \"" + premise.toLogicStringwithoutDNs() + "\" appears as a premise twice, please remove 1 of the references";
+                }
             }
         }
         if (found < 0) {
@@ -93,8 +97,7 @@ public class DisjunctiveSyllogism extends Rule {
                             break;
                         }
                     }
-                }
-                else {
+                } else {
                     works = true;
                 }
                 if (!works) {
@@ -103,8 +106,7 @@ public class DisjunctiveSyllogism extends Rule {
             }
             if (premiseSetUsed.size() == 1) {
                 return "\"" + premiseSetUsed.iterator().next().toLogicStringwithoutDNs() + "\" is not a disjunct in the premise that is a disjunction";
-            }
-            else if (premiseSetUsed.size() > 0) {
+            } else if (premiseSetUsed.size() > 0) {
                 String ret = "The premises {";
                 for (Expression expr: premiseSetUsed) {
                     ret += "\"" + expr.toLogicStringwithoutDNs() + "\", ";

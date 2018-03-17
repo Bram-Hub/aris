@@ -72,8 +72,7 @@ public class ModusTollens extends Rule {
                             //generic error message
                             return "Invalid application of Modus Tollens";
                         }
-                    }
-                    else {//specifc to p1 as conditional
+                    } else {//specifc to p1 as conditional
                         return "\"" + p1.toLogicStringwithoutDNs() + "\" is not the same as \"(" + conclusion.negate().toLogicStringwithoutDNs() + " → " + p2.negate().toLogicStringwithoutDNs() + ")\"";
                     }
                 }

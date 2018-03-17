@@ -62,41 +62,57 @@ public class HypotheticalSyllogism extends Rule {
         Set<Expression> premiseSet = new HashSet<>();
         Expression currentExpr = conclusion.getExpressions()[0];
         Expression endExpr = conclusion.getExpressions()[1];
-        boolean found  = false;
+        if (currentExpr.equalswithoutDNs(endExpr)) {
+            if (premises.length == 0) {
+                return null;
+            } else {
+                return "The conclusion \"" + conclusion.toLogicStringwithoutDNs() + "\" requires 0 premises, you have " + premises.length;
+            }
+        }
+        int found  = -1;
         for (int i = 0; i < premises.length; ++i) {
             Expression premise = premises[i].getPremise();
             if (premise.getOperator() != Operator.CONDITIONAL) {
                 return "The premise \"" + premise.toLogicStringwithoutDNs() + "\" is not an implication";
             }
             if (premise.getExpressions()[0].equalswithoutDNs(currentExpr)) {
-                currentExpr = premise.getExpressions()[1];
-                found = true;
-            }
-            else {
-                premiseSet.add(premise.withoutDNs());
-            }
-        }
-        if (!found && !currentExpr.equalswithoutDNs(endExpr)) {
-            return "The proof is missing a premise matching the pattern \"" + currentExpr.toLogicStringwithoutDNs() + "→ _\"";
-        }
-        while (!currentExpr.equalswithoutDNs(endExpr)) {
-            found = false;
-            for (Expression premise : premiseSet) {
-                if (premise.getExpressions()[0].equalswithoutDNs(currentExpr)) {
-                    currentExpr = premise.getExpressions()[1];
-                    premiseSet.remove(premise);
-                    found = true;
-                    break;
+                if (found < 0) {
+                    found = i;
+                } else {
+                    return "The premises \"" + premise.toLogicStringwithoutDNs() + "\" and \"" + premises[found].getPremise().toLogicStringwithoutDNs() + "\" both match the pattern \"" + currentExpr.toLogicStringwithoutDNs() + " → _\", however only 1 premise is allowed to match that pattern";
+                }
+            } else {
+                if (!premiseSet.add(premise.withoutDNs())) {
+                    return "The statement \"" + premise.toLogicStringwithoutDNs() + "\" appears as a premise twice, please remove 1 of the references";
                 }
             }
-            if (!found) {
-                return "The proof is missing a premise matching the pattern \"" + currentExpr.toLogicStringwithoutDNs() + "→ _\"";
+        }
+        if (found < 0) {
+            return "The proof is missing a premise matching the pattern \"" + currentExpr.toLogicStringwithoutDNs() + " → _\"";
+        } else {
+            currentExpr = premises[found].getPremise().getExpressions()[1];
+        }
+        while (!currentExpr.equalswithoutDNs(endExpr)) {
+            Expression works = null;
+            for (Expression premise : premiseSet) {
+                if (premise.getExpressions()[0].equalswithoutDNs(currentExpr)) {
+                    if (works == null) {
+                        works = premise;
+                    } else {
+                        return "The premises \"" + premise.toLogicStringwithoutDNs() + "\" and \"" + works.toLogicStringwithoutDNs() + "\" both match the pattern \"" + currentExpr.toLogicStringwithoutDNs() + " → _\", however only 1 premise is allowed to match that pattern";
+                    }
+                }
+            }
+            if (works == null) {
+                return "The proof is missing a premise matching the pattern \"" + currentExpr.toLogicStringwithoutDNs() + " → _\"";
+            } else {
+                premiseSet.remove(works);
+                currentExpr = works.getExpressions()[1];
             }
         }
         if (premiseSet.size() == 1) {
             return "\"" + premiseSet.iterator().next().toLogicStringwithoutDNs() + "\" is not used to get to the conclusion";
-        }
-        else if (premiseSet.size() > 0) {
+        } else if (premiseSet.size() > 0) {
             String ret = "The premises {";
             for (Expression expr: premiseSet) {
                 ret += "\"" + expr.toLogicStringwithoutDNs() + "\", ";

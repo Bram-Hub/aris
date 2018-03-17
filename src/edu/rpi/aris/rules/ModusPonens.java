@@ -66,8 +66,7 @@ public class ModusPonens extends Rule {
                         //generic error message
                         return "Invalid application of Modus Ponens";
                     }
-                }
-                else {//specifc to p1 as conditional
+                } else {//specifc to p1 as conditional
                     return "\"" + p1.toLogicStringwithoutDNs() + "\" is not the same as \"" + p2.toLogicStringwithoutDNs() + " → " + conclusion.toLogicStringwithoutDNs() + ")\"";
                 }
             }

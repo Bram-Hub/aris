@@ -58,8 +58,9 @@ public class Simplification extends Rule {
     @Override
     protected String verifyClaim(Expression conclusion, Premise[] premises) {
         Expression premise = premises[0].getPremise();
-        if (premise.getOperator() != Operator.AND)
+        if (premise.getOperator() != Operator.AND) {
             return "The premise is not a conjunction";
+        }
         if (!premise.hasSubExpressionwithoutDNs(conclusion)) {
             if (conclusion.getOperator() != Operator.AND) {
                 return "The Conclusion is not a conjunct in the premise";
