@@ -39,7 +39,7 @@ public class Conjunction extends Rule {
 
     @Override
     protected int requiredPremises() {
-        return 2;
+        return 1;
     }
 
     @Override
@@ -55,7 +55,15 @@ public class Conjunction extends Rule {
     @Override
     protected String verifyClaim(Expression conclusion, Premise[] premises) {
         if (conclusion.getOperator() != Operator.AND) {
-            return "The conclusion is not a conjunction";
+            if (premises.length == 1) {
+                if (conclusion.equalswithoutDNs(premises[0].getPremise())) {//reiteration
+                    return null;
+                } else {
+                    return "There is only 1 premise and the conclusion is not a reiteration of that premise";
+                }
+            } else {
+                return "The conclusion is not a conjunction";
+            }
         }
         for (int i = 0; i < premises.length; ++i) {
             if (!conclusion.hasSubExpressionwithoutDNs(premises[i].getPremise())){
