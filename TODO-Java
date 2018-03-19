@@ -4,6 +4,11 @@ Add licences for:
     apache commons lang
     apache commons collections
 
-Feature implimentations & bug fixes:
+Feature implementations & bug fixes:
 Text copy/paste
 add bug report emails
+add equivalence rules
+add predicate logic rules
+generalize <->, +, *?
+rename (equals,hasSubExpression,toLogicString)FullPower?
+Do we actually want things to use the FullPower and/or withoutDNs functions (equals,hasSubExpression,toLogicString)?

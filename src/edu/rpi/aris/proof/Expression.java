@@ -190,9 +190,16 @@ public class Expression {
         return false;
     }
 
-    public boolean hasSubExpressionwithoutDNs(Expression exp) {
+    public boolean hasSubExpressionwithoutDNs(Expression exp) throws ExpressionParseException {
         for (Expression e : expressions)
             if (e.equalswithoutDNs(exp))
+                return true;
+        return false;
+    }
+
+    public boolean hasSubExpressionFullPower(Expression exp) throws ExpressionParseException {
+        for (Expression e : expressions)
+            if (e.equalsFullPower(exp))
                 return true;
         return false;
     }
@@ -224,10 +231,76 @@ public class Expression {
     }
 
     public Expression negate() throws ExpressionParseException {
-        return new Expression(new Expression[]{this}, Operator.NOT, this.parent, parentVariables);
+        return new Expression(new Expression[]{this}, Operator.NOT, parent, parentVariables);
     }
 
-    public Expression withoutDNs() {
+    //equals with commutativity for all and associativity for generalized premises
+    public boolean equalsFullPower(Expression expr) throws ExpressionParseException {
+        if ((operator == expr.operator) && (getNumExpressions() == expr.getNumExpressions())) {
+            if (operator == null) {
+                return this.equalswithoutDNs(expr);
+            } else if (operator.isType(Operator.Type.GENERALIZABLE)) {
+                ArrayList<Expression> expressions = new ArrayList<>();
+                for (Expression subExpr: getExpressions()) {
+                    expressions.add(subExpr);
+                }
+                for (Expression subExpr: getExpressions()) {
+                    boolean found = false;
+                    for (int i = 0; i < expressions.size(); ++i) {
+                        if (subExpr.equalsFullPower(expressions.get(i))) {
+                            expressions.remove(i);
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        return false;
+                    }
+                }
+                return true;
+            } else {
+                boolean ret = true;
+                for (int i = 0; i < getNumExpressions(); ++i) {
+                    ret = (ret && getExpressions()[i].equalsFullPower(expr.getExpressions()[i]));
+                }
+                return ret;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    //recursively removes double negations
+    public Expression withoutDNs() throws ExpressionParseException {
+        if (operator == Operator.NOT) {
+            Expression expr = expressions[0];
+            if (expr.operator == Operator.NOT) {
+                return expr.expressions[0].withoutDNs();
+            } else {
+                if (expr.getNumExpressions() > 0) {
+                    Expression subExprs[] = new Expression[expr.getNumExpressions()];
+                    for (int i = 0; i < expr.getNumExpressions(); ++i) {
+                        subExprs[i] = expr.getExpressions()[i].withoutDNs();
+                    }
+                    return new Expression(new Expression[]{new Expression(subExprs, expr.operator, expr.parent, expr.parentVariables)}, Operator.NOT, parent, parentVariables);
+                } else {
+                    return new Expression(new Expression[]{expr}, Operator.NOT, parent, parentVariables);
+                }
+            }
+        }
+        if (getNumExpressions() > 0) {
+            Expression subExprs[] = new Expression[getNumExpressions()];
+            for (int i = 0; i < getNumExpressions(); ++i) {
+                subExprs[i] = getExpressions()[i].withoutDNs();
+            }
+            return new Expression(subExprs, operator, parent, parentVariables);
+        } else {
+            return this;
+        }
+    }
+
+    //non-recursive implementation
+    /*public Expression withoutDNs() {
         if (operator == Operator.NOT) {
             Expression expr = expressions[0];
             if (expr.operator == Operator.NOT) {
@@ -235,12 +308,13 @@ public class Expression {
             }
         }
         return this;
-    }
+    }*/
 
-    public boolean equalswithoutDNs(Expression expr) {
+    //equals with outermost double negations removed from both sides
+    public boolean equalswithoutDNs(Expression expr) throws ExpressionParseException {
         return this.withoutDNs().equals(expr.withoutDNs());
     }
-    public String toLogicStringwithoutDNs() {
+    public String toLogicStringwithoutDNs() throws ExpressionParseException {
         return this.withoutDNs().toLogicString();
     }
 

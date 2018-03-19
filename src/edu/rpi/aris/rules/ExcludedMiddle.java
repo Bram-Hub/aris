@@ -66,8 +66,8 @@ public class ExcludedMiddle  extends Rule {
         }
         Expression expressions[] = conclusion.getExpressions();
         try {
-            if (!expressions[0].negate().equalswithoutDNs(expressions[1])) {
-                return "\"" + expressions[0].toLogicStringwithoutDNs() + "\" is not the negation of \"" + expressions[1].toLogicStringwithoutDNs() + "\"";
+            if (!expressions[0].negate().equals(expressions[1])) {
+                return "\"" + expressions[0].toLogicString() + "\" is not the negation of \"" + expressions[1].toLogicString() + "\"";
             }
         }
         catch(ParseException e) {
