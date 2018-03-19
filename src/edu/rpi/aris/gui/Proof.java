@@ -24,7 +24,7 @@ public class Proof {
     private SimpleIntegerProperty numPremises = new SimpleIntegerProperty();
 
     public Proof() {
-        authors.add(ConfigurationManager.getConfigManager().getUserId());
+        authors.add(ConfigurationManager.getConfigManager().username.get());
         numLines.bind(Bindings.size(lines));
     }
 

@@ -2,9 +2,13 @@ package edu.rpi.aris.gui;
 
 import edu.rpi.aris.rules.RuleList;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.input.KeyEvent;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,15 +26,15 @@ public class ConfigurationManager {
     private static final HashMap<String, String> KEY_MAP = new HashMap<>();
     private static final String[][] defaultKeyMap = new String[][]{{"&", "∧"}, {"|", "∨"}, {"!", "≠"}, {"~", "¬"}, {"$", "→"}, {"%", "↔"}, {"^", "⊥"}, {"@", "∀"}, {"#", "∃"}, {"*", "×"}};
     private static final ConfigurationManager configManager;
+    private static final Logger logger = LogManager.getLogger(ConfigurationManager.class);
 
     static {
         for (String[] s : defaultKeyMap)
             KEY_MAP.put(s[0], s[1]);
         configManager = new ConfigurationManager();
         if (!CONFIG_DIR.exists()) {
-            if (!CONFIG_DIR.mkdirs()) {
-                //TODO: error
-            }
+            if (!CONFIG_DIR.mkdirs())
+                logger.error("Failed to create configuration directory");
             Path path = CONFIG_DIR.toPath();
             try {
                 Object hidden = Files.getAttribute(path, "dos:hidden", LinkOption.NOFOLLOW_LINKS);
@@ -44,6 +48,8 @@ public class ConfigurationManager {
 
     public final SimpleBooleanProperty hideRulesPanel = new SimpleBooleanProperty(false);
     public final SimpleBooleanProperty hideOperatorsPanel = new SimpleBooleanProperty(false);
+    public final SimpleStringProperty username = new SimpleStringProperty(null);
+    public final SimpleIntegerProperty selectedCourseId = new SimpleIntegerProperty(0);
     public final SimpleObjectProperty<KeyCombination> newProofLineKey = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+A"));
     public final SimpleObjectProperty<KeyCombination> deleteProofLineKey = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+D"));
     public final SimpleObjectProperty<KeyCombination> newPremiseKey = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+R"));
@@ -62,7 +68,7 @@ public class ConfigurationManager {
     public final SimpleObjectProperty<KeyCombination> cutKey = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+X"));
     public final SimpleObjectProperty<KeyCombination> pasteKey = new SimpleObjectProperty<>(KeyCombination.keyCombination("Ctrl+V"));
     private File saveDirectory = new File(System.getProperty("user.home"));
-    private String userId = "default";
+    private String accessToken = null;
     private SimpleObjectProperty[] accelerators = new SimpleObjectProperty[]{newProofLineKey, deleteProofLineKey,
             startSubProofKey, endSubProofKey, newPremiseKey, verifyLineKey, addGoalKey, verifyProofKey, newProofKey,
             openProofKey, saveProofKey, saveAsProofKey, undoKey, redoKey, copyKey, cutKey, pasteKey};
@@ -95,6 +101,8 @@ public class ConfigurationManager {
     }
 
     public File getSaveDirectory() {
+        if (!saveDirectory.exists())
+            saveDirectory = new File(System.getProperty("user.home"));
         return saveDirectory;
     }
 
@@ -104,12 +112,12 @@ public class ConfigurationManager {
         saveDirectory = file;
     }
 
-    public String getUserId() {
-        return userId;
+    public synchronized String getAccessToken() {
+        return accessToken;
     }
 
-    public void setUserId(String userId) {
-        this.userId = userId;
+    public synchronized void setAccessToken(String token) {
+        accessToken = token;
     }
 
 }

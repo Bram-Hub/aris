@@ -2,7 +2,17 @@ package edu.rpi.aris.net.client;
 
 import edu.rpi.aris.Main;
 import edu.rpi.aris.gui.ConfigurationManager;
-import edu.rpi.aris.net.MessageReceivedListener;
+import edu.rpi.aris.net.NetUtil;
+import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
+import javafx.beans.property.SimpleObjectProperty;
+import javafx.geometry.Insets;
+import javafx.scene.Node;
+import javafx.scene.control.*;
+import javafx.scene.layout.GridPane;
+import javafx.util.Pair;
+import org.apache.commons.lang3.tuple.ImmutableTriple;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.asn1.x500.RDN;
@@ -26,6 +36,8 @@ import javax.security.auth.x500.X500Principal;
 import java.io.*;
 import java.math.BigInteger;
 import java.net.InetAddress;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.security.*;
 import java.security.cert.CertPathBuilderException;
 import java.security.cert.CertificateException;
@@ -33,6 +45,9 @@ import java.security.cert.X509Certificate;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Enumeration;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Client {
 
@@ -47,23 +62,20 @@ public class Client {
         System.setProperty("jdk.tls.ephemeralDHKeySize", "4096");
     }
 
+    private ReentrantLock connectionLock = new ReentrantLock(true);
     private SSLSocketFactory socketFactory = null;
     private SSLSocket socket;
-    private String serverAddress;
-    private int port;
+    private String serverAddress = null;
+    private int port = 0;
     private DataInputStream in;
     private DataOutputStream out;
     private String errorString = null;
     private ConnectionStatus connectionStatus = ConnectionStatus.DISCONNECTED;
-    private MessageReceivedListener messageListener;
-    private boolean ping = false;
+    private SimpleObjectProperty<ConnectionStatus> connectionStatusProperty = new SimpleObjectProperty<>(connectionStatus);
     private boolean allowInsecure;
 
-    public Client(String domainName, int port, boolean allowInsecure, MessageReceivedListener messageListener) {
-        serverAddress = domainName;
-        this.port = port;
+    public Client(boolean allowInsecure) {
         this.allowInsecure = allowInsecure;
-        this.messageListener = messageListener;
         if (allowInsecure) {
             logger.warn("WARNING! The allow-insecure flag has been set. This allows the client to connect to potentially insecure servers and is not recommended");
             logger.warn("Please consider removing this flag and instead importing the self-signed certificates for any servers you wish to connect to");
@@ -187,9 +199,25 @@ public class Client {
         return socketFactory;
     }
 
-    private synchronized void setupConnection() throws IOException {
-        connectionStatus = ConnectionStatus.CONNECTING;
+    private void setConnectionStatus(ConnectionStatus status) {
+        connectionStatus = status;
+        Platform.runLater(() -> connectionStatusProperty.set(status));
+    }
+
+    public synchronized void setServer(String serverAddress, int port) {
+        disconnect();
+        this.serverAddress = serverAddress;
+        this.port = port;
+    }
+
+    private synchronized void setupConnection(String user, String pass, boolean isAccessToken) throws IOException {
+        if (serverAddress == null)
+            throw new IOException("Server address not specified");
+        if (port <= 0 || port > 65535)
+            throw new IOException("Invalid port specified");
+        setConnectionStatus(ConnectionStatus.CONNECTING);
         socket = (SSLSocket) getSocketFactory().createSocket(serverAddress, port);
+        socket.setSoTimeout(NetUtil.SOCKET_TIMEOUT);
         socket.addHandshakeCompletedListener(listener -> {
             try {
                 X509Certificate cert = (X509Certificate) listener.getPeerCertificates()[0];
@@ -202,14 +230,14 @@ public class Client {
             } catch (SSLPeerUnverifiedException | CertificateException e) {
                 logger.error("An error occurred while attempting to validate server's certificate", e);
                 errorString = e.getMessage();
-                connectionStatus = ConnectionStatus.ERROR;
+                setConnectionStatus(ConnectionStatus.ERROR);
             }
             synchronized (Client.this) {
                 Client.this.notify();
             }
         });
         try {
-            connectionStatus = ConnectionStatus.HANDSHAKING;
+            setConnectionStatus(ConnectionStatus.HANDSHAKING);
             socket.startHandshake();
             synchronized (this) {
                 try {
@@ -222,9 +250,9 @@ public class Client {
             logger.error("SSL Handshake failed", e);
             Throwable cause = e.getCause();
             if (cause instanceof ValidatorException) {
-                connectionStatus = ConnectionStatus.CERTIFICATE_WARNING;
+                setConnectionStatus(ConnectionStatus.CERTIFICATE_WARNING);
             } else {
-                connectionStatus = ConnectionStatus.ERROR;
+                setConnectionStatus(ConnectionStatus.ERROR);
                 errorString = e.getMessage();
             }
         }
@@ -232,7 +260,7 @@ public class Client {
             case ERROR:
                 socket.close();
                 socket = null;
-                connectionStatus = ConnectionStatus.DISCONNECTED;
+                setConnectionStatus(ConnectionStatus.DISCONNECTED);
                 throw new IOException(errorString);
             case CERTIFICATE_WARNING:
                 if (showCertWarning()) {
@@ -240,92 +268,226 @@ public class Client {
                 }
                 socket.close();
                 socket = null;
-                connectionStatus = ConnectionStatus.DISCONNECTED;
+                setConnectionStatus(ConnectionStatus.DISCONNECTED);
                 if (socketFactory == null)
-                    setupConnection();
+                    setupConnection(user, pass, isAccessToken);
                 else
                     throw new IOException("Failed to verify remote server");
                 break;
             case HANDSHAKING:
                 in = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
                 out = new DataOutputStream(socket.getOutputStream());
-                connectionStatus = ConnectionStatus.CONNECTED;
+                setConnectionStatus(ConnectionStatus.CONNECTED);
+                doAuth(user, pass, isAccessToken);
                 System.out.println("Connected");
-                new Thread(this::messageWatch).start();
                 break;
             default:
                 socket.close();
                 socket = null;
-                connectionStatus = ConnectionStatus.DISCONNECTED;
+                setConnectionStatus(ConnectionStatus.DISCONNECTED);
                 throw new IOException("Client socket is in an unexpected state");
         }
     }
 
-    public synchronized void connect() throws IOException {
-        if (!ping()) {
-            disconnect();
-            setupConnection();
+    private void doAuth(String user, String pass, boolean isAccessToken) throws IOException {
+        sendMessage(NetUtil.ARIS_NAME + " " + Main.VERSION);
+        String version = in.readUTF();
+        if (version.equals(NetUtil.INVALID_VERSION))
+            throw new IOException("Invalid client version");
+        String[] versionSplit = version.split(" ");
+        if (versionSplit.length != 2 || !versionSplit[0].equals(NetUtil.ARIS_NAME))
+            throw new IOException("Invalid server version: " + version);
+        sendMessage(NetUtil.VERSION_OK);
+        sendMessage(NetUtil.AUTH + "|" + (isAccessToken ? NetUtil.AUTH_ACCESS_TOKEN : NetUtil.AUTH_PASS) + "|" + URLEncoder.encode(user, "UTF-8") + "|" + URLEncoder.encode(pass, "UTF-8"));
+        String res = in.readUTF();
+        switch (res) {
+            case NetUtil.AUTH_BAN:
+                throw new IOException("Authentication failed. Your ip address has been temporarily banned");
+            case NetUtil.AUTH_FAIL:
+                if (isAccessToken)
+                    throw new IOException(NetUtil.AUTH_FAIL);
+                else
+                    throw new IOException("Invalid credentials");
+            case NetUtil.AUTH_ERR:
+                throw new IOException("The server encountered an error while attempting to authenticate this connection");
+            default:
+                if (res.startsWith(NetUtil.AUTH_OK)) {
+                    String accessToken = res.replaceFirst(NetUtil.AUTH_OK + " ", "");
+                    ConfigurationManager.getConfigManager().setAccessToken(URLDecoder.decode(accessToken, "UTF-8"));
+                    Platform.runLater(() -> ConfigurationManager.getConfigManager().username.set(user));
+                } else
+                    throw new IOException(res);
         }
+    }
+
+    public void connect() throws IOException {
+        connectionLock.lock();
+        try {
+            if (!ping()) {
+                disconnect();
+                Triple<String, String, Boolean> credentials = getCredentials();
+                boolean isAccessToken = credentials.getRight();
+                try {
+                    setupConnection(credentials.getLeft(), credentials.getMiddle(), credentials.getRight());
+                } catch (IOException e) {
+                    if (isAccessToken && e.getMessage().equals(NetUtil.AUTH_FAIL)) {
+                        ConfigurationManager.getConfigManager().setAccessToken(null);
+                        connect();
+                        if (connectionLock.isHeldByCurrentThread())
+                            connectionLock.unlock();
+                    }
+                }
+            }
+        } catch (IOException e) {
+            disconnect();
+            throw e;
+        }
+    }
+
+    private Triple<String, String, Boolean> getCredentials() throws IOException {
+        String user = ConfigurationManager.getConfigManager().username.get();
+        String pass = ConfigurationManager.getConfigManager().getAccessToken();
+        boolean isAccessToken = user != null && pass != null;
+        if (!isAccessToken) {
+            ConfigurationManager.getConfigManager().username.set(null);
+            switch (Main.getMode()) {
+                case GUI:
+                    final AtomicReference<Optional<Pair<String, String>>> result = new AtomicReference<>(null);
+                    Platform.runLater(() -> {
+                        Dialog<Pair<String, String>> dialog = new Dialog<>();
+                        dialog.setTitle("Login");
+                        dialog.setHeaderText("Login to " + serverAddress);
+                        ButtonType loginButtonType = new ButtonType("Login", ButtonBar.ButtonData.OK_DONE);
+                        dialog.getDialogPane().getButtonTypes().addAll(loginButtonType, ButtonType.CANCEL);
+                        GridPane grid = new GridPane();
+                        grid.setVgap(10);
+                        grid.setHgap(10);
+                        grid.setPadding(new Insets(20));
+                        TextField username = new TextField();
+                        username.setPromptText("Username");
+                        PasswordField password = new PasswordField();
+                        password.setPromptText("Password");
+                        grid.add(new Label("Username:"), 0, 0);
+                        grid.add(username, 1, 0);
+                        grid.add(new Label("Password:"), 0, 1);
+                        grid.add(password, 1, 1);
+                        Node loginButton = dialog.getDialogPane().lookupButton(loginButtonType);
+                        loginButton.disableProperty().bind(Bindings.or(Bindings.length(username.textProperty()).isEqualTo(0), Bindings.length(password.textProperty()).isEqualTo(0)));
+                        dialog.getDialogPane().setContent(grid);
+                        dialog.setResultConverter(buttonType -> new Pair<>(username.getText(), password.getText()));
+                        username.requestFocus();
+                        result.set(dialog.showAndWait());
+                        synchronized (result) {
+                            result.notify();
+                        }
+                    });
+                    synchronized (result) {
+                        try {
+                            result.wait();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    if (result.get() != null && result.get().isPresent()) {
+                        user = result.get().get().getKey();
+                        pass = result.get().get().getValue();
+                    } else
+                        throw new IOException("CANCEL");
+                    break;
+                case CMD:
+                    System.out.print("Please enter username: ");
+                    user = Main.readLine();
+                    System.out.print("Please enter password: ");
+                    char[] passChar = Main.readPassword();
+                    pass = new String(passChar);
+                    break;
+                case SERVER:
+                    logger.error("Client attempted to be used in server mode. This shouldn't happen");
+                    throw new IOException("Client attempted to be used in server mode. This shouldn't happen");
+            }
+        }
+        return new ImmutableTriple<>(user, pass, isAccessToken);
     }
 
     public synchronized void disconnect() {
         try {
-            if (in != null)
-                in.close();
-            if (out != null)
-                out.close();
-        } catch (IOException e) {
-            logger.error("Failed to close stream", e);
+            try {
+                if (in != null)
+                    in.close();
+                if (out != null)
+                    out.close();
+            } catch (IOException e) {
+                logger.error("Failed to close stream", e);
+            }
+            try {
+                if (socket != null)
+                    socket.close();
+            } catch (IOException e) {
+                logger.error("Failed to close socket", e);
+            }
+        } finally {
+            in = null;
+            out = null;
+            socket = null;
+            setConnectionStatus(ConnectionStatus.DISCONNECTED);
+            if (connectionLock.isHeldByCurrentThread())
+                connectionLock.unlock();
         }
-        try {
-            if (socket != null)
-                socket.close();
-        } catch (IOException e) {
-            logger.error("Failed to close socket", e);
-        }
-        socket = null;
     }
 
     public synchronized boolean ping() throws IOException {
         if (socket != null) {
-            ping = false;
             out.writeUTF("PING");
             out.flush();
-            synchronized (this) {
-                try {
-                    wait(5000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+            try {
+                return in.readUTF().equals("PONG");
+            } catch (IOException ignored) {
             }
-            return ping;
         }
         return false;
     }
 
     public synchronized void sendMessage(String msg) throws IOException {
         if (connectionStatus == ConnectionStatus.CONNECTED && socket != null && out != null) {
-            out.writeUTF(msg);
-            out.flush();
+            try {
+                out.writeUTF(msg);
+                out.flush();
+            } catch (IOException e) {
+                disconnect();
+                throw e;
+            }
         } else
             throw new IOException("Not connected to server");
     }
 
-    @SuppressWarnings("InfiniteLoopStatement")
-    private void messageWatch() {
+    public synchronized String readMessage() throws IOException {
         try {
-            while (true) {
-                String message = in.readUTF();
-                if (message.equals("PONG")) {
-                    ping = true;
-                    synchronized (this) {
-                        notify();
-                    }
-                } else
-                    messageListener.messageReceived(message);
-            }
+            return in.readUTF();
         } catch (IOException e) {
             disconnect();
+            throw e;
+        }
+    }
+
+    public synchronized void sendData(byte[] data) throws IOException {
+        if (connectionStatus == ConnectionStatus.CONNECTED && socket != null && out != null) {
+            try {
+                out.write(data);
+                out.flush();
+            } catch (IOException e) {
+                disconnect();
+                throw e;
+            }
+        } else
+            throw new IOException("Not connected to server");
+    }
+
+    public synchronized boolean readData(byte[] data) throws IOException {
+        try {
+            return in.read(data) == data.length;
+        } catch (IOException e) {
+            disconnect();
+            throw e;
         }
     }
 
@@ -348,6 +510,10 @@ public class Client {
         return false;
     }
 
+    public SimpleObjectProperty<ConnectionStatus> getConnectionStatusProperty() {
+        return connectionStatusProperty;
+    }
+
     public enum ConnectionStatus {
         DISCONNECTED,
         CONNECTING,
@@ -361,7 +527,7 @@ public class Client {
 
         private X509TrustManager manager, managerSS;
 
-        public CustomTrustManager() throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException {
+        CustomTrustManager() throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException {
             if (SERVER_KEYSTORE_FILE.exists()) {
                 KeyStore ks = KeyStore.getInstance("JKS");
                 ks.load(null);

@@ -2,6 +2,7 @@ package edu.rpi.aris.net.server;
 
 import edu.rpi.aris.Main;
 import edu.rpi.aris.net.NetUtil;
+import javafx.util.Pair;
 import org.apache.commons.collections.map.PassiveExpiringMap;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
@@ -18,7 +19,6 @@ import java.security.SecureRandom;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.text.SimpleDateFormat;
 import java.util.Base64;
 import java.util.Calendar;
 import java.util.Date;
@@ -27,13 +27,10 @@ import java.util.concurrent.TimeUnit;
 
 public class ClientHandler implements Runnable {
 
-    private static final int SOCKET_TIMEOUT = 15000;
-
     private static final Logger logger = LogManager.getLogger(ClientHandler.class);
 
     private static final SecureRandom random = new SecureRandom();
     private final SSLSocket socket;
-    private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private DatabaseManager dbManager;
     private String clientName, clientVersion;
     private DataInputStream in;
@@ -61,7 +58,7 @@ public class ClientHandler implements Runnable {
             logger.info("[" + clientName + "] Incoming connection from " + socket.getInetAddress().toString());
             socket.setUseClientMode(false);
             socket.setNeedClientAuth(false);
-            socket.setSoTimeout(SOCKET_TIMEOUT);
+            socket.setSoTimeout(NetUtil.SOCKET_TIMEOUT);
             socket.addHandshakeCompletedListener(handshakeCompletedEvent -> {
                 logger.info("[" + clientName + "] Handshake complete");
                 synchronized (socket) {
@@ -89,16 +86,18 @@ public class ClientHandler implements Runnable {
             clientVersion = in.readUTF();
             logger.info("[" + clientName + "] Version: " + clientVersion);
             if (!checkVersion()) {
-                sendMessage("INVALID VERSION");
+                sendMessage(NetUtil.INVALID_VERSION);
                 return;
             } else
                 sendMessage(NetUtil.ARIS_NAME + " " + Main.VERSION);
             String versionVerify = in.readUTF();
-            if (!versionVerify.equals("VERSION OK"))
+            if (!versionVerify.equals(NetUtil.VERSION_OK))
                 return;
             logger.info("[" + clientName + "] Waiting for client auth");
-            if (!verifyAuth())
+            if (!verifyAuth()) {
+                logger.info("[" + clientName + "] Auth failed");
                 return;
+            }
             logger.info("[" + clientName + "] Auth complete");
             messageWatch();
         } catch (Throwable e) {
@@ -149,12 +148,12 @@ public class ClientHandler implements Runnable {
                 if (hash.equals(savedHash)) {
                     String access_token = generateAccessToken();
                     digest.update(Base64.getDecoder().decode(salt));
-                    String hashed = Base64.getEncoder().encodeToString(digest.digest(Base64.getDecoder().decode(access_token)));
-                    PreparedStatement updateAccessToken = dbManager.getStatement("UPDATE username SET access_token = ? WHERE username = ?;");
+                    String hashed = Base64.getEncoder().encodeToString(digest.digest(access_token.getBytes()));
+                    PreparedStatement updateAccessToken = dbManager.getStatement("UPDATE user SET access_token = ? WHERE username = ?;");
                     updateAccessToken.setString(1, hashed);
                     updateAccessToken.setString(2, username);
                     updateAccessToken.execute();
-                    sendMessage(NetUtil.AUTH_OK + " " + access_token);
+                    sendMessage(NetUtil.AUTH_OK + " " + URLEncoder.encode(access_token, "UTF-8"));
                     return true;
                 } else {
                     if (auth[1].equals(NetUtil.AUTH_PASS)) {
@@ -206,15 +205,15 @@ public class ClientHandler implements Runnable {
     }
 
     private void messageWatch() {
-        //noinspection InfiniteLoopStatement
-        while (true) {
-            try {
+        try {
+            //noinspection InfiniteLoopStatement
+            while (true) {
                 String msg = in.readUTF();
                 logger.info("[" + clientName + "] Request: " + msg);
                 try {
                     switch (msg) {
-                        case NetUtil.GET_USER_TYPE:
-                            getUserType();
+                        case NetUtil.GET_USER_INFO:
+                            getUserInfo();
                             break;
                         case NetUtil.GET_ASSIGNMENTS:
                             getAssignments();
@@ -274,72 +273,87 @@ public class ClientHandler implements Runnable {
                     logger.error("SQL Error", e);
                     sendMessage(NetUtil.ERROR);
                 }
-            } catch (IOException ignored) {
-                // ignored so we don't print an exception whenever client disconnects
-            } catch (Throwable e) {
-                logger.error("Unexpected error occurred", e);
             }
+        } catch (IOException ignored) {
+            // ignored so we don't print an exception whenever client disconnects
+        } catch (Throwable e) {
+            logger.error("Unexpected error occurred", e);
         }
     }
 
-    private void getUserType() throws SQLException {
+    private void getUserInfo() throws SQLException, UnsupportedEncodingException {
         PreparedStatement statement = dbManager.getStatement("SELECT user_type FROM user WHERE username = ?;");
         statement.setString(1, username);
         if (statement.execute()) {
             ResultSet rs = statement.getResultSet();
             if (rs.next())
-                sendMessage(NetUtil.GET_USER_TYPE + " " + rs.getString(1));
+                sendMessage(rs.getString(1));
             else
                 sendMessage(NetUtil.ERROR);
         } else {
             sendMessage(NetUtil.ERROR);
         }
+        statement = dbManager.getStatement("SELECT c.id, c.name FROM class c, user u, user_class uc WHERE u.id = uc.user_id AND c.id = uc.class_id AND u.id = ?");
+        statement.setInt(1, userId);
+        ResultSet rs;
+        if (statement.execute() && (rs = statement.getResultSet()) != null) {
+            while (rs.next())
+                sendMessage(rs.getInt(1) + "|" + URLEncoder.encode(rs.getString(2), "UTF-8"));
+            sendMessage(NetUtil.DONE);
+        } else
+            sendMessage(NetUtil.ERROR);
     }
 
-    private void getAssignments() throws SQLException, UnsupportedEncodingException {
-        PreparedStatement statement = dbManager.getStatement("SELECT c.name, a.name, a.due_date, a.assigned_by, c.id, a.id FROM assignment a, user u, class c, user_class uc WHERE uc.user_id = u.id AND uc.class_id = c.id AND a.class_id = uc.class_id AND u.username = ? ORDER BY c.id, a.due_date;");
+    private void getAssignments() throws SQLException, IOException {
+        String idStr = in.readUTF();
+        int id;
+        try {
+            id = Integer.parseInt(idStr);
+        } catch (NumberFormatException e) {
+            sendMessage(NetUtil.ERROR);
+            return;
+        }
+        PreparedStatement statement = dbManager.getStatement("SELECT a.name, a.due_date, u2.username, a.id FROM assignment a, user u, user u2, class c, user_class uc WHERE uc.user_id = u.id AND uc.class_id = c.id AND a.class_id = uc.class_id AND a.assigned_by = u2.id AND u.username = ? AND c.id = ? ORDER BY a.due_date;");
         statement.setString(1, username);
+        statement.setInt(2, id);
         if (statement.execute()) {
             ResultSet rs = statement.getResultSet();
             while (rs.next()) {
-                String className = URLEncoder.encode(rs.getString(1), "UTF-8");
-                String assignmentName = URLEncoder.encode(rs.getString(2), "UTF-8");
-                String dueDate = URLEncoder.encode(rs.getString(3), "UTF-8");
-                String assignedBy = URLEncoder.encode(rs.getString(4), "UTF-8");
-                int classId = rs.getInt(5);
-                int assignmentId = rs.getInt(6);
-                sendMessage(className + "|" + assignmentName + "|" + dueDate + "|" + assignedBy + "|" + classId + "|" + assignmentId);
+                String assignmentName = URLEncoder.encode(rs.getString(1), "UTF-8");
+                String dueDate = URLEncoder.encode(rs.getString(2), "UTF-8");
+                String assignedBy = URLEncoder.encode(rs.getString(3), "UTF-8");
+                int assignmentId = rs.getInt(4);
+                sendMessage(assignmentName + "|" + dueDate + "|" + assignedBy + "|" + assignmentId);
             }
         }
-        sendMessage("DONE");
+        sendMessage(NetUtil.DONE);
     }
 
     private void getProofs() throws SQLException, IOException {
+        String[] assignmentData = in.readUTF().split("\\|");
+        if (assignmentData.length != 2)
+            return;
+        int cid, aid;
         try {
-            String[] assignmentData = in.readUTF().split("\\|");
-            if (assignmentData.length != 2)
-                return;
-            int cid, aid;
-            try {
-                cid = Integer.parseInt(assignmentData[0]);
-                aid = Integer.parseInt(assignmentData[1]);
-            } catch (NumberFormatException e) {
-                return;
-            }
-            PreparedStatement statement = dbManager.getStatement("SELECT p.id, p.name FROM proof p, assignment a WHERE a.proof_id = p.id AND a.id = ? AND a.class_id = ?;");
-            statement.setInt(1, aid);
-            statement.setInt(2, cid);
-            if (statement.execute()) {
-                ResultSet rs = statement.getResultSet();
-                while (rs.next()) {
-                    int id = rs.getInt(1);
-                    String name = URLEncoder.encode(rs.getString(2), "UTF-8");
-                    sendMessage(id + "|" + name);
-                }
-            }
-        } finally {
-            sendMessage("DONE");
+            cid = Integer.parseInt(assignmentData[0]);
+            aid = Integer.parseInt(assignmentData[1]);
+        } catch (NumberFormatException e) {
+            sendMessage(NetUtil.ERROR);
+            return;
         }
+        PreparedStatement statement = dbManager.getStatement("SELECT p.id, p.name, p.created_by FROM proof p, assignment a WHERE a.proof_id = p.id AND a.id = ? AND a.class_id = ?;");
+        statement.setInt(1, aid);
+        statement.setInt(2, cid);
+        if (statement.execute()) {
+            ResultSet rs = statement.getResultSet();
+            while (rs.next()) {
+                int id = rs.getInt(1);
+                String name = URLEncoder.encode(rs.getString(2), "UTF-8");
+                String createdBy = URLEncoder.encode(rs.getString(3), "UTF-8");
+                sendMessage(id + "|" + name + "|" + createdBy);
+            }
+        }
+        sendMessage(NetUtil.DONE);
     }
 
     private void getSubmissions() throws IOException, SQLException {
@@ -373,7 +387,7 @@ public class ClientHandler implements Runnable {
                 }
             }
         } finally {
-            sendMessage("DONE");
+            sendMessage(NetUtil.DONE);
         }
     }
 
@@ -483,7 +497,7 @@ public class ClientHandler implements Runnable {
             return;
         }
         String name = URLDecoder.decode(assignmentData[2], "UTF-8");
-        String date = dateFormat.format(new Date(time));
+        String date = NetUtil.DATE_FORMAT.format(new Date(time));
         PreparedStatement select = dbManager.getStatement("SELECT id FROM assignment ORDER BY id DESC LIMIT 1;");
         int id = 0;
         ResultSet rs;
@@ -609,7 +623,7 @@ public class ClientHandler implements Runnable {
                     return;
                 }
                 PreparedStatement statement1 = dbManager.getStatement("UPDATE assignment SET due_date = ? WHERE id = ? AND class_id = ?;");
-                statement1.setString(1, dateFormat.format(new Date(time)));
+                statement1.setString(1, NetUtil.DATE_FORMAT.format(new Date(time)));
                 statement1.setInt(2, aid);
                 statement1.setInt(3, cid);
                 statement1.execute();
@@ -747,21 +761,17 @@ public class ClientHandler implements Runnable {
         count.setString(1, username);
         ResultSet rs;
         if (count.execute() && (rs = count.getResultSet()).next() && rs.getInt(1) > 0) {
-            sendMessage("EXISTS");
+            sendMessage(NetUtil.USER_EXISTS);
             return;
         }
-        byte[] saltBytes = new byte[16];
-        random.nextBytes(saltBytes);
-        String salt = Base64.getEncoder().encodeToString(saltBytes);
-        digest.update(saltBytes);
-        String hash = Base64.getEncoder().encodeToString(digest.digest(password.getBytes()));
-        PreparedStatement statement = dbManager.getStatement("INSERT INTO user VALUES(NULL ? ? ? ? NULL);");
-        statement.setString(1, username);
-        statement.setString(2, userType);
-        statement.setString(3, salt);
-        statement.setString(4, hash);
-        statement.execute();
-        sendMessage(NetUtil.OK);
+        Pair<String, String> res = dbManager.createUser(username, password, userType);
+        if (res.getValue().equals(NetUtil.OK)) {
+            if (!res.getKey().equals(password))
+                sendMessage(NetUtil.OK + " " + URLEncoder.encode(res.getKey(), "UTF-8"));
+            else
+                sendMessage(NetUtil.OK);
+        } else
+            sendMessage(res.getValue());
     }
 
     private void deleteUser() throws IOException, SQLException {
@@ -795,39 +805,21 @@ public class ClientHandler implements Runnable {
             sendMessage(NetUtil.INVALID);
             return;
         }
-        int id;
-        try {
-            id = Integer.parseInt(userData[0]);
-        } catch (NumberFormatException e) {
-            sendMessage(NetUtil.ERROR);
-            return;
-        }
-        if (id != userId && !userType.equals(NetUtil.USER_INSTRUCTOR)) {
+        String username = userData[0];
+        if (!username.equals(this.username) && !userType.equals(NetUtil.USER_INSTRUCTOR)) {
             sendMessage(NetUtil.UNAUTHORIZED);
             return;
         }
         String newPass = URLDecoder.decode(userData[1], "UTF-8");
         String type = URLDecoder.decode(userData[2], "UTF-8");
-        PreparedStatement update = dbManager.getStatement("UPDATE user SET user_type = ? WHERE id = ?;");
+        PreparedStatement update = dbManager.getStatement("UPDATE user SET user_type = ? WHERE username = ?;");
         update.setString(1, type);
-        update.setInt(2, id);
+        update.setString(2, username);
         update.execute();
         if (newPass != null && newPass.length() > 0) {
-            PreparedStatement select = dbManager.getStatement("SELECT salt FROM user WHERE id = ?;");
-            select.setInt(1, id);
-            String salt = null;
-            ResultSet rs;
-            if (select.execute() && (rs = select.getResultSet()).next())
-                salt = rs.getString(1);
-            if (salt != null) {
-                digest.update(Base64.getDecoder().decode(salt));
-                String hash = Base64.getEncoder().encodeToString(digest.digest(newPass.getBytes()));
-                update = dbManager.getStatement("UPDATE user SET password_hash = ? WHERE id = ?;");
-                update.setString(1, hash);
-                update.setInt(2, id);
-                update.execute();
-            } else {
-                sendMessage(NetUtil.ERROR);
+            Pair<String, String> res = dbManager.setPassword(username, newPass);
+            if (!res.getValue().equals(NetUtil.OK)) {
+                sendMessage(res.getValue());
                 return;
             }
         }
@@ -855,7 +847,7 @@ public class ClientHandler implements Runnable {
         insert.setInt(1, userId);
         insert.setInt(2, id);
         insert.execute();
-        sendMessage(NetUtil.OK);
+        sendMessage(NetUtil.OK + " " + id);
     }
 
     private void deleteClass() throws IOException, SQLException {
@@ -875,6 +867,12 @@ public class ClientHandler implements Runnable {
         statement.setInt(1, id);
         statement.execute();
         statement = dbManager.getStatement("DELETE FROM user_class WHERE class_id = ?;");
+        statement.setInt(1, id);
+        statement.execute();
+        statement = dbManager.getStatement("DELETE FROM assignment WHERE class_id = ?;");
+        statement.setInt(1, id);
+        statement.execute();
+        statement = dbManager.getStatement("DELETE FROM submission WHERE class_id = ?;");
         statement.setInt(1, id);
         statement.execute();
         sendMessage(NetUtil.OK);

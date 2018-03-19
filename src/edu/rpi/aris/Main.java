@@ -1,6 +1,8 @@
 package edu.rpi.aris;
 
 import edu.rpi.aris.gui.Aris;
+import edu.rpi.aris.gui.ConfigurationManager;
+import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
 import edu.rpi.aris.net.server.Server;
 import javafx.application.Platform;
@@ -12,33 +14,48 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.stage.Modality;
 import org.apache.commons.cli.*;
+import org.apache.commons.io.monitor.FileAlterationListener;
+import org.apache.commons.io.monitor.FileAlterationListenerAdaptor;
+import org.apache.commons.io.monitor.FileAlterationMonitor;
+import org.apache.commons.io.monitor.FileAlterationObserver;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.*;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.sql.SQLException;
 
 public class Main implements Thread.UncaughtExceptionHandler {
 
     public static final Main instance = new Main();
-
-    public static final BufferedReader SYSTEM_IN = new BufferedReader(new InputStreamReader(System.in));
     public static final String VERSION = "0.1";
     public static final String NAME = "Aris";
+    private static final File clientLockFile = new File(ConfigurationManager.CONFIG_DIR, ".client.lock");
+    private static final File serverLockFile = new File(ConfigurationManager.CONFIG_DIR, ".server.lock");
+    private static final File clientIpcFile = new File(ConfigurationManager.CONFIG_DIR, ".client.ipc");
+    private static final File serverIpcFile = new File(ConfigurationManager.CONFIG_DIR, ".server.ipc");
+    private static File lockFile, ipcFile;
+    private static BufferedReader SYSTEM_IN = null;
     private static CommandLine cmd;
     private static Mode MODE = Mode.CMD;
+    private static Client client;
+    private static Server server;
+    private static Logger logger = LogManager.getLogger(Main.class);
+    private static FileLock lock, ipcLock;
+    private static FileChannel lockFileChannel;
 
     static {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
-                SYSTEM_IN.close();
+                if (SYSTEM_IN != null)
+                    SYSTEM_IN.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }));
     }
-
-    private Logger logger = LogManager.getLogger(Main.class);
 
     public static void main(String[] args) throws IOException {
         Thread.setDefaultUncaughtExceptionHandler(instance);
@@ -49,6 +66,20 @@ public class Main implements Thread.UncaughtExceptionHandler {
             System.exit(1);
         }
         MODE = cmd.hasOption("server") ? Mode.SERVER : Mode.GUI;
+        lockFile = MODE == Mode.SERVER ? serverLockFile : clientLockFile;
+        ipcFile = MODE == Mode.SERVER ? serverIpcFile : clientIpcFile;
+        if (!tryLock()) {
+            logger.info("Program already running");
+            logger.info("Sending message to running program");
+            //TODO
+            if (MODE == Mode.SERVER && cmd.hasOption("add-user") && cmd.hasOption("password")) {
+                sendIpcMessage("add-user " + cmd.getOptionValue("add-user") + " " + cmd.getOptionValue("password"));
+            }
+            return;
+        }
+        Runtime.getRuntime().addShutdownHook(new Thread(Main::unlockFile));
+        startIpcWatch();
+        setAllowInsecure(cmd.hasOption("allow-insecure"));
         if (MODE != Mode.SERVER) {
             if (cmd.hasOption("add-cert")) {
                 String filename = cmd.getOptionValue("add-cert");
@@ -70,8 +101,104 @@ public class Main implements Thread.UncaughtExceptionHandler {
                 File caFile = ca == null ? null : new File(ca);
                 File keyFile = key == null ? null : new File(key);
                 System.out.println("Creating server");
-                new Server(9000, caFile, keyFile).run();
+                server = new Server(9000, caFile, keyFile);
+                server.run();
                 break;
+        }
+    }
+
+    private static void startIpcWatch() throws IOException {
+        //noinspection ResultOfMethodCallIgnored
+        ipcFile.createNewFile();
+        FileAlterationObserver observer = new FileAlterationObserver(ConfigurationManager.CONFIG_DIR);
+        FileAlterationMonitor monitor = new FileAlterationMonitor(1000);
+        FileAlterationListener listener = new FileAlterationListenerAdaptor() {
+            @Override
+            public void onFileChange(File file) {
+                if (file.getName().equals(ipcFile.getName())) {
+                    try {
+                        RandomAccessFile raf = new RandomAccessFile(ipcFile, "rw");
+                        if (raf.length() == 0)
+                            return;
+                        FileChannel channel = raf.getChannel();
+                        ipcLock = channel.lock();
+                        String line;
+                        while ((line = raf.readLine()) != null) {
+                            //TODO
+                            String[] args = line.split(" ");
+                            if (MODE == Mode.SERVER && args.length == 3 && args[0].equals("add-user")) {
+                                try {
+                                    server.addUser(args[1], args[2], NetUtil.USER_INSTRUCTOR);
+                                } catch (SQLException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                            System.out.println(line);
+                        }
+                        raf.setLength(0);
+                        ipcLock.release();
+                        channel.close();
+                        raf.close();
+                    } catch (IOException e) {
+                        logger.error("Error when monitoring for file alteration", e);
+                    }
+                }
+            }
+
+        };
+        observer.addListener(listener);
+        monitor.addObserver(observer);
+        monitor.setThreadFactory(runnable -> {
+            Thread t = new Thread(runnable);
+            t.setDaemon(true);
+            return t;
+        });
+        try {
+            monitor.start();
+        } catch (Exception e) {
+            logger.error("Failed to start ipc file monitor", e);
+        }
+    }
+
+    private static void sendIpcMessage(String msg) throws IOException {
+        PrintWriter writer = null;
+        try {
+            FileOutputStream fos = new FileOutputStream(ipcFile, true);
+            ipcLock = fos.getChannel().lock();
+            writer = new PrintWriter(fos, true);
+            writer.println(msg);
+        } finally {
+            ipcLock.release();
+            if (writer != null)
+                writer.close();
+        }
+    }
+
+    private static boolean tryLock() {
+        try {
+            lockFileChannel = new RandomAccessFile(lockFile, "rw").getChannel();
+            lock = lockFileChannel.tryLock();
+            if (lock == null) {
+                lockFileChannel.close();
+                return false;
+            }
+        } catch (Throwable e) {
+            return false;
+        }
+        return true;
+    }
+
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    private static void unlockFile() {
+        if (lock != null) {
+            try {
+                lock.release();
+                lockFileChannel.close();
+                lockFile.delete();
+                ipcFile.delete();
+            } catch (IOException e) {
+                logger.error("Failed to unlock file", e);
+            }
         }
     }
 
@@ -87,6 +214,8 @@ public class Main implements Thread.UncaughtExceptionHandler {
         options.addOption("h", "help", false, "Displays this help screen");
         options.addOption(null, "allow-insecure", false, "Allows aris to connect to servers using self signed certificates (WARNING! Doing this is not recommended as it allows the connection to be intercepted)");
         options.addOption(null, "add-cert", true, "Adds the given X509 encoded certificate to the client's trusted certificate store");
+        options.addOption(null, "add-user", true, "Adds the given user to the database as an instructor");
+        options.addOption(null, "password", true, "Sets the password for the given user");
         CommandLineParser parser = new DefaultParser();
         cmd = parser.parse(options, args);
         if (cmd.hasOption("help")) {
@@ -94,6 +223,41 @@ public class Main implements Thread.UncaughtExceptionHandler {
             helpFormatter.printHelp("java -jar aris.jar [options]", options);
             System.exit(0);
         }
+    }
+
+    public static synchronized Client getClient() {
+        return client;
+    }
+
+    public static synchronized void setAllowInsecure(boolean allowInsecure) {
+        if (client != null)
+            client.disconnect();
+        client = new Client(allowInsecure);
+    }
+
+    private static BufferedReader getSystemIn() {
+        if (SYSTEM_IN == null)
+            SYSTEM_IN = new BufferedReader(new InputStreamReader(System.in));
+        return SYSTEM_IN;
+    }
+
+    public static String readLine() {
+        if (System.console() == null) {
+            try {
+                return getSystemIn().readLine();
+            } catch (IOException e) {
+                return "";
+            }
+        } else {
+            return System.console().readLine();
+        }
+    }
+
+    public static char[] readPassword() {
+        if (System.console() == null)
+            return readLine().toCharArray();
+        else
+            return System.console().readPassword();
     }
 
     public void showExceptionError(Thread t, Throwable e, boolean fatal) {

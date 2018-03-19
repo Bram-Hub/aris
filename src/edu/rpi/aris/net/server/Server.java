@@ -45,8 +45,10 @@ public class Server implements Runnable {
     private static final File SELF_SIGNED_CERT = new File(ConfigurationManager.CONFIG_DIR, "self-signed-cert.pem");
 
     static {
-        Security.addProvider(new BouncyCastleProvider());
-        Security.addProvider(new BouncyCastleJsseProvider());
+        if (Security.getProvider("BC") == null)
+            Security.addProvider(new BouncyCastleProvider());
+        if (Security.getProvider("BCJSSE") == null)
+            Security.addProvider(new BouncyCastleJsseProvider());
         System.setProperty("jdk.tls.ephemeralDHKeySize", "4096");
     }
 
@@ -239,4 +241,7 @@ public class Server implements Runnable {
         return null;
     }
 
+    public void addUser(String username, String pass, String userType) throws SQLException {
+        dbManager.createUser(username, pass, userType);
+    }
 }

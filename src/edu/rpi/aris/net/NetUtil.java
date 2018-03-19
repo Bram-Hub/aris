@@ -1,5 +1,7 @@
 package edu.rpi.aris.net;
 
+import java.text.SimpleDateFormat;
+
 public class NetUtil {
 
     public static final String ARIS_NAME = "Aris-Java";
@@ -12,7 +14,7 @@ public class NetUtil {
     public static final String AUTH_PASS = "PASS";
     public static final String AUTH_ACCESS_TOKEN = "TOKEN";
 
-    public static final String GET_USER_TYPE = "GET_USER_TYPE";
+    public static final String GET_USER_INFO = "GET_USER_INFO";
     public static final String GET_ASSIGNMENTS = "GET_ASSIGNMENTS";
     public static final String GET_PROOFS = "GET_PROOFS";
     public static final String LIST_SUBMISSIONS = "LIST_SUBMISSION";
@@ -39,6 +41,13 @@ public class NetUtil {
     public static final String ERROR = "ERROR";
     public static final String OK = "OK";
     public static final String INVALID = "INVALID";
+
+    public static final String INVALID_VERSION = "INVALID VERSION";
+    public static final String VERSION_OK = "VERSION OK";
+    public static final String DONE = "DONE";
+    public static final String USER_EXISTS = "EXISTS";
+    public static final int SOCKET_TIMEOUT = 15000;
+    public static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     /**
      * Compares two version strings.

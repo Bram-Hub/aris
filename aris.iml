@@ -20,7 +20,6 @@
       </library>
     </orderEntry>
     <orderEntry type="library" name="org.apache.logging.log4j:log4j-core:2.10.0" level="project" />
-    <orderEntry type="library" name="commons-lang:commons-lang:2.6" level="project" />
     <orderEntry type="library" name="commons-collections:commons-collections:4.0-SNAPSHOT" level="project" />
     <orderEntry type="library" name="commons-io:commons-io:2.6" level="project" />
     <orderEntry type="library" name="org.bouncycastle:bcprov-jdk15on:1.59" level="project" />
@@ -28,5 +27,7 @@
     <orderEntry type="library" name="commons-cli:commons-cli:1.4" level="project" />
     <orderEntry type="library" name="org.bouncycastle:bctls-jdk15on:1.59" level="project" />
     <orderEntry type="library" name="org.xerial:sqlite-jdbc:3.21.0.1" level="project" />
+    <orderEntry type="library" name="org.apache.commons:commons-lang3:3.7" level="project" />
+    <orderEntry type="library" name="commons-lang:commons-lang:2.6" level="project" />
   </component>
 </module>

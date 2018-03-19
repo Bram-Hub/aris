@@ -7,10 +7,10 @@ import java.io.IOException;
 public class ClientTest {
 
     public static void main(String[] args) throws IOException {
-        Client client = new Client("k0d3r.me", 9000, false, System.out::println);
+        Client client = new Client(false);
         client.connect();
         String line;
-        while ((line = Main.SYSTEM_IN.readLine()) != null) {
+        while ((line = Main.readLine()) != null) {
             if (line.equalsIgnoreCase("ping")) {
                 if (client.ping()) {
                     System.out.println("Pong received");

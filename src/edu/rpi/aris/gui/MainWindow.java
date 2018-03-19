@@ -4,6 +4,7 @@ import edu.rpi.aris.gui.event.GoalChangedEvent;
 import edu.rpi.aris.gui.event.LineChangedEvent;
 import edu.rpi.aris.gui.event.PremiseChangeEvent;
 import edu.rpi.aris.gui.event.RuleChangeEvent;
+import edu.rpi.aris.gui.submit.AssignmentWindow;
 import edu.rpi.aris.proof.SaveManager;
 import edu.rpi.aris.rules.Rule;
 import javafx.beans.binding.Bindings;
@@ -76,6 +77,7 @@ public class MainWindow {
         this.primaryStage = primaryStage;
         this.proof = proof;
         primaryStage.setTitle("ARIS");
+        primaryStage.setOnHidden(windowEvent -> System.gc());
         fontObjectProperty = new SimpleObjectProperty<>(new Font(14));
         rulesManager = new RulesManager();
         rulesManager.addRuleSelectionHandler(ruleSelectEvent -> {
@@ -176,6 +178,7 @@ public class MainWindow {
         Menu file = new Menu("File");
         Menu edit = new Menu("Edit");
         Menu proof = new Menu("Proof");
+        Menu submit = new Menu("Submit");
         Menu help = new Menu("Help");
 
         // File menu items
@@ -273,6 +276,14 @@ public class MainWindow {
 
         proof.getItems().addAll(addLine, deleteLine, startSubProof, endSubProof, newPremise, addGoal, verifyLine, verifyProof);
 
+        // Submit menu items
+
+        MenuItem showAssignments = new MenuItem("Show assignments window");
+
+        showAssignments.setOnAction(actionEvent -> AssignmentWindow.instance.show());
+
+        submit.getItems().addAll(showAssignments);
+
         // Help menu items
 
         MenuItem checkUpdate = new MenuItem("Check for updates");
@@ -281,7 +292,7 @@ public class MainWindow {
 
         help.getItems().addAll(checkUpdate, helpItem, about);
 
-        bar.getMenus().addAll(file, edit, proof, help);
+        bar.getMenus().addAll(file, edit, proof, submit, help);
 
         return bar;
     }
@@ -441,7 +452,7 @@ public class MainWindow {
     }
 
     @FXML
-    public void initialize() {
+    private void initialize() {
         scrollPane.getContent().boundsInLocalProperty().addListener((observableValue, oldBounds, newBounds) -> {
             if (oldBounds.getHeight() != newBounds.getHeight() && selectedLine.get() >= 0)
                 autoScroll(newBounds);

@@ -261,7 +261,7 @@ public class SaveManager {
                     System.out.println("The given file \"" + name + "\" was written by " + program.getTextContent() + " version " + version.getTextContent());
                     System.out.println("Aris may still be able to read this file with varying success");
                     System.out.println("Would you like to attempt to load this file? (Y/n)");
-                    String response = Main.SYSTEM_IN.readLine();
+                    String response = Main.readLine();
                     if (response.equalsIgnoreCase("n") || response.equalsIgnoreCase("no"))
                         return null;
                     break;
@@ -301,7 +301,7 @@ public class SaveManager {
                             System.out.println("If this file successfully loads the author will be marked as UNKNOWN");
                             System.out.println("This will show up if this file is submitted and may affect your grade");
                             System.out.println("Press enter to confirm");
-                            Main.SYSTEM_IN.readLine();
+                            Main.readLine();
                             break;
                         case SERVER:
                             System.out.println("File integrity check failed for " + name);
