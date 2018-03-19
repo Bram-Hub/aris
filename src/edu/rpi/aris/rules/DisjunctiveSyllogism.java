@@ -72,11 +72,11 @@ public class DisjunctiveSyllogism extends Rule {
                 if (found < 0) {
                     found = i;
                 } else {
-                    return "The premises \"" + premise.toLogicStringwithoutDNs() + "\" and \"" + premises[found].getPremise().toLogicStringwithoutDNs() + "\" are both disjunctions, however only 1 disjunction premise is allowed";
+                    return "The premises \"" + premise.toLogicString() + "\" and \"" + premises[found].getPremise().toLogicString() + "\" are both disjunctions, however only 1 disjunction premise is allowed";
                 }
             } else {
-                if (!premiseSet.add(premise.withoutDNs())) {
-                    return "The statement \"" + premise.toLogicStringwithoutDNs() + "\" appears as a premise twice, please remove 1 of the references";
+                if (!premiseSet.add(premise)) {//if using special equals function make sure premiseSet is using the same comparison
+                    return "The statement \"" + premise.toLogicString() + "\" appears as a premise twice, please remove 1 of the references";
                 }
             }
         }
@@ -89,9 +89,9 @@ public class DisjunctiveSyllogism extends Rule {
         try {
             for (Expression disjunct: premiseDisjuncts) {
                 boolean works = false;
-                if (!conclusion.hasSubExpressionwithoutDNs(disjunct) && !conclusion.equalswithoutDNs(disjunct)) {
+                if (!conclusion.hasSubExpression(disjunct) && !conclusion.equals(disjunct)) {
                     for (Expression premise: premiseSet) {
-                        if (premise.negate().equalswithoutDNs(disjunct)) {
+                        if (premise.negate().equals(disjunct)) {
                             premiseSetUsed.remove(premise);
                             works = true;
                             break;
@@ -101,15 +101,15 @@ public class DisjunctiveSyllogism extends Rule {
                     works = true;
                 }
                 if (!works) {
-                    return "\"" + disjunct.toLogicStringwithoutDNs() + "\" is not a disjunct in the conclusion and the negation of it does not appear as a premise";
+                    return "\"" + disjunct.toLogicString() + "\" is not a disjunct in the conclusion and the negation of it does not appear as a premise";
                 }
             }
             if (premiseSetUsed.size() == 1) {
-                return "\"" + premiseSetUsed.iterator().next().toLogicStringwithoutDNs() + "\" is not a disjunct in the premise that is a disjunction";
+                return "\"" + premiseSetUsed.iterator().next().toLogicString() + "\" is not a disjunct in the premise that is a disjunction";
             } else if (premiseSetUsed.size() > 0) {
                 String ret = "The premises {";
                 for (Expression expr: premiseSetUsed) {
-                    ret += "\"" + expr.toLogicStringwithoutDNs() + "\", ";
+                    ret += "\"" + expr.toLogicString() + "\", ";
                 }
                 ret = ret.substring(0, ret.length()-2);
                 ret += "} are not disjuncts in the premise that is a disjunction";

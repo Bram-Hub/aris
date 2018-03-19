@@ -61,13 +61,13 @@ public class Simplification extends Rule {
         if (premise.getOperator() != Operator.AND) {
             return "The premise is not a conjunction";
         }
-        if (!premise.hasSubExpressionwithoutDNs(conclusion)) {
+        if (!premise.hasSubExpression(conclusion)) {
             if (conclusion.getOperator() != Operator.AND) {
                 return "The Conclusion is not a conjunct in the premise";
             }
             for (Expression e : conclusion.getExpressions()) {
-                if (!premise.hasSubExpressionwithoutDNs(e)) {
-                    return "The Conclusion is not a conjunct in the premise and contains \""+ e.toLogicStringwithoutDNs() + "\" which is not present in the premise";
+                if (!premise.hasSubExpression(e)) {
+                    return "The Conclusion is not a conjunct in the premise and contains \""+ e.toLogicString() + "\" which is not present in the premise";
                 }
             }
         }

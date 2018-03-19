@@ -65,17 +65,17 @@ public class ConstructiveDilemma extends Rule {
         for (int i = 0; i < premises.length; ++i) {
             Expression premise = premises[i].getPremise();
             if (premise.getOperator() == Operator.CONDITIONAL) {
-                if (!premiseSet.add(premise.withoutDNs())) {
-                    return "The statement \"" + premise.toLogicStringwithoutDNs() + "\" appears as a premise twice, please remove 1 of the references";
+                if (!premiseSet.add(premise)) { //if using special equals function make sure premiseSet is using the same comparison
+                    return "The statement \"" + premise.toLogicString() + "\" appears as a premise twice, please remove 1 of the references";
                 }
             } else if (premise.getOperator() == Operator.OR) {
                 if (found < 0) {
                     found = i;
                 } else {
-                    return "The premises \"" + premise.toLogicStringwithoutDNs() + "\" and \"" + premises[found].getPremise().toLogicStringwithoutDNs() + "\" are both disjunctions, however only 1 disjunction premise is allowed";
+                    return "The premises \"" + premise.toLogicString() + "\" and \"" + premises[found].getPremise().toLogicString() + "\" are both disjunctions, however only 1 disjunction premise is allowed";
                 }
             } else {
-                return "The premise \"" + premise.toLogicStringwithoutDNs() + "\" is not an implication or a disjunction";
+                return "The premise \"" + premise.toLogicString() + "\" is not an implication or a disjunction";
             }
         }
         if (found < 0) {
@@ -91,46 +91,46 @@ public class ConstructiveDilemma extends Rule {
         for (Expression disjunct: premiseDisjuncts) {
             Expression works = null;
             for (Expression premise: premiseSet) {
-                if (disjunct.equalswithoutDNs(premise.getExpressions()[0])) {
+                if (disjunct.equals(premise.getExpressions()[0])) {
                     premiseSetUsed.remove(premise);
-                    if (conclusion.hasSubExpressionwithoutDNs(premise.getExpressions()[1])) {
+                    if (conclusion.hasSubExpression(premise.getExpressions()[1])) {
                         conclusionList.remove(premise.getExpressions()[1]);
                         if (works == null) {
                             works = premise;
                         }
                         else {
-                            return "The premises \"" + premise.toLogicStringwithoutDNs() + "\" and \"" + works.toLogicStringwithoutDNs() + "\" both match the pattern \"" + disjunct.toLogicStringwithoutDNs() + " → _\", however only 1 premise is allowed to match that pattern";
+                            return "The premises \"" + premise.toLogicString() + "\" and \"" + works.toLogicString() + "\" both match the pattern \"" + disjunct.toLogicString() + " → _\", however only 1 premise is allowed to match that pattern";
                         }
                     } else {
-                        return "For the premise \"" + premise.toLogicStringwithoutDNs() + "\" the consequent is not a disjunct in the conclusion despite the antecedent being in the premise that is a disjunction";
+                        return "For the premise \"" + premise.toLogicString() + "\" the consequent is not a disjunct in the conclusion despite the antecedent being in the premise that is a disjunction";
                     }
                 }
             }
             if (works == null) {
-                if (conclusion.hasSubExpressionwithoutDNs(disjunct)) {
+                if (conclusion.hasSubExpression(disjunct)) {
                     conclusionList.remove(disjunct);
                 } else {
-                    return "\"" + disjunct.toLogicStringwithoutDNs() + "\" does not appear as the antecedent in any premise and is not carried over as a disjunct in the conclusion";
+                    return "\"" + disjunct.toLogicString() + "\" does not appear as the antecedent in any premise and is not carried over as a disjunct in the conclusion";
                 }
             }
         }
         if (premiseSetUsed.size() == 1) {
-            return "For the premise \"" + premiseSetUsed.iterator().next().toLogicStringwithoutDNs() + "\" the antecedent is not a disjunct in the premise that is a disjunction or the consequent does not appear in the conclusion";
+            return "For the premise \"" + premiseSetUsed.iterator().next().toLogicString() + "\" the antecedent is not a disjunct in the premise that is a disjunction or the consequent does not appear in the conclusion";
         } else if (premiseSetUsed.size() > 0) {
             String ret = "For the premises {";
             for (Expression expr: premiseSetUsed) {
-                ret += "\"" + expr.toLogicStringwithoutDNs() + "\", ";
+                ret += "\"" + expr.toLogicString() + "\", ";
             }
             ret = ret.substring(0, ret.length()-2);
             ret += "} the antecedent is not a disjunct in the premise that is a disjunction or the consequent does not appear in the conclusion";
             return ret;
         }
         if (conclusionList.size() == 1) {
-            return "The disjunct in the conclusion \"" + conclusionList.get(0).toLogicStringwithoutDNs() + "\" is either a duplicate or is not a disjunct in the premise that is a disjunction and is not the consequent of a premise whose antecedent is in the premise that is a disjunction";
+            return "The disjunct in the conclusion \"" + conclusionList.get(0).toLogicString() + "\" is either a duplicate or is not a disjunct in the premise that is a disjunction and is not the consequent of a premise whose antecedent is in the premise that is a disjunction";
         } else if (conclusionList.size() > 0) {
             String ret = "These disjuncts in the conclusion {";
             for (Expression expr: conclusionList) {
-                ret += "\"" + expr.toLogicStringwithoutDNs() + "\", ";
+                ret += "\"" + expr.toLogicString() + "\", ";
             }
             ret = ret.substring(0, ret.length()-2);
             ret += "} are either duplicates or are not disjuncts in the premise that is a disjunction and are not the consequents of a premise whose antecedent is in the premise that is a disjunction";

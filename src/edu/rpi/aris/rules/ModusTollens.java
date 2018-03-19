@@ -66,21 +66,21 @@ public class ModusTollens extends Rule {
                 return "Neither of the premises are a conditional";
             }
             else if (p1.getOperator() == Operator.CONDITIONAL) {
-                if (!p1.getExpressions()[1].negate().equalswithoutDNs(p2) || !p1.getExpressions()[0].negate().equalswithoutDNs(conclusion)) {
+                if (!p1.getExpressions()[1].negate().equals(p2) || !p1.getExpressions()[0].negate().equals(conclusion)) {
                     if (p2.getOperator() == Operator.CONDITIONAL) {
-                        if (!p2.getExpressions()[1].negate().equalswithoutDNs(p1) || !p2.getExpressions()[0].negate().equalswithoutDNs(conclusion)) {
+                        if (!p2.getExpressions()[1].negate().equals(p1) || !p2.getExpressions()[0].negate().equals(conclusion)) {
                             //generic error message
                             return "Invalid application of Modus Tollens";
                         }
                     } else {//specifc to p1 as conditional
-                        return "\"" + p1.toLogicStringwithoutDNs() + "\" is not the same as \"(" + conclusion.negate().toLogicStringwithoutDNs() + " → " + p2.negate().toLogicStringwithoutDNs() + ")\"";
+                        return "\"" + p1.toLogicString() + "\" is not the same as \"(" + conclusion.negate().toLogicString() + " → " + p2.negate().toLogicString() + ")\"";
                     }
                 }
             }
             if (p2.getOperator() == Operator.CONDITIONAL) {
-                if (!p2.getExpressions()[1].negate().equalswithoutDNs(p1) || !p2.getExpressions()[0].negate().equalswithoutDNs(conclusion)) {
+                if (!p2.getExpressions()[1].negate().equals(p1) || !p2.getExpressions()[0].negate().equals(conclusion)) {
                     //specifc to p2 as conditional
-                    return "\"" + p2.toLogicStringwithoutDNs() + "\" is not the same as \"(" + conclusion.negate().toLogicStringwithoutDNs() + " → " + p1.negate().toLogicStringwithoutDNs() + ")\"";
+                    return "\"" + p2.toLogicString() + "\" is not the same as \"(" + conclusion.negate().toLogicString() + " → " + p1.negate().toLogicString() + ")\"";
                 }
             }
         } catch (ParseException e) {

@@ -70,17 +70,17 @@ public class Addition extends Rule {
     protected String verifyClaim(Expression conclusion, Premise[] premises) {
         Expression premise = premises[0].getPremise();
         if (conclusion.getOperator() != Operator.OR) {
-            if (conclusion.equalswithoutDNs(premise)) {//reiteration
+            if (conclusion.equals(premise)) {//reiteration
                 return null;
             } else {
                 return "The conclusion is not a disjunction and is not a reiteration of the premise";
             }
         }
-        if (!conclusion.hasSubExpressionwithoutDNs(premise)) {
+        if (!conclusion.hasSubExpression(premise)) {
             if (premise.getOperator() == Operator.OR) {
                 for (Expression disjunct: premise.getExpressions()) {
-                    if (!conclusion.hasSubExpressionwithoutDNs(disjunct)) {
-                        return "disjunct \"" + disjunct + "\" in the premise is not a disjunct in the conlusion";
+                    if (!conclusion.hasSubExpression(disjunct)) {
+                        return "disjunct \"" + disjunct.toLogicString() + "\" in the premise is not a disjunct in the conlusion";
                     }
                 }
             } else {

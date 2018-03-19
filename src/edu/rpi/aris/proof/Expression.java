@@ -190,14 +190,14 @@ public class Expression {
         return false;
     }
 
-    public boolean hasSubExpressionwithoutDNs(Expression exp) {
+    public boolean hasSubExpressionwithoutDNs(Expression exp) throws ExpressionParseException {
         for (Expression e : expressions)
             if (e.equalswithoutDNs(exp))
                 return true;
         return false;
     }
 
-    public boolean hasSubExpressionFullPower(Expression exp) {
+    public boolean hasSubExpressionFullPower(Expression exp) throws ExpressionParseException {
         for (Expression e : expressions)
             if (e.equalsFullPower(exp))
                 return true;
@@ -235,7 +235,7 @@ public class Expression {
     }
 
     //equals with commutativity for all and associativity for generalized premises
-    public boolean equalsFullPower(Expression expr) {
+    public boolean equalsFullPower(Expression expr) throws ExpressionParseException {
         if ((operator == expr.operator) && (getNumExpressions() == expr.getNumExpressions())) {
             if (operator == null) {
                 return this.equalswithoutDNs(expr);
@@ -270,16 +270,17 @@ public class Expression {
         }
     }
 
-    public Expression withoutDNsRecursive() throws ExpressionParseException {
+    //recursively removes double negations
+    public Expression withoutDNs() throws ExpressionParseException {
         if (operator == Operator.NOT) {
             Expression expr = expressions[0];
             if (expr.operator == Operator.NOT) {
-                return expr.expressions[0].withoutDNsRecursive();
+                return expr.expressions[0].withoutDNs();
             } else {
                 if (expr.getNumExpressions() > 0) {
                     Expression subExprs[] = new Expression[expr.getNumExpressions()];
                     for (int i = 0; i < expr.getNumExpressions(); ++i) {
-                        subExprs[i] = expr.getExpressions()[i].withoutDNsRecursive();
+                        subExprs[i] = expr.getExpressions()[i].withoutDNs();
                     }
                     return new Expression(new Expression[]{new Expression(subExprs, expr.operator, expr.parent, expr.parentVariables)}, Operator.NOT, parent, parentVariables);
                 } else {
@@ -290,7 +291,7 @@ public class Expression {
         if (getNumExpressions() > 0) {
             Expression subExprs[] = new Expression[getNumExpressions()];
             for (int i = 0; i < getNumExpressions(); ++i) {
-                subExprs[i] = getExpressions()[i].withoutDNsRecursive();
+                subExprs[i] = getExpressions()[i].withoutDNs();
             }
             return new Expression(subExprs, operator, parent, parentVariables);
         } else {
@@ -298,7 +299,8 @@ public class Expression {
         }
     }
 
-    public Expression withoutDNs() {
+    //non-recursive implementation
+    /*public Expression withoutDNs() {
         if (operator == Operator.NOT) {
             Expression expr = expressions[0];
             if (expr.operator == Operator.NOT) {
@@ -306,13 +308,13 @@ public class Expression {
             }
         }
         return this;
-    }
+    }*/
 
     //equals with outermost double negations removed from both sides
-    public boolean equalswithoutDNs(Expression expr) {
+    public boolean equalswithoutDNs(Expression expr) throws ExpressionParseException {
         return this.withoutDNs().equals(expr.withoutDNs());
     }
-    public String toLogicStringwithoutDNs() {
+    public String toLogicStringwithoutDNs() throws ExpressionParseException {
         return this.withoutDNs().toLogicString();
     }
 

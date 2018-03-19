@@ -9,6 +9,6 @@ Text copy/paste
 add bug report emails
 add equivalence rules
 add predicate logic rules
-generalize <->, =, !=, +, *?
-rename equalsFullPPower and hasSubExpressionFullPower?
-actually make things use equalsFullPower, hasSubExpressionFullPower, and withoutDNsRecursive?
+generalize <->, +, *?
+rename (equals,hasSubExpression,toLogicString)FullPower?
+Do we actually want things to use the FullPower and/or withoutDNs functions (equals,hasSubExpression,toLogicString)?

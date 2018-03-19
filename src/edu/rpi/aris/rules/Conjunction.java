@@ -56,7 +56,7 @@ public class Conjunction extends Rule {
     protected String verifyClaim(Expression conclusion, Premise[] premises) {
         if (conclusion.getOperator() != Operator.AND) {
             if (premises.length == 1) {
-                if (conclusion.equalswithoutDNs(premises[0].getPremise())) {//reiteration
+                if (conclusion.equals(premises[0].getPremise())) {//reiteration
                     return null;
                 } else {
                     return "There is only 1 premise and the conclusion is not a reiteration of that premise";
@@ -66,19 +66,19 @@ public class Conjunction extends Rule {
             }
         }
         for (int i = 0; i < premises.length; ++i) {
-            if (!conclusion.hasSubExpressionwithoutDNs(premises[i].getPremise())){
-                return "The premise \"" + premises[i].getPremise().toLogicStringwithoutDNs() + "\" is not a conjunct in the conclusion";
+            if (!conclusion.hasSubExpression(premises[i].getPremise())){
+                return "The premise \"" + premises[i].getPremise().toLogicString() + "\" is not a conjunct in the conclusion";
             }
         }
         for (Expression e : conclusion.getExpressions()) {
             boolean found = false;
             for (int i = 0; i < premises.length; ++i) {
-                if (premises[i].getPremise().equalswithoutDNs(e)){
+                if (premises[i].getPremise().equals(e)){
                     found = true;
                 }
             }
             if (!found) {
-                return "The conjunct \"" + e.toLogicStringwithoutDNs() + "\" in the conclusion is not a premise";
+                return "The conjunct \"" + e.toLogicString() + "\" in the conclusion is not a premise";
             }
         }
         return null;
