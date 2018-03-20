@@ -16,6 +16,7 @@ public class NetUtil {
 
     public static final String GET_USER_INFO = "GET_USER_INFO";
     public static final String GET_ASSIGNMENTS = "GET_ASSIGNMENTS";
+    public static final String GET_ASSIGNMENT_DETAIL = "GET_ASSIGNMENT_DETAIL";
     public static final String GET_PROOFS = "GET_PROOFS";
     public static final String LIST_SUBMISSIONS = "LIST_SUBMISSION";
     public static final String GET_SUBMISSION = "GET_SUBMISSION";
@@ -46,6 +47,13 @@ public class NetUtil {
     public static final String VERSION_OK = "VERSION OK";
     public static final String DONE = "DONE";
     public static final String USER_EXISTS = "EXISTS";
+
+    public static final String STATUS_GRADING = "Grading";
+    public static final String STATUS_CORRECT = "Correct";
+    public static final String STATUS_INCORRECT = "Incorrect";
+    public static final String STATUS_ERROR = "Grading Error. Please Resubmit";
+    public static final String STATUS_NO_SUBMISSION = "No Submissions";
+
     public static final int SOCKET_TIMEOUT = 15000;
     public static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 

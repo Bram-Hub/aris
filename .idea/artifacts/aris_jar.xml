@@ -5,16 +5,18 @@
       <element id="archive" name="aris.jar">
         <element id="module-output" name="aris" />
       </element>
-      <element id="library" level="project" name="org.apache.commons:commons-lang3:3.7" />
-      <element id="library" level="project" name="commons-io:commons-io:2.6" />
-      <element id="library" level="project" name="commons-cli:commons-cli:1.4" />
-      <element id="library" level="project" name="org.bouncycastle:bcprov-jdk15on:1.59" />
-      <element id="library" level="project" name="commons-lang:commons-lang:2.6" />
-      <element id="library" level="project" name="commons-collections:commons-collections:4.0-SNAPSHOT" />
-      <element id="library" level="project" name="org.apache.logging.log4j:log4j-core:2.10.0" />
-      <element id="library" level="project" name="org.bouncycastle:bcpkix-jdk15on:1.59" />
-      <element id="library" level="project" name="org.bouncycastle:bctls-jdk15on:1.59" />
-      <element id="library" level="project" name="org.xerial:sqlite-jdbc:3.21.0.1" />
+      <element id="directory" name="lib">
+        <element id="library" level="project" name="org.apache.logging.log4j:log4j-core:2.10.0" />
+        <element id="library" level="project" name="commons-cli:commons-cli:1.4" />
+        <element id="library" level="project" name="commons-collections:commons-collections:4.0-SNAPSHOT" />
+        <element id="library" level="project" name="commons-io:commons-io:2.6" />
+        <element id="library" level="project" name="commons-lang:commons-lang:2.6" />
+        <element id="library" level="project" name="org.apache.commons:commons-lang3:3.7" />
+        <element id="library" level="project" name="org.bouncycastle:bcpkix-jdk15on:1.59" />
+        <element id="library" level="project" name="org.bouncycastle:bcprov-jdk15on:1.59" />
+        <element id="library" level="project" name="org.bouncycastle:bctls-jdk15on:1.59" />
+        <element id="library" level="project" name="org.xerial:sqlite-jdbc:3.21.0.1" />
+      </element>
     </root>
   </artifact>
 </component>

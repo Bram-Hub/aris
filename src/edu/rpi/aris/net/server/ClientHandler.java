@@ -19,10 +19,7 @@ import java.security.SecureRandom;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Base64;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashSet;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class ClientHandler implements Runnable {
@@ -218,6 +215,9 @@ public class ClientHandler implements Runnable {
                         case NetUtil.GET_ASSIGNMENTS:
                             getAssignments();
                             break;
+                        case NetUtil.GET_ASSIGNMENT_DETAIL:
+                            getAssignmentDetail();
+                            break;
                         case NetUtil.GET_PROOFS:
                             getProofs();
                             break;
@@ -329,10 +329,55 @@ public class ClientHandler implements Runnable {
         sendMessage(NetUtil.DONE);
     }
 
+    private void getAssignmentDetail() throws IOException, SQLException {
+        String[] idData = in.readUTF().split("\\|");
+        if (idData.length != 2) {
+            sendMessage(NetUtil.INVALID);
+            return;
+        }
+        int cid, aid;
+        try {
+            cid = Integer.parseInt(idData[0]);
+            aid = Integer.parseInt(idData[1]);
+        } catch (NumberFormatException e) {
+            sendMessage(NetUtil.ERROR);
+            return;
+        }
+        PreparedStatement assignments = dbManager.getStatement("SELECT p.id, p.name FROM assignment a, proof p WHERE a.class_id = ? AND a.id = ? AND a.proof_id = p.id;");
+        assignments.setInt(1, cid);
+        assignments.setInt(2, aid);
+        if (!assignments.execute()) {
+            sendMessage(NetUtil.ERROR);
+            return;
+        }
+        ArrayList<String> messages = new ArrayList<>();
+        ResultSet rs = assignments.getResultSet();
+        while (rs.next())
+            messages.add(rs.getInt(1) + "|" + URLEncoder.encode(rs.getString(2), "UTF-8"));
+        sendMessage(String.valueOf(messages.size()));
+        messages.forEach(this::sendMessage);
+        messages.clear();
+        PreparedStatement submissions = dbManager.getStatement("SELECT id, proof_id, time, status FROM submission WHERE class_id = ? AND assignment_id = ? AND user_id = ? ORDER BY proof_id, id DESC;");
+        submissions.setInt(1, cid);
+        submissions.setInt(2, aid);
+        submissions.setInt(3, userId);
+        if (!assignments.execute()) {
+            sendMessage(NetUtil.ERROR);
+            return;
+        }
+        rs = submissions.getResultSet();
+        while (rs.next())
+            messages.add(rs.getInt(1) + "|" + rs.getInt(2) + "|" + URLEncoder.encode(rs.getString(3), "UTF-8") + "|" + URLEncoder.encode(rs.getString(4), "UTF-8"));
+        sendMessage(String.valueOf(messages.size()));
+        messages.forEach(this::sendMessage);
+    }
+
     private void getProofs() throws SQLException, IOException {
         String[] assignmentData = in.readUTF().split("\\|");
-        if (assignmentData.length != 2)
+        if (assignmentData.length != 2) {
+            sendMessage(NetUtil.INVALID);
             return;
+        }
         int cid, aid;
         try {
             cid = Integer.parseInt(assignmentData[0]);

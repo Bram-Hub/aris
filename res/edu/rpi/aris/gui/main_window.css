@@ -9,3 +9,4 @@
 .error-range { -fx-text-fill: #0000EE; -fx-font-weight: bold; }
 .error-range:hover { -fx-text-fill: #0000EE; -fx-font-weight: bold; -fx-underline: true; }
 .titled-pane > .title  { -fx-font-weight: bold; }
+.hide-column-header { visibility: hidden; -fx-padding: -1em; }

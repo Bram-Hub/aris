@@ -203,5 +203,7 @@ public class AssignmentWindow {
         stage.hide();
     }
 
-
+    public ClientInfo getClientInfo() {
+        return clientInfo;
+    }
 }

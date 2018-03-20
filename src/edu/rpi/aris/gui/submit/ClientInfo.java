@@ -19,7 +19,7 @@ public class ClientInfo {
     private ObservableList<Course> courses = FXCollections.observableArrayList();
 
     public ClientInfo() {
-        Main.getClient().setServer("wheatley", 9000);
+        Main.getClient().setServer("glados", 9000);
     }
 
     public void load(Runnable runnable, boolean reload) {

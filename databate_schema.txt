@@ -1,4 +1,4 @@
-submission(id, class_id, assignment_id, user_id, proof_id, data, timestamp, status)
+submission(id, class_id, assignment_id, user_id, proof_id, data, time, status)
 assignment(id, class_id, proof_id, name, due_date, assigned_by)
 proof(id, name, data, created_by)
 user(id, username, user_type, salt, password_hash, access_token)
