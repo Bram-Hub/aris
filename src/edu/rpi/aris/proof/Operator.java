@@ -8,14 +8,14 @@ import java.util.HashSet;
 public enum Operator {
 
     NOT("¬", new Type[]{Type.UNARY}),
-    AND("∧", new Type[]{Type.BINARY, Type.GENERALIZABLE}),
-    OR("∨", new Type[]{Type.BINARY, Type.GENERALIZABLE}),
+    AND("∧", new Type[]{Type.BINARY, Type.GENERALIZABLE_LOGIC}),
+    OR("∨", new Type[]{Type.BINARY, Type.GENERALIZABLE_LOGIC}),
     CONDITIONAL("→", new Type[]{Type.BINARY}),
-    BICONDITIONAL("↔", new Type[]{Type.BINARY}),
+    BICONDITIONAL("↔", new Type[]{Type.BINARY, Type.GENERALIZABLE_LOGIC}),
     EQUALS("=", new Type[]{Type.EQUIVALENCE}),
     NOT_EQUALS("≠", new Type[]{Type.EQUIVALENCE}),
-    MULTIPLICATION("*", new Type[]{Type.BINARY, Type.MATH}),
-    ADDITION("+", new Type[]{Type.BINARY, Type.MATH}),
+    MULTIPLICATION("*", new Type[]{Type.BINARY, Type.MATH, Type.GENERALIZABLE_MATH}),
+    ADDITION("+", new Type[]{Type.BINARY, Type.MATH, Type.GENERALIZABLE_MATH}),
     EXISTENTIAL("∃", new Type[]{Type.UNARY, Type.QUANTIFIER}),
     UNIVERSAL("∀", new Type[]{Type.UNARY, Type.QUANTIFIER}),
     ELEMENT_OF("∈", new Type[]{Type.BINARY, Type.SET}),
@@ -70,7 +70,8 @@ public enum Operator {
 
     public enum Type {
         BINARY(false),
-        GENERALIZABLE(false),
+        GENERALIZABLE_LOGIC(false),
+        GENERALIZABLE_MATH(true),
         QUANTIFIER(false),
         EQUIVALENCE(true),
         UNARY(false),

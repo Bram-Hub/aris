@@ -41,7 +41,7 @@ public class Expression {
             init(expressions[0].toString());
         } else if (opr.isType(Operator.Type.UNARY) && expressions.length != 1) {
             throw new IllegalArgumentException("Must give exactly 1 Expression for unary operator");
-        } else if (!opr.isType(Operator.Type.GENERALIZABLE) && !opr.isType(Operator.Type.UNARY) && expressions.length != 2) {
+        } else if (!(opr.isType(Operator.Type.GENERALIZABLE_LOGIC) || opr.isType(Operator.Type.GENERALIZABLE_MATH)) && !opr.isType(Operator.Type.UNARY) && expressions.length != 2) {
             throw new IllegalArgumentException("Cannot create generalized " + opr.name());
         } else {
             init(SentenceUtil.toPolish(expressions, opr.rep));
@@ -109,9 +109,9 @@ public class Expression {
         if (operator != null) {
             if (operator.isType(Operator.Type.UNARY) && strExp.size() != 1)
                 throw new ExpressionParseException("Multiple expressions given for unary operator", errorOffset + oprStr.length() + 1 + strExp.get(0).length() + 1, strExp.get(1).length());
-            else if (!operator.isType(Operator.Type.GENERALIZABLE) && !operator.isType(Operator.Type.UNARY) && strExp.size() != 2)
+            else if (!(operator.isType(Operator.Type.GENERALIZABLE_LOGIC) || operator.isType(Operator.Type.GENERALIZABLE_MATH)) && !operator.isType(Operator.Type.UNARY) && strExp.size() != 2)
                 throw new ExpressionParseException("Cannot create generalized " + operator.name().toLowerCase(), errorOffset + 2, polishRep.length() - errorOffset * 2 - 2);
-            else if (operator.isType(Operator.Type.GENERALIZABLE) && strExp.size() < 2)
+            else if ((operator.isType(Operator.Type.GENERALIZABLE_LOGIC) || operator.isType(Operator.Type.GENERALIZABLE_MATH)) && strExp.size() < 2)
                 throw new ExpressionParseException("Must have at least 2 parameters for operator " + operator.name().toLowerCase(), errorOffset + 2, polishRep.length() - errorOffset * 2 - 2);
         }
     }
@@ -239,12 +239,9 @@ public class Expression {
         if ((operator == expr.operator) && (getNumExpressions() == expr.getNumExpressions())) {
             if (operator == null) {
                 return this.equalswithoutDNs(expr);
-            } else if (operator.isType(Operator.Type.GENERALIZABLE)) {
-                ArrayList<Expression> expressions = new ArrayList<>();
-                for (Expression subExpr: getExpressions()) {
-                    expressions.add(subExpr);
-                }
-                for (Expression subExpr: getExpressions()) {
+            } else if (operator.isType(Operator.Type.GENERALIZABLE_LOGIC) || operator.isType(Operator.Type.GENERALIZABLE_MATH)) {
+                ArrayList<Expression> expressions = new ArrayList<>(Arrays.asList(getExpressions()));
+                for (Expression subExpr : getExpressions()) {
                     boolean found = false;
                     for (int i = 0; i < expressions.size(); ++i) {
                         if (subExpr.equalsFullPower(expressions.get(i))) {

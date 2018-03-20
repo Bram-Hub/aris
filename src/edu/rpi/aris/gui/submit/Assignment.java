@@ -45,7 +45,6 @@ public class Assignment {
         String dateStr = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(this.dueDate));
         titledPane = new TitledPane(name + "\nDue: " + dateStr + "\nAssigned by: " + assignedBy, null);
         Node n = titledPane.lookup("");
-        System.out.println(n.getClass());
         titledPane.expandedProperty().addListener((observableValue, oldVal, newVal) -> {
             if (newVal)
                 load(false);
