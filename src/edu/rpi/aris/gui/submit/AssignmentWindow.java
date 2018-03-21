@@ -32,6 +32,8 @@ public class AssignmentWindow {
     private Button login;
     @FXML
     private ProgressIndicator loading;
+    @FXML
+    private Label lblClass;
 
     private Stage stage;
     private ClientInfo clientInfo;
@@ -80,6 +82,10 @@ public class AssignmentWindow {
                 }), false);
             });
         });
+        classes.visibleProperty().bind(clientInfo.loadedProperty());
+        classes.managedProperty().bind(clientInfo.loadedProperty());
+        lblClass.visibleProperty().bind(clientInfo.loadedProperty());
+        lblClass.managedProperty().bind(clientInfo.loadedProperty());
         login.visibleProperty().bind(Bindings.createBooleanBinding(() -> ConfigurationManager.getConfigManager().username.get() == null, ConfigurationManager.getConfigManager().username));
         login.managedProperty().bind(login.visibleProperty());
         login.setOnAction(actionEvent -> load(true));
@@ -90,7 +96,16 @@ public class AssignmentWindow {
     private MenuBar setupMenu() {
         MenuBar menuBar = new MenuBar();
 
-        Menu file = new Menu("File");
+        Menu account = new Menu("Account");
+
+        MenuItem loginOut = new MenuItem();
+
+        loginOut.setOnAction(actionEvent -> loginOut());
+        loginOut.textProperty().bind(Bindings.createStringBinding(() -> clientInfo.loadedProperty().get() ? "Logout" : "Login", clientInfo.loadedProperty()));
+
+        account.getItems().addAll(loginOut);
+
+        Menu classMenu = new Menu("Class");
 
         MenuItem createClass = new MenuItem("Create Class");
         MenuItem deleteClass = new MenuItem("Delete Class");
@@ -98,14 +113,20 @@ public class AssignmentWindow {
         createClass.setOnAction(actionEvent -> createClass());
         deleteClass.setOnAction(actionEvent -> deleteClass());
 
-        createClass.visibleProperty().bind(clientInfo.isInstructorProperty());
-        deleteClass.visibleProperty().bind(clientInfo.isInstructorProperty());
+        classMenu.visibleProperty().bind(clientInfo.isInstructorProperty());
 
-        file.getItems().addAll(createClass, deleteClass);
+        classMenu.getItems().addAll(createClass, deleteClass);
 
-        menuBar.getMenus().addAll(file);
+        menuBar.getMenus().addAll(account, classMenu);
 
         return menuBar;
+    }
+
+    private void loginOut() {
+        if (clientInfo.loadedProperty().get())
+            clientInfo.logout();
+        else
+            load(true);
     }
 
     private void createClass() {

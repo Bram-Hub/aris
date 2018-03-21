@@ -4,15 +4,11 @@ import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.text.TextAlignment;
 
 import java.text.DateFormat;
 import java.util.Date;
 
-public class StudentInfo implements AssignmentInfo, EventHandler<ActionEvent>, Comparable<AssignmentInfo> {
+public class StudentInfo implements AssignmentInfo, EventHandler<ActionEvent> {
 
     private final int classId;
     private final int assignmentId;
@@ -35,7 +31,7 @@ public class StudentInfo implements AssignmentInfo, EventHandler<ActionEvent>, C
 
         isSubmission = submissionId > 0;
 
-        Button openProof = new Button("Open");
+        Button openProof = new Button(isSubmission ? "Open Submission" : "Open Template");
         openProof.setOnAction(this);
         openProof.setAlignment(Pos.CENTER);
 

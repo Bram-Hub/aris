@@ -15,7 +15,7 @@
 <BorderPane stylesheets="@assignment_window.css" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1">
     <top>
         <HBox alignment="CENTER_LEFT" BorderPane.alignment="CENTER">
-            <Label alignment="CENTER" contentDisplay="CENTER" text="Class:">
+            <Label fx:id="lblClass" alignment="CENTER" contentDisplay="CENTER" text="Class:">
                 <HBox.margin>
                     <Insets bottom="3.0" left="3.0" right="3.0" top="3.0" />
                 </HBox.margin>
@@ -33,6 +33,9 @@
                 </HBox.margin>
             </Label>
             <Button fx:id="login" mnemonicParsing="false" text="Login" />
+         <BorderPane.margin>
+            <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+         </BorderPane.margin>
         </HBox>
     </top>
     <center>

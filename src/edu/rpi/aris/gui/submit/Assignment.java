@@ -114,6 +114,7 @@ public class Assignment {
         view.setColumnResizePolicy(TreeTableView.CONSTRAINED_RESIZE_POLICY);
         view.setEditable(false);
         root.setExpanded(true);
+        view.setMaxHeight(200);
         tableBox.getChildren().add(view);
     }
 

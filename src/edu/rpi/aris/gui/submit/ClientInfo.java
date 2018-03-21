@@ -1,6 +1,7 @@
 package edu.rpi.aris.gui.submit;
 
 import edu.rpi.aris.Main;
+import edu.rpi.aris.gui.ConfigurationManager;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
 import javafx.application.Platform;
@@ -72,6 +73,14 @@ public class ClientInfo {
                 client.disconnect();
             }
         }).start();
+    }
+
+    public void logout() {
+        loaded.set(false);
+        isInstructor.set(false);
+        courses.clear();
+        ConfigurationManager.getConfigManager().username.set(null);
+        ConfigurationManager.getConfigManager().setAccessToken(null);
     }
 
     public SimpleBooleanProperty isInstructorProperty() {
