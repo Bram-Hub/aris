@@ -2,7 +2,12 @@ package edu.rpi.aris.gui.submit;
 
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.geometry.Pos;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.text.TextAlignment;
 
 import java.text.DateFormat;
 import java.util.Date;
@@ -32,13 +37,11 @@ public class StudentInfo implements AssignmentInfo, EventHandler<ActionEvent>, C
 
         Button openProof = new Button("Open");
         openProof.setOnAction(this);
+        openProof.setAlignment(Pos.CENTER);
 
         data[0] = name;
-        data[1] = status;
-        if (timestamp > 0)
-            data[2] = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(timestamp));
-        else
-            data[2] = null;
+        setStatus(status);
+        setTimestamp(timestamp);
         data[3] = openProof;
     }
 
@@ -55,9 +58,9 @@ public class StudentInfo implements AssignmentInfo, EventHandler<ActionEvent>, C
     }
 
     public void setTimestamp(long timestamp) {
-        if (timestamp > 0)
+        if (timestamp > 0) {
             data[2] = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(timestamp));
-        else
+        } else
             data[2] = null;
     }
 

@@ -1,37 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
-<BorderPane xmlns:fx="http://javafx.com/fxml/1" stylesheets="@../main_window.css"
-            xmlns="http://javafx.com/javafx/8.0.121">
+<?import javafx.scene.control.Accordion?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ChoiceBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressIndicator?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane stylesheets="@assignment_window.css" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1">
     <top>
         <HBox alignment="CENTER_LEFT" BorderPane.alignment="CENTER">
             <Label alignment="CENTER" contentDisplay="CENTER" text="Class:">
                 <HBox.margin>
-                    <Insets bottom="3.0" left="3.0" right="3.0" top="3.0"/>
+                    <Insets bottom="3.0" left="3.0" right="3.0" top="3.0" />
                 </HBox.margin>
             </Label>
-            <ChoiceBox fx:id="classes"/>
+            <ChoiceBox fx:id="classes" />
             <ProgressIndicator fx:id="loading" prefHeight="20.0" prefWidth="20.0">
                 <HBox.margin>
-                    <Insets left="5.0" right="5.0"/>
+                    <Insets left="5.0" right="5.0" />
                 </HBox.margin>
             </ProgressIndicator>
-            <Separator visible="false" HBox.hgrow="ALWAYS"/>
+            <Separator visible="false" HBox.hgrow="ALWAYS" />
             <Label fx:id="lblUsername" text="Not Logged In">
                 <HBox.margin>
-                    <Insets bottom="3.0" left="3.0" right="3.0" top="3.0"/>
+                    <Insets bottom="3.0" left="3.0" right="3.0" top="3.0" />
                 </HBox.margin>
             </Label>
-            <Button fx:id="login" mnemonicParsing="false" text="Login"/>
+            <Button fx:id="login" mnemonicParsing="false" text="Login" />
         </HBox>
     </top>
     <center>
         <ScrollPane fitToHeight="true" fitToWidth="true" styleClass="no-border">
-            <Accordion fx:id="assignments" style="-fx-border-width: 10;"/>
+         <VBox>
+            <children>
+                  <Accordion fx:id="assignments" style="-fx-border-width: 10;" VBox.vgrow="NEVER" />
+            </children>
+         </VBox>
             <BorderPane.margin>
-                <Insets/>
+                <Insets />
             </BorderPane.margin>
         </ScrollPane>
     </center>

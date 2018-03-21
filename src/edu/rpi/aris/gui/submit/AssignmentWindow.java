@@ -11,6 +11,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
@@ -48,9 +49,12 @@ public class AssignmentWindow {
             return;
         }
         VBox vbox = new VBox();
+        vbox.setFillWidth(true);
         vbox.getChildren().addAll(setupMenu(), root);
-        Scene scene = new Scene(vbox, 500, 500);
+        VBox.setVgrow(root, Priority.ALWAYS);
+        Scene scene = new Scene(vbox, 800, 800);
         stage = new Stage();
+        stage.setResizable(true);
         stage.setScene(scene);
     }
 
@@ -65,14 +69,16 @@ public class AssignmentWindow {
         }, clientInfo.isInstructorProperty(), ConfigurationManager.getConfigManager().username));
         Bindings.bindContent(classes.getItems(), clientInfo.getCourses());
         classes.getSelectionModel().selectedItemProperty().addListener((observableValue, oldCourse, newCourse) -> {
-            assignments.getPanes().clear();
-            if (newCourse == null)
-                return;
-            ConfigurationManager.getConfigManager().selectedCourseId.set(newCourse.getId());
-            newCourse.load(() -> Platform.runLater(() -> {
-                for (Assignment assignment : newCourse.getAssignments())
-                    assignments.getPanes().add(assignment.getPane());
-            }), false);
+            Platform.runLater(() -> {
+                assignments.getPanes().clear();
+                if (newCourse == null)
+                    return;
+                ConfigurationManager.getConfigManager().selectedCourseId.set(newCourse.getId());
+                newCourse.load(() -> Platform.runLater(() -> {
+                    for (Assignment assignment : newCourse.getAssignments())
+                        assignments.getPanes().add(assignment.getPane());
+                }), false);
+            });
         });
         login.visibleProperty().bind(Bindings.createBooleanBinding(() -> ConfigurationManager.getConfigManager().username.get() == null, ConfigurationManager.getConfigManager().username));
         login.managedProperty().bind(login.visibleProperty());

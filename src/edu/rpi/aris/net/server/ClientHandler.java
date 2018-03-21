@@ -313,7 +313,7 @@ public class ClientHandler implements Runnable {
             sendMessage(NetUtil.ERROR);
             return;
         }
-        PreparedStatement statement = dbManager.getStatement("SELECT a.name, a.due_date, u2.username, a.id FROM assignment a, user u, user u2, class c, user_class uc WHERE uc.user_id = u.id AND uc.class_id = c.id AND a.class_id = uc.class_id AND a.assigned_by = u2.id AND u.username = ? AND c.id = ? ORDER BY a.due_date;");
+        PreparedStatement statement = dbManager.getStatement("SELECT a.name, a.due_date, u2.username, a.id FROM assignment a, user u, user u2, class c, user_class uc WHERE uc.user_id = u.id AND uc.class_id = c.id AND a.class_id = uc.class_id AND a.assigned_by = u2.id AND u.username = ? AND c.id = ? GROUP BY a.id ORDER BY a.due_date;");
         statement.setString(1, username);
         statement.setInt(2, id);
         if (statement.execute()) {
@@ -361,7 +361,7 @@ public class ClientHandler implements Runnable {
         submissions.setInt(1, cid);
         submissions.setInt(2, aid);
         submissions.setInt(3, userId);
-        if (!assignments.execute()) {
+        if (!submissions.execute()) {
             sendMessage(NetUtil.ERROR);
             return;
         }

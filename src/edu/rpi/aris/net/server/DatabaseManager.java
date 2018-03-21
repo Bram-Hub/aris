@@ -37,6 +37,7 @@ public class DatabaseManager {
             this.dbFile = dbFile;
             boolean exists = dbFile.exists();
             connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getCanonicalPath());
+            connection.setAutoCommit(true);
             if (exists)
                 verifyDatabase();
             else

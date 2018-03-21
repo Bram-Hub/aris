@@ -17,6 +17,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.net.URLDecoder;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.util.*;
@@ -30,7 +31,6 @@ public class Assignment {
     private long dueDate;
     private String name;
     private TitledPane titledPane;
-    private TreeTableView<AssignmentInfo> treeTableView;
     private VBox tableBox = new VBox();
     private SimpleBooleanProperty loaded = new SimpleBooleanProperty(false);
     private ObservableMap<AssignmentInfo, ArrayList<AssignmentInfo>> proofs = FXCollections.observableHashMap();
@@ -47,7 +47,6 @@ public class Assignment {
         this.id = id;
         this.classId = classId;
         String dateStr = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(this.dueDate));
-        treeTableView = new TreeTableView<>();
         titledPane = new TitledPane(name + "\nDue: " + dateStr + "\nAssigned by: " + assignedBy, tableBox);
         titledPane.expandedProperty().addListener((observableValue, oldVal, newVal) -> {
             if (newVal)
@@ -81,6 +80,7 @@ public class Assignment {
                     loaded.set(false);
                 });
                 System.out.println("Connection failed");
+                e.printStackTrace();
                 //TODO: show error to user
             } finally {
                 client.disconnect();
@@ -89,24 +89,32 @@ public class Assignment {
     }
 
     private void buildUI() {
-        ArrayList<TreeTableView<AssignmentInfo>> views = new ArrayList<>();
+        TreeItem<AssignmentInfo> root = new TreeItem<>(null);
+        TreeTableView<AssignmentInfo> view = new TreeTableView<>(root);
+        boolean columnsAdded = false;
         for (Map.Entry<AssignmentInfo, ArrayList<AssignmentInfo>> entry : proofs.entrySet()) {
             AssignmentInfo rootInfo = entry.getKey();
-            TreeItem<AssignmentInfo> root = new TreeItem<>(rootInfo);
-            root.setExpanded(false);
-            root.getChildren().addAll(entry.getValue().stream().map(TreeItem::new).collect(Collectors.toList()));
-            TreeTableView<AssignmentInfo> view = new TreeTableView<>(root);
-            for (int i = 0; i < rootInfo.getNumColumns(); ++i) {
-                TreeTableColumn<AssignmentInfo, Object> column = new TreeTableColumn<>(rootInfo.getColumnName(i));
-                final int columnNum = i;
-                column.setCellValueFactory(param -> new SimpleObjectProperty<>(param.getValue().getValue().getColumnData(columnNum)));
-                view.getColumns().add(column);
+            TreeItem<AssignmentInfo> proof = new TreeItem<>(rootInfo);
+            proof.getChildren().addAll(entry.getValue().stream().map(TreeItem::new).collect(Collectors.toList()));
+            if (!columnsAdded) {
+                for (int i = 0; i < rootInfo.getNumColumns(); ++i) {
+                    TreeTableColumn<AssignmentInfo, Object> column = new TreeTableColumn<>(rootInfo.getColumnName(i));
+                    final int columnNum = i;
+                    column.setCellValueFactory(param -> new SimpleObjectProperty<>(param.getValue().getValue().getColumnData(columnNum)));
+                    column.setSortable(false);
+                    column.setStyle(i == 0 ? "-fx-alignment: CENTER_LEFT;" : "-fx-alignment: CENTER;");
+                    view.getColumns().add(column);
+                }
+                columnsAdded = true;
             }
-            view.setShowRoot(true);
-            views.add(view);
+            root.getChildren().add(proof);
         }
-        views.sort(Comparator.comparing(o -> o.getRoot().getValue()));
-        tableBox.getChildren().addAll(views);
+        root.getChildren().sort(Comparator.comparing(TreeItem::getValue));
+        view.setShowRoot(false);
+        view.setColumnResizePolicy(TreeTableView.CONSTRAINED_RESIZE_POLICY);
+        view.setEditable(false);
+        root.setExpanded(true);
+        tableBox.getChildren().add(view);
     }
 
     private void loadStudent(Client client) throws IOException {
@@ -139,20 +147,21 @@ public class Assignment {
             }
             for (Map.Entry<Integer, String[]> e : proofs.entrySet()) {
                 String[] proofData = e.getValue();
-                StudentInfo proofInfo = new StudentInfo(-1, Integer.parseInt(proofData[0]), classId, id, proofData[1], -1, null);
+                StudentInfo proofInfo = new StudentInfo(-1, Integer.parseInt(proofData[0]), classId, id, URLDecoder.decode(proofData[1], "UTF-8"), -1, null);
                 ArrayList<AssignmentInfo> subs = this.proofs.compute(proofInfo, (i, j) -> new ArrayList<>());
                 int i = 0;
                 if (submissions.containsKey(e.getKey()))
                     for (String[] sub : submissions.get(e.getKey())) {
                         ++i;
-                        NetUtil.DATE_FORMAT.parse(sub[2]);
-                        subs.add(new StudentInfo(Integer.parseInt(sub[0]), e.getKey(), classId, id, "Submission " + i, 0, sub[3]));
+                        long timestamp = NetUtil.DATE_FORMAT.parse(URLDecoder.decode(sub[2], "UTF-8")).getTime();
+                        subs.add(new StudentInfo(Integer.parseInt(sub[0]), e.getKey(), classId, id, "Submission " + i, timestamp, URLDecoder.decode(sub[3], "UTF-8")));
                     }
                 if (subs.size() > 0) {
                     subs.sort(Collections.reverseOrder());
                     proofInfo.setStatus(((StudentInfo) subs.get(0)).getStatus());
                     proofInfo.setTimestamp(((StudentInfo) subs.get(0)).getTimestamp());
-                }
+                } else
+                    proofInfo.setStatus(NetUtil.STATUS_NO_SUBMISSION);
             }
         } catch (ParseException | NumberFormatException e) {
             throw new IOException("Server sent invalid response");
