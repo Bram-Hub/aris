@@ -32,10 +32,10 @@ public class Main implements Thread.UncaughtExceptionHandler {
     public static final Main instance = new Main();
     public static final String VERSION = "0.1";
     public static final String NAME = "Aris";
-    private static final File clientLockFile = new File(ConfigurationManager.CONFIG_DIR, ".client.lock");
-    private static final File serverLockFile = new File(ConfigurationManager.CONFIG_DIR, ".server.lock");
-    private static final File clientIpcFile = new File(ConfigurationManager.CONFIG_DIR, ".client.ipc");
-    private static final File serverIpcFile = new File(ConfigurationManager.CONFIG_DIR, ".server.ipc");
+    private static final File clientLockFile = new File(System.getProperty("java.io.tmpdir"), ".client.lock");
+    private static final File serverLockFile = new File(System.getProperty("java.io.tmpdir"), ".server.lock");
+    private static final File clientIpcFile = new File(System.getProperty("java.io.tmpdir"), ".client.ipc");
+    private static final File serverIpcFile = new File(System.getProperty("java.io.tmpdir"), ".server.ipc");
     private static File lockFile, ipcFile;
     private static BufferedReader SYSTEM_IN = null;
     private static CommandLine cmd;
@@ -110,6 +110,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
     private static void startIpcWatch() throws IOException {
         //noinspection ResultOfMethodCallIgnored
         ipcFile.createNewFile();
+        ipcFile.deleteOnExit();
         FileAlterationObserver observer = new FileAlterationObserver(ConfigurationManager.CONFIG_DIR);
         FileAlterationMonitor monitor = new FileAlterationMonitor(1000);
         FileAlterationListener listener = new FileAlterationListenerAdaptor() {
@@ -182,6 +183,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
                 lockFileChannel.close();
                 return false;
             }
+            lockFile.deleteOnExit();
         } catch (Throwable e) {
             return false;
         }

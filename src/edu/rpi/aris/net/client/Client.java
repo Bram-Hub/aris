@@ -29,7 +29,6 @@ import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
-import sun.security.validator.ValidatorException;
 
 import javax.net.ssl.*;
 import javax.security.auth.x500.X500Principal;
@@ -249,7 +248,7 @@ public class Client {
         } catch (SSLHandshakeException e) {
             logger.error("SSL Handshake failed", e);
             Throwable cause = e.getCause();
-            if (cause instanceof ValidatorException) {
+            if (cause instanceof CertificateException) {
                 setConnectionStatus(ConnectionStatus.CERTIFICATE_WARNING);
             } else {
                 setConnectionStatus(ConnectionStatus.ERROR);

@@ -1,0 +1,134 @@
+#!/bin/bash
+
+unset CDPATH
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+COMPILE=0
+RPM=0
+DEB=0
+WIN=0
+
+OPTIND=1
+
+get_libs() {
+    command -v mvn &> /dev/null
+    if [ "$?" -ne "0" ]; then
+        echo "Maven (mvn) is required to download libraries and does not appear to be present"
+        exit 1
+    fi
+    command -v awk &> /dev/null
+    if [ "$?" -ne "0" ]; then
+        echo "awk is required to download libraries and does not appear to be present"
+        exit 1
+    fi
+    mkdir -p build/lib
+    echo Checking libraries
+    for file in .idea/libraries/*.xml; do
+        ARTIFACT_ID=$(grep maven-id $file | awk '{ split($0,a,"\""); print a[2] }')
+        JAR_NAME=$(echo $ARTIFACT_ID | awk '{ split($0,a,":"); print "build/lib/"a[2]"-"a[3]".jar" }')
+        if [ ! -f $JAR_NAME ]; then
+            echo -n Downloading $ARTIFACT_ID ...
+            mvn org.apache.maven.plugins:maven-dependency-plugin:2.8:get -Dartifact=$ARTIFACT_ID &> /dev/null
+            mvn org.apache.maven.plugins:maven-dependency-plugin:2.8:copy -Dartifact=$ARTIFACT_ID -DoutputDirectory=build/lib &> /dev/null
+            echo " Done"
+        fi
+    done
+}
+
+compile() {
+    command -v javac &> /dev/null
+    if [ "$?" -ne "0" ]; then
+        echo "javac is required to compile the java classes and does not appear to be present"
+        exit 1
+    fi
+    command -v zip &> /dev/null
+    if [ "$?" -ne "0" ]; then
+        echo "zip is required to create the jar file and does not appear to be present"
+        exit 1
+    fi
+    get_libs
+    mkdir -p build/classes
+    shopt -s globstar
+    echo -n Compiling java classes ...
+    javac -d build/classes -cp "build/lib/*" src/**/*.java
+    cp -r res/* build/classes
+    echo " Done"
+    echo -n Building jar file ...
+    mkdir -p build/classes/META-INF
+    cp src/META-INF/MANIFEST.MF build/classes/META-INF
+    cd build/classes
+    zip -r ../aris.jar * &> /dev/null
+    cd ../..
+    echo " Done"
+}
+
+build_rpm() {
+    echo Hi
+}
+
+build_deb() {
+    command -v dpkg &> /dev/null
+    if [ "$?" -ne "0" ]; then
+        echo "dpkg is required to build deb package and does not appear to be present"
+        exit 1
+    fi
+    echo -n Building deb package ...
+    rm -rf build/deb
+    mkdir -p build/deb
+    cp -r packaging/deb/* build/deb
+    cd build
+    mkdir -p deb/usr/lib/aris
+    cp -r aris.jar lib deb/usr/lib/aris
+    dpkg --build deb
+    cd ..
+    echo " Done"
+}
+
+build_win() {
+    echo Hi
+}
+
+usage() {
+    echo Usage: ./compile [options]
+    echo "    -c    Compile only (default)"
+    echo "    -r    Compile and build rpm"
+    echo "    -d    Compile and build deb"
+    echo "    -w    Compile and build windows exe"
+    echo "    -a    Compile and build all packages"
+}
+
+
+OPTS=0
+while getopts "crdwah" opt; do
+    OPTS=1
+    case "$opt" in
+    c)
+        compile
+        ;;
+    r)
+        compile
+        build_rpm
+        ;;
+    d)
+        compile
+        build_deb
+        ;;
+    w)
+        compile
+        build_win
+        ;;
+    a)
+        compile
+        build_rpm
+        build_deb
+        build_win
+        ;;
+    *)
+        usage
+        ;;
+    esac
+done
+if [ "$OPTS" -eq "0" ]; then
+    compile
+fi

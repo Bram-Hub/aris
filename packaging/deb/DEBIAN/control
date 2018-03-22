@@ -1,0 +1,8 @@
+Package: aris
+Version: __version__
+Section: unknown
+Priority: optional
+Architecture: all
+Maintainer: Ryan Cicchiello <cicchr@rpi.edu>
+Depends: ${}
+Description: The Aris logical proof verification system
