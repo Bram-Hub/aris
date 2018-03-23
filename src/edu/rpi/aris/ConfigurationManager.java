@@ -1,4 +1,4 @@
-package edu.rpi.aris.gui;
+package edu.rpi.aris;
 
 import edu.rpi.aris.rules.RuleList;
 import javafx.beans.property.SimpleBooleanProperty;

@@ -1,5 +1,6 @@
 package edu.rpi.aris.gui;
 
+import edu.rpi.aris.ConfigurationManager;
 import edu.rpi.aris.gui.event.GoalChangedEvent;
 import edu.rpi.aris.gui.event.LineChangedEvent;
 import edu.rpi.aris.gui.event.PremiseChangeEvent;

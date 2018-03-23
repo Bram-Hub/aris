@@ -1,7 +1,7 @@
 package edu.rpi.aris.proof;
 
+import edu.rpi.aris.ConfigurationManager;
 import edu.rpi.aris.Main;
-import edu.rpi.aris.gui.ConfigurationManager;
 import edu.rpi.aris.gui.Proof;
 import edu.rpi.aris.rules.RuleList;
 import javafx.scene.control.Alert;

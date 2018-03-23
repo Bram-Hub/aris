@@ -1,5 +1,6 @@
 package edu.rpi.aris.gui;
 
+import edu.rpi.aris.ConfigurationManager;
 import edu.rpi.aris.gui.event.SentenceChangeEvent;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;

@@ -1,7 +1,7 @@
 package edu.rpi.aris.net.client;
 
+import edu.rpi.aris.ConfigurationManager;
 import edu.rpi.aris.Main;
-import edu.rpi.aris.gui.ConfigurationManager;
 import edu.rpi.aris.net.NetUtil;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;

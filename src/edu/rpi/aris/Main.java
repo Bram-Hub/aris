@@ -1,7 +1,6 @@
 package edu.rpi.aris;
 
 import edu.rpi.aris.gui.Aris;
-import edu.rpi.aris.gui.ConfigurationManager;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
 import edu.rpi.aris.net.server.Server;
@@ -45,6 +44,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
     private static Logger logger = LogManager.getLogger(Main.class);
     private static FileLock lock, ipcLock;
     private static FileChannel lockFileChannel;
+    private static String serverAddress = "localhost";
 
     static {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -79,8 +79,10 @@ public class Main implements Thread.UncaughtExceptionHandler {
         }
         Runtime.getRuntime().addShutdownHook(new Thread(Main::unlockFile));
         startIpcWatch();
-        setAllowInsecure(cmd.hasOption("allow-insecure"));
         if (MODE != Mode.SERVER) {
+            if (cmd.hasOption('a'))
+                serverAddress = cmd.getOptionValue('a');
+            setAllowInsecure(cmd.hasOption("allow-insecure"));
             if (cmd.hasOption("add-cert")) {
                 String filename = cmd.getOptionValue("add-cert");
                 File file = new File(filename);
@@ -218,6 +220,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
         options.addOption(null, "add-cert", true, "Adds the given X509 encoded certificate to the client's trusted certificate store");
         options.addOption(null, "add-user", true, "Adds the given user to the database as an instructor");
         options.addOption(null, "password", true, "Sets the password for the given user");
+        options.addOption("a", "server-address", true, "Sets the server address to connect to");
         CommandLineParser parser = new DefaultParser();
         cmd = parser.parse(options, args);
         if (cmd.hasOption("help")) {
@@ -235,6 +238,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
         if (client != null)
             client.disconnect();
         client = new Client(allowInsecure);
+        client.setServer(serverAddress, 9000);
     }
 
     private static BufferedReader getSystemIn() {

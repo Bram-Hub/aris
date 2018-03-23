@@ -1,5 +1,6 @@
 package edu.rpi.aris.gui;
 
+import edu.rpi.aris.ConfigurationManager;
 import edu.rpi.aris.rules.Rule;
 import edu.rpi.aris.rules.RuleList;
 import javafx.application.Platform;

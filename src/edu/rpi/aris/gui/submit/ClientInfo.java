@@ -1,7 +1,7 @@
 package edu.rpi.aris.gui.submit;
 
+import edu.rpi.aris.ConfigurationManager;
 import edu.rpi.aris.Main;
-import edu.rpi.aris.gui.ConfigurationManager;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
 import javafx.application.Platform;
@@ -18,10 +18,6 @@ public class ClientInfo {
     private SimpleBooleanProperty loaded = new SimpleBooleanProperty(false);
     private SimpleBooleanProperty isInstructor = new SimpleBooleanProperty(false);
     private ObservableList<Course> courses = FXCollections.observableArrayList();
-
-    public ClientInfo() {
-        Main.getClient().setServer("glados", 9000);
-    }
 
     public void load(Runnable runnable, boolean reload) {
         if (reload)

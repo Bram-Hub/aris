@@ -1,5 +1,6 @@
 package edu.rpi.aris.gui;
 
+import edu.rpi.aris.ConfigurationManager;
 import edu.rpi.aris.Main;
 import edu.rpi.aris.gui.event.PremiseChangeEvent;
 import edu.rpi.aris.proof.*;
