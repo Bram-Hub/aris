@@ -121,7 +121,12 @@ public class GuiConfig {
             saveDirectory = new File(System.getProperty("user.home"));
         hideRulesPanel.addListener((observable, oldValue, newValue) -> preferences.putBoolean(HIDE_RULES_PANEL, newValue));
         hideOperatorsPanel.addListener((observable, oldValue, newValue) -> preferences.putBoolean(HIDE_OPERATOR_PANEL, newValue));
-        username.addListener((observable, oldValue, newValue) -> preferences.put(USERNAME_KEY, newValue));
+        username.addListener((observable, oldValue, newValue) -> {
+            if (newValue == null)
+                preferences.remove(USERNAME_KEY);
+            else
+                preferences.put(USERNAME_KEY, newValue);
+        });
         selectedCourseId.addListener((observable, oldValue, newValue) -> preferences.putInt(SELECTED_COURSE_ID, newValue.intValue()));
     }
 
@@ -182,7 +187,10 @@ public class GuiConfig {
 
     public synchronized void setAccessToken(String token) {
         accessToken = token;
-        preferences.put(ACCESS_TOKEN, token);
+        if (token == null)
+            preferences.remove(ACCESS_TOKEN);
+        else
+            preferences.put(ACCESS_TOKEN, token);
     }
 
 }

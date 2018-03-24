@@ -89,7 +89,7 @@ public class Server implements Runnable {
     @Override
     public void run() {
         try {
-            logger.info("Server Starting");
+            logger.info("Starting Server on port " + port + (port == 9001 ? " (IT'S OVER 9000!!!)" : ""));
             serverSocket = getServerSocketFactory().createServerSocket(port);
             ExecutorService threadPool = Executors.newCachedThreadPool();
             logger.info("Server Started");

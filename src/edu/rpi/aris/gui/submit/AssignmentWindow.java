@@ -85,7 +85,7 @@ public class AssignmentWindow {
         classes.managedProperty().bind(clientInfo.loadedProperty());
         lblClass.visibleProperty().bind(clientInfo.loadedProperty());
         lblClass.managedProperty().bind(clientInfo.loadedProperty());
-        login.visibleProperty().bind(Bindings.createBooleanBinding(() -> GuiConfig.getConfigManager().username.get() == null, GuiConfig.getConfigManager().username));
+        login.visibleProperty().bind(Bindings.createBooleanBinding(() -> GuiConfig.getConfigManager().username.get() == null || !clientInfo.loadedProperty().get(), GuiConfig.getConfigManager().username, clientInfo.loadedProperty()));
         login.managedProperty().bind(login.visibleProperty());
         login.setOnAction(actionEvent -> load(true));
         loading.visibleProperty().bind(Main.getClient().getConnectionStatusProperty().isNotEqualTo(Client.ConnectionStatus.DISCONNECTED));

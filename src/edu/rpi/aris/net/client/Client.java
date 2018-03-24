@@ -45,6 +45,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -271,13 +272,10 @@ public class Client {
                 setConnectionStatus(ConnectionStatus.DISCONNECTED);
                 throw new IOException(errorString);
             case CERTIFICATE_WARNING:
-                if (showCertWarning()) {
-                    socketFactory = null;
-                }
                 socket.close();
                 socket = null;
                 setConnectionStatus(ConnectionStatus.DISCONNECTED);
-                if (socketFactory == null)
+                if (showCertWarning())
                     setupConnection(user, pass, isAccessToken);
                 else
                     throw new IOException("Failed to verify remote server");
@@ -507,7 +505,36 @@ public class Client {
                 System.out.println("If you would like to connect to this server anyway either import the server's certificate with the --add-cert flag or run aris with the --allow-insecure flag");
                 break;
             case GUI:
-                //TODO
+                final AtomicBoolean allowInsecure = new AtomicBoolean(false);
+                Platform.runLater(() -> {
+                    Alert alert = new Alert(Alert.AlertType.WARNING);
+                    alert.setTitle("Insecure Connection Warning");
+                    alert.setHeaderText("Aris was unable to verify the authenticity of the server.");
+                    alert.setContentText("If you would like to securely connect to the server please press \"Cancel\" then import " +
+                            "the server's certificate file. If you would like to continue with an insecure connection anyway click \"Connect Anyway\"");
+                    ButtonType cont = new ButtonType("Connect Anyway (INSECURE)");
+                    alert.getButtonTypes().setAll(ButtonType.CANCEL, cont);
+                    ((Button) alert.getDialogPane().lookupButton(ButtonType.CANCEL)).setDefaultButton(true);
+                    alert.getDialogPane().getScene().getWindow().sizeToScene();
+                    alert.getDialogPane().setPrefHeight(200);
+                    Optional<ButtonType> result = alert.showAndWait();
+                    if (result.isPresent() && result.get() == cont)
+                        allowInsecure.set(true);
+                    synchronized (allowInsecure) {
+                        allowInsecure.notify();
+                    }
+                });
+                synchronized (allowInsecure) {
+                    try {
+                        allowInsecure.wait();
+                    } catch (InterruptedException e) {
+                        logger.error("Error while waiting for user response", e);
+                    }
+                }
+                if (allowInsecure.get()) {
+                    setAllowInsecure(true);
+                    return true;
+                }
                 break;
             case SERVER:
                 logger.fatal("The client is being used while Aris is running in server mode");
