@@ -216,6 +216,8 @@ public class MainWindow {
         undo.setOnAction(actionEvent -> history.undo());
         redo.setOnAction(actionEvent -> history.redo());
 
+        settings.setOnAction(actionEvent -> GuiConfig.getConfigManager().showConfig());
+
         undo.acceleratorProperty().bind(configuration.undoKey);
         redo.acceleratorProperty().bind(configuration.redoKey);
         copy.acceleratorProperty().bind(configuration.copyKey);

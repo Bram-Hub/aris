@@ -40,11 +40,9 @@
     </top>
     <center>
         <ScrollPane fitToHeight="true" fitToWidth="true" styleClass="no-border">
-         <VBox>
-            <children>
-                  <Accordion fx:id="assignments" style="-fx-border-width: 10;" VBox.vgrow="NEVER" />
-            </children>
-         </VBox>
+            <VBox>
+                <Accordion fx:id="assignments" style="-fx-border-width: 10;" VBox.vgrow="NEVER"/>
+            </VBox>
             <BorderPane.margin>
                 <Insets />
             </BorderPane.margin>

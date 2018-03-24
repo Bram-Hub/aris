@@ -45,7 +45,7 @@ public class GoalLine {
         goalValidImg.imageProperty().bind(Bindings.createObjectBinding(() -> goal.goalStatusProperty().get().img, goal.goalStatusProperty()));
         goalText.setOnMouseClicked(mouseEvent -> window.requestFocus(this));
         UnaryOperator<TextFormatter.Change> filter = t -> {
-            t.setText(GuiConfig.replaceText(t.getText()));
+            t.setText(GuiConfig.getConfigManager().replaceText(t.getText()));
             return t;
         };
         goalText.setTextFormatter(new TextFormatter<>(filter));

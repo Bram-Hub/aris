@@ -1,6 +1,6 @@
 Manifest-Version: 1.0
 Class-Path: lib/commons-lang3-3.7.jar lib/commons-io-2.6.jar lib/commons-cli-1.4.j
- ar lib/bcprov-jdk15on-1.59.jar lib/commons-lang-2.6.jar lib/commons-collections-4
+ ar lib/bcprov-jdk15on-1.59.jar lib/commons-collections-4
  .0-SNAPSHOT.jar lib/log4j-core-2.10.0.jar lib/log4j-api-2.10.0.jar lib/bcpkix-jdk
  15on-1.59.jar lib/bcprov-jdk15on-1.59.jar lib/bctls-jdk15on-1.59.jar lib/bcprov-j
  dk15on-1.59.jar lib/sqlite-jdbc-3.21.0.1.jar

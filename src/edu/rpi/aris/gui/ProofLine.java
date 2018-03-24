@@ -116,7 +116,7 @@ public class ProofLine {
         textField.setOnMouseClicked(this::requestFocus);
         textField.addEventFilter(ContextMenuEvent.CONTEXT_MENU_REQUESTED, Event::consume);
         UnaryOperator<TextFormatter.Change> filter = t -> {
-            t.setText(GuiConfig.replaceText(t.getText()));
+            t.setText(GuiConfig.getConfigManager().replaceText(t.getText()));
             return t;
         };
         textField.setTextFormatter(new TextFormatter<>(filter));
