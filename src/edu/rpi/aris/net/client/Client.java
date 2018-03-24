@@ -71,15 +71,7 @@ public class Client {
     private String errorString = null;
     private ConnectionStatus connectionStatus = ConnectionStatus.DISCONNECTED;
     private SimpleObjectProperty<ConnectionStatus> connectionStatusProperty = new SimpleObjectProperty<>(connectionStatus);
-    private boolean allowInsecure;
-
-    public Client(boolean allowInsecure) {
-        this.allowInsecure = allowInsecure;
-        if (allowInsecure) {
-            logger.warn("WARNING! The allow-insecure flag has been set. This allows the client to connect to potentially insecure servers and is not recommended");
-            logger.warn("Please consider removing this flag and instead importing the self-signed certificates for any servers you wish to connect to");
-        }
-    }
+    private boolean allowInsecure = false;
 
     public static void importSelfSignedCertificate(File certFile) {
         try {
@@ -170,6 +162,18 @@ public class Client {
             }
         }
         return ks;
+    }
+
+    public synchronized void setAllowInsecure(boolean allowInsecure) {
+        this.allowInsecure = allowInsecure;
+        if (allowInsecure) {
+            logger.warn("WARNING! The allow-insecure flag has been set. This allows the client to connect to potentially insecure servers and is not recommended");
+            logger.warn("Please consider removing this flag and instead importing the self-signed certificates for any servers you wish to connect to");
+        }
+        if (connectionStatus != ConnectionStatus.DISCONNECTED)
+            disconnect();
+        socket = null;
+        socketFactory = null;
     }
 
     private TrustManager[] getTrustManagers() {

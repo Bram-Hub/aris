@@ -39,7 +39,6 @@ public class AssignmentWindow {
     private ClientInfo clientInfo;
 
     public AssignmentWindow() {
-        Main.setAllowInsecure(true); //TODO: remove
         clientInfo = new ClientInfo();
         FXMLLoader loader = new FXMLLoader(AssignmentWindow.class.getResource("assignment_window.fxml"));
         loader.setController(this);

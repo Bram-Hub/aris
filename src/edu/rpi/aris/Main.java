@@ -31,10 +31,10 @@ public class Main implements Thread.UncaughtExceptionHandler {
     public static final Main instance = new Main();
     public static final String VERSION = "0.1";
     public static final String NAME = "Aris";
-    private static final File clientLockFile = new File(System.getProperty("java.io.tmpdir"), ".client.lock");
-    private static final File serverLockFile = new File(System.getProperty("java.io.tmpdir"), ".server.lock");
-    private static final File clientIpcFile = new File(System.getProperty("java.io.tmpdir"), ".client.ipc");
-    private static final File serverIpcFile = new File(System.getProperty("java.io.tmpdir"), ".server.ipc");
+    private static final File clientLockFile = new File(System.getProperty("java.io.tmpdir"), "aris_client.lock");
+    private static final File serverLockFile = new File(System.getProperty("java.io.tmpdir"), "aris_server.lock");
+    private static final File clientIpcFile = new File(System.getProperty("java.io.tmpdir"), "aris_client.ipc");
+    private static final File serverIpcFile = new File(System.getProperty("java.io.tmpdir"), "aris_server.ipc");
     private static File lockFile, ipcFile;
     private static BufferedReader SYSTEM_IN = null;
     private static CommandLine cmd;
@@ -45,6 +45,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
     private static FileLock lock, ipcLock;
     private static FileChannel lockFileChannel;
     private static String serverAddress = "localhost";
+    private static int port = 9001; // IT'S OVER 9000!!!
 
     static {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -79,10 +80,25 @@ public class Main implements Thread.UncaughtExceptionHandler {
         }
         Runtime.getRuntime().addShutdownHook(new Thread(Main::unlockFile));
         startIpcWatch();
+        if (cmd.hasOption('p')) {
+            String portStr = cmd.getOptionValue('p');
+            boolean error = false;
+            try {
+                port = Integer.parseInt(portStr);
+            } catch (NumberFormatException e) {
+                error = true;
+            }
+            if (error || port <= 0 || port > 65535) {
+                logger.error("Invalid port specified: " + portStr);
+                System.exit(1);
+            }
+        }
         if (MODE != Mode.SERVER) {
             if (cmd.hasOption('a'))
                 serverAddress = cmd.getOptionValue('a');
-            setAllowInsecure(cmd.hasOption("allow-insecure"));
+            client = new Client();
+            client.setServer(serverAddress, port);
+            client.setAllowInsecure(cmd.hasOption("allow-insecure"));
             if (cmd.hasOption("add-cert")) {
                 String filename = cmd.getOptionValue("add-cert");
                 File file = new File(filename);
@@ -103,7 +119,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
                 File caFile = ca == null ? null : new File(ca);
                 File keyFile = key == null ? null : new File(key);
                 System.out.println("Creating server");
-                server = new Server(9000, caFile, keyFile);
+                server = new Server(port, caFile, keyFile);
                 new Thread(() -> server.run()).start();
                 break;
         }
@@ -221,6 +237,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
         options.addOption(null, "add-user", true, "Adds the given user to the database as an instructor");
         options.addOption(null, "password", true, "Sets the password for the given user");
         options.addOption("a", "server-address", true, "Sets the server address to connect to");
+        options.addOption("p", "port", true, "Sets the port to connect to or the port for the server to run on (Default: 9001)");
         CommandLineParser parser = new DefaultParser();
         cmd = parser.parse(options, args);
         if (cmd.hasOption("help")) {
@@ -232,13 +249,6 @@ public class Main implements Thread.UncaughtExceptionHandler {
 
     public static synchronized Client getClient() {
         return client;
-    }
-
-    public static synchronized void setAllowInsecure(boolean allowInsecure) {
-        if (client != null)
-            client.disconnect();
-        client = new Client(allowInsecure);
-        client.setServer(serverAddress, 9000);
     }
 
     private static BufferedReader getSystemIn() {
