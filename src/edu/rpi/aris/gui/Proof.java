@@ -1,6 +1,5 @@
 package edu.rpi.aris.gui;
 
-import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.Main;
 import edu.rpi.aris.gui.event.PremiseChangeEvent;
 import edu.rpi.aris.proof.*;
@@ -11,7 +10,7 @@ import javafx.beans.property.*;
 import javafx.beans.value.ChangeListener;
 import javafx.collections.*;
 import javafx.scene.image.Image;
-import org.apache.commons.lang.math.IntRange;
+import org.apache.commons.lang3.Range;
 
 import java.util.*;
 
@@ -281,7 +280,7 @@ public class Proof {
         private SimpleBooleanProperty underlined = new SimpleBooleanProperty();
         private SimpleObjectProperty<RuleList> selectedRule = new SimpleObjectProperty<>(null);
         private SimpleObjectProperty<Status> status = new SimpleObjectProperty<>(Status.NONE);
-        private SimpleObjectProperty<IntRange> errorRange = new SimpleObjectProperty<>(null);
+        private SimpleObjectProperty<Range<Integer>> errorRange = new SimpleObjectProperty<>(null);
         private Expression expression = null;
         private Claim claim = null;
         private SimpleStringProperty statusMsg = new SimpleStringProperty();
@@ -372,7 +371,7 @@ public class Proof {
                         if (e.getErrorOffset() == -1 || e.getErrorLength() == 0)
                             setErrorRange(null);
                         else
-                            setErrorRange(new IntRange(e.getErrorOffset(), e.getErrorOffset() + e.getErrorLength() - 1));
+                            setErrorRange(Range.between(e.getErrorOffset(), e.getErrorOffset() + e.getErrorLength() - 1));
                     }
                 } else {
                     expression = null;
@@ -391,7 +390,7 @@ public class Proof {
             Platform.runLater(() -> statusMsg.set(status));
         }
 
-        private void setErrorRange(IntRange range) {
+        private void setErrorRange(Range<Integer> range) {
             Platform.runLater(() -> errorRange.set(range));
         }
 
@@ -500,7 +499,7 @@ public class Proof {
             }
         }
 
-        public SimpleObjectProperty<IntRange> errorRangeProperty() {
+        public SimpleObjectProperty<Range<Integer>> errorRangeProperty() {
             return errorRange;
         }
     }
@@ -510,7 +509,7 @@ public class Proof {
         private SimpleStringProperty goalString = new SimpleStringProperty("");
         private SimpleStringProperty statusString = new SimpleStringProperty();
         private SimpleObjectProperty<Status> goalStatus = new SimpleObjectProperty<>(Status.NONE);
-        private SimpleObjectProperty<IntRange> errorRange = new SimpleObjectProperty<>(null);
+        private SimpleObjectProperty<Range<Integer>> errorRange = new SimpleObjectProperty<>(null);
         private Expression expression = null;
         private Timer parseTimer = null;
 
@@ -559,7 +558,7 @@ public class Proof {
                     if (e.getErrorOffset() == -1 || e.getErrorLength() == 0)
                         setErrorRange(null);
                     else
-                        setErrorRange(new IntRange(e.getErrorOffset(), e.getErrorOffset() + e.getErrorLength() - 1));
+                        setErrorRange(Range.between(e.getErrorOffset(), e.getErrorOffset() + e.getErrorLength() - 1));
                     return false;
                 }
             } else {
@@ -571,7 +570,7 @@ public class Proof {
             }
         }
 
-        private void setErrorRange(IntRange range) {
+        private void setErrorRange(Range<Integer> range) {
             Platform.runLater(() -> errorRange.set(range));
         }
 
@@ -603,7 +602,7 @@ public class Proof {
             }
         }
 
-        public SimpleObjectProperty<IntRange> errorRangeProperty() {
+        public SimpleObjectProperty<Range<Integer>> errorRangeProperty() {
             return errorRange;
         }
 

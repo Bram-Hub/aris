@@ -2,7 +2,7 @@ package edu.rpi.aris.proof;
 
 
 import javafx.util.Pair;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.text.ParseException;
 import java.util.*;

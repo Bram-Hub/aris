@@ -3,7 +3,7 @@ package edu.rpi.aris.net.server;
 import edu.rpi.aris.Main;
 import edu.rpi.aris.net.NetUtil;
 import javafx.util.Pair;
-import org.apache.commons.lang.RandomStringUtils;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;

@@ -1,6 +1,5 @@
 package edu.rpi.aris.gui;
 
-import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.gui.event.GoalChangedEvent;
 import edu.rpi.aris.gui.event.LineChangedEvent;
 import edu.rpi.aris.gui.event.PremiseChangeEvent;
@@ -27,7 +26,7 @@ import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
-import org.apache.commons.lang.math.IntRange;
+import org.apache.commons.lang3.Range;
 
 import javax.xml.transform.TransformerException;
 import java.io.File;
@@ -101,10 +100,10 @@ public class MainWindow {
                     Proof.Line line = proof.getLines().get(selectedLine.get());
                     if (line.errorRangeProperty().get() == null)
                         return null;
-                    IntRange range = line.errorRangeProperty().get();
-                    if (range.getMinimumInteger() == range.getMaximumInteger())
-                        return String.valueOf(range.getMinimumInteger() + 1);
-                    return (range.getMinimumInteger() + 1) + " - " + (range.getMaximumInteger() + 1);
+                    Range<Integer> range = line.errorRangeProperty().get();
+                    if (range.getMinimum().equals(range.getMaximum()))
+                        return String.valueOf(range.getMinimum() + 1);
+                    return (range.getMinimum() + 1) + " - " + (range.getMaximum() + 1);
                 }, proof.getLines().get(selectedLine.get()).errorRangeProperty()));
                 proof.getLines().get(newVal.intValue()).verifyClaim();
             } else if (selectedLine.get() < -1) {
@@ -113,10 +112,10 @@ public class MainWindow {
                     Proof.Goal goal = proof.getGoals().get(selectedLine.get() * -1 - 2);
                     if (goal.errorRangeProperty().get() == null)
                         return null;
-                    IntRange range = goal.errorRangeProperty().get();
-                    if (range.getMinimumInteger() == range.getMaximumInteger())
-                        return String.valueOf(range.getMinimumInteger() + 1);
-                    return (range.getMinimumInteger() + 1) + " - " + (range.getMaximumInteger() + 1);
+                    Range<Integer> range = goal.errorRangeProperty().get();
+                    if (range.getMinimum().equals(range.getMaximum()))
+                        return String.valueOf(range.getMinimum() + 1);
+                    return (range.getMinimum() + 1) + " - " + (range.getMaximum() + 1);
                 }, proof.getGoals().get(selectedLine.get() * -1 - 2).errorRangeProperty()));
             }
             updateHighlighting(newVal.intValue());

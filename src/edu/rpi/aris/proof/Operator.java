@@ -1,6 +1,6 @@
 package edu.rpi.aris.proof;
 
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 
 import java.util.HashMap;
 import java.util.HashSet;

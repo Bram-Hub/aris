@@ -1,6 +1,5 @@
 package edu.rpi.aris.gui;
 
-import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.gui.event.SentenceChangeEvent;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -11,7 +10,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
-import org.apache.commons.lang.math.IntRange;
+import org.apache.commons.lang3.Range;
 
 import java.util.Timer;
 import java.util.TimerTask;
@@ -113,9 +112,9 @@ public class GoalLine {
     }
 
     public void selectError() {
-        IntRange error = goal.errorRangeProperty().get();
+        Range<Integer> error = goal.errorRangeProperty().get();
         if (error != null)
-            goalText.selectRange(error.getMinimumInteger(), error.getMaximumInteger() + 1);
+            goalText.selectRange(error.getMinimum(), error.getMaximum() + 1);
     }
 
     public void insertText(String str) {

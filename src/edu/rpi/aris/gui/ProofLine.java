@@ -1,6 +1,5 @@
 package edu.rpi.aris.gui;
 
-import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.gui.event.SentenceChangeEvent;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -17,8 +16,8 @@ import javafx.scene.input.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.IntRange;
+import org.apache.commons.lang3.Range;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.Timer;
 import java.util.TimerTask;
@@ -218,9 +217,9 @@ public class ProofLine {
     }
 
     public void selectError() {
-        IntRange error = proofLine.errorRangeProperty().get();
+        Range<Integer> error = proofLine.errorRangeProperty().get();
         if (error != null)
-            textField.selectRange(error.getMinimumInteger(), error.getMaximumInteger() + 1);
+            textField.selectRange(error.getMinimum(), error.getMaximum() + 1);
     }
 
     public void insertText(String str) {
