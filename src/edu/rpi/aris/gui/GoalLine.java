@@ -1,6 +1,6 @@
 package edu.rpi.aris.gui;
 
-import edu.rpi.aris.ConfigurationManager;
+import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.gui.event.SentenceChangeEvent;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -46,7 +46,7 @@ public class GoalLine {
         goalValidImg.imageProperty().bind(Bindings.createObjectBinding(() -> goal.goalStatusProperty().get().img, goal.goalStatusProperty()));
         goalText.setOnMouseClicked(mouseEvent -> window.requestFocus(this));
         UnaryOperator<TextFormatter.Change> filter = t -> {
-            t.setText(ConfigurationManager.replaceText(t.getText()));
+            t.setText(GuiConfig.replaceText(t.getText()));
             return t;
         };
         goalText.setTextFormatter(new TextFormatter<>(filter));

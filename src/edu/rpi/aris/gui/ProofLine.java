@@ -1,6 +1,6 @@
 package edu.rpi.aris.gui;
 
-import edu.rpi.aris.ConfigurationManager;
+import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.gui.event.SentenceChangeEvent;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -117,7 +117,7 @@ public class ProofLine {
         textField.setOnMouseClicked(this::requestFocus);
         textField.addEventFilter(ContextMenuEvent.CONTEXT_MENU_REQUESTED, Event::consume);
         UnaryOperator<TextFormatter.Change> filter = t -> {
-            t.setText(ConfigurationManager.replaceText(t.getText()));
+            t.setText(GuiConfig.replaceText(t.getText()));
             return t;
         };
         textField.setTextFormatter(new TextFormatter<>(filter));

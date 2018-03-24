@@ -1,6 +1,6 @@
 package edu.rpi.aris.gui.submit;
 
-import edu.rpi.aris.ConfigurationManager;
+import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.Main;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
@@ -75,8 +75,8 @@ public class ClientInfo {
         loaded.set(false);
         isInstructor.set(false);
         courses.clear();
-        ConfigurationManager.getConfigManager().username.set(null);
-        ConfigurationManager.getConfigManager().setAccessToken(null);
+        GuiConfig.getConfigManager().username.set(null);
+        GuiConfig.getConfigManager().setAccessToken(null);
     }
 
     public SimpleBooleanProperty isInstructorProperty() {

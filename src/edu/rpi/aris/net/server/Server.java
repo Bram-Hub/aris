@@ -1,6 +1,5 @@
 package edu.rpi.aris.net.server;
 
-import edu.rpi.aris.ConfigurationManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
@@ -27,22 +26,22 @@ import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.security.*;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class Server implements Runnable {
 
+    private static final ServerConfig config = ServerConfig.getInstance();
     private static final char[] KEYSTORE_PASSWORD = "ARIS_SERVER".toCharArray();
     private static final String KEYSTORE_FILENAME = "server.keystore";
-    private static final File KEYSTORE_FILE = new File(ConfigurationManager.CONFIG_DIR, KEYSTORE_FILENAME);
-    private static final File DATABASE_FILE = new File(ConfigurationManager.CONFIG_DIR, "server.db");
-    private static final File SELF_SIGNED_CERT = new File(ConfigurationManager.CONFIG_DIR, "self-signed-cert.pem");
+    private static final File KEYSTORE_FILE = new File(config.getConfigurationDir(), KEYSTORE_FILENAME);
+    private static final File DATABASE_FILE = new File(config.getConfigurationDir(), "server.db");
+    private static final File SELF_SIGNED_CERT = new File(config.getConfigurationDir(), "self-signed-cert.pem");
 
     static {
         if (Security.getProvider("BC") == null)
@@ -58,6 +57,8 @@ public class Server implements Runnable {
     private Logger logger = LogManager.getLogger(Server.class);
     private boolean selfSign;
     private DatabaseManager dbManager;
+    private Timer certExpireTimer = null;
+    private ServerSocket serverSocket;
 
     public Server(int port, File caCertificate, File privateKey) throws FileNotFoundException {
         logger.info("Preparing server");
@@ -89,7 +90,7 @@ public class Server implements Runnable {
     public void run() {
         try {
             logger.info("Server Starting");
-            ServerSocket serverSocket = getServerSocketFactory().createServerSocket(port);
+            serverSocket = getServerSocketFactory().createServerSocket(port);
             ExecutorService threadPool = Executors.newCachedThreadPool();
             logger.info("Server Started");
             logger.info("Waiting for connections");
@@ -98,12 +99,11 @@ public class Server implements Runnable {
                 threadPool.execute(new ClientHandler((SSLSocket) serverSocket.accept(), dbManager));
             }
         } catch (IOException e) {
-            logger.fatal("Failed to start Aris Server", e);
+            logger.fatal("An error occurred with the Aris ServerSocket", e);
         }
     }
 
     private SSLServerSocketFactory getServerSocketFactory() {
-        System.out.println("Get socket factory");
         SSLServerSocketFactory socketFactory = null;
         try {
             // set up key manager to do server authentication
@@ -114,27 +114,60 @@ public class Server implements Runnable {
             context = SSLContext.getInstance("TLSv1.2");
 
             keyManagerFactory = KeyManagerFactory.getInstance("X.509");
+            logger.info("Preparing server certificate");
             keyStore = getKeyStore();
-            System.out.println("Init key factory");
+            if (keyStore == null)
+                throw new NullPointerException("Failed to get certificate keystore");
+            Certificate[] certChain = keyStore.getCertificateChain("aris_server");
+            X509Certificate cert = (X509Certificate) certChain[0];
+            Date expireDate = cert.getNotAfter();
+            if (expireDate.before(new Date())) {
+                if (selfSign && KEYSTORE_FILE.delete() && SELF_SIGNED_CERT.delete()) {
+                    logger.warn("The server's self-signed certificate has expired.");
+                    logger.warn("A new certificate will now be generated");
+                    logger.warn("Please forward the newly generated certificate to any clients that would like to connect");
+                    return getServerSocketFactory();
+                } else if (selfSign) {
+                    logger.error("Failed to automatically regenerate self-signed certificate");
+                    logger.error("Please delete the following file then restart the server");
+                    logger.error(KEYSTORE_FILE.getCanonicalPath());
+                    logger.error(SELF_SIGNED_CERT.getCanonicalPath());
+                    throw new CertificateException("Failed to automatically regenerate self-signed certificate");
+                } else {
+                    throw new CertificateException("Server's provided certificate is expired");
+                }
+            }
+            if (certExpireTimer != null)
+                certExpireTimer.cancel();
+            certExpireTimer = new Timer(true);
+            certExpireTimer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    try {
+                        logger.info("Server's certificate has expired.");
+                        logger.info("Server will now reload to read any new available certificates");
+                        serverSocket.close();
+                        new Thread(this).start();
+                    } catch (IOException e) {
+                        logger.error("Failed to stop server while attempting to restart on expired certificate", e);
+                    }
+                }
+            }, expireDate);
             keyManagerFactory.init(keyStore, KEYSTORE_PASSWORD);
-            System.out.println("Init context");
             context.init(keyManagerFactory.getKeyManagers(), null, null);
-
-            System.out.println("Get socket factory");
             socketFactory = context.getServerSocketFactory();
         } catch (Exception e) {
             e.printStackTrace();
         }
-        System.out.println("Done socket factory");
         return socketFactory;
     }
 
     private KeyStore getKeyStore() {
-        System.out.println("Get key store");
         if (selfSign) {
             KeyStore ks = null;
             if (KEYSTORE_FILE.exists()) {
                 try {
+                    logger.info("Loading stored self-signed certificate");
                     ks = KeyStore.getInstance("JKS");
                     FileInputStream fis = new FileInputStream(KEYSTORE_FILE);
                     ks.load(fis, KEYSTORE_PASSWORD);
@@ -146,6 +179,7 @@ public class Server implements Runnable {
             }
             if (ks == null) {
                 try {
+                    logger.info("Generating self-signed certificate");
                     KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA", "BC");
                     keyPairGenerator.initialize(4096, new SecureRandom());
                     KeyPair kp = keyPairGenerator.genKeyPair();
@@ -185,6 +219,7 @@ public class Server implements Runnable {
             }
             if (ks != null && !SELF_SIGNED_CERT.exists()) {
                 try {
+                    logger.info("Exporting self-signed certificate");
                     if (!SELF_SIGNED_CERT.getParentFile().exists())
                         if (!SELF_SIGNED_CERT.getParentFile().mkdirs())
                             throw new IOException("Failed to export self signed certificate");
@@ -202,7 +237,6 @@ public class Server implements Runnable {
                     if (SELF_SIGNED_CERT.exists())
                         //noinspection ResultOfMethodCallIgnored
                         SELF_SIGNED_CERT.delete();
-
                 }
             }
             try {
@@ -213,6 +247,7 @@ public class Server implements Runnable {
             return ks;
         } else {
             try {
+                logger.info("Loading provided certificate");
                 PEMParser parser = new PEMParser(new FileReader(caCertificate));
                 ArrayList<X509Certificate> certs = new ArrayList<>();
                 Object objCert;
@@ -232,7 +267,6 @@ public class Server implements Runnable {
                 X509Certificate[] certArr = new X509Certificate[certs.size()];
                 certArr = certs.toArray(certArr);
                 keyStore.setKeyEntry("aris_server", key, KEYSTORE_PASSWORD, certArr);
-                System.out.println("Done key store");
                 return keyStore;
             } catch (CertificateException | IOException | KeyStoreException | NoSuchAlgorithmException e) {
                 e.printStackTrace();

@@ -1,6 +1,6 @@
 package edu.rpi.aris.gui;
 
-import edu.rpi.aris.ConfigurationManager;
+import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.gui.event.GoalChangedEvent;
 import edu.rpi.aris.gui.event.LineChangedEvent;
 import edu.rpi.aris.gui.event.PremiseChangeEvent;
@@ -62,7 +62,7 @@ public class MainWindow {
     private SimpleIntegerProperty selectedLine = new SimpleIntegerProperty(-1);
     private Proof proof;
     private Stage primaryStage;
-    private ConfigurationManager configuration = ConfigurationManager.getConfigManager();
+    private GuiConfig configuration = GuiConfig.getConfigManager();
     private RulesManager rulesManager;
     private File saveFile = null;
     private HistoryManager history = new HistoryManager(this);
@@ -502,8 +502,8 @@ public class MainWindow {
         operatorPane.setPadding(new Insets(3));
         operatorPane.setVgap(3);
         operatorPane.setHgap(3);
-        for (int i = 0; i < ConfigurationManager.SYMBOL_BUTTONS.length; i++) {
-            String sym = ConfigurationManager.SYMBOL_BUTTONS[i];
+        for (int i = 0; i < GuiConfig.SYMBOL_BUTTONS.length; i++) {
+            String sym = GuiConfig.SYMBOL_BUTTONS[i];
             Button btn = new Button(sym);
             operatorPane.add(btn, i % 6, i / 6);
             btn.setMaxWidth(Double.MAX_VALUE);

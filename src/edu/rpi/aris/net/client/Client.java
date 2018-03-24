@@ -1,7 +1,7 @@
 package edu.rpi.aris.net.client;
 
-import edu.rpi.aris.ConfigurationManager;
 import edu.rpi.aris.Main;
+import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.net.NetUtil;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -51,8 +51,8 @@ import java.util.concurrent.locks.ReentrantLock;
 public class Client {
 
     private static final char[] KEYSTORE_PASSWORD = "ARIS_CLIENT".toCharArray();
-    private static final File KEYSTORE_FILE = new File(ConfigurationManager.CONFIG_DIR, "client.keystore");
-    private static final File SERVER_KEYSTORE_FILE = new File(ConfigurationManager.CONFIG_DIR, "imported.keystore");
+    private static final File KEYSTORE_FILE = new File(GuiConfig.CLIENT_CONFIG_DIR, "client.keystore");
+    private static final File SERVER_KEYSTORE_FILE = new File(GuiConfig.CLIENT_CONFIG_DIR, "imported.keystore");
     private static Logger logger = LogManager.getLogger(Client.class);
 
     static {
@@ -200,11 +200,16 @@ public class Client {
 
     private void setConnectionStatus(ConnectionStatus status) {
         connectionStatus = status;
-        Platform.runLater(() -> connectionStatusProperty.set(status));
+        try {
+            Platform.runLater(() -> connectionStatusProperty.set(status));
+        } catch (IllegalStateException e) {
+            connectionStatusProperty.set(status);
+        }
     }
 
     public synchronized void setServer(String serverAddress, int port) {
-        disconnect();
+        if (connectionStatus != ConnectionStatus.DISCONNECTED)
+            disconnect();
         this.serverAddress = serverAddress;
         this.port = port;
     }
@@ -312,8 +317,8 @@ public class Client {
             default:
                 if (res.startsWith(NetUtil.AUTH_OK)) {
                     String accessToken = res.replaceFirst(NetUtil.AUTH_OK + " ", "");
-                    ConfigurationManager.getConfigManager().setAccessToken(URLDecoder.decode(accessToken, "UTF-8"));
-                    Platform.runLater(() -> ConfigurationManager.getConfigManager().username.set(user));
+                    GuiConfig.getConfigManager().setAccessToken(URLDecoder.decode(accessToken, "UTF-8"));
+                    Platform.runLater(() -> GuiConfig.getConfigManager().username.set(user));
                 } else
                     throw new IOException(res);
         }
@@ -330,7 +335,7 @@ public class Client {
                     setupConnection(credentials.getLeft(), credentials.getMiddle(), credentials.getRight());
                 } catch (IOException e) {
                     if (isAccessToken && e.getMessage().equals(NetUtil.AUTH_FAIL)) {
-                        ConfigurationManager.getConfigManager().setAccessToken(null);
+                        GuiConfig.getConfigManager().setAccessToken(null);
                         connect();
                         if (connectionLock.isHeldByCurrentThread())
                             connectionLock.unlock();
@@ -344,11 +349,11 @@ public class Client {
     }
 
     private Triple<String, String, Boolean> getCredentials() throws IOException {
-        String user = ConfigurationManager.getConfigManager().username.get();
-        String pass = ConfigurationManager.getConfigManager().getAccessToken();
+        String user = GuiConfig.getConfigManager().username.get();
+        String pass = GuiConfig.getConfigManager().getAccessToken();
         boolean isAccessToken = user != null && pass != null;
         if (!isAccessToken) {
-            ConfigurationManager.getConfigManager().username.set(null);
+            GuiConfig.getConfigManager().username.set(null);
             switch (Main.getMode()) {
                 case GUI:
                     final AtomicReference<Optional<Pair<String, String>>> result = new AtomicReference<>(null);

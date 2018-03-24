@@ -1,6 +1,6 @@
 package edu.rpi.aris.proof;
 
-import edu.rpi.aris.ConfigurationManager;
+import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.Main;
 import edu.rpi.aris.gui.Proof;
 import edu.rpi.aris.rules.RuleList;
@@ -54,7 +54,7 @@ public class SaveManager {
 
     public static File showSaveDialog(Window parent, String defaultFileName) throws IOException {
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setInitialDirectory(ConfigurationManager.getConfigManager().getSaveDirectory());
+        fileChooser.setInitialDirectory(GuiConfig.getConfigManager().getSaveDirectory());
         fileChooser.getExtensionFilters().add(extensionFilter);
         fileChooser.getExtensionFilters().add(allFiles);
         fileChooser.setSelectedExtensionFilter(extensionFilter);
@@ -63,14 +63,14 @@ public class SaveManager {
         File f = fileChooser.showSaveDialog(parent);
         if (f != null) {
             f = f.getCanonicalFile();
-            ConfigurationManager.getConfigManager().setSaveDirectory(f.getParentFile());
+            GuiConfig.getConfigManager().setSaveDirectory(f.getParentFile());
         }
         return f;
     }
 
     public static File showOpenDialog(Window parent) throws IOException {
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setInitialDirectory(ConfigurationManager.getConfigManager().getSaveDirectory());
+        fileChooser.setInitialDirectory(GuiConfig.getConfigManager().getSaveDirectory());
         fileChooser.getExtensionFilters().add(extensionFilter);
         fileChooser.getExtensionFilters().add(allFiles);
         fileChooser.setSelectedExtensionFilter(extensionFilter);
@@ -78,7 +78,7 @@ public class SaveManager {
         File f = fileChooser.showOpenDialog(parent);
         if (f != null) {
             f = f.getCanonicalFile();
-            ConfigurationManager.getConfigManager().setSaveDirectory(f.getParentFile());
+            GuiConfig.getConfigManager().setSaveDirectory(f.getParentFile());
             if (!f.getName().toLowerCase().endsWith("." + FILE_EXTENSION))
                 f = new File(f.getParent(), f.getName() + "." + FILE_EXTENSION);
         }

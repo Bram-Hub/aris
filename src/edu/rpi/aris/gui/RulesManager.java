@@ -1,6 +1,5 @@
 package edu.rpi.aris.gui;
 
-import edu.rpi.aris.ConfigurationManager;
 import edu.rpi.aris.rules.Rule;
 import edu.rpi.aris.rules.RuleList;
 import javafx.application.Platform;
@@ -24,7 +23,7 @@ public class RulesManager {
     private HashMap<Rule.Type, Pair<TitledPane, VBox>> ruleTypePanes = new HashMap<>();
 
     public RulesManager() {
-        this(ConfigurationManager.getConfigManager().getDefaultRuleSet());
+        this(GuiConfig.getConfigManager().getDefaultRuleSet());
     }
 
     public RulesManager(Collection<RuleList> availableRules) {
@@ -36,8 +35,8 @@ public class RulesManager {
     private synchronized void initRuleTable() {
         VBox vbox = new VBox();
         ruleTable = new ScrollPane(vbox);
-        ruleTable.visibleProperty().bind(ConfigurationManager.getConfigManager().hideRulesPanel.not());
-        ruleTable.managedProperty().bind(ConfigurationManager.getConfigManager().hideRulesPanel.not());
+        ruleTable.visibleProperty().bind(GuiConfig.getConfigManager().hideRulesPanel.not());
+        ruleTable.managedProperty().bind(GuiConfig.getConfigManager().hideRulesPanel.not());
         ruleTable.setFitToHeight(true);
         ruleTable.setFitToWidth(true);
         for (Rule.Type t : Rule.Type.values()) {

@@ -1,4 +1,4 @@
-package edu.rpi.aris;
+package edu.rpi.aris.gui;
 
 import edu.rpi.aris.rules.RuleList;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -20,20 +20,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.prefs.Preferences;
 
-public class ConfigurationManager {
+public class GuiConfig {
 
     public static final String[] SYMBOL_BUTTONS = new String[]{"∧", "∨", "¬", "→", "↔", "⊥", "∀", "∃", "×", "≠", "⊆", "∈"};
-    public static final File CONFIG_DIR = new File(System.getProperty("user.home"), ".aris-java");
-    public static final String HIDE_RULES_PANEL = "HIDE_RULES_PANEL";
-    public static final String HIDE_OPERATOR_PANEL = "HIDE_OPERATOR_PANEL";
-    public static final String USERNAME_KEY = "USERNAME_KEY";
-    public static final String SELECTED_COURSE_ID = "SELECTED_COURSE_ID";
     private static final HashMap<String, String> KEY_MAP = new HashMap<>();
-    private static final ConfigurationManager configManager;
-    private static final Logger logger = LogManager.getLogger(ConfigurationManager.class);
-    public static final String LAST_SAVE_DIR = "LAST_SAVE_DIR";
-    public static final String ACCESS_TOKEN = "ACCESS_TOKEN";
-    private static final Preferences preferences = Preferences.userNodeForPackage(ConfigurationManager.class);
+    private static final Logger logger = LogManager.getLogger(GuiConfig.class);
+    private static final Preferences preferences = Preferences.userNodeForPackage(GuiConfig.class);
     //Java preferences api storage constants
     private static final String OR_KEY = "OR_KEY";
     private static final String NOT_EQUALS_KEY = "NOT_EQUALS_KEY";
@@ -61,25 +53,32 @@ public class ConfigurationManager {
     private static final String NEW_PREMISE_KEY = "NEW_PREMISE_KEY";
     private static final String DELETE_LINE_KEY = "DELETE_LINE_KEY";
     private static final String NEW_LINE_KEY = "NEW_LINE_KEY";
+    private static final String HIDE_RULES_PANEL = "HIDE_RULES_PANEL";
+    private static final String HIDE_OPERATOR_PANEL = "HIDE_OPERATOR_PANEL";
+    private static final String USERNAME_KEY = "USERNAME_KEY";
+    private static final String SELECTED_COURSE_ID = "SELECTED_COURSE_ID";
+    private static final String LAST_SAVE_DIR = "LAST_SAVE_DIR";
+    private static final String ACCESS_TOKEN = "ACCESS_TOKEN";
     private static final String[][] defaultKeyMap = new String[][]{{"&", "∧"},
             {preferences.get(OR_KEY, "|"), "∨"},
-            {preferences.get(NOT_EQUALS_KEY, "!"), "≠"},
+            {preferences.get(NOT_EQUALS_KEY, "#"), "≠"},
             {preferences.get(NOT_KEY, "~"), "¬"},
             {preferences.get(COND_KEY, "$"), "→"},
             {preferences.get(BICONDITIONAL_KEY, "%"), "↔"},
             {preferences.get(CONTRA_KEY, "^"), "⊥"},
             {preferences.get(UNIVERSAL_KEY, "@"), "∀"},
-            {preferences.get(EXISTENTIAL_KEY, "#"), "∃"},
+            {preferences.get(EXISTENTIAL_KEY, "?"), "∃"},
             {preferences.get(MULTIPLICATION_KEY, "*"), "×"}};
+    public static File CLIENT_CONFIG_DIR = new File(System.getProperty("user.home"), ".aris-java");
+    private static GuiConfig configManager;
 
     static {
         for (String[] s : defaultKeyMap)
             KEY_MAP.put(s[0], s[1]);
-        configManager = new ConfigurationManager();
-        if (!CONFIG_DIR.exists()) {
-            if (!CONFIG_DIR.mkdirs())
+        if (!CLIENT_CONFIG_DIR.exists()) {
+            if (!CLIENT_CONFIG_DIR.mkdirs())
                 logger.error("Failed to create configuration directory");
-            Path path = CONFIG_DIR.toPath();
+            Path path = CLIENT_CONFIG_DIR.toPath();
             try {
                 Object hidden = Files.getAttribute(path, "dos:hidden", LinkOption.NOFOLLOW_LINKS);
                 if (hidden != null && hidden instanceof Boolean && !((Boolean) hidden))
@@ -117,12 +116,27 @@ public class ConfigurationManager {
             startSubProofKey, endSubProofKey, newPremiseKey, verifyLineKey, addGoalKey, verifyProofKey, newProofKey,
             openProofKey, saveProofKey, saveAsProofKey, undoKey, redoKey, copyKey, cutKey, pasteKey};
 
-    private ConfigurationManager() {
+    private GuiConfig() {
         if (!saveDirectory.exists())
             saveDirectory = new File(System.getProperty("user.home"));
+        hideRulesPanel.addListener((observable, oldValue, newValue) -> preferences.putBoolean(HIDE_RULES_PANEL, newValue));
+        hideOperatorsPanel.addListener((observable, oldValue, newValue) -> preferences.putBoolean(HIDE_OPERATOR_PANEL, newValue));
+        username.addListener((observable, oldValue, newValue) -> preferences.put(USERNAME_KEY, newValue));
+        selectedCourseId.addListener((observable, oldValue, newValue) -> preferences.putInt(SELECTED_COURSE_ID, newValue.intValue()));
     }
 
-    public static ConfigurationManager getConfigManager() {
+    public static void setClientConfigDir(File clientConfigDir) {
+        if (clientConfigDir == null)
+            clientConfigDir = new File(System.getProperty("user.home"), ".aris-java");
+        if (!clientConfigDir.exists())
+            //noinspection ResultOfMethodCallIgnored
+            clientConfigDir.mkdirs();
+        CLIENT_CONFIG_DIR = clientConfigDir;
+    }
+
+    public static GuiConfig getConfigManager() {
+        if (configManager == null)
+            configManager = new GuiConfig();
         return configManager;
     }
 
@@ -147,15 +161,19 @@ public class ConfigurationManager {
     }
 
     public File getSaveDirectory() {
-        if (!saveDirectory.exists())
+        if (!saveDirectory.exists()) {
             saveDirectory = new File(System.getProperty("user.home"));
+            preferences.put(LAST_SAVE_DIR, saveDirectory.getAbsolutePath());
+        }
         return saveDirectory;
     }
 
     public void setSaveDirectory(File file) {
         if (file == null)
             saveDirectory = new File(System.getProperty("user.home"));
-        saveDirectory = file;
+        else
+            saveDirectory = file;
+        preferences.put(LAST_SAVE_DIR, saveDirectory.getAbsolutePath());
     }
 
     public synchronized String getAccessToken() {

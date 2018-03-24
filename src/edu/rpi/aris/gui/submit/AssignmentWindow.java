@@ -1,6 +1,6 @@
 package edu.rpi.aris.gui.submit;
 
-import edu.rpi.aris.ConfigurationManager;
+import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.Main;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
@@ -63,19 +63,19 @@ public class AssignmentWindow {
     @FXML
     private void initialize() {
         lblUsername.textProperty().bind(Bindings.createStringBinding(() -> {
-            String user = ConfigurationManager.getConfigManager().username.get();
+            String user = GuiConfig.getConfigManager().username.get();
             boolean isInstructor = clientInfo.isInstructorProperty().get();
             if (user == null)
                 return "Not logged in";
             return user + " (" + (isInstructor ? NetUtil.USER_INSTRUCTOR : NetUtil.USER_STUDENT) + ")";
-        }, clientInfo.isInstructorProperty(), ConfigurationManager.getConfigManager().username));
+        }, clientInfo.isInstructorProperty(), GuiConfig.getConfigManager().username));
         Bindings.bindContent(classes.getItems(), clientInfo.getCourses());
         classes.getSelectionModel().selectedItemProperty().addListener((observableValue, oldCourse, newCourse) -> {
             Platform.runLater(() -> {
                 assignments.getPanes().clear();
                 if (newCourse == null)
                     return;
-                ConfigurationManager.getConfigManager().selectedCourseId.set(newCourse.getId());
+                GuiConfig.getConfigManager().selectedCourseId.set(newCourse.getId());
                 newCourse.load(() -> Platform.runLater(() -> {
                     for (Assignment assignment : newCourse.getAssignments())
                         assignments.getPanes().add(assignment.getPane());
@@ -86,7 +86,7 @@ public class AssignmentWindow {
         classes.managedProperty().bind(clientInfo.loadedProperty());
         lblClass.visibleProperty().bind(clientInfo.loadedProperty());
         lblClass.managedProperty().bind(clientInfo.loadedProperty());
-        login.visibleProperty().bind(Bindings.createBooleanBinding(() -> ConfigurationManager.getConfigManager().username.get() == null, ConfigurationManager.getConfigManager().username));
+        login.visibleProperty().bind(Bindings.createBooleanBinding(() -> GuiConfig.getConfigManager().username.get() == null, GuiConfig.getConfigManager().username));
         login.managedProperty().bind(login.visibleProperty());
         login.setOnAction(actionEvent -> load(true));
         loading.visibleProperty().bind(Main.getClient().getConnectionStatusProperty().isNotEqualTo(Client.ConnectionStatus.DISCONNECTED));
@@ -204,7 +204,7 @@ public class AssignmentWindow {
     }
 
     public void load(boolean reload) {
-        clientInfo.load(() -> Platform.runLater(() -> selectClass(ConfigurationManager.getConfigManager().selectedCourseId.get())), reload);
+        clientInfo.load(() -> Platform.runLater(() -> selectClass(GuiConfig.getConfigManager().selectedCourseId.get())), reload);
     }
 
     private void selectClass(int classId) {

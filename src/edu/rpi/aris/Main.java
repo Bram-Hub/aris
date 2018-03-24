@@ -104,7 +104,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
                 File keyFile = key == null ? null : new File(key);
                 System.out.println("Creating server");
                 server = new Server(9000, caFile, keyFile);
-                server.run();
+                new Thread(() -> server.run()).start();
                 break;
         }
     }
@@ -113,7 +113,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
         //noinspection ResultOfMethodCallIgnored
         ipcFile.createNewFile();
         ipcFile.deleteOnExit();
-        FileAlterationObserver observer = new FileAlterationObserver(ConfigurationManager.CONFIG_DIR);
+        FileAlterationObserver observer = new FileAlterationObserver(System.getProperty("java.io.tmpdir"));
         FileAlterationMonitor monitor = new FileAlterationMonitor(1000);
         FileAlterationListener listener = new FileAlterationListenerAdaptor() {
             @Override

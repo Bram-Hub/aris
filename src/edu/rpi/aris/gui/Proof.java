@@ -1,6 +1,6 @@
 package edu.rpi.aris.gui;
 
-import edu.rpi.aris.ConfigurationManager;
+import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.Main;
 import edu.rpi.aris.gui.event.PremiseChangeEvent;
 import edu.rpi.aris.proof.*;
@@ -25,7 +25,7 @@ public class Proof {
     private SimpleIntegerProperty numPremises = new SimpleIntegerProperty();
 
     public Proof() {
-        authors.add(ConfigurationManager.getConfigManager().username.get());
+        authors.add(GuiConfig.getConfigManager().username.get());
         numLines.bind(Bindings.size(lines));
     }
 
