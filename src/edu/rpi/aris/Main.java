@@ -29,7 +29,7 @@ import java.sql.SQLException;
 public class Main implements Thread.UncaughtExceptionHandler {
 
     public static final Main instance = new Main();
-    public static final String VERSION = "0.1";
+    public static final String VERSION;
     public static final String NAME = "Aris";
     private static final File clientLockFile = new File(System.getProperty("java.io.tmpdir"), "aris_client.lock");
     private static final File serverLockFile = new File(System.getProperty("java.io.tmpdir"), "aris_server.lock");
@@ -46,6 +46,18 @@ public class Main implements Thread.UncaughtExceptionHandler {
     private static FileChannel lockFileChannel;
     private static String serverAddress = "localhost";
     private static int port = 9001; // IT'S OVER 9000!!!
+
+    static {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(Main.class.getResourceAsStream("VERSION")));
+        String version = "UNKNOWN";
+        try {
+            version = reader.readLine();
+            reader.close();
+        } catch (IOException e) {
+            logger.error("An error occurred while attempting to read the version", e);
+        }
+        VERSION = version;
+    }
 
     static {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
