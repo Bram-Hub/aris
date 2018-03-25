@@ -22,7 +22,7 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-public class ClientHandler implements Runnable {
+public abstract class ClientHandler implements Runnable {
 
     private static final Logger logger = LogManager.getLogger(ClientHandler.class);
 
@@ -958,27 +958,33 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    private void disconnect() {
-        if (in != null) {
-            try {
-                in.close();
-            } catch (IOException e) {
-                logger.error("[" + clientName + "] Failed to close input stream", e);
-            }
-        }
-        if (out != null) {
-            try {
-                out.close();
-            } catch (IOException e) {
-                logger.error("[" + clientName + "] Failed to close output stream", e);
-            }
-        }
+    public void disconnect() {
         try {
-            socket.close();
-        } catch (IOException e) {
-            logger.error("[" + clientName + "] Failed to close socket");
+            if (in != null) {
+                try {
+                    in.close();
+                } catch (IOException e) {
+                    logger.error("[" + clientName + "] Failed to close input stream", e);
+                }
+            }
+            if (out != null) {
+                try {
+                    out.close();
+                } catch (IOException e) {
+                    logger.error("[" + clientName + "] Failed to close output stream", e);
+                }
+            }
+            try {
+                socket.close();
+            } catch (IOException e) {
+                logger.error("[" + clientName + "] Failed to close socket");
+            }
+            logger.info("[" + clientName + "] Disconnected");
+        } finally {
+            onDisconnect(this);
         }
-        logger.info("[" + clientName + "] Disconnected");
     }
+
+    public abstract void onDisconnect(ClientHandler clientHandler);
 
 }

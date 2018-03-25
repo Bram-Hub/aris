@@ -72,6 +72,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
 
     public static void main(String[] args) throws IOException {
         Thread.setDefaultUncaughtExceptionHandler(instance);
+        logger.info(NAME + " version " + VERSION);
         try {
             parseCommandLineArgs(args);
         } catch (Throwable e) {
@@ -130,7 +131,6 @@ public class Main implements Thread.UncaughtExceptionHandler {
                     throw new IOException("Private key specified without CA certificate");
                 File caFile = ca == null ? null : new File(ca);
                 File keyFile = key == null ? null : new File(key);
-                System.out.println("Creating server");
                 server = new Server(port, caFile, keyFile);
                 new Thread(() -> server.run()).start();
                 break;

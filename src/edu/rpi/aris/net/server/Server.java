@@ -33,6 +33,8 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Server implements Runnable {
 
@@ -55,16 +57,22 @@ public class Server implements Runnable {
     private final File caCertificate;
     private final File privateKey;
     private Logger logger = LogManager.getLogger(Server.class);
-    private boolean selfSign;
+    private boolean selfSign, stopServer, shutdown;
     private DatabaseManager dbManager;
     private Timer certExpireTimer = null;
     private ServerSocket serverSocket;
+    private ReentrantLock serverLock = new ReentrantLock(true);
+    private HashSet<ClientHandler> clients = new HashSet<>();
+    private Thread serverThread = null;
+    private final Thread shutdownHook = new Thread(this::shutdown);
 
     public Server(int port, File caCertificate, File privateKey) throws FileNotFoundException {
         logger.info("Preparing server");
         this.port = port;
         this.caCertificate = caCertificate;
         this.privateKey = privateKey;
+        stopServer = false;
+        shutdown = false;
         if (caCertificate == null || privateKey == null) {
             logger.warn("CA certificate and key not specified");
             logger.warn("Running server in self signing mode");
@@ -89,6 +97,15 @@ public class Server implements Runnable {
     @Override
     public void run() {
         try {
+            if (!serverLock.tryLock(10, TimeUnit.SECONDS))
+                return;
+        } catch (InterruptedException e) {
+            logger.error("An error occurred while attempting to acquire the server lock", e);
+            return;
+        }
+        try {
+            serverThread = Thread.currentThread();
+            Runtime.getRuntime().addShutdownHook(shutdownHook);
             logger.info("Starting Server on port " + port + (port == 9001 ? " (IT'S OVER 9000!!!)" : ""));
             serverSocket = getServerSocketFactory().createServerSocket(port);
             ExecutorService threadPool = Executors.newCachedThreadPool();
@@ -96,11 +113,51 @@ public class Server implements Runnable {
             logger.info("Waiting for connections");
             //noinspection InfiniteLoopStatement
             while (true) {
-                threadPool.execute(new ClientHandler((SSLSocket) serverSocket.accept(), dbManager));
+                ClientHandler client = new ClientHandler((SSLSocket) serverSocket.accept(), dbManager) {
+                    @Override
+                    public void onDisconnect(ClientHandler clientHandler) {
+                        clients.remove(clientHandler);
+                    }
+                };
+                clients.add(client);
+                threadPool.execute(client);
             }
         } catch (IOException e) {
-            logger.fatal("An error occurred with the Aris ServerSocket", e);
+            if (!stopServer)
+                logger.fatal("An error occurred with the Aris ServerSocket", e);
+        } finally {
+            if (!shutdown) {
+                Runtime.getRuntime().removeShutdownHook(shutdownHook);
+                serverThread = null;
+            }
+            logger.info("ServerSocket closed");
+            serverLock.unlock();
         }
+    }
+
+    private void shutdown() {
+        logger.info("Received program interrupt");
+        logger.info("Stopping server");
+        stopServer = true;
+        shutdown = true;
+        try {
+            serverSocket.close();
+            if (serverThread != null)
+                serverThread.join();
+        } catch (IOException | InterruptedException e) {
+            logger.error("Error stopping server", e);
+        }
+        logger.info("Disconnecting clients");
+        for (ClientHandler client : clients)
+            client.disconnect();
+        logger.info("Closing database connection");
+        try {
+            dbManager.close();
+        } catch (SQLException e) {
+            logger.error("Error closing database manager", e);
+        }
+        logger.info("Server shutdown");
+        LogManager.shutdown();
     }
 
     private SSLServerSocketFactory getServerSocketFactory() {
@@ -146,6 +203,7 @@ public class Server implements Runnable {
                     try {
                         logger.info("Server's certificate has expired.");
                         logger.info("Server will now reload to read any new available certificates");
+                        stopServer = true;
                         serverSocket.close();
                         new Thread(this).start();
                     } catch (IOException e) {

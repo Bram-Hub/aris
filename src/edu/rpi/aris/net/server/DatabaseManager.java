@@ -26,15 +26,12 @@ public class DatabaseManager {
     }
 
     private Connection connection;
-    private File dbFile;
-    private Thread shutdownHook;
     private SecureRandom random = new SecureRandom();
     private MessageDigest digest;
 
     public DatabaseManager(File dbFile) throws IOException, SQLException {
         try {
             digest = MessageDigest.getInstance("SHA512", "BC");
-            this.dbFile = dbFile;
             boolean exists = dbFile.exists();
             connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getCanonicalPath());
             connection.setAutoCommit(true);
@@ -42,14 +39,6 @@ public class DatabaseManager {
                 verifyDatabase();
             else
                 createTables(false);
-            shutdownHook = new Thread(() -> {
-                try {
-                    close();
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
-            });
-            Runtime.getRuntime().addShutdownHook(shutdownHook);
         } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
             Main.instance.showExceptionError(Thread.currentThread(), e, true);
         } catch (Throwable e) {
@@ -97,6 +86,7 @@ public class DatabaseManager {
         statement.execute("CREATE TABLE user (id integer PRIMARY KEY, username text, user_type text, salt text, password_hash text, access_token text);");
         statement.execute("CREATE TABLE user_class (user_id integer, class_id integer);");
         statement.execute("CREATE TABLE class (id integer PRIMARY KEY, name text);");
+        statement.close();
     }
 
     public Pair<String, String> createUser(String username, String password, String userType) throws SQLException {
@@ -143,8 +133,6 @@ public class DatabaseManager {
     }
 
     public void close() throws SQLException {
-        if (Thread.currentThread() != shutdownHook)
-            Runtime.getRuntime().removeShutdownHook(shutdownHook);
         connection.close();
     }
 
