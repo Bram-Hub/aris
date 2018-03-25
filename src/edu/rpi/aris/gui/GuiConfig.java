@@ -144,6 +144,10 @@ public class GuiConfig {
     private VBox aliasBox;
     @FXML
     private VBox shortcutBox;
+    @FXML
+    private CheckBox oprCheckBox;
+    @FXML
+    private CheckBox ruleCheckBox;
 
     private BidiMap<String, String> aliasKeyMap = new DualHashBidiMap<>();
     private HashMap<String, TextField> aliasMap = new HashMap<>();
@@ -161,8 +165,6 @@ public class GuiConfig {
             aliasKeyMap.put(s[0], s[1]);
         if (!saveDirectory.exists())
             saveDirectory = new File(System.getProperty("user.home"));
-        hideRulesPanel.addListener((observable, oldValue, newValue) -> preferences.putBoolean(HIDE_RULES_PANEL, newValue));
-        hideOperatorsPanel.addListener((observable, oldValue, newValue) -> preferences.putBoolean(HIDE_OPERATOR_PANEL, newValue));
         username.addListener((observable, oldValue, newValue) -> {
             if (newValue == null)
                 preferences.remove(USERNAME_KEY);
@@ -354,6 +356,10 @@ public class GuiConfig {
             else
                 preferences.put(keyComboDescriptions.get(prop).getValue(), newKey.getDisplayText());
         }
+        hideOperatorsPanel.set(oprCheckBox.isSelected());
+        preferences.putBoolean(HIDE_OPERATOR_PANEL, oprCheckBox.isSelected());
+        hideRulesPanel.set(ruleCheckBox.isSelected());
+        preferences.putBoolean(HIDE_RULES_PANEL, ruleCheckBox.isSelected());
         aliasKeyMap = newAliases;
         stage.hide();
     }
@@ -372,6 +378,8 @@ public class GuiConfig {
             shortcut.getValue().setText(prop.get() == null ? "Unbound" : prop.getValue().getDisplayText());
             shortcutMap.put(prop, new Pair<>(prop.get(), shortcut.getValue()));
         }
+        oprCheckBox.setSelected(hideOperatorsPanel.get());
+        ruleCheckBox.setSelected(hideRulesPanel.get());
     }
 
     private void configAlert(String message) {

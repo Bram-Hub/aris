@@ -41,10 +41,7 @@ import java.security.*;
 import java.security.cert.CertPathBuilderException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Enumeration;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
@@ -104,6 +101,29 @@ public class Client {
         } catch (IOException | CertificateException | KeyStoreException | NoSuchAlgorithmException e) {
             logger.error("Failed to import given certificate", e);
         }
+    }
+
+    public static ArrayList<X509Certificate> getSelfSignedCertificates() {
+        ArrayList<X509Certificate> certs = new ArrayList<>();
+        try {
+            KeyStore ks = KeyStore.getInstance("JKS");
+            if (SERVER_KEYSTORE_FILE.exists()) {
+                try (FileInputStream fis = new FileInputStream(SERVER_KEYSTORE_FILE)) {
+                    ks.load(fis, KEYSTORE_PASSWORD);
+                }
+                Enumeration<String> aliases = ks.aliases();
+                while (aliases.hasMoreElements()) {
+                    String a = aliases.nextElement();
+                    if (ks.isCertificateEntry(a)) {
+                        X509Certificate cert = (X509Certificate) ks.getCertificate(a);
+                        certs.add(cert);
+                    }
+                }
+            }
+        } catch (KeyStoreException | IOException | CertificateException | NoSuchAlgorithmException e) {
+            logger.error("Error loading saved server certificates", e);
+        }
+        return certs;
     }
 
     private static KeyStore getKeyStore() {
