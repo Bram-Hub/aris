@@ -299,7 +299,7 @@ public class GuiConfig {
             if (event.getCode() == KeyCode.BACK_SPACE) {
                 combo.set(null);
                 lbl.setText("Unbound");
-            } else if (!event.getCode().isModifierKey() && (event.isAltDown() || event.isControlDown() || event.isMetaDown())) {
+            } else if (!event.getCode().isModifierKey() && event.getCode() != KeyCode.UNDEFINED && (event.isAltDown() || event.isControlDown() || event.isMetaDown())) {
                 KeyCombination.ModifierValue up = KeyCombination.ModifierValue.UP;
                 KeyCombination.ModifierValue down = KeyCombination.ModifierValue.DOWN;
                 KeyCombination newCombo = new KeyCodeCombination(event.getCode(), event.isShiftDown() ? down : up,
@@ -316,7 +316,7 @@ public class GuiConfig {
             for (Map.Entry<SimpleObjectProperty<KeyCombination>, Pair<KeyCombination, Button>> c : shortcutMap.entrySet()) {
                 if (c.getKey() == prop)
                     continue;
-                if (c.getValue().getKey().equals(result.get().getKey())) {
+                if (c.getValue().getKey() != null && c.getValue().getKey().equals(result.get().getKey())) {
                     configAlert(result.get().getKey().getDisplayText() + " is already bound to " + keyComboDescriptions.get(c.getKey()).getKey());
                     return;
                 }
