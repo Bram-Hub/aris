@@ -11,12 +11,16 @@ import javafx.fxml.FXMLLoader;
 import javafx.geometry.Orientation;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.util.Pair;
 import org.apache.commons.collections.BidiMap;
 import org.apache.commons.collections.bidimap.DualHashBidiMap;
 import org.apache.logging.log4j.LogManager;
@@ -28,6 +32,7 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.prefs.Preferences;
 
 public class GuiConfig {
@@ -133,16 +138,22 @@ public class GuiConfig {
     public final SimpleObjectProperty<KeyCombination> cutKey = new SimpleObjectProperty<>(KeyCombination.keyCombination(preferences.get(CUT_KEY, "Ctrl+X")));
     public final SimpleObjectProperty<KeyCombination> pasteKey = new SimpleObjectProperty<>(KeyCombination.keyCombination(preferences.get(PASTE_KEY, "Ctrl+V")));
 
+    private final HashMap<SimpleObjectProperty<KeyCombination>, Pair<String, String>> keyComboDescriptions = new HashMap<>();
+
     @FXML
     private VBox aliasBox;
+    @FXML
+    private VBox shortcutBox;
 
     private BidiMap<String, String> aliasKeyMap = new DualHashBidiMap<>();
     private HashMap<String, TextField> aliasMap = new HashMap<>();
+    private HashMap<SimpleObjectProperty<KeyCombination>, Pair<KeyCombination, Button>> shortcutMap = new HashMap<>();
     private Stage stage;
     private File saveDirectory = new File(preferences.get(LAST_SAVE_DIR, System.getProperty("user.home")));
     private String accessToken = preferences.get(ACCESS_TOKEN, null);
-    private SimpleObjectProperty[] accelerators = new SimpleObjectProperty[]{newProofLineKey, deleteProofLineKey,
-            startSubProofKey, endSubProofKey, newPremiseKey, verifyLineKey, addGoalKey, verifyProofKey, newProofKey,
+    @SuppressWarnings("unchecked")
+    private SimpleObjectProperty<KeyCombination>[] accelerators = new SimpleObjectProperty[]{newProofLineKey, deleteProofLineKey,
+            startSubProofKey, endSubProofKey, addGoalKey, newPremiseKey, verifyLineKey, verifyProofKey, newProofKey,
             openProofKey, saveProofKey, saveAsProofKey, undoKey, redoKey, copyKey, cutKey, pasteKey};
 
     private GuiConfig() throws IOException {
@@ -159,11 +170,32 @@ public class GuiConfig {
                 preferences.put(USERNAME_KEY, newValue);
         });
         selectedCourseId.addListener((observable, oldValue, newValue) -> preferences.putInt(SELECTED_COURSE_ID, newValue.intValue()));
+
+        keyComboDescriptions.put(newProofLineKey, new Pair<>("Add proof line", NEW_PROOF_KEY));
+        keyComboDescriptions.put(deleteProofLineKey, new Pair<>("Delete proof line", DELETE_LINE_KEY));
+        keyComboDescriptions.put(startSubProofKey, new Pair<>("Start subproof", START_SUB_KEY));
+        keyComboDescriptions.put(endSubProofKey, new Pair<>("End subproof", END_SUB_KEY));
+        keyComboDescriptions.put(addGoalKey, new Pair<>("Add goal", ADD_GOAL_KEY));
+        keyComboDescriptions.put(newPremiseKey, new Pair<>("Add premise", NEW_PREMISE_KEY));
+        keyComboDescriptions.put(verifyLineKey, new Pair<>("Verify current line", VERIFY_LINE_KEY));
+        keyComboDescriptions.put(verifyProofKey, new Pair<>("Verify entire proof", VERIFY_PROOF_KEY));
+        keyComboDescriptions.put(newProofKey, new Pair<>("Start a new proof", NEW_PROOF_KEY));
+        keyComboDescriptions.put(openProofKey, new Pair<>("Open a saved proof", OPEN_PROOF_KEY));
+        keyComboDescriptions.put(saveProofKey, new Pair<>("Save current proof", SAVE_KEY));
+        keyComboDescriptions.put(saveAsProofKey, new Pair<>("Save current proof as", SAVE_AS_KEY));
+        keyComboDescriptions.put(undoKey, new Pair<>("Undo", UNDO_KEY));
+        keyComboDescriptions.put(redoKey, new Pair<>("Redo", REDO_KEY));
+        keyComboDescriptions.put(copyKey, new Pair<>("Copy", COPY_KEY));
+        keyComboDescriptions.put(cutKey, new Pair<>("Cut", CUT_KEY));
+        keyComboDescriptions.put(pasteKey, new Pair<>("Paste", PASTE_KEY));
+
         FXMLLoader loader = new FXMLLoader(GuiConfig.class.getResource("config.fxml"));
         loader.setController(this);
         Scene scene = new Scene(loader.load(), 500, 400);
         stage = new Stage();
         stage.setScene(scene);
+        stage.initModality(Modality.APPLICATION_MODAL);
+        stage.setOnCloseRequest(event -> cancelConfig());
     }
 
     public static void setClientConfigDir(File clientConfigDir) {
@@ -227,7 +259,65 @@ public class GuiConfig {
             box.getChildren().addAll(lbl, separator, textField);
             aliasBox.getChildren().add(box);
         }
+        for (SimpleObjectProperty<KeyCombination> prop : accelerators) {
+            HBox box = new HBox();
+            Label lbl = new Label(keyComboDescriptions.get(prop).getKey());
+            Separator separator = new Separator(Orientation.HORIZONTAL);
+            separator.setVisible(false);
+            HBox.setHgrow(separator, Priority.ALWAYS);
+            Button btn = new Button("Unbound");
+            btn.setOnAction(actionEvent -> bind(prop));
+            shortcutMap.put(prop, new Pair<>(prop.get(), btn));
+            box.getChildren().addAll(lbl, separator, btn);
+            shortcutBox.getChildren().add(box);
+        }
         populateConfig();
+    }
+
+    private void bind(SimpleObjectProperty<KeyCombination> prop) {
+        Dialog<Pair<KeyCombination, Boolean>> dialog = new Dialog<>();
+        dialog.initModality(Modality.WINDOW_MODAL);
+        dialog.initOwner(stage);
+        dialog.setTitle("Bind key");
+        dialog.setHeaderText("Bind: " + keyComboDescriptions.get(prop).getKey());
+        VBox vBox = new VBox();
+        vBox.setSpacing(5);
+        HBox hBox = new HBox();
+        Label lbl = new Label(prop.get() == null ? "Unbound" : shortcutMap.get(prop).getKey().getDisplayText());
+        hBox.getChildren().addAll(new Label("Current binding: "), lbl);
+        vBox.getChildren().addAll(new Label("Press the key combination to bind to the shortcut or backspace to unbind"), hBox);
+        dialog.getDialogPane().setContent(vBox);
+        AtomicReference<KeyCombination> combo = new AtomicReference<>(prop.get());
+        dialog.getDialogPane().addEventHandler(KeyEvent.KEY_RELEASED, event -> {
+            if (event.getCode() == KeyCode.BACK_SPACE) {
+                combo.set(null);
+                lbl.setText("Unbound");
+            } else if (!event.getCode().isModifierKey() && (event.isAltDown() || event.isControlDown() || event.isMetaDown())) {
+                KeyCombination.ModifierValue up = KeyCombination.ModifierValue.UP;
+                KeyCombination.ModifierValue down = KeyCombination.ModifierValue.DOWN;
+                KeyCombination newCombo = new KeyCodeCombination(event.getCode(), event.isShiftDown() ? down : up,
+                        event.isControlDown() ? down : up, event.isAltDown() ? down : up, event.isMetaDown() ? down : up, up);
+                combo.set(newCombo);
+                lbl.setText(newCombo.getDisplayText());
+            }
+        });
+        lbl.requestFocus();
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        dialog.setResultConverter(param -> new Pair<>(combo.get(), param == ButtonType.OK));
+        Optional<Pair<KeyCombination, Boolean>> result = dialog.showAndWait();
+        if (result.isPresent() && result.get().getValue()) {
+            for (Map.Entry<SimpleObjectProperty<KeyCombination>, Pair<KeyCombination, Button>> c : shortcutMap.entrySet()) {
+                if (c.getKey() == prop)
+                    continue;
+                if (c.getValue().getKey().equals(result.get().getKey())) {
+                    configAlert(result.get().getKey().getDisplayText() + " is already bound to " + keyComboDescriptions.get(c.getKey()).getKey());
+                    return;
+                }
+            }
+            Button btn = shortcutMap.get(prop).getValue();
+            btn.setText(result.get().getKey() == null ? "Unbound" : result.get().getKey().getDisplayText());
+            shortcutMap.put(prop, new Pair<>(result.get().getKey(), btn));
+        }
     }
 
     @FXML
@@ -251,6 +341,14 @@ public class GuiConfig {
             else
                 preferences.remove(prefMap.getValue());
         }
+        for (SimpleObjectProperty<KeyCombination> prop : accelerators) {
+            KeyCombination newKey = shortcutMap.get(prop).getKey();
+            prop.set(newKey);
+            if (newKey == null)
+                preferences.remove(keyComboDescriptions.get(prop).getValue());
+            else
+                preferences.put(keyComboDescriptions.get(prop).getValue(), newKey.getDisplayText());
+        }
         aliasKeyMap = newAliases;
         stage.hide();
     }
@@ -264,10 +362,17 @@ public class GuiConfig {
     private void populateConfig() {
         for (Map.Entry<String, String> alias : aliasKeyMap.entrySet())
             aliasMap.get(alias.getValue()).setText(alias.getKey());
+        for (SimpleObjectProperty<KeyCombination> prop : accelerators) {
+            Pair<KeyCombination, Button> shortcut = shortcutMap.get(prop);
+            shortcut.getValue().setText(prop.get() == null ? "Unbound" : prop.getValue().getDisplayText());
+            shortcutMap.put(prop, new Pair<>(prop.get(), shortcut.getValue()));
+        }
     }
 
     private void configAlert(String message) {
         Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.initModality(Modality.WINDOW_MODAL);
+        alert.initOwner(stage);
         alert.setTitle("Configuration Error");
         alert.setHeaderText("There is an error with the current configuration");
         alert.setContentText(message);
@@ -275,7 +380,10 @@ public class GuiConfig {
     }
 
     public void showConfig() {
-        Platform.runLater(() -> stage.show());
+        Platform.runLater(() -> {
+            stage.show();
+            stage.requestFocus();
+        });
     }
 
     public boolean ignore(KeyEvent event) {
