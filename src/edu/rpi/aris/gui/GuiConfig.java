@@ -247,6 +247,11 @@ public class GuiConfig {
             separator.setVisible(false);
             HBox.setHgrow(separator, Priority.ALWAYS);
             TextField textField = new TextField();
+            textField.focusedProperty().addListener((observable, oldValue, newValue) -> {
+                if (newValue)
+                    Platform.runLater(textField::selectAll);
+            });
+            textField.textProperty().addListener((observable, oldValue, newValue) -> Platform.runLater(textField::selectAll));
             textField.setPrefWidth(30);
             textField.setTextFormatter(new TextFormatter<String>(change -> {
                 if (change.getControlNewText().length() > 1) {
