@@ -291,11 +291,11 @@ public class GuiConfig {
             shortcutBox.getChildren().add(box);
         }
         serverAddress.addListener((observable, oldValue, newValue) -> {
-            serverAddressText.setText(serverAddress.get() + (serverPort.get() == NetUtil.DEFAULT_PORT ? "" : ":" + NetUtil.DEFAULT_PORT));
+            serverAddressText.setText(serverAddress.get() + (serverPort.get() == NetUtil.DEFAULT_PORT ? "" : ":" + serverPort.get()));
             preferences.put(SERVER_ADDRESS, newValue);
         });
         serverPort.addListener((observable, oldValue, newValue) -> {
-            serverAddressText.setText(serverAddress.get() + (serverPort.get() == NetUtil.DEFAULT_PORT ? "" : ":" + NetUtil.DEFAULT_PORT));
+            serverAddressText.setText(serverAddress.get() + (serverPort.get() == NetUtil.DEFAULT_PORT ? "" : ":" + serverPort.get()));
             preferences.putInt(SERVER_PORT, newValue.intValue());
         });
         populateConfig();
