@@ -116,7 +116,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
             if (cmd.hasOption("add-cert")) {
                 String filename = cmd.getOptionValue("add-cert");
                 File file = new File(filename);
-                Client.importSelfSignedCertificate(file);
+                client.importSelfSignedCertificate(file);
             }
         }
         switch (MODE) {

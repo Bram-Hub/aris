@@ -74,61 +74,6 @@ public class Client {
     private SimpleObjectProperty<ConnectionStatus> connectionStatusProperty = new SimpleObjectProperty<>(connectionStatus);
     private boolean allowInsecure = false;
 
-    public static void importSelfSignedCertificate(File certFile) {
-        try {
-            PEMParser parser = new PEMParser(new FileReader(certFile));
-            X509CertificateHolder certificateHolder = (X509CertificateHolder) parser.readObject();
-            JcaX509CertificateConverter converter = new JcaX509CertificateConverter();
-            X509Certificate cert = converter.getCertificate(certificateHolder);
-            X500Name name = certificateHolder.getSubject();
-            RDN cn = name.getRDNs(BCStyle.CN)[0];
-            String dn = IETFUtils.valueToString(cn.getFirst().getValue());
-            KeyStore ks = KeyStore.getInstance("JKS");
-            if (SERVER_KEYSTORE_FILE.exists()) {
-                FileInputStream fis = new FileInputStream(SERVER_KEYSTORE_FILE);
-                ks.load(fis, KEYSTORE_PASSWORD);
-                fis.close();
-            } else {
-                ks.load(null);
-            }
-            ks.setCertificateEntry(dn, cert);
-            if (!SERVER_KEYSTORE_FILE.getParentFile().exists())
-                if (!SERVER_KEYSTORE_FILE.getParentFile().mkdirs())
-                    throw new IOException("Failed to create keystore file");
-            if (!SERVER_KEYSTORE_FILE.exists())
-                if (!SERVER_KEYSTORE_FILE.createNewFile())
-                    throw new IOException("Failed to create keystore file");
-            FileOutputStream fos = new FileOutputStream(SERVER_KEYSTORE_FILE);
-            ks.store(fos, KEYSTORE_PASSWORD);
-            fos.close();
-        } catch (IOException | CertificateException | KeyStoreException | NoSuchAlgorithmException e) {
-            logger.error("Failed to import given certificate", e);
-        }
-    }
-
-    public static ArrayList<X509Certificate> getSelfSignedCertificates() {
-        ArrayList<X509Certificate> certs = new ArrayList<>();
-        try {
-            KeyStore ks = KeyStore.getInstance("JKS");
-            if (SERVER_KEYSTORE_FILE.exists()) {
-                try (FileInputStream fis = new FileInputStream(SERVER_KEYSTORE_FILE)) {
-                    ks.load(fis, KEYSTORE_PASSWORD);
-                }
-                Enumeration<String> aliases = ks.aliases();
-                while (aliases.hasMoreElements()) {
-                    String a = aliases.nextElement();
-                    if (ks.isCertificateEntry(a)) {
-                        X509Certificate cert = (X509Certificate) ks.getCertificate(a);
-                        certs.add(cert);
-                    }
-                }
-            }
-        } catch (KeyStoreException | IOException | CertificateException | NoSuchAlgorithmException e) {
-            logger.error("Error loading saved server certificates", e);
-        }
-        return certs;
-    }
-
     private static KeyStore getKeyStore() {
         KeyStore ks = null;
         if (KEYSTORE_FILE.exists()) {
@@ -186,6 +131,88 @@ public class Client {
             }
         }
         return ks;
+    }
+
+    public synchronized boolean importSelfSignedCertificate(File certFile) {
+        try {
+            PEMParser parser = new PEMParser(new FileReader(certFile));
+            X509CertificateHolder certificateHolder = (X509CertificateHolder) parser.readObject();
+            JcaX509CertificateConverter converter = new JcaX509CertificateConverter();
+            X509Certificate cert = converter.getCertificate(certificateHolder);
+            X500Name name = certificateHolder.getSubject();
+            RDN cn = name.getRDNs(BCStyle.CN)[0];
+            String dn = IETFUtils.valueToString(cn.getFirst().getValue());
+            KeyStore ks = KeyStore.getInstance("JKS");
+            if (SERVER_KEYSTORE_FILE.exists()) {
+                FileInputStream fis = new FileInputStream(SERVER_KEYSTORE_FILE);
+                ks.load(fis, KEYSTORE_PASSWORD);
+                fis.close();
+            } else {
+                ks.load(null);
+            }
+            ks.setCertificateEntry(dn.toLowerCase(), cert);
+            if (!SERVER_KEYSTORE_FILE.getParentFile().exists())
+                if (!SERVER_KEYSTORE_FILE.getParentFile().mkdirs())
+                    throw new IOException("Failed to create keystore file");
+            if (!SERVER_KEYSTORE_FILE.exists())
+                if (!SERVER_KEYSTORE_FILE.createNewFile())
+                    throw new IOException("Failed to create keystore file");
+            FileOutputStream fos = new FileOutputStream(SERVER_KEYSTORE_FILE);
+            ks.store(fos, KEYSTORE_PASSWORD);
+            fos.close();
+            return true;
+        } catch (IOException | CertificateException | KeyStoreException | NoSuchAlgorithmException e) {
+            logger.error("Failed to import given certificate", e);
+            return false;
+        } finally {
+            socketFactory = null;
+        }
+    }
+
+    public synchronized void removeSelfSignedCertificate(String commonName) {
+        commonName = commonName.toLowerCase();
+        if (SERVER_KEYSTORE_FILE.exists()) {
+            try {
+                KeyStore ks = KeyStore.getInstance("JKS");
+                try (FileInputStream fis = new FileInputStream(SERVER_KEYSTORE_FILE)) {
+                    ks.load(fis, KEYSTORE_PASSWORD);
+                }
+                ks.deleteEntry(commonName);
+                if (ks.aliases().hasMoreElements()) {
+                    try (FileOutputStream fos = new FileOutputStream(SERVER_KEYSTORE_FILE)) {
+                        ks.store(fos, KEYSTORE_PASSWORD);
+                    }
+                } else
+                    //noinspection ResultOfMethodCallIgnored
+                    SERVER_KEYSTORE_FILE.delete();
+                socketFactory = null;
+            } catch (IOException | NoSuchAlgorithmException | CertificateException | KeyStoreException e) {
+                logger.error("Failed to remove imported certificate", e);
+            }
+        }
+    }
+
+    public ArrayList<X509Certificate> getSelfSignedCertificates() {
+        ArrayList<X509Certificate> certs = new ArrayList<>();
+        try {
+            KeyStore ks = KeyStore.getInstance("JKS");
+            if (SERVER_KEYSTORE_FILE.exists()) {
+                try (FileInputStream fis = new FileInputStream(SERVER_KEYSTORE_FILE)) {
+                    ks.load(fis, KEYSTORE_PASSWORD);
+                }
+                Enumeration<String> aliases = ks.aliases();
+                while (aliases.hasMoreElements()) {
+                    String a = aliases.nextElement();
+                    if (ks.isCertificateEntry(a)) {
+                        X509Certificate cert = (X509Certificate) ks.getCertificate(a);
+                        certs.add(cert);
+                    }
+                }
+            }
+        } catch (KeyStoreException | IOException | CertificateException | NoSuchAlgorithmException e) {
+            logger.error("Error loading saved server certificates", e);
+        }
+        return certs;
     }
 
     public synchronized void setAllowInsecure(boolean allowInsecure) {

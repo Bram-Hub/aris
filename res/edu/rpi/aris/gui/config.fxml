@@ -7,6 +7,8 @@
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.HBox?>
@@ -75,10 +77,34 @@
                            <children>
                               <HBox alignment="CENTER_LEFT">
                                  <children>
-                                    <Label text="Server address: " />
+                                    <Label text="Server address: ">
+                                       <font>
+                                          <Font name="System Bold" size="13.0" />
+                                       </font></Label>
                                     <TextField fx:id="serverAddressText" HBox.hgrow="ALWAYS" />
                                  </children>
                               </HBox>
+                              <HBox alignment="CENTER_LEFT" spacing="5.0">
+                                 <children>
+                                    <Label text="Server Certificates:">
+                                       <font>
+                                          <Font name="System Bold" size="13.0" />
+                                       </font>
+                                    </Label>
+                                    <Button fx:id="importButton" mnemonicParsing="false" text="Import Certificate" />
+                                 </children>
+                              </HBox>
+                              <TableView fx:id="certificateTable" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
+                                <columns>
+                                  <TableColumn fx:id="addressColumn" editable="false" prefWidth="75.0" text="Address" />
+                                  <TableColumn fx:id="fingerprintColumn" editable="false" prefWidth="75.0" text="Fingerprint" />
+                                    <TableColumn fx:id="expirationColumn" editable="false" prefWidth="75.0" text="Expiration" />
+                                    <TableColumn fx:id="removeColumn" editable="false" prefWidth="75.0" text="Remove" />
+                                </columns>
+                                 <columnResizePolicy>
+                                    <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+                                 </columnResizePolicy>
+                              </TableView>
                            </children>
                         </VBox>
                      </content></Tab>

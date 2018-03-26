@@ -1,7 +1,7 @@
 package edu.rpi.aris.gui.submit;
 
-import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.Main;
+import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
 import javafx.application.Platform;
