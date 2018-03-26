@@ -7,10 +7,14 @@ import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.util.Pair;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
@@ -37,6 +41,7 @@ import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.net.UnknownHostException;
 import java.security.*;
 import java.security.cert.CertPathBuilderException;
 import java.security.cert.CertificateException;
@@ -62,8 +67,6 @@ public class Client {
     private ReentrantLock connectionLock = new ReentrantLock(true);
     private SSLSocketFactory socketFactory = null;
     private SSLSocket socket;
-    private String serverAddress = null;
-    private int port = 0;
     private DataInputStream in;
     private DataOutputStream out;
     private String errorString = null;
@@ -232,16 +235,11 @@ public class Client {
         }
     }
 
-    public synchronized void setServer(String serverAddress, int port) {
-        if (connectionStatus != ConnectionStatus.DISCONNECTED)
-            disconnect();
-        this.serverAddress = serverAddress;
-        this.port = port;
-    }
-
     private synchronized void setupConnection(String user, String pass, boolean isAccessToken) throws IOException {
+        String serverAddress = GuiConfig.serverAddress.get();
         if (serverAddress == null)
             throw new IOException("Server address not specified");
+        int port = GuiConfig.serverPort.get();
         if (port <= 0 || port > 65535)
             throw new IOException("Invalid port specified");
         setConnectionStatus(ConnectionStatus.CONNECTING);
@@ -351,6 +349,14 @@ public class Client {
         try {
             if (!ping()) {
                 disconnect();
+                String server = GuiConfig.serverAddress.get();
+                if (server == null || server.length() == 0) {
+                    Pair<String, Integer> info = getServerAddress(null);
+                    if (info == null)
+                        return;
+                    GuiConfig.serverAddress.set(info.getKey());
+                    GuiConfig.serverPort.set(info.getValue());
+                }
                 Triple<String, String, Boolean> credentials = getCredentials();
                 boolean isAccessToken = credentials.getRight();
                 try {
@@ -370,6 +376,82 @@ public class Client {
         }
     }
 
+    private Pair<String, Integer> getServerAddress(String lastAddress) throws IOException {
+        String address = lastAddress;
+        switch (Main.getMode()) {
+            case GUI:
+                final AtomicReference<String> atomicAddress = new AtomicReference<>(address);
+                Platform.runLater(() -> {
+                    Dialog<String> dialog = new Dialog<>();
+                    dialog.setTitle("Set server");
+                    dialog.setHeaderText((atomicAddress.get() == null ? "" : "Invalid address!\n") + "Please enter the address of the submission server");
+                    HBox box = new HBox();
+                    box.setAlignment(Pos.CENTER_LEFT);
+                    TextField textField = new TextField(atomicAddress.get() == null ? "" : atomicAddress.get());
+                    HBox.setHgrow(textField, Priority.ALWAYS);
+                    box.getChildren().addAll(new Label("Server Address: "), textField);
+                    dialog.getDialogPane().setContent(box);
+                    dialog.getDialogPane().getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
+                    dialog.setResultConverter(param -> param == ButtonType.OK ? textField.getText() : null);
+                    textField.requestFocus();
+                    Optional<String> result = dialog.showAndWait();
+                    if (result.isPresent())
+                        atomicAddress.set(result.get());
+                    else
+                        atomicAddress.set(null);
+                    synchronized (atomicAddress) {
+                        atomicAddress.notify();
+                    }
+                });
+                synchronized (atomicAddress) {
+                    try {
+                        atomicAddress.wait();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+                address = atomicAddress.get();
+                break;
+            case CMD:
+                if (address != null)
+                    System.out.println("Invalid address!");
+                System.out.print("Enter the server to connect to: ");
+                address = Main.readLine();
+                break;
+            case SERVER:
+                logger.error("Client attempted to be used in server mode. This shouldn't happen");
+                throw new IOException("Client attempted to be used in server mode. This shouldn't happen");
+        }
+        if (address == null)
+            return null;
+        String fullAddress = address;
+        int port = NetUtil.DEFAULT_PORT;
+        boolean valid = true;
+        if (address.contains(":")) {
+            if (StringUtils.countMatches(address, ':') != 1)
+                valid = false;
+            else {
+                String[] split = address.split(":");
+                address = split[0];
+                try {
+                    port = Integer.parseInt(split[1]);
+                } catch (NumberFormatException e) {
+                    valid = false;
+                }
+            }
+        }
+        if (valid)
+            try {
+                //noinspection ResultOfMethodCallIgnored
+                InetAddress.getByName(address);
+            } catch (UnknownHostException e) {
+                valid = false;
+            }
+        if (!valid)
+            return getServerAddress(fullAddress);
+        return new Pair<>(address, port);
+    }
+
     private Triple<String, String, Boolean> getCredentials() throws IOException {
         String user = GuiConfig.getConfigManager().username.get();
         String pass = GuiConfig.getConfigManager().getAccessToken();
@@ -382,7 +464,7 @@ public class Client {
                     Platform.runLater(() -> {
                         Dialog<Pair<String, String>> dialog = new Dialog<>();
                         dialog.setTitle("Login");
-                        dialog.setHeaderText("Login to " + serverAddress);
+                        dialog.setHeaderText("Login to " + GuiConfig.serverAddress.get());
                         ButtonType loginButtonType = new ButtonType("Login", ButtonBar.ButtonData.OK_DONE);
                         dialog.getDialogPane().getButtonTypes().addAll(loginButtonType, ButtonType.CANCEL);
                         GridPane grid = new GridPane();

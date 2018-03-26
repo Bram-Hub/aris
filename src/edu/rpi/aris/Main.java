@@ -1,6 +1,7 @@
 package edu.rpi.aris;
 
 import edu.rpi.aris.gui.Aris;
+import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
 import edu.rpi.aris.net.server.Server;
@@ -44,8 +45,6 @@ public class Main implements Thread.UncaughtExceptionHandler {
     private static Logger logger = LogManager.getLogger(Main.class);
     private static FileLock lock, ipcLock;
     private static FileChannel lockFileChannel;
-    private static String serverAddress = "localhost";
-    private static int port = 9001; // IT'S OVER 9000!!!
 
     static {
         BufferedReader reader = new BufferedReader(new InputStreamReader(Main.class.getResourceAsStream("VERSION")));
@@ -93,6 +92,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
         }
         Runtime.getRuntime().addShutdownHook(new Thread(Main::unlockFile));
         startIpcWatch();
+        int port = -1;
         if (cmd.hasOption('p')) {
             String portStr = cmd.getOptionValue('p');
             boolean error = false;
@@ -108,9 +108,10 @@ public class Main implements Thread.UncaughtExceptionHandler {
         }
         if (MODE != Mode.SERVER) {
             if (cmd.hasOption('a'))
-                serverAddress = cmd.getOptionValue('a');
+                GuiConfig.serverAddress.set(cmd.getOptionValue('a'));
+            if (port > 0)
+                GuiConfig.serverPort.set(port);
             client = new Client();
-            client.setServer(serverAddress, port);
             client.setAllowInsecure(cmd.hasOption("allow-insecure"));
             if (cmd.hasOption("add-cert")) {
                 String filename = cmd.getOptionValue("add-cert");
@@ -131,7 +132,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
                     throw new IOException("Private key specified without CA certificate");
                 File caFile = ca == null ? null : new File(ca);
                 File keyFile = key == null ? null : new File(key);
-                server = new Server(port, caFile, keyFile);
+                server = new Server(port > 0 ? port : NetUtil.DEFAULT_PORT, caFile, keyFile);
                 new Thread(() -> server.run()).start();
                 break;
         }

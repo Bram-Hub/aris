@@ -1,5 +1,6 @@
 package edu.rpi.aris.gui;
 
+import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.rules.RuleList;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -23,21 +24,26 @@ import javafx.stage.Stage;
 import javafx.util.Pair;
 import org.apache.commons.collections.BidiMap;
 import org.apache.commons.collections.bidimap.DualHashBidiMap;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.prefs.Preferences;
+import java.util.regex.Pattern;
 
 public class GuiConfig {
 
     public static final String[] SYMBOL_BUTTONS = new String[]{"∧", "∨", "¬", "→", "↔", "⊥", "∀", "∃", "×", "≠", "⊆", "∈"};
+    private static final Pattern dnsLabelPattern = Pattern.compile("[a-zA-Z][a-zA-Z0-9\\-]*");
     private static final Logger logger = LogManager.getLogger(GuiConfig.class);
     private static final Preferences preferences = Preferences.userNodeForPackage(GuiConfig.class);
     //Java preferences api storage constants
@@ -74,6 +80,10 @@ public class GuiConfig {
     private static final String LAST_SAVE_DIR = "LAST_SAVE_DIR";
     private static final String ACCESS_TOKEN = "ACCESS_TOKEN";
     private static final String AND_KEY = "AND_KEY";
+    private static final String SERVER_ADDRESS = "SERVER_ADDRESS";
+    public static final SimpleStringProperty serverAddress = new SimpleStringProperty(preferences.get(SERVER_ADDRESS, null));
+    private static final String SERVER_PORT = "SERVER_PORT";
+    public static final SimpleIntegerProperty serverPort = new SimpleIntegerProperty(preferences.getInt(SERVER_PORT, NetUtil.DEFAULT_PORT));
     private static final String[][] defaultKeyMap = new String[][]{{preferences.get(AND_KEY, "&"), "∧"},
             {preferences.get(OR_KEY, "|"), "∨"},
             {preferences.get(NOT_KEY, "~"), "¬"},
@@ -148,6 +158,8 @@ public class GuiConfig {
     private CheckBox oprCheckBox;
     @FXML
     private CheckBox ruleCheckBox;
+    @FXML
+    private TextField serverAddressText;
 
     private BidiMap<String, String> aliasKeyMap = new DualHashBidiMap<>();
     private HashMap<String, TextField> aliasMap = new HashMap<>();
@@ -278,6 +290,14 @@ public class GuiConfig {
             box.getChildren().addAll(lbl, separator, btn);
             shortcutBox.getChildren().add(box);
         }
+        serverAddress.addListener((observable, oldValue, newValue) -> {
+            serverAddressText.setText(serverAddress.get() + (serverPort.get() == NetUtil.DEFAULT_PORT ? "" : ":" + NetUtil.DEFAULT_PORT));
+            preferences.put(SERVER_ADDRESS, newValue);
+        });
+        serverPort.addListener((observable, oldValue, newValue) -> {
+            serverAddressText.setText(serverAddress.get() + (serverPort.get() == NetUtil.DEFAULT_PORT ? "" : ":" + NetUtil.DEFAULT_PORT));
+            preferences.putInt(SERVER_PORT, newValue.intValue());
+        });
         populateConfig();
     }
 
@@ -348,6 +368,32 @@ public class GuiConfig {
             else
                 preferences.remove(prefMap.getValue());
         }
+        String serverInfo = serverAddressText.getText();
+        String address = serverInfo;
+        int port = NetUtil.DEFAULT_PORT;
+        if (serverInfo.contains(":")) {
+            if (StringUtils.countMatches(serverInfo, ':') != 1) {
+                configAlert("Invalid server address: " + serverInfo);
+                return;
+            }
+            String[] split = serverInfo.split(":");
+            address = split[0];
+            try {
+                port = Integer.parseInt(split[1]);
+            } catch (NumberFormatException e) {
+                configAlert("Invalid server port: " + split[1]);
+                return;
+            }
+        }
+        try {
+            //noinspection ResultOfMethodCallIgnored
+            InetAddress.getByName(address);
+        } catch (UnknownHostException e) {
+            configAlert("Invalid server address: " + address);
+            return;
+        }
+        serverAddress.set(address);
+        serverPort.set(port);
         for (SimpleObjectProperty<KeyCombination> prop : accelerators) {
             KeyCombination newKey = shortcutMap.get(prop).getKey();
             prop.set(newKey);
@@ -380,6 +426,8 @@ public class GuiConfig {
         }
         oprCheckBox.setSelected(hideOperatorsPanel.get());
         ruleCheckBox.setSelected(hideRulesPanel.get());
+        String serverText = serverAddress.get() == null ? "" : (serverAddress.get() + (serverPort.get() == NetUtil.DEFAULT_PORT ? "" : ":" + serverPort.get()));
+        serverAddressText.setText(serverText);
     }
 
     private void configAlert(String message) {
