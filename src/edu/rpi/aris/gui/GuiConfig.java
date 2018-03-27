@@ -399,6 +399,7 @@ public class GuiConfig {
             }
         });
         populateConfig();
+        applyConfig();
     }
 
     private void bind(SimpleObjectProperty<KeyCombination> prop) {
@@ -493,7 +494,9 @@ public class GuiConfig {
             return;
         }
         serverAddress.set(address);
+        preferences.put(SERVER_ADDRESS, address);
         serverPort.set(port);
+        preferences.putInt(SERVER_PORT, port);
         for (SimpleObjectProperty<KeyCombination> prop : accelerators) {
             KeyCombination newKey = shortcutMap.get(prop).getKey();
             prop.set(newKey);
@@ -509,7 +512,8 @@ public class GuiConfig {
         for (String dn : removeCerts)
             Main.getClient().removeSelfSignedCertificate(dn);
         aliasKeyMap = newAliases;
-        stage.hide();
+        if (stage != null)
+            stage.hide();
     }
 
     @FXML
