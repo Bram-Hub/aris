@@ -147,19 +147,19 @@ public class Assignment {
             }
             for (Map.Entry<Integer, String[]> e : proofs.entrySet()) {
                 String[] proofData = e.getValue();
-                StudentInfo proofInfo = new StudentInfo(-1, Integer.parseInt(proofData[0]), classId, id, URLDecoder.decode(proofData[1], "UTF-8"), -1, null);
+                SubmissionInfo proofInfo = new SubmissionInfo(-1, -1, Integer.parseInt(proofData[0]), classId, id, URLDecoder.decode(proofData[1], "UTF-8"), -1, null);
                 ArrayList<AssignmentInfo> subs = this.proofs.compute(proofInfo, (i, j) -> new ArrayList<>());
                 int i = 0;
                 if (submissions.containsKey(e.getKey()))
                     for (String[] sub : submissions.get(e.getKey())) {
                         ++i;
                         long timestamp = NetUtil.DATE_FORMAT.parse(URLDecoder.decode(sub[2], "UTF-8")).getTime();
-                        subs.add(new StudentInfo(Integer.parseInt(sub[0]), e.getKey(), classId, id, "Submission " + i, timestamp, URLDecoder.decode(sub[3], "UTF-8")));
+                        subs.add(new SubmissionInfo(-1, Integer.parseInt(sub[0]), e.getKey(), classId, id, "Submission " + i, timestamp, URLDecoder.decode(sub[3], "UTF-8")));
                     }
                 if (subs.size() > 0) {
                     subs.sort(Collections.reverseOrder());
-                    proofInfo.setStatus(((StudentInfo) subs.get(0)).getStatus());
-                    proofInfo.setTimestamp(((StudentInfo) subs.get(0)).getTimestamp());
+                    proofInfo.setStatus(((SubmissionInfo) subs.get(0)).getStatus());
+                    proofInfo.setTimestamp(((SubmissionInfo) subs.get(0)).getTimestamp());
                 } else
                     proofInfo.setStatus(NetUtil.STATUS_NO_SUBMISSION);
             }

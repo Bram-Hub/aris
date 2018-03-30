@@ -2,13 +2,13 @@ package edu.rpi.aris.gui.submit;
 
 public class InstructorInfo implements AssignmentInfo {
 
-    public InstructorInfo() {
+    public InstructorInfo(int userId, int classId, int assignmentId, int proofId, int submissionId, String name, long timestamp, String status) {
 
     }
 
     @Override
     public int getNumColumns() {
-        return 0;
+        return 4;
     }
 
     @Override

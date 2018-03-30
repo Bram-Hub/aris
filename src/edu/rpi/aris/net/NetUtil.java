@@ -20,6 +20,7 @@ public class NetUtil {
     public static final String GET_PROOFS = "GET_PROOFS";
     public static final String LIST_SUBMISSIONS = "LIST_SUBMISSION";
     public static final String GET_SUBMISSION = "GET_SUBMISSION";
+    public static final String GET_SUBMISSION_DETAIL = "GET_SUBMISSION_DETAIL";
     public static final String CREATE_SUBMISSION = "CREATE_SUBMISSION";
     public static final String CREATE_ASSIGNMENT = "CREATE_ASSIGNMENT";
     public static final String DELETE_ASSIGNMENT = "DELETE_ASSIGNMENT";

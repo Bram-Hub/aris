@@ -25,26 +25,24 @@ public class DatabaseManager {
             Security.addProvider(new BouncyCastleProvider());
     }
 
-    private Connection connection;
     private SecureRandom random = new SecureRandom();
     private MessageDigest digest;
+    private File dbFile;
 
     public DatabaseManager(File dbFile) throws IOException, SQLException {
+        this.dbFile = dbFile;
         try {
             digest = MessageDigest.getInstance("SHA512", "BC");
             boolean exists = dbFile.exists();
-            connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getCanonicalPath());
-            connection.setAutoCommit(true);
-            if (exists)
-                verifyDatabase();
-            else
-                createTables(false);
+            try (Connection connection = getConnection()) {
+                connection.setAutoCommit(true);
+                if (exists)
+                    verifyDatabase(connection);
+                else
+                    createTables(connection, false);
+            }
         } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
             Main.instance.showExceptionError(Thread.currentThread(), e, true);
-        } catch (Throwable e) {
-            if (connection != null)
-                connection.close();
-            throw e;
         }
     }
 
@@ -52,22 +50,22 @@ public class DatabaseManager {
         new DatabaseManager(new File("test.db"));
     }
 
-    private void verifyDatabase() throws SQLException {
-        PreparedStatement statement = connection.prepareStatement("SELECT name FROM sqlite_master WHERE type='table';");
-        statement.execute();
-        ResultSet set = statement.getResultSet();
-        HashSet<String> tables = new HashSet<>();
-        while (set.next())
-            tables.add(set.getString(1));
-        for (String t : DatabaseManager.tables) {
-            if (!tables.contains(t)) {
-                createTables(true);
-                return;
+    private void verifyDatabase(Connection connection) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT name FROM sqlite_master WHERE type='table';");
+             ResultSet set = statement.executeQuery()) {
+            HashSet<String> tables = new HashSet<>();
+            while (set.next())
+                tables.add(set.getString(1));
+            for (String t : DatabaseManager.tables) {
+                if (!tables.contains(t)) {
+                    createTables(connection, true);
+                    return;
+                }
             }
         }
     }
 
-    private void createTables(boolean exists) throws SQLException {
+    private void createTables(Connection connection, boolean exists) throws SQLException {
         if (exists) {
             logger.warn("The database either does not exist or is invalid");
             logger.warn("Aris will now create the database which may result in loss of data");
@@ -76,51 +74,56 @@ public class DatabaseManager {
             if (!ans.equalsIgnoreCase("y"))
                 throw new SQLException("Unable to open database");
         }
-        Statement statement = connection.createStatement();
-        statement.setQueryTimeout(30);
-        for (String t : tables)
-            statement.execute("DROP TABLE IF EXISTS " + t);
-        statement.execute("CREATE TABLE submission (id integer PRIMARY KEY, class_id integer, assignment_id integer, user_id integer, proof_id integer, data blob, time text, status text);");
-        statement.execute("CREATE TABLE assignment (id integer, class_id integer, proof_id integer, name text, due_date text, assigned_by integer, PRIMARY KEY(id, class_id, proof_id));");
-        statement.execute("CREATE TABLE proof (id integer PRIMARY KEY, name text, data blob, created_by integer);");
-        statement.execute("CREATE TABLE user (id integer PRIMARY KEY, username text, user_type text, salt text, password_hash text, access_token text);");
-        statement.execute("CREATE TABLE user_class (user_id integer, class_id integer);");
-        statement.execute("CREATE TABLE class (id integer PRIMARY KEY, name text);");
-        statement.close();
+        try (Statement statement = connection.createStatement()) {
+            statement.setQueryTimeout(30);
+            for (String t : tables)
+                statement.execute("DROP TABLE IF EXISTS " + t);
+            statement.execute("CREATE TABLE submission (id integer PRIMARY KEY, class_id integer, assignment_id integer, user_id integer, proof_id integer, data blob, time text, status text);");
+            statement.execute("CREATE TABLE assignment (id integer, class_id integer, proof_id integer, name text, due_date text, assigned_by integer, PRIMARY KEY(id, class_id, proof_id));");
+            statement.execute("CREATE TABLE proof (id integer PRIMARY KEY, name text, data blob, created_by integer);");
+            statement.execute("CREATE TABLE user (id integer PRIMARY KEY, username text, user_type text, salt text, password_hash text, access_token text);");
+            statement.execute("CREATE TABLE user_class (user_id integer, class_id integer);");
+            statement.execute("CREATE TABLE class (id integer PRIMARY KEY, name text);");
+        }
     }
 
-    public Pair<String, String> createUser(String username, String password, String userType) throws SQLException {
+    public Pair<String, String> createUser(String username, String password, String userType) throws SQLException, IOException {
         if (username == null || username.length() == 0 || userType == null || !(userType.equals(NetUtil.USER_STUDENT) || userType.equals(NetUtil.USER_INSTRUCTOR)))
             return new Pair<>(null, NetUtil.INVALID);
         if (password == null)
             password = RandomStringUtils.randomAlphabetic(16);
-        PreparedStatement count = getStatement("SELECT count(*) FROM user WHERE username = ?;");
-        count.setString(1, username);
-        ResultSet rs;
-        if (count.execute() && (rs = count.getResultSet()).next() && rs.getInt(1) > 0)
-            return new Pair<>(null, NetUtil.USER_EXISTS);
-        Pair<String, String> sh = getSaltAndHash(password);
-        PreparedStatement statement = getStatement("INSERT INTO user VALUES(NULL, ?, ?, ?, ?, NULL);");
-        statement.setString(1, username);
-        statement.setString(2, userType);
-        statement.setString(3, sh.getKey());
-        statement.setString(4, sh.getValue());
-        statement.execute();
-        return new Pair<>(password, NetUtil.OK);
+        try (Connection connection = getConnection();
+             PreparedStatement count = connection.prepareStatement("SELECT count(*) FROM user WHERE username = ?;");
+             PreparedStatement statement = connection.prepareStatement("INSERT INTO user VALUES(NULL, ?, ?, ?, ?, NULL);")) {
+            count.setString(1, username);
+            try (ResultSet rs = count.executeQuery()) {
+                if (rs.next() && rs.getInt(1) > 0)
+                    return new Pair<>(null, NetUtil.USER_EXISTS);
+            }
+            Pair<String, String> sh = getSaltAndHash(password);
+            statement.setString(1, username);
+            statement.setString(2, userType);
+            statement.setString(3, sh.getKey());
+            statement.setString(4, sh.getValue());
+            statement.executeUpdate();
+            return new Pair<>(password, NetUtil.OK);
+        }
     }
 
-    public Pair<String, String> setPassword(String username, String password) throws SQLException {
+    public Pair<String, String> setPassword(String username, String password) throws SQLException, IOException {
         if (username == null || username.length() == 0)
             return new Pair<>(null, NetUtil.INVALID);
         if (password == null)
             password = RandomStringUtils.randomAlphabetic(16);
-        PreparedStatement statement = getStatement("UPDATE user SET salt = ?, password = ? WHERE username = ?;");
-        Pair<String, String> sh = getSaltAndHash(password);
-        statement.setString(1, sh.getKey());
-        statement.setString(2, sh.getValue());
-        statement.setString(3, username);
-        statement.execute();
-        return new Pair<>(password, NetUtil.OK);
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement("UPDATE user SET salt = ?, password = ? WHERE username = ?;");) {
+            Pair<String, String> sh = getSaltAndHash(password);
+            statement.setString(1, sh.getKey());
+            statement.setString(2, sh.getValue());
+            statement.setString(3, username);
+            statement.executeUpdate();
+            return new Pair<>(password, NetUtil.OK);
+        }
     }
 
     private Pair<String, String> getSaltAndHash(String password) {
@@ -132,12 +135,8 @@ public class DatabaseManager {
         return new Pair<>(salt, hash);
     }
 
-    public void close() throws SQLException {
-        connection.close();
-    }
-
-    public PreparedStatement getStatement(String statement) throws SQLException {
-        return connection.prepareStatement(statement);
+    public Connection getConnection() throws IOException, SQLException {
+        return DriverManager.getConnection("jdbc:sqlite:" + dbFile.getCanonicalPath());
     }
 
 }

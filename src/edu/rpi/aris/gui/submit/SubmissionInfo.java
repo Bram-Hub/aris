@@ -8,10 +8,11 @@ import javafx.scene.control.Button;
 import java.text.DateFormat;
 import java.util.Date;
 
-public class StudentInfo implements AssignmentInfo, EventHandler<ActionEvent> {
+public class SubmissionInfo implements AssignmentInfo, EventHandler<ActionEvent> {
 
     private final int classId;
     private final int assignmentId;
+    private final int userId;
     private final int submissionId;
     private final boolean isSubmission;
     private long timestamp;
@@ -20,7 +21,8 @@ public class StudentInfo implements AssignmentInfo, EventHandler<ActionEvent> {
     private Object[] data = new Object[getNumColumns()];
     private String[] names = new String[]{"Proof", "Submission Status", "Date Submitted", "Open Proof"};
 
-    public StudentInfo(int submissionId, int proofId, int classId, int assignmentId, String name, long timestamp, String status) {
+    public SubmissionInfo(int userId, int submissionId, int proofId, int classId, int assignmentId, String name, long timestamp, String status) {
+        this.userId = userId;
         this.submissionId = submissionId;
         this.proofId = proofId;
         this.classId = classId;
@@ -82,9 +84,9 @@ public class StudentInfo implements AssignmentInfo, EventHandler<ActionEvent> {
 
     @Override
     public int compareTo(AssignmentInfo o) {
-        if (!(o instanceof StudentInfo))
+        if (!(o instanceof SubmissionInfo))
             return -1;
-        StudentInfo s = (StudentInfo) o;
+        SubmissionInfo s = (SubmissionInfo) o;
         if (isSubmission)
             return Long.compare(timestamp, s.timestamp);
         else
