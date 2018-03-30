@@ -388,17 +388,19 @@ public abstract class ClientHandler implements Runnable {
             sendMessage(NetUtil.ERROR);
             return;
         }
-//        PreparedStatement userStatement = dbManager.getStatement("SELECT u.id FROM user u, user_class uc WHERE uc.user_id = u.id AND uc.class_id = ? ORDER BY u.username;");
-//        userStatement.setInt(1, cid);
-//        if (!userStatement.execute()) {
-//            sendMessage(NetUtil.ERROR);
-//            return;
-//        }
-//        ArrayList<Integer> users = new ArrayList<>();
-//        try (ResultSet rs = userStatement.getResultSet()) {
-//            while (rs.next())
-//                users.add(rs.getInt(1));
-//        }
+        try (Connection connection = dbManager.getConnection();
+             PreparedStatement userStatement = connection.prepareStatement("SELECT u.id, u.username FROM user u, user_class uc WHERE uc.user_id = u.id AND uc.class_id = ? ORDER BY u.username;");
+             PreparedStatement userSubmissions = connection.prepareStatement("SELECT u.id, s.id, s.proof_id, s.time, s.status FROM user u, assignment a, submission s, proof p WHERE u.id = ? AND a.id = ? AND a.class_id = ? AND s.class_id = ? AND s.assignment_id = a.id AND s.user_id = u.id AND p.id = s.proof_id ORDER BY u.username, p.name;")) {
+            userStatement.setInt(1, cid);
+            ArrayList<String> messages = new ArrayList<>();
+            try (ResultSet rs = userStatement.executeQuery()) {
+                while (rs.next())
+                    messages.add(rs.getInt(1) + "|" + URLEncoder.encode(rs.getString(2), "UTF-8"));
+            }
+            sendMessage(String.valueOf(messages.size()));
+            messages.forEach(this::sendMessage);
+            messages.clear();
+        }
     }
 
     private void getProofs() throws SQLException, IOException {
