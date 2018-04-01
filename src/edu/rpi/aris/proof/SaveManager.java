@@ -1,8 +1,7 @@
 package edu.rpi.aris.proof;
 
-import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.Main;
-import edu.rpi.aris.gui.Proof;
+import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.rules.RuleList;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
@@ -115,14 +114,15 @@ public class SaveManager {
 
         Element baseProof = proofElements.get(0);
 
-        for (Proof.Goal g : proof.getGoals()) {
+        for (int i = 0; i < proof.getNumGoals(); ++i) {
+            Goal g = proof.getGoal(i);
             Element goal = doc.createElement("goal");
             Element sen = doc.createElement("sen");
             g.buildExpression();
             sen.appendChild(doc.createTextNode(g.getExpression() == null ? "" : g.getExpression().toString()));
             goal.appendChild(sen);
             Element raw = doc.createElement("raw");
-            raw.appendChild(doc.createTextNode(g.goalStringProperty().get()));
+            raw.appendChild(doc.createTextNode(g.getGoalString()));
             goal.appendChild(raw);
             baseProof.appendChild(goal);
         }
@@ -159,20 +159,20 @@ public class SaveManager {
         prf.setAttribute("id", String.valueOf(id));
         root.appendChild(prf);
         proofElements.add(prf);
-        int indent = proof.getLines().get(lineNum).subProofLevelProperty().get();
-        int allowedAssumptions = lineNum == 0 ? proof.numPremises().get() : 1;
-        for (int i = lineNum; i < proof.getLines().size(); ++i) {
-            Proof.Line line = proof.getLines().get(i);
-            if (line.subProofLevelProperty().get() < indent || (line.subProofLevelProperty().get() == indent && allowedAssumptions == 0 && line.isAssumption()))
+        int indent = proof.getLine(lineNum).getSubProofLevel();
+        int allowedAssumptions = lineNum == 0 ? proof.getNumPremises() : 1;
+        for (int i = lineNum; i < proof.getNumLines(); ++i) {
+            Line line = proof.getLine(i);
+            if (line.getSubProofLevel() < indent || (line.getSubProofLevel() == indent && allowedAssumptions == 0 && line.isAssumption()))
                 break;
             if (line.isAssumption()) {
                 if (allowedAssumptions == 0) {
                     Element step = doc.createElement("step");
-                    step.setAttribute("linenum", String.valueOf(line.lineNumberProperty().get()));
+                    step.setAttribute("linenum", String.valueOf(line.getLineNum()));
                     Element rule = doc.createElement("rule");
                     rule.appendChild(doc.createTextNode("SUBPROOF"));
                     step.appendChild(rule);
-                    Pair<Integer, Integer> subproofResult = createProofElement(proof, line.lineNumberProperty().get(), doc, root, proofElements);
+                    Pair<Integer, Integer> subproofResult = createProofElement(proof, line.getLineNum(), doc, root, proofElements);
                     Element premise = doc.createElement("premise");
                     premise.appendChild(doc.createTextNode(String.valueOf(subproofResult.getKey())));
                     step.appendChild(premise);
@@ -182,13 +182,13 @@ public class SaveManager {
                 } else {
                     --allowedAssumptions;
                     Element assumption = doc.createElement("assumption");
-                    assumption.setAttribute("linenum", String.valueOf(line.lineNumberProperty().get()));
+                    assumption.setAttribute("linenum", String.valueOf(line.getLineNum()));
                     Element sen = doc.createElement("sen");
                     line.buildExpression();
                     sen.appendChild(doc.createTextNode(line.getExpression() == null ? "" : line.getExpression().toString()));
                     assumption.appendChild(sen);
                     Element raw = doc.createElement("raw");
-                    raw.appendChild(doc.createTextNode(line.expressionStringProperty().get()));
+                    raw.appendChild(doc.createTextNode(line.getExpressionString()));
                     assumption.appendChild(raw);
                     prf.appendChild(assumption);
                     ++lineNum;
@@ -196,20 +196,20 @@ public class SaveManager {
             } else {
                 allowedAssumptions = 0;
                 Element step = doc.createElement("step");
-                step.setAttribute("linenum", String.valueOf(line.lineNumberProperty().get()));
+                step.setAttribute("linenum", String.valueOf(line.getLineNum()));
                 Element sen = doc.createElement("sen");
                 line.buildExpression();
                 sen.appendChild(doc.createTextNode(line.getExpression() == null ? "" : line.getExpression().toString()));
                 step.appendChild(sen);
                 Element raw = doc.createElement("raw");
-                raw.appendChild(doc.createTextNode(line.expressionStringProperty().get()));
+                raw.appendChild(doc.createTextNode(line.getExpressionString()));
                 step.appendChild(raw);
                 Element rule = doc.createElement("rule");
-                rule.appendChild(doc.createTextNode(line.selectedRuleProperty().get() == null ? "" : line.selectedRuleProperty().get().name()));
+                rule.appendChild(doc.createTextNode(line.getSelectedRule() == null ? "" : line.getSelectedRule().name()));
                 step.appendChild(rule);
-                for (Proof.Line p : line.getPremises()) {
+                for (Line p : line.getPremises()) {
                     Element premise = doc.createElement("premise");
-                    premise.appendChild(doc.createTextNode(String.valueOf(p.lineNumberProperty().get())));
+                    premise.appendChild(doc.createTextNode(String.valueOf(p.getLineNum())));
                     step.appendChild(premise);
                 }
                 prf.appendChild(step);
@@ -219,13 +219,13 @@ public class SaveManager {
         return new Pair<>(id, lineNum);
     }
 
-    public static synchronized Proof loadProof(File file) throws IOException, TransformerException {
+    public static synchronized Proof loadProof(File file, String author) throws IOException, TransformerException {
         if (file == null || !file.exists())
             return null;
-        return loadProof(new FileInputStream(file), file.getName());
+        return loadProof(new FileInputStream(file), file.getName(), author);
     }
 
-    public static synchronized Proof loadProof(InputStream in, String name) throws TransformerException, IOException {
+    public static synchronized Proof loadProof(InputStream in, String name, String author) throws TransformerException, IOException {
         StreamSource src = new StreamSource(in);
         DOMResult result = new DOMResult();
         transformer.transform(src, result);
@@ -271,7 +271,7 @@ public class SaveManager {
                     break;
             }
             authors.add("UNKNOWN");
-            proof = new Proof(authors);
+            proof = new Proof(authors, author);
         } else {
             Element metadata = getElementByTag(root, "metadata");
             try {
@@ -314,7 +314,7 @@ public class SaveManager {
             } catch (IOException ignored) {
                 authors.add("UNKNOWN");
             }
-            proof = new Proof(authors);
+            proof = new Proof(authors, author);
             ArrayList<Element> proofElements = getElementsByTag(root, "proof");
             if (proofElements.size() == 0)
                 throw new IOException("Missing main proof element");
@@ -353,8 +353,8 @@ public class SaveManager {
                         throw new IOException("Invalid sentence in goal element");
                     }
                 }
-                Proof.Goal goal = proof.addGoal(proof.getGoals().size());
-                goal.goalStringProperty().set(raw);
+                Goal goal = proof.addGoal(proof.getNumGoals());
+                goal.setGoalString(raw);
             }
         }
         return proof;
@@ -392,8 +392,8 @@ public class SaveManager {
                     throw new IOException("Invalid sentence in proof element " + elementId);
                 }
             }
-            Proof.Line line = indent == 0 ? proof.addPremise() : proof.addLine(lineNum, true, indent);
-            line.expressionStringProperty().set(raw);
+            Line line = indent == 0 ? proof.addPremise() : proof.addLine(lineNum, true, indent);
+            line.setExpressionString(raw);
             ++lineNum;
         }
         ArrayList<Element> steps = getElementsByTag(element, "step");
@@ -438,14 +438,14 @@ public class SaveManager {
                         throw new IOException("Invalid sentence in proof element " + elementId);
                     }
                 }
-                Proof.Line line = proof.addLine(lineNum, false, indent);
-                line.expressionStringProperty().set(raw);
+                Line line = proof.addLine(lineNum, false, indent);
+                line.setExpressionString(raw);
                 RuleList rule = null;
                 try {
                     rule = RuleList.valueOf(ruleStr);
                 } catch (IllegalArgumentException ignored) {
                 }
-                line.selectedRuleProperty().set(rule);
+                line.setSelectedRule(rule);
                 ArrayList<Element> premises = getElementsByTag(step, "premise");
                 for (Element p : premises) {
                     int pid;
@@ -456,7 +456,7 @@ public class SaveManager {
                     }
                     if (pid < 0 || pid >= lineNum)
                         throw new IOException("Invalid premise id in step");
-                    proof.setPremise(lineNum, proof.getLines().get(pid), true);
+                    proof.setPremise(lineNum, proof.getLine(pid), true);
                 }
                 ++lineNum;
             }
@@ -492,11 +492,6 @@ public class SaveManager {
             elements.add((Element) list.item(i));
         }
         return elements;
-    }
-
-    public static void main(String[] args) throws IOException, TransformerException {
-        //noinspection SpellCheckingInspection
-        loadProof(new File(System.getProperty("user.home"), "test.aprf"));
     }
 
 }

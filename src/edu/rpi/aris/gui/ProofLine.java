@@ -1,8 +1,11 @@
 package edu.rpi.aris.gui;
 
 import edu.rpi.aris.gui.event.SentenceChangeEvent;
+import edu.rpi.aris.proof.Line;
+import edu.rpi.aris.proof.LineChangeListener;
+import edu.rpi.aris.proof.Proof;
+import edu.rpi.aris.rules.RuleList;
 import javafx.application.Platform;
-import javafx.beans.binding.Bindings;
 import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
@@ -19,11 +22,12 @@ import javafx.scene.layout.VBox;
 import org.apache.commons.lang3.Range;
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.HashSet;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.function.UnaryOperator;
 
-public class ProofLine {
+public class ProofLine implements LineChangeListener {
 
     private static final int SUB_PROOF_INDENT = 25;
     private static final Image SELECTED_IMAGE = new Image(ProofLine.class.getResourceAsStream("right_arrow.png"));
@@ -50,7 +54,7 @@ public class ProofLine {
     private ImageView selectedLine;
 
     private MainWindow window;
-    private Proof.Line proofLine;
+    private Line proofLine;
     private int caretPos = 0;
     private String lastVal = "";
     private Timer historyTimer;
@@ -63,28 +67,20 @@ public class ProofLine {
         }
     };
 
-    ProofLine(MainWindow window, Proof.Line proofLine) {
+    ProofLine(MainWindow window, Line proofLine) {
         this.window = window;
         this.proofLine = proofLine;
+        proofLine.setChangeListener(this);
     }
 
     @FXML
     public void initialize() {
-        lastVal = proofLine.expressionStringProperty().get();
+        lastVal = proofLine.getExpressionString();
         validImage.fitHeightProperty().bind(selectedLine.fitHeightProperty());
         validImage.fitWidthProperty().bind(validImage.fitHeightProperty());
         textField.fontProperty().bind(window.getFontProperty());
         ruleChoose.fontProperty().bind(window.getFontProperty());
-        ruleChoose.textProperty().bind(Bindings.createStringBinding(() -> proofLine.selectedRuleProperty().get() == null ? "▼ Rule" : proofLine.selectedRuleProperty().get().simpleName, proofLine.selectedRuleProperty()));
         numberLbl.fontProperty().bind(window.getFontProperty());
-        numberLbl.textProperty().bind(Bindings.createStringBinding(() -> {
-            String total = String.valueOf(window.numLines().get());
-            String num = String.valueOf(proofLine.lineNumberProperty().get() + 1);
-            int spaces = (total.length() - num.length());
-            if (spaces < 0)
-                return "";
-            return StringUtils.repeat("  ", spaces) + num + '.';
-        }, window.numLines(), proofLine.lineNumberProperty()));
         ruleChoose.setOnMouseClicked(e -> {
             requestFocus(e);
             if (e.getButton() == MouseButton.PRIMARY)
@@ -142,28 +138,23 @@ public class ProofLine {
                 }
             }
         });
-        textField.editableProperty().bind(Bindings.createBooleanBinding(() -> proofLine.lineNumberProperty().get() == window.selectedLineProperty().get(), proofLine.lineNumberProperty(), window.selectedLineProperty()));
-        textField.setText(proofLine.expressionStringProperty().get());
-        proofLine.expressionStringProperty().bind(textField.textProperty());
-        proofLine.isUnderlined().addListener((observableValue, oldVal, newVal) -> {
-            if (newVal && !textVBox.getStyleClass().contains(UNDERLINE)) {
-                textVBox.getStyleClass().add(UNDERLINE);
-            } else {
-                textVBox.getStyleClass().remove(UNDERLINE);
-            }
-        });
-        if (proofLine.isUnderlined().get())
+        window.selectedLineProperty().addListener((observable, oldValue, newValue) -> textField.setEditable(proofLine.getLineNum() == newValue.intValue()));
+        textField.setText(proofLine.getExpressionString());
+        textField.textProperty().addListener((observable, oldValue, newValue) -> proofLine.setExpressionString(newValue));
+        if (proofLine.isUnderlined())
             textVBox.getStyleClass().add(UNDERLINE);
         if (proofLine.isAssumption()) {
             ruleChoose.setVisible(false);
             ruleChoose.setManaged(false);
-            if (proofLine.subProofLevelProperty().get() != 0)
+            if (proofLine.getSubProofLevel() != 0)
                 ((Region) textVBox.getChildren().get(0)).setPrefHeight(9);
         }
-        setIndent(proofLine.subProofLevelProperty().get());
-        proofLine.subProofLevelProperty().addListener((observableValue, oldVal, newVal) -> setIndent(newVal.intValue()));
+        String total = String.valueOf(window.numLines());
+        String num = String.valueOf(proofLine.getLineNum() + 1);
+        int spaces = (total.length() - num.length());
+        numberLbl.setText(spaces < 0 ? "" : StringUtils.repeat("  ", spaces) + num + '.');
+        setIndent(proofLine.getSubProofLevel());
         root.setOnMouseClicked(highlightListener);
-        validImage.imageProperty().bind(Bindings.createObjectBinding(() -> proofLine.statusProperty().get().img, proofLine.statusProperty()));
         ruleChoose.setContextMenu(window.getRulesManager().getRulesDropdown());
         textField.positionCaret(textField.getText().length());
         caretPos = textField.getText().length();
@@ -182,7 +173,7 @@ public class ProofLine {
     }
 
     private void setIndent(int level) {
-        if (proofLine.subProofLevelProperty().get() != 0)
+        if (proofLine.getSubProofLevel() != 0)
             ((Region) textVBox.getChildren().get(0)).setPrefHeight(9);
         else
             ((Region) textVBox.getChildren().get(0)).setPrefHeight(4);
@@ -203,7 +194,7 @@ public class ProofLine {
         return root;
     }
 
-    public Proof.Line getModel() {
+    public Line getModel() {
         return proofLine;
     }
 
@@ -217,7 +208,7 @@ public class ProofLine {
     }
 
     public void selectError() {
-        Range<Integer> error = proofLine.errorRangeProperty().get();
+        Range<Integer> error = proofLine.getErrorRange();
         if (error != null)
             textField.selectRange(error.getMinimum(), error.getMaximum() + 1);
     }
@@ -255,7 +246,7 @@ public class ProofLine {
         }
         String currentVal = textField.getText();
         if (!currentVal.equals(lastVal)) {
-            SentenceChangeEvent event = new SentenceChangeEvent(proofLine.lineNumberProperty().get(), lastVal, currentVal);
+            SentenceChangeEvent event = new SentenceChangeEvent(proofLine.getLineNum(), lastVal, currentVal);
             window.getHistory().addHistoryEvent(event);
             lastVal = currentVal;
         }
@@ -265,4 +256,60 @@ public class ProofLine {
         lastVal = textField.getText();
     }
 
+    @Override
+    public void expressionString(String str) {
+
+    }
+
+    @Override
+    public void status(Proof.Status status) {
+        validImage.setImage(MainWindow.STATUS_ICONS.get(status));
+    }
+
+    @Override
+    public void lineNumber(int lineNum) {
+        String total = String.valueOf(window.numLines());
+        String num = String.valueOf(proofLine.getLineNum() + 1);
+        int spaces = (total.length() - num.length());
+        numberLbl.setText(spaces < 0 ? "" : StringUtils.repeat("  ", spaces) + num + '.');
+        textField.setEditable(lineNum == window.selectedLineProperty().get());
+    }
+
+    @Override
+    public void premises(HashSet<Line> premises) {
+
+    }
+
+    @Override
+    public void subProofLevel(int level) {
+        setIndent(level);
+    }
+
+    @Override
+    public void selectedRule(RuleList rule) {
+        ruleChoose.setText(rule == null ? "▼ Rule" : rule.simpleName);
+    }
+
+    @Override
+    public void statusString(String statusString) {
+
+    }
+
+    @Override
+    public void errorRange(Range<Integer> range) {
+
+    }
+
+    @Override
+    public void underlined(boolean underlined) {
+        if (underlined && !textVBox.getStyleClass().contains(UNDERLINE)) {
+            textVBox.getStyleClass().add(UNDERLINE);
+        } else {
+            textVBox.getStyleClass().remove(UNDERLINE);
+        }
+    }
+
+    public void requestFocus() {
+        textField.requestFocus();
+    }
 }

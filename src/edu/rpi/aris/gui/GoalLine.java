@@ -1,8 +1,12 @@
 package edu.rpi.aris.gui;
 
 import edu.rpi.aris.gui.event.SentenceChangeEvent;
+import edu.rpi.aris.proof.Goal;
+import edu.rpi.aris.proof.Line;
+import edu.rpi.aris.proof.LineChangeListener;
+import edu.rpi.aris.proof.Proof;
+import edu.rpi.aris.rules.RuleList;
 import javafx.application.Platform;
-import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
@@ -12,11 +16,12 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import org.apache.commons.lang3.Range;
 
+import java.util.HashSet;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.function.UnaryOperator;
 
-public class GoalLine {
+public class GoalLine implements LineChangeListener {
 
 
     @FXML
@@ -26,33 +31,33 @@ public class GoalLine {
     @FXML
     private ImageView goalValidImg;
 
-    private Proof.Goal goal;
+    private Goal goal;
     private MainWindow window;
     private int caretPos = 0;
     private String lastVal = "";
     private Timer historyTimer;
 
-    GoalLine(MainWindow window, Proof.Goal goal) {
+    GoalLine(MainWindow window, Goal goal) {
         this.goal = goal;
         this.window = window;
+        goal.setChangeListener(this);
     }
 
     @FXML
     public void initialize() {
-        lastVal = goal.goalStringProperty().get();
-        goalText.setText(goal.goalStringProperty().get());
-        goal.goalStringProperty().bind(goalText.textProperty());
-        goalValidImg.imageProperty().bind(Bindings.createObjectBinding(() -> goal.goalStatusProperty().get().img, goal.goalStatusProperty()));
+        lastVal = goal.getGoalString();
+        goalText.setText(goal.getGoalString());
+        goalText.textProperty().addListener((observable, oldValue, newValue) -> goal.setGoalString(newValue));
         goalText.setOnMouseClicked(mouseEvent -> window.requestFocus(this));
         UnaryOperator<TextFormatter.Change> filter = t -> {
             t.setText(GuiConfig.getConfigManager().replaceText(t.getText()));
             return t;
         };
         goalText.setTextFormatter(new TextFormatter<>(filter));
-        goalText.editableProperty().bind(Bindings.createBooleanBinding(() -> {
-            int lineNum = window.selectedLineProperty().get() * -1 - 2;
-            return goal.goalNumProperty().get() == lineNum;
-        }, goal.goalNumProperty(), window.selectedLineProperty()));
+        window.selectedLineProperty().addListener((observable, oldValue, newValue) -> {
+            int lineNum = newValue.intValue() * -1 - 2;
+            goalText.setEditable(goal.getGoalNum() == lineNum);
+        });
         goalText.editableProperty().addListener((observableValue, aBoolean, t1) -> goalText.requestFocus());
         goalText.addEventFilter(KeyEvent.ANY, keyEvent -> {
             if (keyEvent.getEventType() == KeyEvent.KEY_PRESSED) {
@@ -104,7 +109,7 @@ public class GoalLine {
     }
 
     public int lineNumber() {
-        return goal.goalNumProperty().get();
+        return goal.getGoalNum();
     }
 
     public HBox getRootNode() {
@@ -112,7 +117,7 @@ public class GoalLine {
     }
 
     public void selectError() {
-        Range<Integer> error = goal.errorRangeProperty().get();
+        Range<Integer> error = goal.getErrorRange();
         if (error != null)
             goalText.selectRange(error.getMinimum(), error.getMaximum() + 1);
     }
@@ -128,7 +133,7 @@ public class GoalLine {
         }
         String currentVal = goalText.getText();
         if (!currentVal.equals(lastVal)) {
-            SentenceChangeEvent event = new SentenceChangeEvent(goal.goalNumProperty().get(), lastVal, currentVal);
+            SentenceChangeEvent event = new SentenceChangeEvent(goal.getGoalNum(), lastVal, currentVal);
             window.getHistory().addHistoryEvent(event);
             lastVal = currentVal;
         }
@@ -140,5 +145,51 @@ public class GoalLine {
 
     public void setText(String text) {
         goalText.setText(text);
+    }
+
+    @Override
+    public void expressionString(String str) {
+
+    }
+
+    @Override
+    public void status(Proof.Status status) {
+        goalValidImg.setImage(MainWindow.STATUS_ICONS.get(status));
+    }
+
+    @Override
+    public void lineNumber(int lineNum) {
+        int goalNum = window.selectedLineProperty().get() * -1 - 2;
+        goalText.setEditable(goalNum == lineNum);
+    }
+
+    @Override
+    public void premises(HashSet<Line> premises) {
+
+    }
+
+    @Override
+    public void subProofLevel(int level) {
+
+    }
+
+    @Override
+    public void selectedRule(RuleList rule) {
+
+    }
+
+    @Override
+    public void statusString(String statusString) {
+
+    }
+
+    @Override
+    public void errorRange(Range<Integer> range) {
+
+    }
+
+    @Override
+    public void underlined(boolean underlined) {
+
     }
 }

@@ -1,7 +1,7 @@
 package edu.rpi.aris.gui.event;
 
 import edu.rpi.aris.gui.MainWindow;
-import edu.rpi.aris.gui.Proof;
+import edu.rpi.aris.proof.Line;
 
 public class PremiseChangeEvent extends HistoryEvent {
 
@@ -17,7 +17,7 @@ public class PremiseChangeEvent extends HistoryEvent {
 
     @Override
     public void undoEvent(MainWindow window) {
-        Proof.Line premiseLine = window.getProof().getLines().get(premiseLineIndex);
+        Line premiseLine = window.getProof().getLine(premiseLineIndex);
         window.getProof().setPremise(selectedLineIndex, premiseLine, wasSelected);
         window.requestFocus(window.getProofLines().get(selectedLineIndex));
         window.updateHighlighting(selectedLineIndex);
@@ -25,7 +25,7 @@ public class PremiseChangeEvent extends HistoryEvent {
 
     @Override
     public void redoEvent(MainWindow window) {
-        Proof.Line premiseLine = window.getProof().getLines().get(premiseLineIndex);
+        Line premiseLine = window.getProof().getLine(premiseLineIndex);
         window.getProof().setPremise(selectedLineIndex, premiseLine, !wasSelected);
         window.requestFocus(window.getProofLines().get(selectedLineIndex));
         window.updateHighlighting(selectedLineIndex);

@@ -5,8 +5,9 @@ import edu.rpi.aris.gui.event.LineChangedEvent;
 import edu.rpi.aris.gui.event.PremiseChangeEvent;
 import edu.rpi.aris.gui.event.RuleChangeEvent;
 import edu.rpi.aris.gui.submit.AssignmentWindow;
-import edu.rpi.aris.proof.SaveManager;
+import edu.rpi.aris.proof.*;
 import edu.rpi.aris.rules.Rule;
+import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
@@ -20,6 +21,7 @@ import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
@@ -34,7 +36,14 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class MainWindow {
+public class MainWindow implements StatusChangeListener {
+
+    public static final HashMap<Proof.Status, Image> STATUS_ICONS = new HashMap<>();
+
+    static {
+        for (Proof.Status status : Proof.Status.values())
+            STATUS_ICONS.put(status, new Image(MainWindow.class.getResourceAsStream(status.imgName)));
+    }
 
     @FXML
     private VBox proofTable;
@@ -54,7 +63,6 @@ public class MainWindow {
     private VBox rulesPane;
     @FXML
     private TitledPane oprTitlePane;
-
     private ObjectProperty<Font> fontObjectProperty;
     private ArrayList<ProofLine> proofLines = new ArrayList<>();
     private ArrayList<GoalLine> goalLines = new ArrayList<>();
@@ -68,7 +76,7 @@ public class MainWindow {
     private boolean loaded = false;
 
     public MainWindow(Stage primaryStage) throws IOException {
-        this(primaryStage, new Proof());
+        this(primaryStage, new Proof(GuiConfig.getConfigManager().username.get()));
     }
 
     public MainWindow(Stage primaryStage, Proof proof) throws IOException {
@@ -82,10 +90,10 @@ public class MainWindow {
         rulesManager = new RulesManager();
         rulesManager.addRuleSelectionHandler(ruleSelectEvent -> {
             if (selectedLine.get() > -1) {
-                Proof.Line line = proof.getLines().get(selectedLine.get());
+                Line line = proof.getLine(selectedLine.get());
                 if (!line.isAssumption()) {
-                    RuleChangeEvent event = new RuleChangeEvent(selectedLine.get(), line.selectedRuleProperty().get(), ruleSelectEvent.getRule());
-                    line.selectedRuleProperty().set(ruleSelectEvent.getRule());
+                    RuleChangeEvent event = new RuleChangeEvent(selectedLine.get(), line.getSelectedRule(), ruleSelectEvent.getRule());
+                    line.setSelectedRule(ruleSelectEvent.getRule());
                     history.addHistoryEvent(event);
                 }
             }
@@ -94,30 +102,8 @@ public class MainWindow {
         selectedLine.addListener((observableValue, oldVal, newVal) -> {
             statusLbl.textProperty().unbind();
             errorRangeLbl.textProperty().unbind();
-            if (selectedLine.get() >= 0) {
-                statusLbl.textProperty().bind(proof.getLines().get(selectedLine.get()).statusMsgProperty());
-                errorRangeLbl.textProperty().bind(Bindings.createStringBinding(() -> {
-                    Proof.Line line = proof.getLines().get(selectedLine.get());
-                    if (line.errorRangeProperty().get() == null)
-                        return null;
-                    Range<Integer> range = line.errorRangeProperty().get();
-                    if (range.getMinimum().equals(range.getMaximum()))
-                        return String.valueOf(range.getMinimum() + 1);
-                    return (range.getMinimum() + 1) + " - " + (range.getMaximum() + 1);
-                }, proof.getLines().get(selectedLine.get()).errorRangeProperty()));
-                proof.getLines().get(newVal.intValue()).verifyClaim();
-            } else if (selectedLine.get() < -1) {
-                statusLbl.textProperty().bind(proof.getGoals().get(selectedLine.get() * -1 - 2).statusStringProperty());
-                errorRangeLbl.textProperty().bind(Bindings.createStringBinding(() -> {
-                    Proof.Goal goal = proof.getGoals().get(selectedLine.get() * -1 - 2);
-                    if (goal.errorRangeProperty().get() == null)
-                        return null;
-                    Range<Integer> range = goal.errorRangeProperty().get();
-                    if (range.getMinimum().equals(range.getMaximum()))
-                        return String.valueOf(range.getMinimum() + 1);
-                    return (range.getMinimum() + 1) + " - " + (range.getMaximum() + 1);
-                }, proof.getGoals().get(selectedLine.get() * -1 - 2).errorRangeProperty()));
-            }
+            if (selectedLine.get() >= 0)
+                proof.getLine(newVal.intValue()).verifyClaim();
             updateHighlighting(newVal.intValue());
         });
     }
@@ -143,16 +129,16 @@ public class MainWindow {
             requestFocus(selectedLine.get() + 1);
             autoScroll(goalScroll.getContent().getBoundsInLocal());
         } else if (selectedLine.get() == -2) {
-            requestFocus(proof.numLinesProperty().get() - 1);
+            requestFocus(proof.getNumLines() - 1);
             autoScroll(scrollPane.getContent().getBoundsInLocal());
         }
     }
 
     private synchronized void lineDown() {
-        if (selectedLine.get() >= 0 && selectedLine.get() + 1 < proof.numLinesProperty().get()) {
+        if (selectedLine.get() >= 0 && selectedLine.get() + 1 < proof.getNumLines()) {
             requestFocus(selectedLine.get() + 1);
             autoScroll(scrollPane.getContent().getBoundsInLocal());
-        } else if (selectedLine.get() < -1 && selectedLine.get() > proof.getGoals().size() * -1 - 1) {
+        } else if (selectedLine.get() < -1 && selectedLine.get() > proof.getNumGoals() * -1 - 1) {
             requestFocus(selectedLine.get() - 1);
             autoScroll(goalScroll.getContent().getBoundsInLocal());
         }
@@ -241,8 +227,8 @@ public class MainWindow {
             if (selectedLine.get() < 0)
                 return;
             int line = selectedLine.get() + 1;
-            line = line < this.proof.numPremises().get() ? this.proof.numPremises().get() : line;
-            addProofLine(false, this.proof.getLines().get(selectedLine.get()).subProofLevelProperty().get(), line);
+            line = line < this.proof.getNumPremises() ? this.proof.getNumPremises() : line;
+            addProofLine(false, this.proof.getLine(selectedLine.get()).getSubProofLevel(), line);
             selectedLine.set(-1);
             selectedLine.set(line);
         });
@@ -306,7 +292,7 @@ public class MainWindow {
             if (f != null && !f.exists()) {
                 error = "The selected file does not exist";
             } else if (f != null) {
-                Proof p = SaveManager.loadProof(f);
+                Proof p = SaveManager.loadProof(f, GuiConfig.getConfigManager().username.get());
                 if (p == null) {
                     error = "Invalid file format";
                 } else {
@@ -374,9 +360,9 @@ public class MainWindow {
     private synchronized void verifyLine() {
         int lineNum = selectedLine.get();
         if (lineNum >= 0) {
-            Proof.Line line = proof.getLines().get(lineNum);
-            if (line.expressionStringProperty().get().trim().length() == 0 && line.selectedRuleProperty().get() != null) {
-                Rule rule = line.selectedRuleProperty().get().rule;
+            Line line = proof.getLine(lineNum);
+            if (line.getExpressionString().trim().length() == 0 && line.getSelectedRule() != null) {
+                Rule rule = line.getSelectedRule().rule;
                 if (rule != null && rule.canAutoFill()) {
                     ArrayList<String> candidates = rule.getAutoFillCandidates(line.getClaimPremises());
                     if (candidates != null && candidates.size() > 0) {
@@ -399,12 +385,12 @@ public class MainWindow {
     private void startSubProof() {
         if (selectedLine.get() < 0)
             return;
-        int level = proof.getLines().get(selectedLine.get()).subProofLevelProperty().get() + 1;
+        int level = proof.getLine(selectedLine.get()).getSubProofLevel() + 1;
         int lineNum = selectedLine.get();
         selectedLine.set(-1);
-        if (lineNum < proof.numPremises().get())
-            lineNum = proof.numPremises().get();
-        else if (proofLines.get(lineNum).getText().trim().length() == 0 && !proof.getLines().get(lineNum).isAssumption())
+        if (lineNum < proof.getNumPremises())
+            lineNum = proof.getNumPremises();
+        else if (proofLines.get(lineNum).getText().trim().length() == 0 && !proof.getLine(lineNum).isAssumption())
             deleteLine(lineNum);
         else
             lineNum++;
@@ -415,6 +401,7 @@ public class MainWindow {
     public void show() {
         primaryStage.show();
         selectedLine.set(0);
+        proofLines.get(0).requestFocus();
     }
 
     private synchronized void autoScroll(Bounds contentBounds) {
@@ -424,7 +411,7 @@ public class MainWindow {
         if (selectedLine.get() >= 0) {
             root = proofLines.get(selectedLine.get()).getRootNode();
             scroll = scrollPane;
-            for (int i = 0; i < proof.getLines().size(); ++i) {
+            for (int i = 0; i < proof.getNumLines(); ++i) {
                 if (i < selectedLine.get()) {
                     startY += proofLines.get(i).getRootNode().getHeight();
                 } else
@@ -434,7 +421,7 @@ public class MainWindow {
             root = goalLines.get(selectedLine.get() * -1 - 2).getRootNode();
             scroll = goalScroll;
             startY += goalLbl.getHeight();
-            for (int i = 0; i < proof.getGoals().size(); ++i) {
+            for (int i = 0; i < proof.getNumGoals(); ++i) {
                 if (i < selectedLine.get() * -1 - 2) {
                     startY += goalLines.get(i).getRootNode().getHeight();
                 } else
@@ -478,12 +465,14 @@ public class MainWindow {
         rulesPane.getChildren().add(rulesManager.getRulesTable());
         VBox.setVgrow(rulesManager.getRulesTable(), Priority.ALWAYS);
         populateOperatorPane();
-        if (proof.numLinesProperty().get() == 0) {
+        if (proof.getNumLines() == 0) {
             addPremise();
             addGoal();
         } else {
-            proof.getLines().forEach(this::addProofLine);
-            proof.getGoals().forEach(this::addGoal);
+            for (int i = 0; i < proof.getNumLines(); ++i)
+                addProofLine(proof.getLine(i));
+            for (int i = 0; i < proof.getNumGoals(); ++i)
+                addGoal(proof.getGoal(i));
             proof.verifyProof();
         }
         selectedLine.set(-1);
@@ -530,7 +519,8 @@ public class MainWindow {
         addProofLine(proof.addLine(index, assumption, proofLevel));
     }
 
-    public synchronized void addProofLine(Proof.Line line) {
+    public synchronized void addProofLine(Line line) {
+        line.setStatusListener(this);
         FXMLLoader loader = new FXMLLoader(MainWindow.class.getResource("proof_line.fxml"));
         ProofLine controller = new ProofLine(this, line);
         loader.setController(controller);
@@ -540,27 +530,28 @@ public class MainWindow {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        int index = line.lineNumberProperty().get();
+        int index = line.getLineNum();
         proofTable.getChildren().add(index, box);
         proofLines.add(index, controller);
-        TreeMap<Integer, Proof.Line> added = new TreeMap<>();
+        TreeMap<Integer, Line> added = new TreeMap<>();
         added.put(index, line);
         LineChangedEvent event = new LineChangedEvent(added, false);
         history.addHistoryEvent(event);
     }
 
     private synchronized int addPremise() {
-        Proof.Line line = proof.addPremise();
+        Line line = proof.addPremise();
         addProofLine(line);
-        return line.lineNumberProperty().get();
+        return line.getLineNum();
     }
 
     private synchronized int addGoal() {
-        Proof.Goal goal = proof.addGoal(proof.getGoals().size());
+        Goal goal = proof.addGoal(proof.getNumGoals());
         return addGoal(goal);
     }
 
-    public int addGoal(Proof.Goal goal) {
+    public int addGoal(Goal goal) {
+        goal.setStatusListener(this);
         FXMLLoader loader = new FXMLLoader(MainWindow.class.getResource("goal_line.fxml"));
         GoalLine controller = new GoalLine(this, goal);
         loader.setController(controller);
@@ -570,7 +561,7 @@ public class MainWindow {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        int index = goal.goalNumProperty().get();
+        int index = goal.getGoalNum();
         VBox content = (VBox) goalScroll.getContent();
         content.getChildren().add(index + 1, box);
         goalLines.add(index, controller);
@@ -609,8 +600,8 @@ public class MainWindow {
             history.addHistoryEvent(event);
     }
 
-    public IntegerProperty numLines() {
-        return proof.numLinesProperty();
+    public int numLines() {
+        return proof.getNumLines();
     }
 
     public boolean ignoreKeyEvent(KeyEvent event) {
@@ -623,8 +614,8 @@ public class MainWindow {
 
     public synchronized void updateHighlighting(int selectedLine) {
         if (selectedLine >= 0) {
-            Proof.Line line = proof.getLines().get(selectedLine);
-            HashSet<Proof.Line> highlighted = proof.getHighlighted(line);
+            Line line = proof.getLine(selectedLine);
+            HashSet<Line> highlighted = proof.getHighlighted(line);
             if (line != null)
                 for (ProofLine p : proofLines)
                     p.setHighlighted(highlighted.contains(p.getModel()) && p.getModel() != line);
@@ -635,39 +626,39 @@ public class MainWindow {
     }
 
     public synchronized void deleteLine(int lineNum) {
-        if (lineNum > 0 || (proof.numPremises().get() > 1 && lineNum >= 0)) {
-            TreeMap<Integer, Proof.Line> deleted = new TreeMap<>();
-            if (lineNum >= proof.numPremises().get()) {
-                Proof.Line line = proof.getLines().get(lineNum);
-                if (line.isAssumption() && lineNum + 1 < proof.getLines().size()) {
-                    int indent = line.subProofLevelProperty().get();
-                    Proof.Line l = proof.getLines().get(lineNum + 1);
-                    while (l != null && (l.subProofLevelProperty().get() > indent || (l.subProofLevelProperty().get() == indent && !l.isAssumption()))) {
+        if (lineNum > 0 || (proof.getNumPremises() > 1 && lineNum >= 0)) {
+            TreeMap<Integer, Line> deleted = new TreeMap<>();
+            if (lineNum >= proof.getNumPremises()) {
+                Line line = proof.getLine(lineNum);
+                if (line.isAssumption() && lineNum + 1 < proof.getNumLines()) {
+                    int indent = line.getSubProofLevel();
+                    Line l = proof.getLine(lineNum + 1);
+                    while (l != null && (l.getSubProofLevel() > indent || (l.getSubProofLevel() == indent && !l.isAssumption()))) {
                         deleted.put(lineNum + 1 + deleted.size(), l);
-                        removeLine(l.lineNumberProperty().get());
-                        if (lineNum + 1 == proof.getLines().size())
+                        removeLine(l.getLineNum());
+                        if (lineNum + 1 == proof.getNumLines())
                             l = null;
                         else
-                            l = proof.getLines().get(lineNum + 1);
+                            l = proof.getLine(lineNum + 1);
                     }
                 }
             }
-            deleted.put(lineNum, proof.getLines().get(lineNum));
+            deleted.put(lineNum, proof.getLine(lineNum));
             removeLine(lineNum);
             LineChangedEvent event = new LineChangedEvent(deleted, true);
             history.addHistoryEvent(event);
         } else if (lineNum < -1) {
-            if (proof.getGoals().size() <= 1)
+            if (proof.getNumGoals() <= 1)
                 return;
             lineNum = lineNum * -1 - 2;
             selectedLine.set(-1);
-            Proof.Goal goal = proof.getGoals().get(lineNum);
+            Goal goal = proof.getGoal(lineNum);
             proof.removeGoal(lineNum);
             goalLines.remove(lineNum);
             GoalChangedEvent event = new GoalChangedEvent(lineNum, goal, true);
             ((VBox) goalScroll.getContent()).getChildren().remove(lineNum + 1);
-            if (lineNum >= proof.getGoals().size())
-                lineNum = proof.getGoals().size() - 1;
+            if (lineNum >= proof.getNumGoals())
+                lineNum = proof.getNumGoals() - 1;
             selectedLine.set(-2 - lineNum);
             history.addHistoryEvent(event);
         }
@@ -679,19 +670,19 @@ public class MainWindow {
         proofLines.remove(lineNum);
         proofTable.getChildren().remove(lineNum);
         proof.delete(lineNum);
-        if (selected == proof.numLinesProperty().get())
+        if (selected == proof.getNumLines())
             --selected;
         selectedLine.set(selected < 0 ? 0 : selected);
     }
 
     private void endSubproof() {
-        int level = proof.getLines().get(selectedLine.get()).subProofLevelProperty().get();
+        int level = proof.getLine(selectedLine.get()).getSubProofLevel();
         if (level == 0)
             return;
-        int newLine = proof.getLines().size();
+        int newLine = proof.getNumLines();
         for (int i = selectedLine.get() + 1; i < newLine; ++i) {
-            Proof.Line l = proof.getLines().get(i);
-            if (l.subProofLevelProperty().get() < level || (l.subProofLevelProperty().get() == level && l.isAssumption()))
+            Line l = proof.getLine(i);
+            if (l.getSubProofLevel() < level || (l.getSubProofLevel() == level && l.isAssumption()))
                 newLine = i;
         }
         addProofLine(false, level - 1, newLine);
@@ -736,5 +727,55 @@ public class MainWindow {
             GoalLine line = goalLines.get(selected * -1 - 2);
             line.commitSentenceChange();
         }
+    }
+
+    @Override
+    public void statusString(Line line, String statusString) {
+        Platform.runLater(() -> {
+            if (line.getLineNum() == selectedLine.get())
+                statusLbl.setText(statusString);
+        });
+    }
+
+    @Override
+    public void errorRange(Line line, Range<Integer> range) {
+        Platform.runLater(() -> {
+            if (line.getLineNum() == selectedLine.get()) {
+                String str = null;
+                if (range != null) {
+                    if (range.getMinimum().equals(range.getMaximum()))
+                        str = String.valueOf(range.getMinimum() + 1);
+                    else
+                        str = (range.getMinimum() + 1) + " - " + (range.getMaximum() + 1);
+                }
+                errorRangeLbl.setText(str);
+            }
+        });
+    }
+
+    @Override
+    public void statusString(Goal goal, String statusString) {
+        Platform.runLater(() -> {
+            int goalNum = selectedLine.get() * -1 - 2;
+            if (goalNum == goal.getGoalNum())
+                statusLbl.setText(statusString);
+        });
+    }
+
+    @Override
+    public void errorRange(Goal goal, Range<Integer> range) {
+        Platform.runLater(() -> {
+            int goalNum = selectedLine.get() * -1 - 2;
+            if (goalNum == goal.getGoalNum()) {
+                String str = null;
+                if (range != null) {
+                    if (range.getMinimum().equals(range.getMaximum()))
+                        str = String.valueOf(range.getMinimum() + 1);
+                    else
+                        str = (range.getMinimum() + 1) + " - " + (range.getMaximum() + 1);
+                }
+                errorRangeLbl.setText(str);
+            }
+        });
     }
 }

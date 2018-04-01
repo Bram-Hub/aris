@@ -1,15 +1,15 @@
 package edu.rpi.aris.gui.event;
 
 import edu.rpi.aris.gui.MainWindow;
-import edu.rpi.aris.gui.Proof;
+import edu.rpi.aris.proof.Goal;
 
 public class GoalChangedEvent extends HistoryEvent {
 
     private int goalNum;
-    private Proof.Goal goal;
+    private Goal goal;
     private boolean deleted;
 
-    public GoalChangedEvent(int goalNum, Proof.Goal goal, boolean deleted) {
+    public GoalChangedEvent(int goalNum, Goal goal, boolean deleted) {
         this.goalNum = goalNum;
         this.goal = goal;
         this.deleted = deleted;
@@ -20,8 +20,8 @@ public class GoalChangedEvent extends HistoryEvent {
     }
 
     private void addGoal(MainWindow window) {
-        Proof.Goal g = window.getProof().addGoal(goalNum);
-        g.goalStringProperty().set(goal.goalStringProperty().get());
+        Goal g = window.getProof().addGoal(goalNum);
+        g.setGoalString(goal.getGoalString());
         window.addGoal(g);
         window.requestFocus(window.getGoalLines().get(goalNum));
     }
