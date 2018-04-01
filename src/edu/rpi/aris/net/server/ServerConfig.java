@@ -1,6 +1,9 @@
 package edu.rpi.aris.net.server;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -19,6 +22,7 @@ public class ServerConfig {
     private static final String DATABASE_PORT_CONFIG = "db-port";
 
     private static ServerConfig instance;
+    private static Logger logger = LogManager.getLogger(ServerConfig.class);
     private File configFile = new File(System.getProperty("user.home"), "aris.cfg");
     private File storageDir, baseLogFile;
     private String dbHost, dbName, dbUser, dbPass;
@@ -39,6 +43,10 @@ public class ServerConfig {
 
     private void load() throws IOException {
         configOptions.clear();
+        if (!configFile.exists()) {
+            logger.fatal("Server configuration file does not exist: " + configFile.getCanonicalPath());
+            System.exit(1);
+        }
         try (BufferedReader reader = new BufferedReader(new FileReader(configFile))) {
             String line;
             while ((line = reader.readLine()) != null) {
@@ -47,38 +55,43 @@ public class ServerConfig {
                 line = line.trim();
                 if (line.length() <= 0)
                     continue;
-                if (!line.contains(" "))
-                    throw new IOException("Invalid config line: " + line);
+                if (!line.contains(" ")) {
+                    logger.fatal("Invalid line in config file: " + line);
+                    System.exit(1);
+                }
                 String key = line.substring(0, line.indexOf(' '));
                 String value = line.substring(line.indexOf(' ') + 1);
                 configOptions.put(key, value);
             }
-            storageDir = new File(getConfigOption(STORAGE_CONFIG, null));
-            baseLogFile = new File(getConfigOption(LOG_CONFIG, null));
-            dbName = getConfigOption(DATABASE_NAME_CONFIG, "aris");
-            dbUser = getConfigOption(DATABASE_USER_CONFIG, "aris");
-            dbPass = getConfigOption(DATABASE_PASS_CONFIG, null);
-            dbHost = getConfigOption(DATABASE_HOST_CONFIG, "localhost");
-            String portStr = getConfigOption(DATABASE_PORT_CONFIG, "5432");
-            try {
-                dbPort = Integer.parseInt(portStr);
-            } catch (NumberFormatException e) {
-                throw new IOException("Invalid server port: " + portStr);
-            }
-            if (dbPort <= 0 || dbPort > 65535)
-                throw new IOException("Invalid server port: " + dbPort);
         }
+        storageDir = new File(getConfigOption(STORAGE_CONFIG, null));
+        baseLogFile = new File(getConfigOption(LOG_CONFIG, null));
+        dbName = getConfigOption(DATABASE_NAME_CONFIG, "aris");
+        dbUser = getConfigOption(DATABASE_USER_CONFIG, "aris");
+        dbPass = getConfigOption(DATABASE_PASS_CONFIG, null);
+        dbHost = getConfigOption(DATABASE_HOST_CONFIG, "localhost");
+        String portStr = getConfigOption(DATABASE_PORT_CONFIG, "5432");
+        try {
+            dbPort = Integer.parseInt(portStr);
+        } catch (NumberFormatException e) {
+            logger.fatal("Invalid server port: " + portStr);
+            System.exit(1);
+        }
+        if (dbPort <= 0 || dbPort > 65535) {
+            logger.fatal("Invalid server port: " + portStr);
+            System.exit(1);
+        }
+        if (configOptions.size() > 0)
+            logger.error("Unknown configuration options: " + StringUtils.join(configOptions.keySet(), ", "));
     }
 
-    private String getConfigOption(String key, String def) throws IOException {
+    private String getConfigOption(String key, String defaultValue) throws IOException {
         String option = configOptions.remove(key);
-        if (option == null && def == null)
-            throw new IOException("Configuration (" + configFile.getCanonicalPath() + ") missing option: " + key);
-        return option == null ? def : option;
-    }
-
-    public File getConfigurationFile() {
-        return configFile;
+        if (option == null && defaultValue == null) {
+            logger.fatal("Configuration (" + configFile.getCanonicalPath() + ") missing option: " + key);
+            System.exit(1);
+        }
+        return option == null ? defaultValue : option;
     }
 
     public File getStorageDir() {

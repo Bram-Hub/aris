@@ -18,6 +18,7 @@ public class ClientInfo {
     private SimpleBooleanProperty loaded = new SimpleBooleanProperty(false);
     private SimpleBooleanProperty isInstructor = new SimpleBooleanProperty(false);
     private ObservableList<Course> courses = FXCollections.observableArrayList();
+    private int userId = -1;
 
     public void load(Runnable runnable, boolean reload) {
         if (reload)
@@ -31,7 +32,12 @@ public class ClientInfo {
             try {
                 client.connect();
                 client.sendMessage(NetUtil.GET_USER_INFO);
-                String clientType = client.readMessage();
+                try {
+                    userId = Integer.parseInt(Client.checkError(client.readMessage()));
+                } catch (NumberFormatException e) {
+                    throw new IOException("Error fetching user data");
+                }
+                String clientType = Client.checkError(client.readMessage());
                 Platform.runLater(() -> isInstructor.set(NetUtil.USER_INSTRUCTOR.equals(clientType)));
                 String res;
                 while ((res = client.readMessage()) != null && !res.equals(NetUtil.ERROR) && !res.equals(NetUtil.DONE)) {
@@ -58,6 +64,7 @@ public class ClientInfo {
                 if (runnable != null)
                     runnable.run();
             } catch (IOException e) {
+                userId = -1;
                 Platform.runLater(() -> {
                     isInstructor.set(false);
                     courses.clear();
@@ -75,6 +82,7 @@ public class ClientInfo {
         loaded.set(false);
         isInstructor.set(false);
         courses.clear();
+        userId = -1;
         GuiConfig.getConfigManager().username.set(null);
         GuiConfig.getConfigManager().setAccessToken(null);
     }
@@ -90,4 +98,9 @@ public class ClientInfo {
     public ObservableList<Course> getCourses() {
         return courses;
     }
+
+    public int getUserId() {
+        return userId;
+    }
+
 }

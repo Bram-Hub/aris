@@ -197,7 +197,7 @@ public class AssignmentWindow {
                 } finally {
                     client.disconnect();
                 }
-                load(true);
+                Platform.runLater(() -> load(true));
             }).start();
         }
     }

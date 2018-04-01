@@ -1,6 +1,7 @@
 package edu.rpi.aris.gui.submit;
 
 import edu.rpi.aris.Main;
+import edu.rpi.aris.net.GradingStatus;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
 import javafx.application.Platform;
@@ -145,26 +146,25 @@ public class Assignment {
             int numSubmission = Integer.parseInt(numSubmissionStr);
             HashMap<Integer, ArrayList<String[]>> submissions = new HashMap<>();
             for (int i = 0; i < numSubmission; ++i) {
-                String[] split = checkSplit(client.readMessage(), 4);
+                String[] split = checkSplit(client.readMessage(), 5);
                 int pid = Integer.parseInt(split[1]);
                 submissions.computeIfAbsent(pid, id -> new ArrayList<>()).add(split);
             }
             for (Map.Entry<Integer, String[]> e : proofs.entrySet()) {
                 String[] proofData = e.getValue();
-                SubmissionInfo proofInfo = new SubmissionInfo(-1, -1, Integer.parseInt(proofData[0]), classId, id, URLDecoder.decode(proofData[1], "UTF-8"), -1, null, InfoType.PROOF);
+                ProofInfo proofInfo = new ProofInfo(Integer.parseInt(proofData[0]), URLDecoder.decode(proofData[1], "UTF-8"), false);
                 rootNodes.add(proofInfo);
                 int i = 0;
                 if (submissions.containsKey(e.getKey()))
                     for (String[] sub : submissions.get(e.getKey())) {
                         ++i;
                         long timestamp = NetUtil.DATE_FORMAT.parse(URLDecoder.decode(sub[2], "UTF-8")).getTime();
-                        proofInfo.addChild(new SubmissionInfo(-1, Integer.parseInt(sub[0]), e.getKey(), classId, id, "Submission " + i, timestamp, URLDecoder.decode(sub[3], "UTF-8"), InfoType.SUBMISSION));
+                        try {
+                            proofInfo.addChild(new SubmissionInfo(AssignmentWindow.instance.getClientInfo().getUserId(), Integer.parseInt(sub[0]), e.getKey(), classId, id, "Submission " + i, timestamp, URLDecoder.decode(sub[3], "UTF-8"), GradingStatus.valueOf(URLDecoder.decode(sub[4], "UTF-8")), false));
+                        } catch (IllegalArgumentException e1) {
+                            throw new IOException("Invalid short_status", e1);
+                        }
                     }
-                if (proofInfo.getChildren().size() > 0) {
-                    proofInfo.setStatus(((SubmissionInfo) proofInfo.getChildren().get(0)).getStatus());
-                    proofInfo.setTimestamp(((SubmissionInfo) proofInfo.getChildren().get(0)).getTimestamp());
-                } else
-                    proofInfo.setStatus(NetUtil.STATUS_NO_SUBMISSION);
             }
         } catch (ParseException | NumberFormatException e) {
             throw new IOException("Server sent invalid response");
@@ -176,23 +176,23 @@ public class Assignment {
             client.sendMessage(NetUtil.GET_SUBMISSION_DETAIL);
             client.sendMessage(classId + "|" + id);
             int numStudent = Integer.parseInt(Client.checkError(client.readMessage()));
-            HashMap<Integer, SubmissionInfo> users = new HashMap<>();
+            HashMap<Integer, UserInfo> users = new HashMap<>();
             for (int i = 0; i < numStudent; ++i) {
                 String[] split = checkSplit(client.readMessage(), 2);
                 int uid = Integer.parseInt(split[0]);
-                SubmissionInfo user = new SubmissionInfo(uid, -1, -1, classId, id, URLDecoder.decode(split[1], "UTF-8"), -1, null, InfoType.USER);
+                UserInfo user = new UserInfo(uid, URLDecoder.decode(split[1], "UTF-8"));
                 users.put(uid, user);
                 rootNodes.add(user);
             }
             int numProofs = Integer.parseInt(Client.checkError(client.readMessage()));
             // (userId, (proofId, info))
-            HashMap<Integer, HashMap<Integer, SubmissionInfo>> proofMap = new HashMap<>();
+            HashMap<Integer, HashMap<Integer, ProofInfo>> proofMap = new HashMap<>();
             for (int i = 0; i < numProofs; ++i) {
                 String[] split = checkSplit(client.readMessage(), 2);
                 int pid = Integer.parseInt(split[0]);
                 String name = URLDecoder.decode(split[1], "UTF-8");
-                for (SubmissionInfo info : users.values()) {
-                    SubmissionInfo proofInfo = new SubmissionInfo(info.getUserId(), -1, pid, classId, id, name, -1, null, InfoType.PROOF);
+                for (UserInfo info : users.values()) {
+                    ProofInfo proofInfo = new ProofInfo(pid, name, true);
                     proofMap.computeIfAbsent(info.getUserId(), uid -> new HashMap<>()).put(pid, proofInfo);
                     info.addChild(proofInfo);
                 }
@@ -205,13 +205,19 @@ public class Assignment {
                 int pid = Integer.parseInt(split[2]);
                 long time = NetUtil.DATE_FORMAT.parse(URLDecoder.decode(split[3], "UTF-8")).getTime();
                 String statusStr = URLDecoder.decode(split[4], "UTF-8");
-                SubmissionInfo user = users.computeIfAbsent(uid, u -> new SubmissionInfo(u, -1, -1, classId, id, NetUtil.ERROR, -1, null, InfoType.USER));
+                GradingStatus gradingStatus = null;
+                try {
+                    gradingStatus = GradingStatus.valueOf(URLDecoder.decode(split[5], "UTF-8"));
+                } catch (IllegalArgumentException e) {
+                    throw new IOException("Server sent invalid grading status", e);
+                }
+                UserInfo user = users.computeIfAbsent(uid, u -> new UserInfo(u, NetUtil.ERROR));
                 if (user.getName().equals(NetUtil.ERROR))
                     continue;
-                SubmissionInfo proofInfo = proofMap.get(uid).get(pid);
+                ProofInfo proofInfo = proofMap.get(uid).get(pid);
                 if (proofInfo == null)
                     continue;
-                SubmissionInfo submissionInfo = new SubmissionInfo(uid, sid, pid, classId, id, "Submission " + (proofInfo.getChildren().size() + 1), time, statusStr, InfoType.SUBMISSION);
+                SubmissionInfo submissionInfo = new SubmissionInfo(uid, sid, pid, classId, id, "Submission " + (proofInfo.getChildren().size() + 1), time, statusStr, gradingStatus, true);
                 proofInfo.addChild(submissionInfo);
             }
         } catch (ParseException | NumberFormatException e) {

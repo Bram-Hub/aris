@@ -1,6 +1,7 @@
 package edu.rpi.aris.net.server;
 
 import edu.rpi.aris.Main;
+import edu.rpi.aris.net.GradingStatus;
 import edu.rpi.aris.net.NetUtil;
 import javafx.util.Pair;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -9,14 +10,16 @@ import org.apache.logging.log4j.Logger;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.security.*;
 import java.sql.*;
 import java.util.Base64;
-import java.util.HashSet;
 
 public class DatabaseManager {
 
-    private static final String[] tables = new String[]{"submission", "assignment", "proof", "users", "class", "user_class"};
+    private static final String[] tables = new String[]{"submission", "assignment", "proof", "user_class", "users", "class", "version"};
+    private static final int DB_SCHEMA_VERSION = 1;
     private static Logger logger = LogManager.getLogger(DatabaseManager.class);
 
     static {
@@ -46,35 +49,41 @@ public class DatabaseManager {
         }
     }
 
-    private void verifyDatabase(Connection connection) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement("SELECT table_name FROM information_schema.tables;");
-             ResultSet set = statement.executeQuery()) {
-            HashSet<String> tables = new HashSet<>();
-            while (set.next())
-                tables.add(set.getString(1));
-            for (String t : DatabaseManager.tables) {
-                if (!tables.contains(t)) {
-                    createTables(connection);
-                    return;
+    private void verifyDatabase(Connection connection) throws SQLException, IOException {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT count(*) FROM information_schema.tables WHERE table_name='version';");
+             ResultSet set = statement.executeQuery();
+             PreparedStatement version = connection.prepareStatement("SELECT version FROM version LIMIT 1;")) {
+            if (!set.next() || set.getInt(1) == 0)
+                createTables(connection);
+            else {
+                try (ResultSet rs = version.executeQuery()) {
+                    if (!rs.next())
+                        createTables(connection);
+                    else {
+                        int v = rs.getInt(1);
+                        if (v < 0 || v > DB_SCHEMA_VERSION)
+                            throw new IOException("Unknown database schema version: " + v);
+                        if (v < DB_SCHEMA_VERSION) {
+                            try {
+                                Method update = DatabaseManager.class.getMethod("updateSchema" + v);
+                                update.invoke(this);
+                            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+                                throw new IOException("Cannot update database schema from version " + v, e);
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 
     private void createTables(Connection connection) throws SQLException {
-//        if (exists) {
-//            logger.warn("The database either does not exist or is invalid");
-//            logger.warn("Aris will now create the database which may result in loss of data");
-//            logger.warn("Do you want to continue? (y/N)");
-//            String ans = Main.readLine();
-//            if (!ans.equalsIgnoreCase("y"))
-//                throw new SQLException("Unable to open database");
-//        }
         try (Statement statement = connection.createStatement()) {
-            statement.setQueryTimeout(30);
             for (String t : tables)
                 statement.execute("DROP TABLE IF EXISTS " + t);
-            statement.execute("CREATE TABLE users" +
+            statement.execute("CREATE TABLE IF NOT EXISTS version (version integer);");
+            statement.execute("INSERT INTO version (version) VALUES (" + DB_SCHEMA_VERSION + ");");
+            statement.execute("CREATE TABLE IF NOT EXISTS users" +
                     "(id serial PRIMARY KEY," +
                     "username text," +
                     "user_type text," +
@@ -82,21 +91,21 @@ public class DatabaseManager {
                     "password_hash text," +
                     "access_token text," +
                     "check (user_type in ('instructor', 'student')));");
-            statement.execute("CREATE TABLE class" +
+            statement.execute("CREATE TABLE IF NOT EXISTS class" +
                     "(id serial PRIMARY KEY," +
                     "name text);");
-            statement.execute("CREATE TABLE user_class" +
+            statement.execute("CREATE TABLE IF NOT EXISTS user_class" +
                     "(user_id integer," +
                     "class_id integer," +
                     "constraint uc_ufk foreign key (user_id) references users(id) on delete cascade," +
-                    "constraint uc_cfk foreign key (class_id) references class(id)) on delete cascade;");
-            statement.execute("CREATE TABLE proof" +
+                    "constraint uc_cfk foreign key (class_id) references class(id) on delete cascade);");
+            statement.execute("CREATE TABLE IF NOT EXISTS proof" +
                     "(id serial PRIMARY KEY," +
                     "name text," +
                     "data bytea," +
                     "created_by integer," +
-                    "constraint p_cb foreign key (created_by) references users(id) on delete set NULL;");
-            statement.execute("CREATE TABLE assignment" +
+                    "constraint p_cb foreign key (created_by) references users(id) on delete set NULL);");
+            statement.execute("CREATE TABLE IF NOT EXISTS assignment" +
                     "(id integer," +
                     "class_id integer," +
                     "proof_id integer," +
@@ -106,8 +115,8 @@ public class DatabaseManager {
                     "PRIMARY KEY(id, class_id, proof_id)," +
                     "constraint a_cfk foreign key (class_id) references class(id) on delete cascade," +
                     "constraint a_pfk foreign key (proof_id) references proof(id) on delete cascade," +
-                    "constraint a_abfk foreign key (assigned_by) references users(id) on delete set NULL;");
-            statement.execute("CREATE TABLE submission" +
+                    "constraint a_abfk foreign key (assigned_by) references users(id) on delete set NULL);");
+            statement.execute("CREATE TABLE IF NOT EXISTS submission" +
                     "(id serial PRIMARY KEY," +
                     "class_id integer," +
                     "assignment_id integer," +
@@ -115,11 +124,13 @@ public class DatabaseManager {
                     "proof_id integer," +
                     "data bytea," +
                     "time timestamp," +
+                    "short_status text," +
                     "status text," +
+                    "check (short_status in ('" + GradingStatus.CORRECT.name() + "', '" + GradingStatus.INCORRECT.name() + "', '" + GradingStatus.GRADING.name() + "', '" + GradingStatus.CORRECT_WARN.name() + "', '" + GradingStatus.INCORRECT_WARN.name() + "'))," +
                     "constraint s_cfk foreign key (class_id) references class(id) on delete cascade," +
                     "constraint s_afk foreign key (assignment_id, class_id, proof_id) references assignment(id, class_id, proof_id) on delete cascade," +
                     "constraint s_ufk foreign key (user_id) references users(id) on delete cascade," +
-                    "constraint s_pfk foreign key (proof_id) references proof(id) on delete cascade;");
+                    "constraint s_pfk foreign key (proof_id) references proof(id) on delete cascade);");
         }
     }
 

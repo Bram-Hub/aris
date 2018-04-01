@@ -282,6 +282,7 @@ public abstract class ClientHandler implements Runnable {
     }
 
     private void getUserInfo() throws SQLException, IOException {
+        sendMessage(String.valueOf(userId));
         try (Connection connection = dbManager.getConnection();
              PreparedStatement getUserType = connection.prepareStatement("SELECT user_type FROM users WHERE username = ?;");
              PreparedStatement getInfo = connection.prepareStatement("SELECT c.id, c.name FROM class c, users u, user_class uc WHERE u.id = uc.user_id AND c.id = uc.class_id AND u.id = ?")) {
@@ -344,7 +345,7 @@ public abstract class ClientHandler implements Runnable {
         ArrayList<String> messages = new ArrayList<>();
         try (Connection connection = dbManager.getConnection();
              PreparedStatement assignments = connection.prepareStatement("SELECT p.id, p.name FROM assignment a, proof p WHERE a.class_id = ? AND a.id = ? AND a.proof_id = p.id;");
-             PreparedStatement submissions = connection.prepareStatement("SELECT id, proof_id, time, status FROM submission WHERE class_id = ? AND assignment_id = ? AND user_id = ? ORDER BY proof_id, id DESC;")) {
+             PreparedStatement submissions = connection.prepareStatement("SELECT id, proof_id, time, status, short_status FROM submission WHERE class_id = ? AND assignment_id = ? AND user_id = ? ORDER BY proof_id, id DESC;")) {
             assignments.setInt(1, cid);
             assignments.setInt(2, aid);
             try (ResultSet rs = assignments.executeQuery()) {
@@ -359,7 +360,7 @@ public abstract class ClientHandler implements Runnable {
             submissions.setInt(3, userId);
             try (ResultSet rs = submissions.executeQuery()) {
                 while (rs.next())
-                    messages.add(rs.getInt(1) + "|" + rs.getInt(2) + "|" + URLEncoder.encode(NetUtil.DATE_FORMAT.format(rs.getTimestamp(3)), "UTF-8") + "|" + URLEncoder.encode(rs.getString(4), "UTF-8"));
+                    messages.add(rs.getInt(1) + "|" + rs.getInt(2) + "|" + URLEncoder.encode(NetUtil.DATE_FORMAT.format(rs.getTimestamp(3)), "UTF-8") + "|" + URLEncoder.encode(rs.getString(4), "UTF-8") + "|" + URLEncoder.encode(rs.getString(5), "UTF-8"));
             }
         }
         sendMessage(String.valueOf(messages.size()));
