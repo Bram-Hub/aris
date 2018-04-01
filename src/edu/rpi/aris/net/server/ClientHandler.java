@@ -15,11 +15,10 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.SecureRandom;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
+import java.text.ParseException;
 import java.util.*;
+import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 public abstract class ClientHandler implements Runnable {
@@ -131,7 +130,7 @@ public abstract class ClientHandler implements Runnable {
         username = URLDecoder.decode(auth[2], "UTF-8").toLowerCase();
         String pass = URLDecoder.decode(auth[3], "UTF-8");
         try (Connection connection = dbManager.getConnection();
-             PreparedStatement statement = connection.prepareStatement("SELECT salt, password_hash, access_token, id, user_type FROM user WHERE username = ?;");) {
+             PreparedStatement statement = connection.prepareStatement("SELECT salt, password_hash, access_token, id, user_type FROM users WHERE username = ?;")) {
             statement.setString(1, username);
             try (ResultSet set = statement.executeQuery()) {
                 if (set.next()) {
@@ -145,7 +144,7 @@ public abstract class ClientHandler implements Runnable {
                         String access_token = generateAccessToken();
                         digest.update(Base64.getDecoder().decode(salt));
                         String hashed = Base64.getEncoder().encodeToString(digest.digest(access_token.getBytes()));
-                        try (PreparedStatement updateAccessToken = connection.prepareStatement("UPDATE user SET access_token = ? WHERE username = ?;")) {
+                        try (PreparedStatement updateAccessToken = connection.prepareStatement("UPDATE users SET access_token = ? WHERE username = ?;")) {
                             updateAccessToken.setString(1, hashed);
                             updateAccessToken.setString(2, username);
                             updateAccessToken.executeUpdate();
@@ -228,9 +227,6 @@ public abstract class ClientHandler implements Runnable {
                         case NetUtil.GET_SUBMISSION_DETAIL:
                             getSubmissionDetail();
                             break;
-//                        case NetUtil.GET_SUBMISSION:
-//                            getSubmissionData();
-//                            break;
                         case NetUtil.CREATE_SUBMISSION:
                             createSubmission();
                             break;
@@ -287,8 +283,8 @@ public abstract class ClientHandler implements Runnable {
 
     private void getUserInfo() throws SQLException, IOException {
         try (Connection connection = dbManager.getConnection();
-             PreparedStatement getUserType = connection.prepareStatement("SELECT user_type FROM user WHERE username = ?;");
-             PreparedStatement getInfo = connection.prepareStatement("SELECT c.id, c.name FROM class c, user u, user_class uc WHERE u.id = uc.user_id AND c.id = uc.class_id AND u.id = ?");) {
+             PreparedStatement getUserType = connection.prepareStatement("SELECT user_type FROM users WHERE username = ?;");
+             PreparedStatement getInfo = connection.prepareStatement("SELECT c.id, c.name FROM class c, users u, user_class uc WHERE u.id = uc.user_id AND c.id = uc.class_id AND u.id = ?")) {
             getUserType.setString(1, username);
             try (ResultSet userTypeRs = getUserType.executeQuery()) {
                 if (userTypeRs.next())
@@ -315,13 +311,13 @@ public abstract class ClientHandler implements Runnable {
             return;
         }
         try (Connection connection = dbManager.getConnection();
-             PreparedStatement statement = connection.prepareStatement("SELECT a.name, a.due_date, u2.username, a.id FROM assignment a, user u, user u2, class c, user_class uc WHERE uc.user_id = u.id AND uc.class_id = c.id AND a.class_id = uc.class_id AND a.assigned_by = u2.id AND u.username = ? AND c.id = ? GROUP BY a.id ORDER BY a.due_date;");) {
+             PreparedStatement statement = connection.prepareStatement("SELECT a.name, a.due_date, u2.username, a.id FROM assignment a, users u, users u2, class c, user_class uc WHERE uc.user_id = u.id AND uc.class_id = c.id AND a.class_id = uc.class_id AND a.assigned_by = u2.id AND u.username = ? AND c.id = ? GROUP BY a.id, a.name, a.due_date, u2.username ORDER BY a.due_date;")) {
             statement.setString(1, username);
             statement.setInt(2, id);
             try (ResultSet rs = statement.executeQuery()) {
                 while (rs.next()) {
                     String assignmentName = URLEncoder.encode(rs.getString(1), "UTF-8");
-                    String dueDate = URLEncoder.encode(rs.getString(2), "UTF-8");
+                    String dueDate = URLEncoder.encode(NetUtil.DATE_FORMAT.format(rs.getTimestamp(2)), "UTF-8");
                     String assignedBy = URLEncoder.encode(rs.getString(3), "UTF-8");
                     int assignmentId = rs.getInt(4);
                     sendMessage(assignmentName + "|" + dueDate + "|" + assignedBy + "|" + assignmentId);
@@ -363,7 +359,7 @@ public abstract class ClientHandler implements Runnable {
             submissions.setInt(3, userId);
             try (ResultSet rs = submissions.executeQuery()) {
                 while (rs.next())
-                    messages.add(rs.getInt(1) + "|" + rs.getInt(2) + "|" + URLEncoder.encode(rs.getString(3), "UTF-8") + "|" + URLEncoder.encode(rs.getString(4), "UTF-8"));
+                    messages.add(rs.getInt(1) + "|" + rs.getInt(2) + "|" + URLEncoder.encode(NetUtil.DATE_FORMAT.format(rs.getTimestamp(3)), "UTF-8") + "|" + URLEncoder.encode(rs.getString(4), "UTF-8"));
             }
         }
         sendMessage(String.valueOf(messages.size()));
@@ -389,8 +385,9 @@ public abstract class ClientHandler implements Runnable {
             return;
         }
         try (Connection connection = dbManager.getConnection();
-             PreparedStatement userStatement = connection.prepareStatement("SELECT u.id, u.username FROM user u, user_class uc WHERE uc.user_id = u.id AND uc.class_id = ? ORDER BY u.username;");
-             PreparedStatement userSubmissions = connection.prepareStatement("SELECT u.id, s.id, s.proof_id, s.time, s.status FROM user u, assignment a, submission s, proof p WHERE u.id = ? AND a.id = ? AND a.class_id = ? AND s.class_id = ? AND s.assignment_id = a.id AND s.user_id = u.id AND p.id = s.proof_id ORDER BY u.username, p.name;")) {
+             PreparedStatement userStatement = connection.prepareStatement("SELECT u.id, u.username FROM users u, user_class uc WHERE uc.user_id = u.id AND u.user_type = 'student' AND uc.class_id = ? ORDER BY u.username;");
+             PreparedStatement proofs = connection.prepareStatement("SELECT p.id, p.name FROM proof p, assignment a WHERE a.proof_id = p.id AND a.class_id = ? AND a.id = ? ORDER BY p.name;");
+             PreparedStatement userSubmissions = connection.prepareStatement("SELECT u.id, s.id, s.proof_id, s.time, s.status FROM users u, assignment a, submission s, proof p WHERE a.class_id = ? AND a.id = ? AND u.user_type = 'student' AND s.class_id = a.class_id AND s.assignment_id = a.id AND s.user_id = u.id AND p.id = s.proof_id ORDER BY u.username, p.name, s.time DESC;")) {
             userStatement.setInt(1, cid);
             ArrayList<String> messages = new ArrayList<>();
             try (ResultSet rs = userStatement.executeQuery()) {
@@ -400,6 +397,23 @@ public abstract class ClientHandler implements Runnable {
             sendMessage(String.valueOf(messages.size()));
             messages.forEach(this::sendMessage);
             messages.clear();
+            proofs.setInt(1, cid);
+            proofs.setInt(2, aid);
+            try (ResultSet rs = proofs.executeQuery()) {
+                while (rs.next())
+                    messages.add(rs.getInt(1) + "|" + URLEncoder.encode(rs.getString(2), "UTF-8"));
+            }
+            sendMessage(String.valueOf(messages.size()));
+            messages.forEach(this::sendMessage);
+            messages.clear();
+            userSubmissions.setInt(1, cid);
+            userSubmissions.setInt(2, aid);
+            try (ResultSet rs = userSubmissions.executeQuery()) {
+                while (rs.next())
+                    messages.add(rs.getInt(1) + "|" + rs.getInt(2) + "|" + rs.getInt(3) + "|" + URLEncoder.encode(NetUtil.DATE_FORMAT.format(rs.getTimestamp(4)), "UTF-8") + "|" + URLEncoder.encode(rs.getString(5), "UTF-8"));
+            }
+            sendMessage(String.valueOf(messages.size()));
+            messages.forEach(this::sendMessage);
         }
     }
 
@@ -456,7 +470,7 @@ public abstract class ClientHandler implements Runnable {
             try (ResultSet rs = statement.executeQuery()) {
                 while (rs.next()) {
                     int id = rs.getInt(1);
-                    String timestamp = URLEncoder.encode(rs.getString(2), "UTF-8");
+                    String timestamp = URLEncoder.encode(NetUtil.DATE_FORMAT.format(rs.getTimestamp(2)), "UTF-8");
                     String status = URLEncoder.encode(rs.getString(3), "UTF-8");
                     sendMessage(id + "|" + timestamp + "|" + status);
                 }
@@ -464,36 +478,6 @@ public abstract class ClientHandler implements Runnable {
         }
         sendMessage(NetUtil.DONE);
     }
-
-//    private void getSubmissionData() throws IOException, SQLException {
-//        String idStr = in.readUTF();
-//        try (Connection connection = dbManager.getConnection()) {
-//            int id = Integer.parseInt(idStr);
-//            PreparedStatement statement;
-//            if (userType.equals(NetUtil.USER_INSTRUCTOR))
-//                statement = connection.prepareStatement("SELECT data FROM submission WHERE id = ? LIMIT 1;");
-//            else {
-//                statement = dbManager.getStatement("SELECT data FROM submission WHERE id = ? AND user_id = ? LIMIT 1;");
-//                statement.setInt(2, userId);
-//            }
-//            statement.setInt(1, id);
-//            ResultSet rs;
-//            if (statement.execute() && (rs = statement.getResultSet()).next()) {
-//                InputStream dataStream = rs.getBinaryStream(1);
-//                ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
-//                IOUtils.copy(dataStream, byteStream);
-//                dataStream.close();
-//                sendMessage(String.valueOf(byteStream.size()));
-//                out.write(byteStream.toByteArray());
-//                out.flush();
-//                byteStream.close();
-//            } else {
-//                sendMessage("0");
-//            }
-//        } catch (NumberFormatException e) {
-//            sendMessage("0");
-//        }
-//    }
 
     private void createSubmission() throws IOException, SQLException {
         String[] submissionData = in.readUTF().split("\\|");
@@ -509,8 +493,8 @@ public abstract class ClientHandler implements Runnable {
             return;
         }
         try (Connection connection = dbManager.getConnection();
-             PreparedStatement subVerify = connection.prepareStatement("SELECT count(*) FROM assignment a, user u, user_class uc WHERE id a.class_id = ? AND a.id = ? AND a.proof_id = ? AND a.class_id = uc.class_id AND u.id = uc.user_id AND u.id = ?;");
-             PreparedStatement insert = connection.prepareStatement("INSERT INTO submission VALUES(NULL, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 'grading');")) {
+             PreparedStatement subVerify = connection.prepareStatement("SELECT count(*) FROM assignment a, users u, user_class uc WHERE id a.class_id = ? AND a.id = ? AND a.proof_id = ? AND a.class_id = uc.class_id AND u.id = uc.user_id AND u.id = ?;");
+             PreparedStatement insert = connection.prepareStatement("INSERT INTO submission VALUES(NULL, ?, ?, ?, ?, ?, now(), 'grading');")) {
             subVerify.setInt(1, cid);
             subVerify.setInt(2, aid);
             subVerify.setInt(3, pid);
@@ -588,7 +572,11 @@ public abstract class ClientHandler implements Runnable {
                 statement.setInt(2, cid);
                 statement.setInt(3, pid);
                 statement.setString(4, name);
-                statement.setString(5, date);
+                try {
+                    statement.setTimestamp(5, new Timestamp(NetUtil.DATE_FORMAT.parse(date).getTime()));
+                } catch (ParseException e) {
+                    throw new IOException("Failed to parse date");
+                }
                 statement.setInt(6, userId);
                 statement.executeUpdate();
             }
@@ -689,16 +677,11 @@ public abstract class ClientHandler implements Runnable {
                         sendMessage(NetUtil.ERROR);
                         return;
                     }
-                    try (PreparedStatement removeAssignment = connection.prepareStatement("DELETE FROM assignment WHERE id = ? AND class_id = ? AND proof_id = ?;");
-                         PreparedStatement removeSubmission = connection.prepareStatement("DELETE FROM submission WHERE assignment_id = ? AND class_id = ? AND proof_id = ?")) {
+                    try (PreparedStatement removeAssignment = connection.prepareStatement("DELETE FROM assignment WHERE id = ? AND class_id = ? AND proof_id = ?;")) {
                         removeAssignment.setInt(1, aid);
                         removeAssignment.setInt(2, cid);
                         removeAssignment.setInt(3, pid);
                         removeAssignment.executeUpdate();
-                        removeSubmission.setInt(1, aid);
-                        removeSubmission.setInt(2, cid);
-                        removeSubmission.setInt(3, pid);
-                        removeSubmission.executeUpdate();
                     }
                     break;
                 case "CHANGE_DUE":
@@ -776,15 +759,9 @@ public abstract class ClientHandler implements Runnable {
             return;
         }
         try (Connection connection = dbManager.getConnection();
-             PreparedStatement deleteProof = connection.prepareStatement("DELETE FROM proof WHERE id = ?;");
-             PreparedStatement deleteAssignment = connection.prepareStatement("DELETE FROM assignment WHERE proof_id = ?;");
-             PreparedStatement deleteSubmission = connection.prepareStatement("DELETE FROM submission WHERE proof_id = ?;")) {
+             PreparedStatement deleteProof = connection.prepareStatement("DELETE FROM proof WHERE id = ?;")) {
             deleteProof.setInt(1, id);
             deleteProof.executeUpdate();
-            deleteAssignment.setInt(1, id);
-            deleteAssignment.executeUpdate();
-            deleteSubmission.setInt(1, id);
-            deleteSubmission.executeUpdate();
         }
         sendMessage(NetUtil.OK);
     }
@@ -853,7 +830,7 @@ public abstract class ClientHandler implements Runnable {
         String userType = URLDecoder.decode(userData[1], "UTF-8").toLowerCase();
         String password = URLDecoder.decode(userData[2], "UTF-8");
         try (Connection connection = dbManager.getConnection();
-             PreparedStatement count = connection.prepareStatement("SELECT count(*) FROM user WHERE username = ?;")) {
+             PreparedStatement count = connection.prepareStatement("SELECT count(*) FROM users WHERE username = ?;")) {
             count.setString(1, username);
             try (ResultSet rs = count.executeQuery()) {
                 if (rs.next() && rs.getInt(1) > 0) {
@@ -886,15 +863,9 @@ public abstract class ClientHandler implements Runnable {
             return;
         }
         try (Connection connection = dbManager.getConnection();
-             PreparedStatement deleteUser = connection.prepareStatement("DELETE FROM user WHERE id = ?;");
-             PreparedStatement deleteUserClass = connection.prepareStatement("DELETE FROM user_class WHERE user_id = ?;");
-             PreparedStatement deleteSubmission = connection.prepareStatement("DELETE FROM submission WHERE user_id = ?;")) {
+             PreparedStatement deleteUser = connection.prepareStatement("DELETE FROM users WHERE id = ?;");) {
             deleteUser.setInt(1, id);
             deleteUser.executeUpdate();
-            deleteUserClass.setInt(1, id);
-            deleteUserClass.executeUpdate();
-            deleteSubmission.setInt(1, id);
-            deleteSubmission.executeUpdate();
         }
         sendMessage(NetUtil.OK);
     }
@@ -913,7 +884,7 @@ public abstract class ClientHandler implements Runnable {
         String newPass = URLDecoder.decode(userData[1], "UTF-8");
         String type = URLDecoder.decode(userData[2], "UTF-8");
         try (Connection connection = dbManager.getConnection();
-             PreparedStatement update = connection.prepareStatement("UPDATE user SET user_type = ? WHERE username = ?;")) {
+             PreparedStatement update = connection.prepareStatement("UPDATE users SET user_type = ? WHERE username = ?;")) {
             update.setString(1, type);
             update.setString(2, username);
             update.executeUpdate();
@@ -935,7 +906,7 @@ public abstract class ClientHandler implements Runnable {
             return;
         }
         try (Connection connection = dbManager.getConnection();
-             PreparedStatement insertClass = connection.prepareStatement("INSERT INTO class VALUES(NULL, ?);");
+             PreparedStatement insertClass = connection.prepareStatement("INSERT INTO class (name) VALUES(?);");
              PreparedStatement selectClassId = connection.prepareStatement("SELECT id FROM class ORDER BY id DESC LIMIT 1;");
              PreparedStatement insertUserClass = connection.prepareStatement("INSERT INTO user_class VALUES(?, ?);")) {
             insertClass.setString(1, name);
@@ -967,18 +938,9 @@ public abstract class ClientHandler implements Runnable {
             return;
         }
         try (Connection connection = dbManager.getConnection();
-             PreparedStatement deleteClass = connection.prepareStatement("DELETE FROM class WHERE id = ?;");
-             PreparedStatement deleteUserClass = connection.prepareStatement("DELETE FROM user_class WHERE class_id = ?;");
-             PreparedStatement deleteAssignment = connection.prepareStatement("DELETE FROM assignment WHERE class_id = ?;");
-             PreparedStatement deleteSubmission = connection.prepareStatement("DELETE FROM submission WHERE class_id = ?;")) {
+             PreparedStatement deleteClass = connection.prepareStatement("DELETE FROM class WHERE id = ?;")) {
             deleteClass.setInt(1, id);
             deleteClass.executeUpdate();
-            deleteUserClass.setInt(1, id);
-            deleteUserClass.executeUpdate();
-            deleteAssignment.setInt(1, id);
-            deleteAssignment.executeUpdate();
-            deleteSubmission.setInt(1, id);
-            deleteSubmission.executeUpdate();
         }
         sendMessage(NetUtil.OK);
     }

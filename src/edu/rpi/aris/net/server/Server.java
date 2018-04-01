@@ -1,5 +1,6 @@
 package edu.rpi.aris.net.server;
 
+import edu.rpi.aris.Main;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
@@ -38,19 +39,29 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Server implements Runnable {
 
-    private static final ServerConfig config = ServerConfig.getInstance();
+    private static final ServerConfig config;
     private static final char[] KEYSTORE_PASSWORD = "ARIS_SERVER".toCharArray();
     private static final String KEYSTORE_FILENAME = "server.keystore";
-    private static final File KEYSTORE_FILE = new File(config.getConfigurationDir(), KEYSTORE_FILENAME);
-    private static final File DATABASE_FILE = new File(config.getConfigurationDir(), "server.db");
-    private static final File SELF_SIGNED_CERT = new File(config.getConfigurationDir(), "self-signed-cert.pem");
+
+    static {
+        ServerConfig cfg = null;
+        try {
+            cfg = ServerConfig.getInstance();
+        } catch (IOException e) {
+            Main.instance.showExceptionError(Thread.currentThread(), e, true);
+        }
+        config = cfg;
+    }
+
+    private static final File KEYSTORE_FILE = new File(config != null ? config.getStorageDir() : null, KEYSTORE_FILENAME);
+    private static final File SELF_SIGNED_CERT = new File(config != null ? config.getStorageDir() : null, "self-signed-cert.pem");
 
     static {
         if (Security.getProvider("BC") == null)
             Security.addProvider(new BouncyCastleProvider());
         if (Security.getProvider("BCJSSE") == null)
             Security.addProvider(new BouncyCastleJsseProvider());
-        System.setProperty("jdk.tls.ephemeralDHKeySize", "4096");
+        System.setProperty("jdk.tls.ephemeralDHKeySize", "2048");
     }
 
     private final int port;
@@ -86,10 +97,10 @@ public class Server implements Runnable {
                 throw new FileNotFoundException("private key \"" + privateKey.getPath() + "\" does not exist");
         }
         try {
-            dbManager = new DatabaseManager(DATABASE_FILE);
+            dbManager = new DatabaseManager(config.getDbHost(), config.getDbPort(), config.getDbName(), config.getDbUser(), config.getDbPass());
         } catch (IOException | SQLException e) {
-            logger.fatal("Failed to open sql database", e);
-            e.printStackTrace();
+            RuntimeException e1 = new RuntimeException("Failed to open sql database", e);
+            Main.instance.showExceptionError(Thread.currentThread(), e1, true);
         }
         logger.info("Server preparation complete");
     }
@@ -150,12 +161,6 @@ public class Server implements Runnable {
         logger.info("Disconnecting clients");
         for (ClientHandler client : clients)
             client.disconnect();
-        logger.info("Closing database connection");
-        try {
-            dbManager.close();
-        } catch (SQLException e) {
-            logger.error("Error closing database manager", e);
-        }
         logger.info("Server shutdown");
         LogManager.shutdown();
     }
@@ -333,7 +338,7 @@ public class Server implements Runnable {
         return null;
     }
 
-    public void addUser(String username, String pass, String userType) throws SQLException {
+    public void addUser(String username, String pass, String userType) throws SQLException, IOException {
         dbManager.createUser(username, pass, userType);
     }
 }

@@ -17,3 +17,10 @@ generalize <->, +, *?
 rename (equals,hasSubExpression,toLogicString)FullPower?
 Do we actually want things to use the FullPower and/or withoutDNs functions (equals,hasSubExpression,toLogicString)?
 Test server restart on certificate expiration
+
+Install Tasks:
+    Make /etc/aris
+    create aris user
+    install postgres
+    install java
+    create database?

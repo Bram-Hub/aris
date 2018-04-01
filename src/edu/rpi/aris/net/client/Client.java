@@ -61,7 +61,7 @@ public class Client {
     static {
         Security.addProvider(new BouncyCastleProvider());
         Security.addProvider(new BouncyCastleJsseProvider());
-        System.setProperty("jdk.tls.ephemeralDHKeySize", "4096");
+        System.setProperty("jdk.tls.ephemeralDHKeySize", "2048");
     }
 
     private ReentrantLock connectionLock = new ReentrantLock(true);
@@ -131,6 +131,12 @@ public class Client {
             }
         }
         return ks;
+    }
+
+    public static String checkError(String msg) throws IOException {
+        if (msg.startsWith(NetUtil.ERROR) || msg.startsWith(NetUtil.INVALID))
+            throw new IOException(msg);
+        return msg;
     }
 
     public synchronized boolean importSelfSignedCertificate(File certFile) {
@@ -484,7 +490,7 @@ public class Client {
         String pass = GuiConfig.getConfigManager().getAccessToken();
         boolean isAccessToken = user != null && pass != null;
         if (!isAccessToken) {
-            GuiConfig.getConfigManager().username.set(null);
+            Platform.runLater(() -> GuiConfig.getConfigManager().username.set(null));
             switch (Main.getMode()) {
                 case GUI:
                     final AtomicReference<Optional<Pair<String, String>>> result = new AtomicReference<>(null);

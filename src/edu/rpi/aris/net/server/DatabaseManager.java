@@ -8,7 +8,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
-import java.io.File;
 import java.io.IOException;
 import java.security.*;
 import java.sql.*;
@@ -17,7 +16,7 @@ import java.util.HashSet;
 
 public class DatabaseManager {
 
-    private static final String[] tables = new String[]{"submission", "assignment", "proof", "user", "class"};
+    private static final String[] tables = new String[]{"submission", "assignment", "proof", "users", "class", "user_class"};
     private static Logger logger = LogManager.getLogger(DatabaseManager.class);
 
     static {
@@ -25,65 +24,102 @@ public class DatabaseManager {
             Security.addProvider(new BouncyCastleProvider());
     }
 
+    private final String user;
+    private final String pass;
+
     private SecureRandom random = new SecureRandom();
     private MessageDigest digest;
-    private File dbFile;
+    private String connectionString;
 
-    public DatabaseManager(File dbFile) throws IOException, SQLException {
-        this.dbFile = dbFile;
+    public DatabaseManager(String host, int port, String database, String user, String pass) throws IOException, SQLException {
+        this.user = user;
+        this.pass = pass;
+        connectionString = "jdbc:postgresql://" + host + ":" + port + "/" + database;
         try {
             digest = MessageDigest.getInstance("SHA512", "BC");
-            boolean exists = dbFile.exists();
             try (Connection connection = getConnection()) {
                 connection.setAutoCommit(true);
-                if (exists)
-                    verifyDatabase(connection);
-                else
-                    createTables(connection, false);
+                verifyDatabase(connection);
             }
         } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
             Main.instance.showExceptionError(Thread.currentThread(), e, true);
         }
     }
 
-    public static void main(String[] args) throws IOException, SQLException {
-        new DatabaseManager(new File("test.db"));
-    }
-
     private void verifyDatabase(Connection connection) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement("SELECT name FROM sqlite_master WHERE type='table';");
+        try (PreparedStatement statement = connection.prepareStatement("SELECT table_name FROM information_schema.tables;");
              ResultSet set = statement.executeQuery()) {
             HashSet<String> tables = new HashSet<>();
             while (set.next())
                 tables.add(set.getString(1));
             for (String t : DatabaseManager.tables) {
                 if (!tables.contains(t)) {
-                    createTables(connection, true);
+                    createTables(connection);
                     return;
                 }
             }
         }
     }
 
-    private void createTables(Connection connection, boolean exists) throws SQLException {
-        if (exists) {
-            logger.warn("The database either does not exist or is invalid");
-            logger.warn("Aris will now create the database which may result in loss of data");
-            logger.warn("Do you want to continue? (y/N)");
-            String ans = Main.readLine();
-            if (!ans.equalsIgnoreCase("y"))
-                throw new SQLException("Unable to open database");
-        }
+    private void createTables(Connection connection) throws SQLException {
+//        if (exists) {
+//            logger.warn("The database either does not exist or is invalid");
+//            logger.warn("Aris will now create the database which may result in loss of data");
+//            logger.warn("Do you want to continue? (y/N)");
+//            String ans = Main.readLine();
+//            if (!ans.equalsIgnoreCase("y"))
+//                throw new SQLException("Unable to open database");
+//        }
         try (Statement statement = connection.createStatement()) {
             statement.setQueryTimeout(30);
             for (String t : tables)
                 statement.execute("DROP TABLE IF EXISTS " + t);
-            statement.execute("CREATE TABLE submission (id integer PRIMARY KEY, class_id integer, assignment_id integer, user_id integer, proof_id integer, data blob, time text, status text);");
-            statement.execute("CREATE TABLE assignment (id integer, class_id integer, proof_id integer, name text, due_date text, assigned_by integer, PRIMARY KEY(id, class_id, proof_id));");
-            statement.execute("CREATE TABLE proof (id integer PRIMARY KEY, name text, data blob, created_by integer);");
-            statement.execute("CREATE TABLE user (id integer PRIMARY KEY, username text, user_type text, salt text, password_hash text, access_token text);");
-            statement.execute("CREATE TABLE user_class (user_id integer, class_id integer);");
-            statement.execute("CREATE TABLE class (id integer PRIMARY KEY, name text);");
+            statement.execute("CREATE TABLE users" +
+                    "(id serial PRIMARY KEY," +
+                    "username text," +
+                    "user_type text," +
+                    "salt text," +
+                    "password_hash text," +
+                    "access_token text," +
+                    "check (user_type in ('instructor', 'student')));");
+            statement.execute("CREATE TABLE class" +
+                    "(id serial PRIMARY KEY," +
+                    "name text);");
+            statement.execute("CREATE TABLE user_class" +
+                    "(user_id integer," +
+                    "class_id integer," +
+                    "constraint uc_ufk foreign key (user_id) references users(id) on delete cascade," +
+                    "constraint uc_cfk foreign key (class_id) references class(id)) on delete cascade;");
+            statement.execute("CREATE TABLE proof" +
+                    "(id serial PRIMARY KEY," +
+                    "name text," +
+                    "data bytea," +
+                    "created_by integer," +
+                    "constraint p_cb foreign key (created_by) references users(id) on delete set NULL;");
+            statement.execute("CREATE TABLE assignment" +
+                    "(id integer," +
+                    "class_id integer," +
+                    "proof_id integer," +
+                    "name text," +
+                    "due_date timestamp," +
+                    "assigned_by integer," +
+                    "PRIMARY KEY(id, class_id, proof_id)," +
+                    "constraint a_cfk foreign key (class_id) references class(id) on delete cascade," +
+                    "constraint a_pfk foreign key (proof_id) references proof(id) on delete cascade," +
+                    "constraint a_abfk foreign key (assigned_by) references users(id) on delete set NULL;");
+            statement.execute("CREATE TABLE submission" +
+                    "(id serial PRIMARY KEY," +
+                    "class_id integer," +
+                    "assignment_id integer," +
+                    "user_id integer," +
+                    "proof_id integer," +
+                    "data bytea," +
+                    "time timestamp," +
+                    "status text," +
+                    "constraint s_cfk foreign key (class_id) references class(id) on delete cascade," +
+                    "constraint s_afk foreign key (assignment_id, class_id, proof_id) references assignment(id, class_id, proof_id) on delete cascade," +
+                    "constraint s_ufk foreign key (user_id) references users(id) on delete cascade," +
+                    "constraint s_pfk foreign key (proof_id) references proof(id) on delete cascade;");
         }
     }
 
@@ -93,8 +129,8 @@ public class DatabaseManager {
         if (password == null)
             password = RandomStringUtils.randomAlphabetic(16);
         try (Connection connection = getConnection();
-             PreparedStatement count = connection.prepareStatement("SELECT count(*) FROM user WHERE username = ?;");
-             PreparedStatement statement = connection.prepareStatement("INSERT INTO user VALUES(NULL, ?, ?, ?, ?, NULL);")) {
+             PreparedStatement count = connection.prepareStatement("SELECT count(*) FROM users WHERE username = ?;");
+             PreparedStatement statement = connection.prepareStatement("INSERT INTO users (username, user_type, salt, password_hash) VALUES(?, ?, ?, ?);")) {
             count.setString(1, username);
             try (ResultSet rs = count.executeQuery()) {
                 if (rs.next() && rs.getInt(1) > 0)
@@ -116,7 +152,7 @@ public class DatabaseManager {
         if (password == null)
             password = RandomStringUtils.randomAlphabetic(16);
         try (Connection connection = getConnection();
-             PreparedStatement statement = connection.prepareStatement("UPDATE user SET salt = ?, password = ? WHERE username = ?;");) {
+             PreparedStatement statement = connection.prepareStatement("UPDATE users SET salt = ?, password = ? WHERE username = ?;");) {
             Pair<String, String> sh = getSaltAndHash(password);
             statement.setString(1, sh.getKey());
             statement.setString(2, sh.getValue());
@@ -135,8 +171,8 @@ public class DatabaseManager {
         return new Pair<>(salt, hash);
     }
 
-    public Connection getConnection() throws IOException, SQLException {
-        return DriverManager.getConnection("jdbc:sqlite:" + dbFile.getCanonicalPath());
+    public Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(connectionString, user, pass);
     }
 
 }

@@ -1,5 +1,7 @@
 package edu.rpi.aris.gui.submit;
 
+import java.util.List;
+
 public interface AssignmentInfo extends Comparable<AssignmentInfo> {
 
     int getNumColumns();
@@ -7,5 +9,9 @@ public interface AssignmentInfo extends Comparable<AssignmentInfo> {
     Object getColumnData(int columnNum);
 
     String getColumnName(int columnNum);
+
+    void addChild(AssignmentInfo info);
+
+    List<AssignmentInfo> getChildren();
 
 }

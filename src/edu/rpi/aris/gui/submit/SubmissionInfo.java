@@ -6,7 +6,9 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 
 import java.text.DateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 public class SubmissionInfo implements AssignmentInfo, EventHandler<ActionEvent> {
 
@@ -14,14 +16,15 @@ public class SubmissionInfo implements AssignmentInfo, EventHandler<ActionEvent>
     private final int assignmentId;
     private final int userId;
     private final int submissionId;
-    private final boolean isSubmission;
     private long timestamp;
     private String status, name;
     private int proofId;
+    private ArrayList<AssignmentInfo> children = new ArrayList<>();
     private Object[] data = new Object[getNumColumns()];
     private String[] names = new String[]{"Proof", "Submission Status", "Date Submitted", "Open Proof"};
+    private InfoType type;
 
-    public SubmissionInfo(int userId, int submissionId, int proofId, int classId, int assignmentId, String name, long timestamp, String status) {
+    public SubmissionInfo(int userId, int submissionId, int proofId, int classId, int assignmentId, String name, long timestamp, String status, InfoType type) {
         this.userId = userId;
         this.submissionId = submissionId;
         this.proofId = proofId;
@@ -30,12 +33,14 @@ public class SubmissionInfo implements AssignmentInfo, EventHandler<ActionEvent>
         this.timestamp = timestamp;
         this.status = status;
         this.name = name;
+        this.type = type;
 
-        isSubmission = submissionId > 0;
-
-        Button openProof = new Button(isSubmission ? "Open Submission" : "Open Template");
-        openProof.setOnAction(this);
-        openProof.setAlignment(Pos.CENTER);
+        Button openProof = null;
+        if (type != InfoType.USER) {
+            openProof = new Button(type == InfoType.SUBMISSION ? "Open Submission" : "Open Template");
+            openProof.setOnAction(this);
+            openProof.setAlignment(Pos.CENTER);
+        }
 
         data[0] = name;
         setStatus(status);
@@ -78,6 +83,16 @@ public class SubmissionInfo implements AssignmentInfo, EventHandler<ActionEvent>
     }
 
     @Override
+    public void addChild(AssignmentInfo info) {
+        children.add(info);
+    }
+
+    @Override
+    public List<AssignmentInfo> getChildren() {
+        return children;
+    }
+
+    @Override
     public void handle(ActionEvent event) {
         System.out.println("Open proof " + proofId);
     }
@@ -87,9 +102,17 @@ public class SubmissionInfo implements AssignmentInfo, EventHandler<ActionEvent>
         if (!(o instanceof SubmissionInfo))
             return -1;
         SubmissionInfo s = (SubmissionInfo) o;
-        if (isSubmission)
+        if (type == InfoType.SUBMISSION)
             return Long.compare(timestamp, s.timestamp);
         else
             return name.compareTo(s.name);
+    }
+
+    public int getUserId() {
+        return userId;
+    }
+
+    public String getName() {
+        return name;
     }
 }
