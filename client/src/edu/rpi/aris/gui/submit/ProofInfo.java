@@ -33,6 +33,8 @@ public class ProofInfo extends AssignmentInfo {
                 return status;
             case 2:
                 return date;
+            case 3:
+                return btn;
             default:
                 return null;
         }

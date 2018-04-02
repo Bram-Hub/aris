@@ -52,17 +52,6 @@ public class Assignment {
         });
     }
 
-    private static String[] checkSplit(String str, int len) {
-        String[] split = str.split("\\|");
-        if (split.length < len) {
-            String[] newSplit = Arrays.copyOf(split, len);
-            for (int i = split.length; i < len; ++i)
-                newSplit[i] = "";
-            return newSplit;
-        }
-        return split;
-    }
-
     public void load(boolean reload) {
         if (reload)
             loaded.set(false);
@@ -142,7 +131,7 @@ public class Assignment {
             int numProof = Integer.parseInt(numProofStr);
             HashMap<Integer, String[]> proofs = new HashMap<>();
             for (int i = 0; i < numProof; ++i) {
-                String[] split = checkSplit(client.readMessage(), 4);
+                String[] split = Client.checkSplit(client.readMessage(), 4);
                 int pid = Integer.parseInt(split[0]);
                 proofs.put(pid, split);
             }
@@ -150,7 +139,7 @@ public class Assignment {
             int numSubmission = Integer.parseInt(numSubmissionStr);
             HashMap<Integer, ArrayList<String[]>> submissions = new HashMap<>();
             for (int i = 0; i < numSubmission; ++i) {
-                String[] split = checkSplit(client.readMessage(), 5);
+                String[] split = Client.checkSplit(client.readMessage(), 5);
                 int pid = Integer.parseInt(split[1]);
                 submissions.computeIfAbsent(pid, id -> new ArrayList<>()).add(split);
             }
@@ -189,7 +178,7 @@ public class Assignment {
             int numStudent = Integer.parseInt(Client.checkError(client.readMessage()));
             HashMap<Integer, UserInfo> users = new HashMap<>();
             for (int i = 0; i < numStudent; ++i) {
-                String[] split = checkSplit(client.readMessage(), 2);
+                String[] split = Client.checkSplit(client.readMessage(), 2);
                 int uid = Integer.parseInt(split[0]);
                 UserInfo user = new UserInfo(uid, URLDecoder.decode(split[1], "UTF-8"));
                 users.put(uid, user);
@@ -199,7 +188,7 @@ public class Assignment {
             // (userId, (proofId, info))
             HashMap<Integer, HashMap<Integer, ProofInfo>> proofMap = new HashMap<>();
             for (int i = 0; i < numProofs; ++i) {
-                String[] split = checkSplit(client.readMessage(), 4);
+                String[] split = Client.checkSplit(client.readMessage(), 4);
                 int pid = Integer.parseInt(split[0]);
                 String name = URLDecoder.decode(split[1], "UTF-8");
                 String createdBy = URLDecoder.decode(split[2], "UTF-8");
@@ -212,7 +201,7 @@ public class Assignment {
             }
             int numSubmissions = Integer.parseInt(Client.checkError(client.readMessage()));
             for (int i = 0; i < numSubmissions; ++i) {
-                String[] split = checkSplit(client.readMessage(), 5);
+                String[] split = Client.checkSplit(client.readMessage(), 5);
                 int uid = Integer.parseInt(split[0]);
                 int sid = Integer.parseInt(split[1]);
                 int pid = Integer.parseInt(split[2]);

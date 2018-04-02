@@ -435,29 +435,19 @@ public abstract class ClientHandler implements Runnable {
     }
 
     private void getProofs() throws SQLException, IOException {
-        String[] assignmentData = in.readUTF().split("\\|");
-        if (assignmentData.length != 2) {
-            sendMessage(NetUtil.INVALID);
-            return;
-        }
-        int cid, aid;
-        try {
-            cid = Integer.parseInt(assignmentData[0]);
-            aid = Integer.parseInt(assignmentData[1]);
-        } catch (NumberFormatException e) {
-            sendMessage(NetUtil.ERROR);
+        if (!userType.equals(NetUtil.USER_INSTRUCTOR)) {
+            sendMessage(NetUtil.UNAUTHORIZED);
             return;
         }
         try (Connection connection = dbManager.getConnection();
-             PreparedStatement statement = connection.prepareStatement("SELECT p.id, p.name, p.created_by FROM proof p, assignment a WHERE a.proof_id = p.id AND a.id = ? AND a.class_id = ?;")) {
-            statement.setInt(1, aid);
-            statement.setInt(2, cid);
+             PreparedStatement statement = connection.prepareStatement("SELECT id, name, created_by, created_on FROM proof ORDER BY created_on DESC;")) {
             try (ResultSet rs = statement.executeQuery()) {
                 while (rs.next()) {
                     int id = rs.getInt(1);
                     String name = URLEncoder.encode(rs.getString(2), "UTF-8");
                     String createdBy = URLEncoder.encode(rs.getString(3), "UTF-8");
-                    sendMessage(id + "|" + name + "|" + createdBy);
+                    String createdOn = URLEncoder.encode(NetUtil.DATE_FORMAT.format(rs.getTimestamp(4)), "UTF-8");
+                    sendMessage(id + "|" + name + "|" + createdBy + "|" + createdOn);
                 }
             }
         }

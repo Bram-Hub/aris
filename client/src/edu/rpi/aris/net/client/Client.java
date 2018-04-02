@@ -135,9 +135,22 @@ public class Client {
     }
 
     public static String checkError(String msg) throws IOException {
-        if (msg.startsWith(NetUtil.ERROR) || msg.startsWith(NetUtil.INVALID))
+        if (msg == null)
+            throw new IOException("Server did not send a response");
+        if (msg.startsWith(NetUtil.ERROR) || msg.startsWith(NetUtil.INVALID) || msg.startsWith(NetUtil.UNAUTHORIZED))
             throw new IOException(msg);
         return msg;
+    }
+
+    public static String[] checkSplit(String str, int len) {
+        String[] split = str.split("\\|");
+        if (split.length < len) {
+            String[] newSplit = Arrays.copyOf(split, len);
+            for (int i = split.length; i < len; ++i)
+                newSplit[i] = "";
+            return newSplit;
+        }
+        return split;
     }
 
     public synchronized boolean importSelfSignedCertificate(File certFile) {
