@@ -1,6 +1,6 @@
 submission(id, class_id, assignment_id, user_id, proof_id, data, time, status)
 assignment(id, class_id, proof_id, name, due_date, assigned_by)
-proof(id, name, data, created_by)
+proof(id, name, data, created_by, created_on)
 user(id, username, user_type, salt, password_hash, access_token)
 user_class(user_id, class_id)
 class(id, name)

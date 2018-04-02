@@ -52,10 +52,14 @@ public class Assignment {
         });
     }
 
-    private static String[] checkSplit(String str, int len) throws IOException {
+    private static String[] checkSplit(String str, int len) {
         String[] split = str.split("\\|");
-        if (split.length != len)
-            throw new IOException("Server sent invalid response");
+        if (split.length < len) {
+            String[] newSplit = Arrays.copyOf(split, len);
+            for (int i = split.length; i < len; ++i)
+                newSplit[i] = "";
+            return newSplit;
+        }
         return split;
     }
 
@@ -138,7 +142,7 @@ public class Assignment {
             int numProof = Integer.parseInt(numProofStr);
             HashMap<Integer, String[]> proofs = new HashMap<>();
             for (int i = 0; i < numProof; ++i) {
-                String[] split = checkSplit(client.readMessage(), 2);
+                String[] split = checkSplit(client.readMessage(), 4);
                 int pid = Integer.parseInt(split[0]);
                 proofs.put(pid, split);
             }
@@ -152,7 +156,11 @@ public class Assignment {
             }
             for (Map.Entry<Integer, String[]> e : proofs.entrySet()) {
                 String[] proofData = e.getValue();
-                ProofInfo proofInfo = new ProofInfo(Integer.parseInt(proofData[0]), URLDecoder.decode(proofData[1], "UTF-8"), false);
+                int pid = Integer.parseInt(proofData[0]);
+                String name = URLDecoder.decode(proofData[1], "UTF-8");
+                String createdBy = URLDecoder.decode(proofData[2], "UTF-8");
+                long createdOn = NetUtil.DATE_FORMAT.parse(URLDecoder.decode(proofData[3], "UTF-8")).getTime();
+                ProofInfo proofInfo = new ProofInfo(pid, name, createdBy, createdOn, false);
                 rootNodes.add(proofInfo);
                 int i = 0;
                 if (submissions.containsKey(e.getKey()))
@@ -160,7 +168,10 @@ public class Assignment {
                         ++i;
                         long timestamp = NetUtil.DATE_FORMAT.parse(URLDecoder.decode(sub[2], "UTF-8")).getTime();
                         try {
-                            proofInfo.addChild(new SubmissionInfo(AssignmentWindow.instance.getClientInfo().getUserId(), Integer.parseInt(sub[0]), e.getKey(), classId, id, "Submission " + i, timestamp, URLDecoder.decode(sub[3], "UTF-8"), GradingStatus.valueOf(URLDecoder.decode(sub[4], "UTF-8")), false));
+                            int sid = Integer.parseInt(sub[0]);
+                            String status = URLDecoder.decode(sub[3], "UTF-8");
+                            GradingStatus gradingStatus = GradingStatus.valueOf(URLDecoder.decode(sub[4], "UTF-8"));
+                            proofInfo.addChild(new SubmissionInfo(AssignmentWindow.instance.getClientInfo().getUserId(), sid, e.getKey(), classId, id, "Submission " + i, timestamp, status, gradingStatus, false));
                         } catch (IllegalArgumentException e1) {
                             throw new IOException("Invalid short_status", e1);
                         }
@@ -188,11 +199,13 @@ public class Assignment {
             // (userId, (proofId, info))
             HashMap<Integer, HashMap<Integer, ProofInfo>> proofMap = new HashMap<>();
             for (int i = 0; i < numProofs; ++i) {
-                String[] split = checkSplit(client.readMessage(), 2);
+                String[] split = checkSplit(client.readMessage(), 4);
                 int pid = Integer.parseInt(split[0]);
                 String name = URLDecoder.decode(split[1], "UTF-8");
+                String createdBy = URLDecoder.decode(split[2], "UTF-8");
+                long timestamp = NetUtil.DATE_FORMAT.parse(URLDecoder.decode(split[3], "UTF-8")).getTime();
                 for (UserInfo info : users.values()) {
-                    ProofInfo proofInfo = new ProofInfo(pid, name, true);
+                    ProofInfo proofInfo = new ProofInfo(pid, name, createdBy, timestamp, true);
                     proofMap.computeIfAbsent(info.getUserId(), uid -> new HashMap<>()).put(pid, proofInfo);
                     info.addChild(proofInfo);
                 }

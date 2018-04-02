@@ -20,7 +20,7 @@ import java.util.Base64;
 public class DatabaseManager {
 
     private static final String[] tables = new String[]{"submission", "assignment", "proof", "user_class", "users", "class", "version"};
-    private static final int DB_SCHEMA_VERSION = 1;
+    private static final int DB_SCHEMA_VERSION = 2;
     private static Logger logger = LogManager.getLogger(DatabaseManager.class);
 
     static {
@@ -42,7 +42,7 @@ public class DatabaseManager {
         try {
             digest = MessageDigest.getInstance("SHA512", "BC");
             try (Connection connection = getConnection()) {
-                connection.setAutoCommit(true);
+                logger.info("Verifying database connection");
                 verifyDatabase(connection);
             }
         } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
@@ -54,6 +54,7 @@ public class DatabaseManager {
         try (PreparedStatement statement = connection.prepareStatement("SELECT count(*) FROM information_schema.tables WHERE table_name='version';");
              ResultSet set = statement.executeQuery();
              PreparedStatement version = connection.prepareStatement("SELECT version FROM version LIMIT 1;")) {
+            logger.info("Checking database schema version");
             if (!set.next() || set.getInt(1) == 0)
                 createTables(connection);
             else {
@@ -62,12 +63,13 @@ public class DatabaseManager {
                         createTables(connection);
                     else {
                         int v = rs.getInt(1);
+                        logger.info("Database version: " + v + " Current version: " + DB_SCHEMA_VERSION);
                         if (v < 0 || v > DB_SCHEMA_VERSION)
-                            throw new IOException("Unknown database schema version: " + v);
+                            throw new SQLException("Unknown database schema version: " + v);
                         if (v < DB_SCHEMA_VERSION) {
                             try {
-                                Method update = DatabaseManager.class.getMethod("updateSchema" + v);
-                                update.invoke(this);
+                                Method update = DatabaseManager.class.getDeclaredMethod("updateSchema" + v, Connection.class);
+                                update.invoke(this, connection);
                             } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                                 throw new IOException("Cannot update database schema from version " + v, e);
                             }
@@ -79,9 +81,11 @@ public class DatabaseManager {
     }
 
     private void createTables(Connection connection) throws SQLException {
+        logger.warn("Creating non existent tables");
+        logger.warn("If this is not the first run of the program this may have unexpected results");
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
         try (Statement statement = connection.createStatement()) {
-            for (String t : tables)
-                statement.execute("DROP TABLE IF EXISTS " + t);
             statement.execute("CREATE TABLE IF NOT EXISTS version (version integer);");
             statement.execute("INSERT INTO version (version) VALUES (" + DB_SCHEMA_VERSION + ");");
             statement.execute("CREATE TABLE IF NOT EXISTS users" +
@@ -105,6 +109,7 @@ public class DatabaseManager {
                     "name text," +
                     "data bytea," +
                     "created_by integer," +
+                    "created_on timestamp," +
                     "constraint p_cb foreign key (created_by) references users(id) on delete set NULL);");
             statement.execute("CREATE TABLE IF NOT EXISTS assignment" +
                     "(id integer," +
@@ -132,6 +137,32 @@ public class DatabaseManager {
                     "constraint s_afk foreign key (assignment_id, class_id, proof_id) references assignment(id, class_id, proof_id) on delete cascade," +
                     "constraint s_ufk foreign key (user_id) references users(id) on delete cascade," +
                     "constraint s_pfk foreign key (proof_id) references proof(id) on delete cascade);");
+            connection.commit();
+        } catch (Throwable e) {
+            connection.rollback();
+            logger.error("An error occurred while creating the tables and the changes were rolled back");
+            throw e;
+        } finally {
+            connection.setAutoCommit(autoCommit);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    private void updateSchema1(Connection connection) throws SQLException {
+        logger.info("Updating database schema to version 2");
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE proof ADD COLUMN created_on timestamp;");
+            statement.execute("UPDATE proof SET created_on=now();");
+            statement.execute("UPDATE version SET version=2");
+            connection.commit();
+        } catch (Throwable e) {
+            connection.rollback();
+            logger.error("An error occurred while updating the database schema and the changes were rolled back");
+            throw e;
+        } finally {
+            connection.setAutoCommit(autoCommit);
         }
     }
 

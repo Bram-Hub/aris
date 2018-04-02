@@ -344,13 +344,18 @@ public abstract class ClientHandler implements Runnable {
         }
         ArrayList<String> messages = new ArrayList<>();
         try (Connection connection = dbManager.getConnection();
-             PreparedStatement assignments = connection.prepareStatement("SELECT p.id, p.name FROM assignment a, proof p WHERE a.class_id = ? AND a.id = ? AND a.proof_id = p.id;");
+             PreparedStatement assignments = connection.prepareStatement("SELECT p.id, p.name, p.created_by, p.created_on FROM assignment a, proof p WHERE a.class_id = ? AND a.id = ? AND a.proof_id = p.id;");
              PreparedStatement submissions = connection.prepareStatement("SELECT id, proof_id, time, status, short_status FROM submission WHERE class_id = ? AND assignment_id = ? AND user_id = ? ORDER BY proof_id, id DESC;")) {
             assignments.setInt(1, cid);
             assignments.setInt(2, aid);
             try (ResultSet rs = assignments.executeQuery()) {
-                while (rs.next())
-                    messages.add(rs.getInt(1) + "|" + URLEncoder.encode(rs.getString(2), "UTF-8"));
+                while (rs.next()) {
+                    int pid = rs.getInt(1);
+                    String pName = URLEncoder.encode(rs.getString(2), "UTF-8");
+                    String createdBy = URLEncoder.encode(rs.getString(3), "UTF-8");
+                    String timestamp = URLEncoder.encode(NetUtil.DATE_FORMAT.format(rs.getTimestamp(4)), "UTF-8");
+                    messages.add(pid + "|" + pName + "|" + createdBy + "|" + timestamp);
+                }
             }
             sendMessage(String.valueOf(messages.size()));
             messages.forEach(this::sendMessage);
@@ -359,8 +364,14 @@ public abstract class ClientHandler implements Runnable {
             submissions.setInt(2, aid);
             submissions.setInt(3, userId);
             try (ResultSet rs = submissions.executeQuery()) {
-                while (rs.next())
-                    messages.add(rs.getInt(1) + "|" + rs.getInt(2) + "|" + URLEncoder.encode(NetUtil.DATE_FORMAT.format(rs.getTimestamp(3)), "UTF-8") + "|" + URLEncoder.encode(rs.getString(4), "UTF-8") + "|" + URLEncoder.encode(rs.getString(5), "UTF-8"));
+                while (rs.next()) {
+                    int sid = rs.getInt(1);
+                    int pid = rs.getInt(2);
+                    String time = URLEncoder.encode(NetUtil.DATE_FORMAT.format(rs.getTimestamp(3)), "UTF-8");
+                    String statusStr = URLEncoder.encode(rs.getString(4), "UTF-8");
+                    String status = URLEncoder.encode(rs.getString(5), "UTF-8");
+                    messages.add(sid + "|" + pid + "|" + time + "|" + statusStr + "|" + status);
+                }
             }
         }
         sendMessage(String.valueOf(messages.size()));
@@ -387,7 +398,7 @@ public abstract class ClientHandler implements Runnable {
         }
         try (Connection connection = dbManager.getConnection();
              PreparedStatement userStatement = connection.prepareStatement("SELECT u.id, u.username FROM users u, user_class uc WHERE uc.user_id = u.id AND u.user_type = 'student' AND uc.class_id = ? ORDER BY u.username;");
-             PreparedStatement proofs = connection.prepareStatement("SELECT p.id, p.name FROM proof p, assignment a WHERE a.proof_id = p.id AND a.class_id = ? AND a.id = ? ORDER BY p.name;");
+             PreparedStatement proofs = connection.prepareStatement("SELECT p.id, p.name, p.created_by, p.created_on FROM proof p, assignment a WHERE a.proof_id = p.id AND a.class_id = ? AND a.id = ? ORDER BY p.name;");
              PreparedStatement userSubmissions = connection.prepareStatement("SELECT u.id, s.id, s.proof_id, s.time, s.status FROM users u, assignment a, submission s, proof p WHERE a.class_id = ? AND a.id = ? AND u.user_type = 'student' AND s.class_id = a.class_id AND s.assignment_id = a.id AND s.user_id = u.id AND p.id = s.proof_id ORDER BY u.username, p.name, s.time DESC;")) {
             userStatement.setInt(1, cid);
             ArrayList<String> messages = new ArrayList<>();
@@ -401,8 +412,13 @@ public abstract class ClientHandler implements Runnable {
             proofs.setInt(1, cid);
             proofs.setInt(2, aid);
             try (ResultSet rs = proofs.executeQuery()) {
-                while (rs.next())
-                    messages.add(rs.getInt(1) + "|" + URLEncoder.encode(rs.getString(2), "UTF-8"));
+                while (rs.next()) {
+                    int pid = rs.getInt(1);
+                    String pName = URLEncoder.encode(rs.getString(2), "UTF-8");
+                    String createdBy = URLEncoder.encode(rs.getString(3), "UTF-8");
+                    String createdOn = URLEncoder.encode(NetUtil.DATE_FORMAT.format(rs.getTimestamp(4)), "UTF-8");
+                    messages.add(pid + "|" + pName + "|" + createdBy + "|" + createdOn);
+                }
             }
             sendMessage(String.valueOf(messages.size()));
             messages.forEach(this::sendMessage);

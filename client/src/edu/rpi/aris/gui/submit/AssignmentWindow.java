@@ -4,6 +4,7 @@ import edu.rpi.aris.Main;
 import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
+import edu.rpi.aris.proof.Proof;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
@@ -14,6 +15,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -255,11 +257,18 @@ public class AssignmentWindow {
         return clientInfo;
     }
 
+    private void addProof(String name, Proof proof) {
+
+    }
+
     @FXML
     private void createProof() {
         try {
             AddProofDialog dialog = new AddProofDialog(stage);
-            dialog.showAndWait();
+            Optional<Pair<String, Proof>> result = dialog.showAndWait();
+            result.ifPresent(r -> {
+
+            });
         } catch (IOException e) {
             logger.error("Failed to show add proof dialog");
             Main.instance.showExceptionError(Thread.currentThread(), e, false);

@@ -18,7 +18,7 @@ public class ProofInfo extends AssignmentInfo {
     private Button btn;
     private long timestamp;
 
-    public ProofInfo(int proofId, String name, boolean isInstructor) {
+    public ProofInfo(int proofId, String name, String createdBy, long createdOn, boolean isInstructor) {
         this.proofId = proofId;
         this.name = name;
         btn = new Button("Open Template");
