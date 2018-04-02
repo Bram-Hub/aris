@@ -1,8 +1,9 @@
 package edu.rpi.aris.proof;
 
 
-import javafx.util.Pair;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.text.ParseException;
 import java.util.*;
@@ -158,7 +159,7 @@ public class SentenceUtil {
             Operator opr = Operator.getOperator(oprStr);
 
             // an array of pairs to hold all of the converted polish sub expressions
-            @SuppressWarnings("unchecked") Pair<String, HashMap<Integer, Integer>>[] convert = new Pair[split.size() - 1];
+            @SuppressWarnings("unchecked") Pair<String, HashMap<Integer, Integer>>[] convert = new ImmutablePair[split.size() - 1];
             // calculate the initial mapping offset for the first sub expression
             int po = parenOffset + split.get(0).length() + 1;
             // an array to keep track of the individual sub expression mapping offsets
@@ -185,7 +186,7 @@ public class SentenceUtil {
                             map.put(j, o - pOffset);
                         }
                     }
-                    convert[i - 1] = new Pair<>(str, map);
+                    convert[i - 1] = new ImmutablePair<>(str, map);
                 }
                 // add the length of this polish sub expression to the polish offset
                 po += split.get(i).length() + 1;
@@ -226,13 +227,13 @@ public class SentenceUtil {
                     }
                     // add the closing parentheses to the end of our function
                     str.append(CP);
-                    return new Pair<>(str.toString(), parseMap);
+                    return new ImmutablePair<>(str.toString(), parseMap);
                 } else {
                     // if we didn't convert anything then we have a literal so we can perform a direct mapping from
                     //  polish to standard notation with the parentheses offset
                     for (int i = 0; i < polish.length(); ++i)
                         parseMap.put(i + parenOffset, i);
-                    return new Pair<>(polish, parseMap);
+                    return new ImmutablePair<>(polish, parseMap);
                 }
             } else {
                 if (opr.isType(Operator.Type.UNARY)) {
@@ -254,7 +255,7 @@ public class SentenceUtil {
                     }
                     // add out sub expression to the string
                     sb.append(convert[0].getKey());
-                    return new Pair<>(sb.toString(), parseMap);
+                    return new ImmutablePair<>(sb.toString(), parseMap);
                 }
                 // if we get here then we have a binary operator on our hands
 
@@ -293,7 +294,7 @@ public class SentenceUtil {
                 }
                 // add closing parentheses
                 sb.append(CP);
-                return new Pair<>(sb.toString(), parseMap);
+                return new ImmutablePair<>(sb.toString(), parseMap);
             }
         } catch (Throwable e) {
             // if anything goes wrong we don't want to crash so just print the stack trace and return null

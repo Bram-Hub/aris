@@ -2,8 +2,9 @@ package edu.rpi.aris.proof;
 
 import edu.rpi.aris.LibAris;
 import edu.rpi.aris.rules.RuleList;
-import javafx.util.Pair;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -196,7 +197,7 @@ public class SaveManager {
                 ++lineNum;
             }
         }
-        return new Pair<>(id, lineNum);
+        return new ImmutablePair<>(id, lineNum);
     }
 
     public synchronized Proof loadProof(File file, String author) throws IOException, TransformerException {
