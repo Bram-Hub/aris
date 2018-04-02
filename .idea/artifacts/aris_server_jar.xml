@@ -1,20 +1,21 @@
 <component name="ArtifactManager">
-  <artifact build-on-make="true" name="aris:jar">
-    <output-path>$PROJECT_DIR$/out/artifacts/aris_jar</output-path>
+  <artifact name="aris-server:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/aris_server_jar</output-path>
     <root id="root">
-      <element id="archive" name="aris.jar">
-        <element id="module-output" name="aris" />
+      <element id="archive" name="aris-server.jar">
+        <element id="module-output" name="server" />
+        <element id="module-output" name="libaris" />
       </element>
       <element id="directory" name="lib">
-        <element id="library" level="project" name="org.apache.logging.log4j:log4j-core:2.10.0" />
         <element id="library" level="project" name="commons-cli:commons-cli:1.4" />
         <element id="library" level="project" name="commons-collections:commons-collections:4.0-SNAPSHOT" />
         <element id="library" level="project" name="commons-io:commons-io:2.6" />
         <element id="library" level="project" name="org.apache.commons:commons-lang3:3.7" />
+        <element id="library" level="project" name="org.apache.logging.log4j:log4j-api:2.10.0" />
+        <element id="library" level="project" name="org.apache.logging.log4j:log4j-core:2.10.0" />
         <element id="library" level="project" name="org.bouncycastle:bcpkix-jdk15on:1.59" />
         <element id="library" level="project" name="org.bouncycastle:bcprov-jdk15on:1.59" />
         <element id="library" level="project" name="org.bouncycastle:bctls-jdk15on:1.59" />
-        <element id="library" level="project" name="org.apache.logging.log4j:log4j-api:2.10.0" />
         <element id="library" level="project" name="org.postgresql:postgresql:42.2.2" />
       </element>
     </root>
