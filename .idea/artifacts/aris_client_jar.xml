@@ -1,5 +1,5 @@
 <component name="ArtifactManager">
-  <artifact name="aris-client:jar">
+  <artifact build-on-make="true" name="aris-client:jar">
     <output-path>$PROJECT_DIR$/out/artifacts/aris_client_jar</output-path>
     <root id="root">
       <element id="archive" name="client.jar">
