@@ -1,12 +1,7 @@
 package edu.rpi.aris.proof;
 
-import edu.rpi.aris.Main;
-import edu.rpi.aris.gui.GuiConfig;
+import edu.rpi.aris.LibAris;
 import edu.rpi.aris.rules.RuleList;
-import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonType;
-import javafx.stage.FileChooser;
-import javafx.stage.Window;
 import javafx.util.Pair;
 import org.apache.commons.lang3.StringUtils;
 import org.w3c.dom.Document;
@@ -32,14 +27,14 @@ public class SaveManager {
 
     @SuppressWarnings("SpellCheckingInspection")
     public static final String FILE_EXTENSION = "bram";
+    private final SaveInfoListener listener;
+    private DocumentBuilder documentBuilder;
+    private Transformer transformer;
+    private MessageDigest hash;
 
-    private static DocumentBuilder documentBuilder;
-    private static Transformer transformer;
-    private static MessageDigest hash;
-    private static FileChooser.ExtensionFilter extensionFilter = new FileChooser.ExtensionFilter("Bram Proof File (." + FILE_EXTENSION + ")", "*." + FILE_EXTENSION);
-    private static FileChooser.ExtensionFilter allFiles = new FileChooser.ExtensionFilter("All Files", "*");
-
-    static {
+    public SaveManager(SaveInfoListener listener) {
+        Objects.requireNonNull(listener);
+        this.listener = listener;
         try {
             documentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
             transformer = TransformerFactory.newInstance().newTransformer();
@@ -47,44 +42,29 @@ public class SaveManager {
             transformer.setOutputProperty(OutputKeys.INDENT, "yes");
             transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
         } catch (ParserConfigurationException | TransformerConfigurationException | NoSuchAlgorithmException e) {
-            Main.instance.showExceptionError(Thread.currentThread(), e, true);
+            throw new RuntimeException("Failed to initialize file saving", e);
         }
     }
 
-    public static File showSaveDialog(Window parent, String defaultFileName) throws IOException {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setInitialDirectory(GuiConfig.getConfigManager().getSaveDirectory());
-        fileChooser.getExtensionFilters().add(extensionFilter);
-        fileChooser.getExtensionFilters().add(allFiles);
-        fileChooser.setSelectedExtensionFilter(extensionFilter);
-        fileChooser.setTitle("Save Proof");
-        fileChooser.setInitialFileName(defaultFileName);
-        File f = fileChooser.showSaveDialog(parent);
-        if (f != null) {
-            f = f.getCanonicalFile();
-            GuiConfig.getConfigManager().setSaveDirectory(f.getParentFile());
-        }
-        return f;
+    private static Element getElementByTag(Element parent, String tag) throws IOException {
+        NodeList list = parent.getElementsByTagName(tag);
+        if (list.getLength() != 1 || !(list.item(0) instanceof Element))
+            throw new IOException("Invalid file format");
+        return (Element) list.item(0);
     }
 
-    public static File showOpenDialog(Window parent) throws IOException {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setInitialDirectory(GuiConfig.getConfigManager().getSaveDirectory());
-        fileChooser.getExtensionFilters().add(extensionFilter);
-        fileChooser.getExtensionFilters().add(allFiles);
-        fileChooser.setSelectedExtensionFilter(extensionFilter);
-        fileChooser.setTitle("Open Proof");
-        File f = fileChooser.showOpenDialog(parent);
-        if (f != null) {
-            f = f.getCanonicalFile();
-            GuiConfig.getConfigManager().setSaveDirectory(f.getParentFile());
-            if (!f.getName().toLowerCase().endsWith("." + FILE_EXTENSION))
-                f = new File(f.getParent(), f.getName() + "." + FILE_EXTENSION);
+    private static ArrayList<Element> getElementsByTag(Element parent, String tag) throws IOException {
+        NodeList list = parent.getElementsByTagName(tag);
+        ArrayList<Element> elements = new ArrayList<>();
+        for (int i = 0; i < list.getLength(); ++i) {
+            if (!(list.item(i) instanceof Element))
+                throw new IOException("Invalid file format");
+            elements.add((Element) list.item(i));
         }
-        return f;
+        return elements;
     }
 
-    public static synchronized boolean saveProof(Proof proof, File file) throws IOException, TransformerException {
+    public synchronized boolean saveProof(Proof proof, File file) throws IOException, TransformerException {
         if (proof == null || file == null)
             return false;
         if (!file.exists())
@@ -93,7 +73,7 @@ public class SaveManager {
         return saveProof(proof, new FileOutputStream(file));
     }
 
-    public static synchronized boolean saveProof(Proof proof, OutputStream out) throws TransformerException {
+    public synchronized boolean saveProof(Proof proof, OutputStream out) throws TransformerException {
         if (proof == null || out == null)
             return false;
         Document doc = documentBuilder.newDocument();
@@ -101,11 +81,11 @@ public class SaveManager {
         doc.appendChild(root);
 
         Element program = doc.createElement("program");
-        program.appendChild(doc.createTextNode(Main.NAME));
+        program.appendChild(doc.createTextNode(LibAris.NAME));
         root.appendChild(program);
 
         Element version = doc.createElement("version");
-        version.appendChild(doc.createTextNode(Main.VERSION));
+        version.appendChild(doc.createTextNode(LibAris.VERSION));
         root.appendChild(version);
 
         ArrayList<Element> proofElements = new ArrayList<>();
@@ -153,7 +133,7 @@ public class SaveManager {
         return true;
     }
 
-    private static synchronized Pair<Integer, Integer> createProofElement(Proof proof, int lineNum, Document doc, Element root, ArrayList<Element> proofElements) {
+    private synchronized Pair<Integer, Integer> createProofElement(Proof proof, int lineNum, Document doc, Element root, ArrayList<Element> proofElements) {
         Element prf = doc.createElement("proof");
         int id = proofElements.size();
         prf.setAttribute("id", String.valueOf(id));
@@ -219,13 +199,13 @@ public class SaveManager {
         return new Pair<>(id, lineNum);
     }
 
-    public static synchronized Proof loadProof(File file, String author) throws IOException, TransformerException {
+    public synchronized Proof loadProof(File file, String author) throws IOException, TransformerException {
         if (file == null || !file.exists())
             return null;
         return loadProof(new FileInputStream(file), file.getName(), author);
     }
 
-    private static synchronized Proof loadProof(InputStream in, String name, String author) throws TransformerException, IOException {
+    private synchronized Proof loadProof(InputStream in, String name, String author) throws TransformerException, IOException {
         StreamSource src = new StreamSource(in);
         DOMResult result = new DOMResult();
         transformer.transform(src, result);
@@ -241,35 +221,12 @@ public class SaveManager {
 
         Element program = getElementByTag(root, "program");
         Element version = getElementByTag(root, "version");
-        boolean isArisFile = program.getTextContent().equals(Main.NAME);
+        boolean isArisFile = program.getTextContent().equals(LibAris.NAME);
         Proof proof;
         HashSet<String> authors = new HashSet<>();
         if (!isArisFile) {
-            switch (Main.getMode()) {
-                case GUI:
-                    Alert noAris = new Alert(Alert.AlertType.CONFIRMATION);
-                    noAris.setTitle("Not Aris File");
-                    noAris.setHeaderText("Not Aris File");
-                    noAris.setContentText("The given file \"" + name + "\" was written by " + program.getTextContent() + " version " + version.getTextContent() + "\n" +
-                            "Aris may still be able to read this file with varying success\n" +
-                            "Would you like to attempt to load this file?");
-                    Optional<ButtonType> option = noAris.showAndWait();
-                    if (!option.isPresent() || option.get() != ButtonType.YES)
-                        return null;
-                    break;
-                case CMD:
-                    System.out.println("The given file \"" + name + "\" was written by " + program.getTextContent() + " version " + version.getTextContent());
-                    System.out.println("Aris may still be able to read this file with varying success");
-                    System.out.println("Would you like to attempt to load this file? (Y/n)");
-                    String response = Main.readLine();
-                    if (response.equalsIgnoreCase("n") || response.equalsIgnoreCase("no"))
-                        return null;
-                    break;
-                case SERVER:
-                    System.out.println("The given file \"" + name + "\" was written by " + program.getTextContent() + " version " + version.getTextContent());
-                    System.out.println("Aris will attempt to read the file anyway");
-                    break;
-            }
+            if (!listener.notArisFile(name, program.getTextContent(), version.getTextContent()))
+                return null;
             authors.add("UNKNOWN");
             proof = new Proof(authors, author);
         } else {
@@ -284,30 +241,7 @@ public class SaveManager {
                 transformer.transform(s, r);
                 String xml = w.toString().replaceAll("\n[\t\\s\f\r\\x0B]*\n", "\n");
                 if (!verifyHash(xml, hashElement.getTextContent(), authors)) {
-                    switch (Main.getMode()) {
-                        case GUI:
-                            Alert alert = new Alert(Alert.AlertType.ERROR);
-                            alert.setTitle("File integrity check failed");
-                            alert.setHeaderText("File integrity check failed");
-                            alert.setContentText("This file may be corrupted or may have been tampered with.\n" +
-                                    "If this file successfully loads the author will be marked as UNKNOWN.\n" +
-                                    "This will show up if this file is submitted and may affect your grade.");
-                            alert.getDialogPane().setPrefWidth(500);
-                            alert.showAndWait();
-                            break;
-                        case CMD:
-                            System.out.println("File integrity check failed for " + name);
-                            System.out.println("This file may be corrupted or may have been tampered with.");
-                            System.out.println("If this file successfully loads the author will be marked as UNKNOWN");
-                            System.out.println("This will show up if this file is submitted and may affect your grade");
-                            System.out.println("Press enter to confirm");
-                            Main.readLine();
-                            break;
-                        case SERVER:
-                            System.out.println("File integrity check failed for " + name);
-                            System.out.println("The system will still attempt to load the file and will mark the author as UNKNOWN");
-                            break;
-                    }
+                    listener.integrityCheckFailed(name);
                     authors.clear();
                     authors.add("UNKNOWN");
                 }
@@ -361,7 +295,7 @@ public class SaveManager {
         return proof;
     }
 
-    private static synchronized int readProofElement(Proof proof, ArrayList<Element> proofElements, int elementId, int indent, int lineNum) throws IOException {
+    private synchronized int readProofElement(Proof proof, ArrayList<Element> proofElements, int elementId, int indent, int lineNum) throws IOException {
         Element element = proofElements.get(elementId);
         ArrayList<Element> assumptions = getElementsByTag(element, "assumption");
         assumptions.sort((e1, e2) -> {
@@ -465,7 +399,7 @@ public class SaveManager {
         return lineNum;
     }
 
-    private static synchronized String computeHash(String xml, Collection<String> authorCollection) {
+    private synchronized String computeHash(String xml, Collection<String> authorCollection) {
         ArrayList<String> authors = new ArrayList<>(authorCollection);
         Collections.sort(authors);
         String hashStr = Base64.getEncoder().encodeToString(hash.digest((xml + StringUtils.join(authors, "")).getBytes()));
@@ -473,26 +407,8 @@ public class SaveManager {
         return hashStr;
     }
 
-    private static boolean verifyHash(String xml, String hash, Collection<String> authors) {
+    private boolean verifyHash(String xml, String hash, Collection<String> authors) {
         return computeHash(xml, authors).equals(hash);
-    }
-
-    private static Element getElementByTag(Element parent, String tag) throws IOException {
-        NodeList list = parent.getElementsByTagName(tag);
-        if (list.getLength() != 1 || !(list.item(0) instanceof Element))
-            throw new IOException("Invalid file format");
-        return (Element) list.item(0);
-    }
-
-    private static ArrayList<Element> getElementsByTag(Element parent, String tag) throws IOException {
-        NodeList list = parent.getElementsByTagName(tag);
-        ArrayList<Element> elements = new ArrayList<>();
-        for (int i = 0; i < list.getLength(); ++i) {
-            if (!(list.item(i) instanceof Element))
-                throw new IOException("Invalid file format");
-            elements.add((Element) list.item(i));
-        }
-        return elements;
     }
 
 }

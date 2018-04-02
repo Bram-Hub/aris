@@ -3,8 +3,9 @@ package edu.rpi.aris.net.server;
 import edu.rpi.aris.Main;
 import edu.rpi.aris.net.GradingStatus;
 import edu.rpi.aris.net.NetUtil;
-import javafx.util.Pair;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -136,7 +137,7 @@ public class DatabaseManager {
 
     public Pair<String, String> createUser(String username, String password, String userType) throws SQLException, IOException {
         if (username == null || username.length() == 0 || userType == null || !(userType.equals(NetUtil.USER_STUDENT) || userType.equals(NetUtil.USER_INSTRUCTOR)))
-            return new Pair<>(null, NetUtil.INVALID);
+            return new ImmutablePair<>(null, NetUtil.INVALID);
         if (password == null)
             password = RandomStringUtils.randomAlphabetic(16);
         try (Connection connection = getConnection();
@@ -145,7 +146,7 @@ public class DatabaseManager {
             count.setString(1, username);
             try (ResultSet rs = count.executeQuery()) {
                 if (rs.next() && rs.getInt(1) > 0)
-                    return new Pair<>(null, NetUtil.USER_EXISTS);
+                    return new ImmutablePair<>(null, NetUtil.USER_EXISTS);
             }
             Pair<String, String> sh = getSaltAndHash(password);
             statement.setString(1, username);
@@ -153,13 +154,13 @@ public class DatabaseManager {
             statement.setString(3, sh.getKey());
             statement.setString(4, sh.getValue());
             statement.executeUpdate();
-            return new Pair<>(password, NetUtil.OK);
+            return new ImmutablePair<>(password, NetUtil.OK);
         }
     }
 
     public Pair<String, String> setPassword(String username, String password) throws SQLException, IOException {
         if (username == null || username.length() == 0)
-            return new Pair<>(null, NetUtil.INVALID);
+            return new ImmutablePair<>(null, NetUtil.INVALID);
         if (password == null)
             password = RandomStringUtils.randomAlphabetic(16);
         try (Connection connection = getConnection();
@@ -169,7 +170,7 @@ public class DatabaseManager {
             statement.setString(2, sh.getValue());
             statement.setString(3, username);
             statement.executeUpdate();
-            return new Pair<>(password, NetUtil.OK);
+            return new ImmutablePair<>(password, NetUtil.OK);
         }
     }
 
@@ -179,7 +180,7 @@ public class DatabaseManager {
         String salt = Base64.getEncoder().encodeToString(saltBytes);
         digest.update(saltBytes);
         String hash = Base64.getEncoder().encodeToString(digest.digest(password.getBytes()));
-        return new Pair<>(salt, hash);
+        return new ImmutablePair<>(salt, hash);
     }
 
     public Connection getConnection() throws SQLException {

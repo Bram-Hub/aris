@@ -1,7 +1,5 @@
 package edu.rpi.aris.proof;
 
-import edu.rpi.aris.Main;
-import edu.rpi.aris.proof.*;
 import edu.rpi.aris.rules.RuleList;
 import org.apache.commons.lang3.Range;
 
@@ -273,8 +271,6 @@ public class Line {
     }
 
     private synchronized void startTimer() {
-        if (Main.getMode() != Main.Mode.GUI)
-            return;
         stopTimer();
         TimerTask task = new TimerTask() {
             @Override

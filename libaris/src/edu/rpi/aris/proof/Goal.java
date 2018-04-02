@@ -1,7 +1,5 @@
 package edu.rpi.aris.proof;
 
-import edu.rpi.aris.Main;
-import edu.rpi.aris.proof.*;
 import org.apache.commons.lang3.Range;
 
 import java.util.Timer;
@@ -112,8 +110,6 @@ public class Goal {
     }
 
     private synchronized void startTimer() {
-        if (Main.getMode() != Main.Mode.GUI)
-            return;
         stopTimer();
         TimerTask task = new TimerTask() {
             @Override

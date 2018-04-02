@@ -1,6 +1,7 @@
 package edu.rpi.aris.proof;
 
-import edu.rpi.aris.gui.event.PremiseChangeEvent;
+import org.apache.commons.lang3.tuple.ImmutableTriple;
+import org.apache.commons.lang3.tuple.Triple;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -98,7 +99,7 @@ public class Proof {
         return possiblePremise;
     }
 
-    public PremiseChangeEvent togglePremise(int selected, Line premise) {
+    public Triple<Integer, Integer, Boolean> togglePremise(int selected, Line premise) {
         if (selected < 0)
             return null;
         Line line = lines.get(selected);
@@ -115,15 +116,15 @@ public class Proof {
         if (!wasSelected)
             line.addPremise(premise);
         modify();
-        return new PremiseChangeEvent(selected, premise.getLineNum(), wasSelected);
+        return new ImmutableTriple<>(selected, premise.getLineNum(), wasSelected);
     }
 
-    public PremiseChangeEvent setPremise(int selected, Line premise, boolean isSelected) {
+    public void setPremise(int selected, Line premise, boolean isSelected) {
         if (selected < 0)
-            return null;
+            return;
         Line line = lines.get(selected);
         if (line.isAssumption() || premise.getLineNum() >= selected)
-            return null;
+            return;
         HashSet<Integer> canSelect = getPossiblePremiseLines(line);
         for (int i = premise.getLineNum(); i >= 0; i--) {
             if (canSelect.contains(i)) {
@@ -131,13 +132,11 @@ public class Proof {
                 break;
             }
         }
-        boolean wasSelected = line.getPremises().contains(premise);
         if (isSelected)
             line.addPremise(premise);
         else
             line.removePremise(premise);
         modify();
-        return new PremiseChangeEvent(selected, premise.getLineNum(), wasSelected);
     }
 
     public HashSet<Line> getHighlighted(Line line) {

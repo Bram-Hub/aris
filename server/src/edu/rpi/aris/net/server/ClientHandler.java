@@ -1,9 +1,9 @@
 package edu.rpi.aris.net.server;
 
-import edu.rpi.aris.Main;
+import edu.rpi.aris.LibAris;
 import edu.rpi.aris.net.NetUtil;
-import javafx.util.Pair;
 import org.apache.commons.collections.map.PassiveExpiringMap;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -85,7 +85,7 @@ public abstract class ClientHandler implements Runnable {
                 sendMessage(NetUtil.INVALID_VERSION);
                 return;
             } else
-                sendMessage(NetUtil.ARIS_NAME + " " + Main.VERSION);
+                sendMessage(NetUtil.ARIS_NAME + " " + LibAris.VERSION);
             String versionVerify = in.readUTF();
             if (!versionVerify.equals(NetUtil.VERSION_OK))
                 return;
@@ -113,7 +113,7 @@ public abstract class ClientHandler implements Runnable {
             logger.error("[" + clientName + "] Invalid client program name: " + split[0]);
             return false;
         }
-        if (NetUtil.versionCompare(Main.VERSION, split[1]) < 0) {
+        if (NetUtil.versionCompare(LibAris.VERSION, split[1]) < 0) {
             logger.warn("[" + clientName + "] Client's version is newer than server");
             logger.warn("[" + clientName + "] This may or may not cause problems");
         }

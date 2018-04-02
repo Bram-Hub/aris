@@ -2,9 +2,7 @@ package edu.rpi.aris;
 
 import edu.rpi.aris.gui.Aris;
 import edu.rpi.aris.gui.GuiConfig;
-import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
-import edu.rpi.aris.net.server.Server;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
@@ -25,39 +23,19 @@ import org.apache.logging.log4j.Logger;
 import java.io.*;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
-import java.security.Security;
-import java.sql.SQLException;
 
 public class Main implements Thread.UncaughtExceptionHandler {
 
     public static final Main instance = new Main();
-    public static final String VERSION;
-    public static final String NAME = "Aris";
-    private static final File clientLockFile = new File(System.getProperty("java.io.tmpdir"), "aris_client.lock");
-    private static final File serverLockFile = new File(System.getProperty("java.io.tmpdir"), "aris_server.lock");
-    private static final File clientIpcFile = new File(System.getProperty("java.io.tmpdir"), "aris_client.ipc");
-    private static final File serverIpcFile = new File(System.getProperty("java.io.tmpdir"), "aris_server.ipc");
-    private static File lockFile, ipcFile;
+    private static final File lockFile = new File(System.getProperty("java.io.tmpdir"), "aris_client.lock");
+    private static final File ipcFile = new File(System.getProperty("java.io.tmpdir"), "aris_client.ipc");
     private static BufferedReader SYSTEM_IN = null;
     private static CommandLine cmd;
-    private static Mode MODE = Mode.CMD;
+    private static Mode MODE = Mode.GUI;
     private static Client client;
-    private static Server server;
     private static Logger logger = LogManager.getLogger(Main.class);
     private static FileLock lock, ipcLock;
     private static FileChannel lockFileChannel;
-
-    static {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(Main.class.getResourceAsStream("VERSION")));
-        String version = "UNKNOWN";
-        try {
-            version = reader.readLine();
-            reader.close();
-        } catch (IOException e) {
-            logger.error("An error occurred while attempting to read the version", e);
-        }
-        VERSION = version;
-    }
 
     static {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -72,23 +50,17 @@ public class Main implements Thread.UncaughtExceptionHandler {
 
     public static void main(String[] args) throws IOException {
         Thread.setDefaultUncaughtExceptionHandler(instance);
-        logger.info(NAME + " version " + VERSION);
+        logger.info(LibAris.NAME + " version " + LibAris.VERSION);
         try {
             parseCommandLineArgs(args);
         } catch (Throwable e) {
             System.err.println(e.getMessage());
             System.exit(1);
         }
-        MODE = cmd.hasOption("server") ? Mode.SERVER : Mode.GUI;
-        lockFile = MODE == Mode.SERVER ? serverLockFile : clientLockFile;
-        ipcFile = MODE == Mode.SERVER ? serverIpcFile : clientIpcFile;
         if (!tryLock()) {
             logger.info("Program already running");
             logger.info("Sending message to running program");
             //TODO
-            if (MODE == Mode.SERVER && cmd.hasOption("add-user") && cmd.hasOption("password")) {
-                sendIpcMessage("add-user " + cmd.getOptionValue("add-user") + " " + cmd.getOptionValue("password"));
-            }
             return;
         }
         Runtime.getRuntime().addShutdownHook(new Thread(Main::unlockFile));
@@ -107,7 +79,6 @@ public class Main implements Thread.UncaughtExceptionHandler {
                 System.exit(1);
             }
         }
-        if (MODE != Mode.SERVER) {
             if (cmd.hasOption('a'))
                 GuiConfig.serverAddress.set(cmd.getOptionValue('a'));
             if (port > 0)
@@ -119,22 +90,9 @@ public class Main implements Thread.UncaughtExceptionHandler {
                 File file = new File(filename);
                 client.importSelfSignedCertificate(file);
             }
-        }
         switch (MODE) {
             case GUI:
                 Aris.launch(Aris.class, args);
-                break;
-            case SERVER:
-                String ca = cmd.getOptionValue("ca");
-                String key = cmd.getOptionValue("key");
-                if (ca != null && key == null)
-                    throw new IOException("CA certificate specified without private key");
-                else if (ca == null && key != null)
-                    throw new IOException("Private key specified without CA certificate");
-                File caFile = ca == null ? null : new File(ca);
-                File keyFile = key == null ? null : new File(key);
-                server = new Server(port > 0 ? port : NetUtil.DEFAULT_PORT, caFile, keyFile);
-                new Thread(() -> server.run()).start();
                 break;
         }
     }
@@ -158,14 +116,6 @@ public class Main implements Thread.UncaughtExceptionHandler {
                         String line;
                         while ((line = raf.readLine()) != null) {
                             //TODO
-                            String[] args = line.split(" ");
-                            if (MODE == Mode.SERVER && args.length == 3 && args[0].equals("add-user")) {
-                                try {
-                                    server.addUser(args[1], args[2], NetUtil.USER_INSTRUCTOR);
-                                } catch (SQLException e) {
-                                    e.printStackTrace();
-                                }
-                            }
                             System.out.println(line);
                         }
                         raf.setLength(0);
@@ -242,14 +192,9 @@ public class Main implements Thread.UncaughtExceptionHandler {
 
     private static void parseCommandLineArgs(String[] args) throws ParseException {
         Options options = new Options();
-        options.addOption("s", "server", false, "Runs aris in server mode");
-        options.addOption(null, "ca", true, "Specifies an X509 encoded CA certificate for server mode");
-        options.addOption(null, "key", true, "Specifies a private key for server mode");
         options.addOption("h", "help", false, "Displays this help screen");
         options.addOption(null, "allow-insecure", false, "Allows aris to connect to servers using self signed certificates (WARNING! Doing this is not recommended as it allows the connection to be intercepted)");
         options.addOption(null, "add-cert", true, "Adds the given X509 encoded certificate to the client's trusted certificate store");
-        options.addOption(null, "add-user", true, "Adds the given user to the database as an instructor");
-        options.addOption(null, "password", true, "Sets the password for the given user");
         options.addOption("a", "server-address", true, "Sets the server address to connect to");
         options.addOption("p", "port", true, "Sets the port to connect to or the port for the server to run on (Default: 9001)");
         CommandLineParser parser = new DefaultParser();
@@ -344,7 +289,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
 
                         StringWriter sw = new StringWriter();
                         PrintWriter pw = new PrintWriter(sw);
-                        pw.println("ARIS-Java " + Main.VERSION);
+                        pw.println("ARIS-Java " + LibAris.VERSION);
                         e.printStackTrace(pw);
                         String exceptionText = sw.toString();
 
@@ -404,7 +349,6 @@ public class Main implements Thread.UncaughtExceptionHandler {
 
     public enum Mode {
         GUI,
-        CMD,
-        SERVER
+        CMD
     }
 }

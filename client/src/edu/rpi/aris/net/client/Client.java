@@ -1,5 +1,6 @@
 package edu.rpi.aris.net.client;
 
+import edu.rpi.aris.LibAris;
 import edu.rpi.aris.Main;
 import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.net.NetUtil;
@@ -347,7 +348,7 @@ public class Client {
     }
 
     private void doAuth(String user, String pass, boolean isAccessToken) throws IOException {
-        sendMessage(NetUtil.ARIS_NAME + " " + Main.VERSION);
+        sendMessage(NetUtil.ARIS_NAME + " " + LibAris.VERSION);
         String version = in.readUTF();
         if (version.equals(NetUtil.INVALID_VERSION))
             throw new IOException("Invalid client version");
@@ -451,9 +452,6 @@ public class Client {
                 System.out.print("Enter the server to connect to: ");
                 address = Main.readLine();
                 break;
-            case SERVER:
-                logger.error("Client attempted to be used in server mode. This shouldn't happen");
-                throw new IOException("Client attempted to be used in server mode. This shouldn't happen");
         }
         if (address == null)
             return null;
@@ -542,9 +540,6 @@ public class Client {
                     char[] passChar = Main.readPassword();
                     pass = new String(passChar);
                     break;
-                case SERVER:
-                    logger.error("Client attempted to be used in server mode. This shouldn't happen");
-                    throw new IOException("Client attempted to be used in server mode. This shouldn't happen");
             }
         }
         return new ImmutableTriple<>(user, pass, isAccessToken);
@@ -670,11 +665,6 @@ public class Client {
                     setAllowInsecure(true);
                     return true;
                 }
-                break;
-            case SERVER:
-                logger.fatal("The client is being used while Aris is running in server mode");
-                logger.fatal("This shouldn't happen");
-                Main.instance.showExceptionError(Thread.currentThread(), new IllegalStateException("The client is being used while aris is running in server mode"), true);
                 break;
         }
         return false;

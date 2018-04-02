@@ -1,5 +1,6 @@
 package edu.rpi.aris.gui;
 
+import edu.rpi.aris.Main;
 import edu.rpi.aris.gui.event.GoalChangedEvent;
 import edu.rpi.aris.gui.event.LineChangedEvent;
 import edu.rpi.aris.gui.event.PremiseChangeEvent;
@@ -27,10 +28,12 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import org.apache.commons.lang3.Range;
+import org.apache.commons.lang3.tuple.Triple;
 
 import javax.xml.transform.TransformerException;
 import java.io.File;
@@ -38,9 +41,11 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class MainWindow implements StatusChangeListener {
+public class MainWindow implements StatusChangeListener, SaveInfoListener {
 
     public static final HashMap<Proof.Status, Image> STATUS_ICONS = new HashMap<>();
+    private static FileChooser.ExtensionFilter extensionFilter = new FileChooser.ExtensionFilter("Bram Proof File (." + SaveManager.FILE_EXTENSION + ")", "*." + SaveManager.FILE_EXTENSION);
+    private static FileChooser.ExtensionFilter allFiles = new FileChooser.ExtensionFilter("All Files", "*");
 
     static {
         for (Proof.Status status : Proof.Status.values())
@@ -77,6 +82,7 @@ public class MainWindow implements StatusChangeListener {
     private File saveFile = null;
     private HistoryManager history = new HistoryManager(this);
     private boolean loaded = false;
+    private SaveManager saveManager;
 
     public MainWindow(Stage primaryStage, EditMode editMode) throws IOException {
         this(primaryStage, new Proof(GuiConfig.getConfigManager().username.get()), editMode);
@@ -91,6 +97,7 @@ public class MainWindow implements StatusChangeListener {
         this.editMode = editMode;
         primaryStage.setTitle("ARIS");
         primaryStage.setOnHidden(windowEvent -> System.gc());
+        saveManager = new SaveManager(this);
         fontObjectProperty = new SimpleObjectProperty<>(new Font(14));
         rulesManager = new RulesManager();
         rulesManager.addRuleSelectionHandler(ruleSelectEvent -> {
@@ -111,6 +118,39 @@ public class MainWindow implements StatusChangeListener {
                 proof.getLine(newVal.intValue()).verifyClaim();
             updateHighlighting(newVal.intValue());
         });
+    }
+
+    private static File showSaveDialog(Window parent, String defaultFileName) throws IOException {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setInitialDirectory(GuiConfig.getConfigManager().getSaveDirectory());
+        fileChooser.getExtensionFilters().add(extensionFilter);
+        fileChooser.getExtensionFilters().add(allFiles);
+        fileChooser.setSelectedExtensionFilter(extensionFilter);
+        fileChooser.setTitle("Save Proof");
+        fileChooser.setInitialFileName(defaultFileName);
+        File f = fileChooser.showSaveDialog(parent);
+        if (f != null) {
+            f = f.getCanonicalFile();
+            GuiConfig.getConfigManager().setSaveDirectory(f.getParentFile());
+        }
+        return f;
+    }
+
+    private static File showOpenDialog(Window parent) throws IOException {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setInitialDirectory(GuiConfig.getConfigManager().getSaveDirectory());
+        fileChooser.getExtensionFilters().add(extensionFilter);
+        fileChooser.getExtensionFilters().add(allFiles);
+        fileChooser.setSelectedExtensionFilter(extensionFilter);
+        fileChooser.setTitle("Open Proof");
+        File f = fileChooser.showOpenDialog(parent);
+        if (f != null) {
+            f = f.getCanonicalFile();
+            GuiConfig.getConfigManager().setSaveDirectory(f.getParentFile());
+            if (!f.getName().toLowerCase().endsWith("." + SaveManager.FILE_EXTENSION))
+                f = new File(f.getParent(), f.getName() + "." + SaveManager.FILE_EXTENSION);
+        }
+        return f;
     }
 
     public void setModal(Window window) {
@@ -298,11 +338,11 @@ public class MainWindow implements StatusChangeListener {
     private void openProof() {
         String error = null;
         try {
-            File f = SaveManager.showOpenDialog(primaryStage.getScene().getWindow());
+            File f = showOpenDialog(primaryStage.getScene().getWindow());
             if (f != null && !f.exists()) {
                 error = "The selected file does not exist";
             } else if (f != null) {
-                Proof p = SaveManager.loadProof(f, GuiConfig.getConfigManager().username.get());
+                Proof p = saveManager.loadProof(f, GuiConfig.getConfigManager().username.get());
                 if (p == null) {
                     error = "Invalid file format";
                 } else {
@@ -326,7 +366,7 @@ public class MainWindow implements StatusChangeListener {
         boolean error;
         try {
             if (saveAs || saveFile == null) {
-                File f = SaveManager.showSaveDialog(primaryStage.getScene().getWindow(), saveFile == null ? "" : saveFile.getName());
+                File f = showSaveDialog(primaryStage.getScene().getWindow(), saveFile == null ? "" : saveFile.getName());
                 if (f != null && !f.getName().toLowerCase().endsWith("." + SaveManager.FILE_EXTENSION)) {
                     f = new File(f.getParentFile(), f.getName() + "." + SaveManager.FILE_EXTENSION);
                     if (f.exists()) {
@@ -345,7 +385,7 @@ public class MainWindow implements StatusChangeListener {
                 if (f != null)
                     saveFile = f;
             }
-            error = !SaveManager.saveProof(proof, saveFile);
+            error = !saveManager.saveProof(proof, saveFile);
         } catch (TransformerException | IOException e) {
             e.printStackTrace();
             error = true;
@@ -604,10 +644,10 @@ public class MainWindow implements StatusChangeListener {
     }
 
     public void requestSelect(ProofLine line) {
-        PremiseChangeEvent event = proof.togglePremise(selectedLine.get(), line.getModel());
+        Triple<Integer, Integer, Boolean> eventData = proof.togglePremise(selectedLine.get(), line.getModel());
         updateHighlighting(selectedLine.get());
-        if (event != null)
-            history.addHistoryEvent(event);
+        if (eventData != null)
+            history.addHistoryEvent(new PremiseChangeEvent(eventData.getLeft(), eventData.getMiddle(), eventData.getRight()));
     }
 
     public int numLines() {
@@ -787,5 +827,63 @@ public class MainWindow implements StatusChangeListener {
                 errorRangeLbl.setText(str);
             }
         });
+    }
+
+    @Override
+    public boolean notArisFile(String filename, String programName, String programVersion) {
+        switch (Main.getMode()) {
+            case GUI:
+                Alert noAris = new Alert(Alert.AlertType.CONFIRMATION);
+                noAris.setTitle("Not Aris File");
+                noAris.setHeaderText("Not Aris File");
+                noAris.setContentText("The given file \"" + filename + "\" was written by " + programName + " version " + programVersion + "\n" +
+                        "Aris may still be able to read this file with varying success\n" +
+                        "Would you like to attempt to load this file?");
+                Optional<ButtonType> option = noAris.showAndWait();
+                if (!option.isPresent() || option.get() != ButtonType.YES)
+                    return false;
+                break;
+            case CMD:
+                System.out.println("The given file \"" + filename + "\" was written by " + programName + " version " + programVersion);
+                System.out.println("Aris may still be able to read this file with varying success");
+                System.out.println("Would you like to attempt to load this file? (Y/n)");
+                String response = Main.readLine();
+                if (response.equalsIgnoreCase("n") || response.equalsIgnoreCase("no"))
+                    return false;
+                break;
+//            case SERVER:
+//                System.out.println("The given file \"" + name + "\" was written by " + program.getTextContent() + " version " + version.getTextContent());
+//                System.out.println("Aris will attempt to read the file anyway");
+//                break;
+        }
+        return true;
+    }
+
+    @Override
+    public void integrityCheckFailed(String filename) {
+        switch (Main.getMode()) {
+            case GUI:
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("File integrity check failed");
+                alert.setHeaderText("File integrity check failed");
+                alert.setContentText("This file may be corrupted or may have been tampered with.\n" +
+                        "If this file successfully loads the author will be marked as UNKNOWN.\n" +
+                        "This will show up if this file is submitted and may affect your grade.");
+                alert.getDialogPane().setPrefWidth(500);
+                alert.showAndWait();
+                break;
+            case CMD:
+                System.out.println("File integrity check failed for " + filename);
+                System.out.println("This file may be corrupted or may have been tampered with.");
+                System.out.println("If this file successfully loads the author will be marked as UNKNOWN");
+                System.out.println("This will show up if this file is submitted and may affect your grade");
+                System.out.println("Press enter to confirm");
+                Main.readLine();
+                break;
+//            case SERVER:
+//                System.out.println("File integrity check failed for " + name);
+//                System.out.println("The system will still attempt to load the file and will mark the author as UNKNOWN");
+//                break;
+        }
     }
 }
