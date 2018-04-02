@@ -225,7 +225,7 @@ public class SaveManager {
         return loadProof(new FileInputStream(file), file.getName(), author);
     }
 
-    public static synchronized Proof loadProof(InputStream in, String name, String author) throws TransformerException, IOException {
+    private static synchronized Proof loadProof(InputStream in, String name, String author) throws TransformerException, IOException {
         StreamSource src = new StreamSource(in);
         DOMResult result = new DOMResult();
         transformer.transform(src, result);
@@ -357,6 +357,7 @@ public class SaveManager {
                 goal.setGoalString(raw);
             }
         }
+        proof.saved();
         return proof;
     }
 

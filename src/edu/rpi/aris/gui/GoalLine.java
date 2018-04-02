@@ -56,7 +56,7 @@ public class GoalLine implements LineChangeListener {
         goalText.setTextFormatter(new TextFormatter<>(filter));
         window.selectedLineProperty().addListener((observable, oldValue, newValue) -> {
             int lineNum = newValue.intValue() * -1 - 2;
-            goalText.setEditable(goal.getGoalNum() == lineNum);
+            goalText.setEditable(goal.getGoalNum() == lineNum && window.editMode == EditMode.UNRESTRICTED);
         });
         goalText.editableProperty().addListener((observableValue, aBoolean, t1) -> goalText.requestFocus());
         goalText.addEventFilter(KeyEvent.ANY, keyEvent -> {
@@ -160,7 +160,7 @@ public class GoalLine implements LineChangeListener {
     @Override
     public void lineNumber(int lineNum) {
         int goalNum = window.selectedLineProperty().get() * -1 - 2;
-        goalText.setEditable(goalNum == lineNum);
+        goalText.setEditable(goalNum == lineNum && window.editMode == EditMode.UNRESTRICTED);
     }
 
     @Override

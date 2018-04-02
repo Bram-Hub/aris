@@ -12,13 +12,16 @@ public class Proof {
     private ArrayList<Line> lines = new ArrayList<>();
     private ArrayList<Goal> goals = new ArrayList<>();
     private int numPremises = 0;
+    private boolean modified = false;
 
     public Proof(String author) {
         authors.add(author);
+        modify();
     }
 
     public Proof(Collection<String> authors, String author) {
         this(author);
+        modified = !authors.contains(author);
         this.authors.addAll(authors);
     }
 
@@ -40,6 +43,7 @@ public class Proof {
 
     private void setNumPremises(int numPremises) {
         this.numPremises = numPremises;
+        modify();
     }
 
     public Line addLine(int index, boolean isAssumption, int subProofLevel) {
@@ -50,6 +54,7 @@ public class Proof {
                 lines.get(i).setLineNum(i);
             if (isAssumption && subProofLevel == 0)
                 setNumPremises(getNumPremises() + 1);
+            modify();
             return l;
         } else
             return null;
@@ -64,15 +69,17 @@ public class Proof {
     }
 
     public Goal addGoal(int index) {
-        Goal goal = new Goal();
+        Goal goal = new Goal(this);
         goals.add(index, goal);
         for (int i = index; i < goals.size(); ++i)
             goals.get(i).setGoalNum(i);
+        modify();
         return goal;
     }
 
     public void removeGoal(int goalNum) {
         goals.remove(goalNum);
+        modify();
     }
 
     public HashSet<Integer> getPossiblePremiseLines(Line line) {
@@ -107,6 +114,7 @@ public class Proof {
         boolean wasSelected = line.removePremise(premise);
         if (!wasSelected)
             line.addPremise(premise);
+        modify();
         return new PremiseChangeEvent(selected, premise.getLineNum(), wasSelected);
     }
 
@@ -128,6 +136,7 @@ public class Proof {
             line.addPremise(premise);
         else
             line.removePremise(premise);
+        modify();
         return new PremiseChangeEvent(selected, premise.getLineNum(), wasSelected);
     }
 
@@ -166,6 +175,7 @@ public class Proof {
                     lines.get(lineNum - 1).setUnderlined(true);
                 setNumPremises(getNumPremises() - 1);
             }
+            modify();
         }
     }
 
@@ -246,12 +256,24 @@ public class Proof {
         }
     }
 
-    public HashSet<String> getAuthors() {
+    HashSet<String> getAuthors() {
         return authors;
     }
 
     public int getNumGoals() {
         return goals.size();
+    }
+
+    public void modify() {
+        modified = true;
+    }
+
+    public void saved() {
+        modified = false;
+    }
+
+    public boolean isModified() {
+        return modified;
     }
 
     public enum Status {

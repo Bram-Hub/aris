@@ -17,6 +17,11 @@ public class Goal {
     private Timer parseTimer = null;
     private LineChangeListener listener;
     private StatusChangeListener statusListener;
+    private Proof proof;
+
+    public Goal(Proof proof) {
+        this.proof = proof;
+    }
 
     public void setChangeListener(LineChangeListener listener) {
         this.listener = listener;
@@ -34,6 +39,7 @@ public class Goal {
         this.goalNum = goalNum;
         if (listener != null)
             listener.lineNumber(goalNum);
+        proof.modify();
     }
 
     public String getGoalString() {
@@ -46,6 +52,7 @@ public class Goal {
             listener.expressionString(expression);
         this.expression = null;
         startTimer();
+        proof.modify();
     }
 
     public String getStatusString() {

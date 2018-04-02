@@ -14,6 +14,8 @@ import javafx.scene.control.*;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -22,6 +24,8 @@ public class AssignmentWindow {
 
     public static final AssignmentWindow instance = new AssignmentWindow();
 
+    private static final String HIDE_TAB = "hide-tab-bar";
+    private static final Logger logger = LogManager.getLogger(AssignmentWindow.class);
     @FXML
     private Label lblUsername;
     @FXML
@@ -34,7 +38,14 @@ public class AssignmentWindow {
     private ProgressIndicator loading;
     @FXML
     private Label lblClass;
-
+    @FXML
+    private TabPane tabPane;
+    @FXML
+    private Tab assignmentTab;
+    @FXML
+    private Tab studentTab;
+    @FXML
+    private Tab proofTab;
     private Stage stage;
     private ClientInfo clientInfo;
 
@@ -90,6 +101,17 @@ public class AssignmentWindow {
         login.setOnAction(actionEvent -> load(true));
         loading.visibleProperty().bind(Main.getClient().getConnectionStatusProperty().isNotEqualTo(Client.ConnectionStatus.DISCONNECTED));
         loading.managedProperty().bind(loading.visibleProperty());
+        clientInfo.isInstructorProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue) {
+                tabPane.getStyleClass().remove(HIDE_TAB);
+            } else {
+                if (!tabPane.getStyleClass().contains(HIDE_TAB))
+                    tabPane.getStyleClass().add(HIDE_TAB);
+            }
+        });
+        tabPane.getStyleClass().add(HIDE_TAB);
+        studentTab.disableProperty().bind(clientInfo.isInstructorProperty().not());
+        proofTab.disableProperty().bind(clientInfo.isInstructorProperty().not());
     }
 
     private MenuBar setupMenu() {
@@ -231,6 +253,22 @@ public class AssignmentWindow {
 
     public ClientInfo getClientInfo() {
         return clientInfo;
+    }
+
+    @FXML
+    private void createProof() {
+        try {
+            AddProofDialog dialog = new AddProofDialog(stage);
+            dialog.showAndWait();
+        } catch (IOException e) {
+            logger.error("Failed to show add proof dialog");
+            Main.instance.showExceptionError(Thread.currentThread(), e, false);
+        }
+    }
+
+    @FXML
+    private void importProof() {
+        //TODO
     }
 
 }

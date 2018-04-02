@@ -16,7 +16,7 @@ public class Aris extends Application {
     private MainWindow mainWindow = null;
 
     public static MainWindow showProofWindow(Stage stage, Proof p) throws IOException {
-        MainWindow window = p == null ? new MainWindow(stage) : new MainWindow(stage, p);
+        MainWindow window = p == null ? new MainWindow(stage, EditMode.UNRESTRICTED) : new MainWindow(stage, p, EditMode.UNRESTRICTED);
         window.show();
         return window;
     }

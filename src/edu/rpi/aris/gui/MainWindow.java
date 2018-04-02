@@ -27,7 +27,9 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 import org.apache.commons.lang3.Range;
 
 import javax.xml.transform.TransformerException;
@@ -45,6 +47,7 @@ public class MainWindow implements StatusChangeListener {
             STATUS_ICONS.put(status, new Image(MainWindow.class.getResourceAsStream(status.imgName)));
     }
 
+    public final EditMode editMode;
     @FXML
     private VBox proofTable;
     @FXML
@@ -75,15 +78,17 @@ public class MainWindow implements StatusChangeListener {
     private HistoryManager history = new HistoryManager(this);
     private boolean loaded = false;
 
-    public MainWindow(Stage primaryStage) throws IOException {
-        this(primaryStage, new Proof(GuiConfig.getConfigManager().username.get()));
+    public MainWindow(Stage primaryStage, EditMode editMode) throws IOException {
+        this(primaryStage, new Proof(GuiConfig.getConfigManager().username.get()), editMode);
     }
 
-    public MainWindow(Stage primaryStage, Proof proof) throws IOException {
+    public MainWindow(Stage primaryStage, Proof proof, EditMode editMode) throws IOException {
         Objects.requireNonNull(primaryStage);
         Objects.requireNonNull(proof);
+        Objects.requireNonNull(editMode);
         this.primaryStage = primaryStage;
         this.proof = proof;
+        this.editMode = editMode;
         primaryStage.setTitle("ARIS");
         primaryStage.setOnHidden(windowEvent -> System.gc());
         fontObjectProperty = new SimpleObjectProperty<>(new Font(14));
@@ -106,6 +111,11 @@ public class MainWindow implements StatusChangeListener {
                 proof.getLine(newVal.intValue()).verifyClaim();
             updateHighlighting(newVal.intValue());
         });
+    }
+
+    public void setModal(Window window) {
+        primaryStage.initModality(Modality.WINDOW_MODAL);
+        primaryStage.initOwner(window);
     }
 
     private void setupScene() throws IOException {

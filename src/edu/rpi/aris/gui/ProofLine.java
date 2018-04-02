@@ -138,7 +138,7 @@ public class ProofLine implements LineChangeListener {
                 }
             }
         });
-        window.selectedLineProperty().addListener((observable, oldValue, newValue) -> textField.setEditable(proofLine.getLineNum() == newValue.intValue()));
+        window.selectedLineProperty().addListener((observable, oldValue, newValue) -> textField.setEditable(proofLine.getLineNum() == newValue.intValue() && isEditable()));
         textField.setText(proofLine.getExpressionString());
         textField.textProperty().addListener((observable, oldValue, newValue) -> proofLine.setExpressionString(newValue));
         if (proofLine.isUnderlined())
@@ -158,6 +158,13 @@ public class ProofLine implements LineChangeListener {
         ruleChoose.setContextMenu(window.getRulesManager().getRulesDropdown());
         textField.positionCaret(textField.getText().length());
         caretPos = textField.getText().length();
+    }
+
+    private boolean isEditable() {
+        if (proofLine.isAssumption() && proofLine.getSubProofLevel() == 0)
+            return window.editMode == EditMode.UNRESTRICTED;
+        else
+            return window.editMode != EditMode.READ_ONLY;
     }
 
     public void setHighlighted(boolean highlighted) {
@@ -272,7 +279,7 @@ public class ProofLine implements LineChangeListener {
         String num = String.valueOf(proofLine.getLineNum() + 1);
         int spaces = (total.length() - num.length());
         numberLbl.setText(spaces < 0 ? "" : StringUtils.repeat("  ", spaces) + num + '.');
-        textField.setEditable(lineNum == window.selectedLineProperty().get());
+        textField.setEditable(lineNum == window.selectedLineProperty().get() && isEditable());
     }
 
     @Override

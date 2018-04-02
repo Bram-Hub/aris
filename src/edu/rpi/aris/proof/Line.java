@@ -56,6 +56,7 @@ public class Line {
         this.lineNumber = lineNumber;
         if (listener != null)
             listener.lineNumber(lineNumber);
+        proof.modify();
     }
 
     public int getSubProofLevel() {
@@ -66,6 +67,7 @@ public class Line {
         this.subProofLevel = subProofLevel;
         if (listener != null)
             listener.subProofLevel(subProofLevel);
+        proof.modify();
     }
 
     public Proof.Status getStatus() {
@@ -90,6 +92,7 @@ public class Line {
     private void onPremiseChange() {
         verifyClaim();
         proof.resetGoalStatus();
+        proof.modify();
     }
 
     synchronized void addPremise(Line premise) {
@@ -231,6 +234,7 @@ public class Line {
             listener.expressionString(expressionString);
         for (Runnable r : expressionChangeListeners)
             r.run();
+        proof.modify();
     }
 
     public boolean isUnderlined() {
@@ -253,6 +257,7 @@ public class Line {
             listener.selectedRule(rule);
         verifyClaim();
         proof.resetGoalStatus();
+        proof.modify();
     }
 
     public String getStatusString() {
