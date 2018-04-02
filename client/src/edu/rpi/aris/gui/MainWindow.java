@@ -114,8 +114,12 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener {
         selectedLine.addListener((observableValue, oldVal, newVal) -> {
             statusLbl.textProperty().unbind();
             errorRangeLbl.textProperty().unbind();
-            if (selectedLine.get() >= 0)
+            if (newVal.intValue() >= 0) {
                 proof.getLine(newVal.intValue()).verifyClaim();
+                proofLines.get(newVal.intValue()).requestFocus();
+            } else if (newVal.intValue() < -1) {
+                goalLines.get(newVal.intValue() * -1 - 2).requestFocus();
+            }
             updateHighlighting(newVal.intValue());
         });
     }
@@ -851,10 +855,6 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener {
                 if (response.equalsIgnoreCase("n") || response.equalsIgnoreCase("no"))
                     return false;
                 break;
-//            case SERVER:
-//                System.out.println("The given file \"" + name + "\" was written by " + program.getTextContent() + " version " + version.getTextContent());
-//                System.out.println("Aris will attempt to read the file anyway");
-//                break;
         }
         return true;
     }

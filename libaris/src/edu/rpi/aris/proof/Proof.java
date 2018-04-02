@@ -80,6 +80,8 @@ public class Proof {
 
     public void removeGoal(int goalNum) {
         goals.remove(goalNum);
+        for (int i = goalNum; i < goals.size(); ++i)
+            goals.get(i).setGoalNum(i);
         modify();
     }
 
@@ -167,8 +169,8 @@ public class Proof {
             for (Line l : lines)
                 l.lineDeleted(lines.get(lineNum));
             Line removed = lines.remove(lineNum);
-            for (int i = lineNum + 1; i < lines.size(); ++i)
-                lines.get(i).setLineNum(i - 1);
+            for (int i = lineNum; i < lines.size(); ++i)
+                lines.get(i).setLineNum(i);
             if (getNumPremises() > 1 && lineNum < getNumPremises()) {
                 if (removed.isUnderlined() && lineNum > 0)
                     lines.get(lineNum - 1).setUnderlined(true);

@@ -192,4 +192,8 @@ public class GoalLine implements LineChangeListener {
     public void underlined(boolean underlined) {
 
     }
+
+    public void requestFocus() {
+        goalText.requestFocus();
+    }
 }
