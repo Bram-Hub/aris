@@ -1,8 +1,8 @@
 package edu.rpi.aris.net.server;
 
 import edu.rpi.aris.LibAris;
+import edu.rpi.aris.SelfExpiringHashMap;
 import edu.rpi.aris.net.NetUtil;
-import org.apache.commons.collections.map.PassiveExpiringMap;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -19,20 +19,19 @@ import java.sql.*;
 import java.text.ParseException;
 import java.util.*;
 import java.util.Date;
-import java.util.concurrent.TimeUnit;
 
 public abstract class ClientHandler implements Runnable {
 
     private static final Logger logger = LogManager.getLogger(ClientHandler.class);
 
     private static final SecureRandom random = new SecureRandom();
+    private static SelfExpiringHashMap<String, String> banList = new SelfExpiringHashMap<>(60 * 60 * 1000);
+    private static SelfExpiringHashMap<String, HashSet<Long>> loginAttempts = new SelfExpiringHashMap<>(10 * 60 * 1000);
     private final SSLSocket socket;
     private DatabaseManager dbManager;
     private String clientName, clientVersion;
     private DataInputStream in;
     private DataOutputStream out;
-    private PassiveExpiringMap<String, String> banList = new PassiveExpiringMap<>(60, TimeUnit.MINUTES);
-    private PassiveExpiringMap<String, HashSet<Long>> loginAttempts = new PassiveExpiringMap<>(10, TimeUnit.MINUTES);
     private String username, userType;
     private int userId;
     private MessageDigest digest;
@@ -74,9 +73,11 @@ public abstract class ClientHandler implements Runnable {
             out = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
             logger.info("[" + clientName + "] Connection successful");
             if (banList.containsKey(socket.getInetAddress().toString())) {
+                logger.info("[" + clientName + "] IP address is temp banned. Disconnecting");
                 out.writeUTF(NetUtil.AUTH_BAN);
                 out.flush();
                 disconnect();
+                return;
             }
             logger.info("[" + clientName + "] Waiting for client version");
             clientVersion = in.readUTF();
@@ -128,6 +129,7 @@ public abstract class ClientHandler implements Runnable {
             return false;
         }
         username = URLDecoder.decode(auth[2], "UTF-8").toLowerCase();
+        logger.info("[" + clientName + "] Authenticating user: " + username);
         String pass = URLDecoder.decode(auth[3], "UTF-8");
         try (Connection connection = dbManager.getConnection();
              PreparedStatement statement = connection.prepareStatement("SELECT salt, password_hash, access_token, id, user_type FROM users WHERE username = ?;")) {
@@ -153,18 +155,20 @@ public abstract class ClientHandler implements Runnable {
                         return true;
                     } else {
                         if (auth[1].equals(NetUtil.AUTH_PASS)) {
-                            if (updateBanList())
+                            if (updateBanList()) {
+                                logger.info("[" + clientName + "] Client has been banned for 60 minutes");
                                 sendMessage(NetUtil.AUTH_BAN);
-                            else
+                            } else
                                 sendMessage(NetUtil.AUTH_FAIL);
                         } else
                             sendMessage(NetUtil.AUTH_FAIL);
                         return false;
                     }
                 } else {
-                    if (updateBanList())
+                    if (updateBanList()) {
+                        logger.info("[" + clientName + "] IP address has been banned for 60 minutes due to repeated failed login attempts");
                         sendMessage(NetUtil.AUTH_BAN);
-                    else
+                    } else
                         sendMessage(NetUtil.AUTH_FAIL);
                     return false;
                 }
@@ -178,16 +182,11 @@ public abstract class ClientHandler implements Runnable {
 
     private boolean updateBanList() {
         String ip = socket.getInetAddress().toString();
-        HashSet<Long> attempts = loginAttempts.get(ip);
-        if (attempts == null)
-            attempts = new HashSet<>();
-        else {
-            Calendar now = Calendar.getInstance();
-            now.add(Calendar.MINUTE, -10);
-            attempts.removeIf(l -> l < now.getTimeInMillis());
-        }
+        HashSet<Long> attempts = loginAttempts.computeIfAbsent(ip, i -> new HashSet<>());
+        Calendar now = Calendar.getInstance();
+        now.add(Calendar.MINUTE, -10);
+        attempts.removeIf(l -> l < now.getTimeInMillis());
         attempts.add(System.currentTimeMillis());
-        loginAttempts.put(ip, attempts);
         if (attempts.size() >= 10) {
             banList.put(ip, ip);
             return true;
@@ -522,7 +521,7 @@ public abstract class ClientHandler implements Runnable {
                     }
                     byte[] data = new byte[(int) size];
                     if (size != in.read(data)) {
-                        sendMessage("FAILED");
+                        sendMessage(NetUtil.ERROR);
                         return;
                     }
                     insert.setInt(1, cid);
@@ -721,29 +720,30 @@ public abstract class ClientHandler implements Runnable {
             sendMessage(NetUtil.INVALID);
             return;
         }
-        long size;
+        int size;
         try {
-            size = Long.parseLong(proofInfo[1]);
+            size = Integer.parseInt(proofInfo[1]);
         } catch (NumberFormatException e) {
             sendMessage(NetUtil.ERROR);
             return;
         }
         if (size <= 0) {
+            sendMessage(NetUtil.NO_DATA);
+            return;
+        } else if (size > NetUtil.MAX_FILE_SIZE) {
+            sendMessage(NetUtil.TOO_LARGE);
+            return;
+        } else {
             sendMessage(NetUtil.OK);
-            return;
         }
-        if (size > NetUtil.MAX_FILE_SIZE) {
-            sendMessage("TOO LARGE");
-            return;
-        }
-        byte[] data = new byte[(int) size];
+        byte[] data = new byte[size];
         if (size != in.read(data)) {
-            sendMessage("FAILED");
+            sendMessage(NetUtil.ERROR);
             return;
         }
         ByteArrayInputStream bis = new ByteArrayInputStream(data);
         try (Connection connection = dbManager.getConnection();
-             PreparedStatement statement = connection.prepareStatement("INSERT INTO proof VALUES(NULL, ?, ?, ?)")) {
+             PreparedStatement statement = connection.prepareStatement("INSERT INTO proof (name, data, created_by, created_on) VALUES (?, ?, (SELECT username FROM users WHERE id = ? LIMIT 1), now())")) {
             statement.setString(1, proofInfo[0]);
             statement.setBinaryStream(2, bis);
             statement.setInt(3, userId);
@@ -811,7 +811,7 @@ public abstract class ClientHandler implements Runnable {
                 }
                 byte[] data = new byte[(int) size];
                 if (size != in.read(data)) {
-                    sendMessage("FAILED");
+                    sendMessage(NetUtil.ERROR);
                     return;
                 }
                 ByteArrayInputStream bis = new ByteArrayInputStream(data);

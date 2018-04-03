@@ -11,6 +11,9 @@ public class ProofInfo extends AssignmentInfo {
 
     private final int proofId;
     private final String name;
+    private final String createdBy;
+    private final long createdOn;
+    private final boolean isInstructor;
     private ArrayList<SubmissionInfo> children = new ArrayList<>();
     private GradingStatus gradingStatus = GradingStatus.NONE;
     private String status;
@@ -21,6 +24,9 @@ public class ProofInfo extends AssignmentInfo {
     public ProofInfo(int proofId, String name, String createdBy, long createdOn, boolean isInstructor) {
         this.proofId = proofId;
         this.name = name;
+        this.createdBy = createdBy;
+        this.createdOn = createdOn;
+        this.isInstructor = isInstructor;
         btn = new Button("Open Template");
     }
 
@@ -72,5 +78,17 @@ public class ProofInfo extends AssignmentInfo {
 
     public long getTimestamp() {
         return timestamp;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getCreatedBy() {
+        return createdBy;
+    }
+
+    public long getCreatedOn() {
+        return createdOn;
     }
 }

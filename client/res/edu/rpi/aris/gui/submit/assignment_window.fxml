@@ -77,11 +77,12 @@
                               <Button mnemonicParsing="false" onAction="#importProof" text="Import Proof" />
                            </children>
                         </HBox>
-                        <TableView prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
+                        <TableView fx:id="proofTable" editable="true" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
                           <columns>
-                            <TableColumn prefWidth="75.0" text="Name" />
-                            <TableColumn editable="false" prefWidth="75.0" text="Created By" />
-                              <TableColumn editable="false" prefWidth="75.0" text="Edit/View" />
+                            <TableColumn fx:id="proofName" prefWidth="75.0" text="Name" />
+                            <TableColumn fx:id="proofBy" editable="false" prefWidth="75.0" text="Created By" />
+                              <TableColumn fx:id="proofOn" editable="false" prefWidth="75.0" text="Created On" />
+                              <TableColumn fx:id="proofEdit" editable="false" prefWidth="75.0" text="Edit/View" />
                           </columns>
                            <columnResizePolicy>
                               <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />

@@ -128,12 +128,17 @@ public class Main implements Thread.UncaughtExceptionHandler {
     }
 
     private static void sendIpcMessage(String msg) throws IOException {
-        FileOutputStream fos = new FileOutputStream(ipcFile, true);
-        ipcLock = fos.getChannel().lock();
-        try (PrintWriter writer = new PrintWriter(fos, true)) {
+        PrintWriter writer = null;
+        //noinspection TryFinallyCanBeTryWithResources
+        try {
+            FileOutputStream fos = new FileOutputStream(ipcFile, true);
+            ipcLock = fos.getChannel().lock();
+            writer = new PrintWriter(fos, true);
             writer.println(msg);
         } finally {
             ipcLock.release();
+            if (writer != null)
+                writer.close();
         }
     }
 

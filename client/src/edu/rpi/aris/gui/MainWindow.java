@@ -880,10 +880,6 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener {
                 System.out.println("Press enter to confirm");
                 Main.readLine();
                 break;
-//            case SERVER:
-//                System.out.println("File integrity check failed for " + name);
-//                System.out.println("The system will still attempt to load the file and will mark the author as UNKNOWN");
-//                break;
         }
     }
 }

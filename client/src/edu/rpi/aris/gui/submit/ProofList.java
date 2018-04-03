@@ -19,11 +19,25 @@ public class ProofList {
     private static final Logger logger = LogManager.getLogger(ProofList.class);
     private SimpleBooleanProperty loaded = new SimpleBooleanProperty(false);
     private ObservableList<ProofInfo> proofs = FXCollections.observableArrayList();
+    private boolean listenerAdded = false;
 
-    public void load(Runnable runnable, boolean reload) {
+    private synchronized void addListener() {
+        if (listenerAdded)
+            return;
+        AssignmentWindow.instance.getClientInfo().loadedProperty().addListener((observable, oldValue, newValue) -> {
+            if (!newValue) {
+                loaded.set(false);
+                proofs.clear();
+            }
+        });
+        listenerAdded = true;
+    }
+
+    public void load(boolean reload) {
+        addListener();
         if (reload)
             loaded.set(false);
-        if (loaded.get())
+        if (loaded.get() || !AssignmentWindow.instance.getClientInfo().isInstructorProperty().get())
             return;
         proofs.clear();
         new Thread(() -> {
@@ -53,8 +67,6 @@ public class ProofList {
                     Platform.runLater(() -> proofs.add(new ProofInfo(pid, name, createdBy, finalTimestamp, true)));
                 }
                 Platform.runLater(() -> loaded.set(true));
-                if (runnable != null)
-                    runnable.run();
             } catch (IOException e) {
                 Platform.runLater(() -> {
                     loaded.set(false);
@@ -68,4 +80,7 @@ public class ProofList {
         }).start();
     }
 
+    public ObservableList<ProofInfo> getProofs() {
+        return proofs;
+    }
 }

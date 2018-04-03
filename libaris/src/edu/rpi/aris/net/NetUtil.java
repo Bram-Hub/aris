@@ -58,6 +58,8 @@ public class NetUtil {
     public static final int DEFAULT_PORT = 9001; // IT'S OVER 9000!
     public static final int SOCKET_TIMEOUT = 15000;
     public static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    public static final String TOO_LARGE = "TOO_LARGE";
+    public static final String NO_DATA = "NO_DATA";
 
     /**
      * Compares two version strings.

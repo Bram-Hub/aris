@@ -66,15 +66,23 @@ public class SaveManager {
     }
 
     public synchronized boolean saveProof(Proof proof, File file) throws IOException, TransformerException {
+        return saveProof(proof, file, true);
+    }
+
+    public synchronized boolean saveProof(Proof proof, File file, boolean saveAuthors) throws IOException, TransformerException {
         if (proof == null || file == null)
             return false;
         if (!file.exists())
             if (!file.createNewFile())
                 throw new IOException("Failed to save proof");
-        return saveProof(proof, new FileOutputStream(file));
+        return saveProof(proof, new FileOutputStream(file), saveAuthors);
     }
 
     public synchronized boolean saveProof(Proof proof, OutputStream out) throws TransformerException {
+        return saveProof(proof, out, true);
+    }
+
+    public synchronized boolean saveProof(Proof proof, OutputStream out, boolean saveAuthors) throws TransformerException {
         if (proof == null || out == null)
             return false;
         Document doc = documentBuilder.newDocument();
@@ -110,11 +118,12 @@ public class SaveManager {
 
         Element metadata = doc.createElement("metadata");
 
-        for (String author : proof.getAuthors()) {
-            Element a = doc.createElement("author");
-            a.appendChild(doc.createTextNode(author));
-            metadata.appendChild(a);
-        }
+        if (saveAuthors)
+            for (String author : proof.getAuthors()) {
+                Element a = doc.createElement("author");
+                a.appendChild(doc.createTextNode(author));
+                metadata.appendChild(a);
+            }
 
         root.insertBefore(metadata, baseProof);
 

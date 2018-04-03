@@ -20,7 +20,7 @@ import java.util.Base64;
 public class DatabaseManager {
 
     private static final String[] tables = new String[]{"submission", "assignment", "proof", "user_class", "users", "class", "version"};
-    private static final int DB_SCHEMA_VERSION = 2;
+    private static final int DB_SCHEMA_VERSION = 3;
     private static Logger logger = LogManager.getLogger(DatabaseManager.class);
 
     static {
@@ -108,9 +108,8 @@ public class DatabaseManager {
                     "(id serial PRIMARY KEY," +
                     "name text," +
                     "data bytea," +
-                    "created_by integer," +
-                    "created_on timestamp," +
-                    "constraint p_cb foreign key (created_by) references users(id) on delete set NULL);");
+                    "created_by text," +
+                    "created_on timestamp);");
             statement.execute("CREATE TABLE IF NOT EXISTS assignment" +
                     "(id integer," +
                     "class_id integer," +
@@ -156,6 +155,30 @@ public class DatabaseManager {
             statement.execute("ALTER TABLE proof ADD COLUMN created_on timestamp;");
             statement.execute("UPDATE proof SET created_on=now();");
             statement.execute("UPDATE version SET version=2");
+            connection.commit();
+        } catch (Throwable e) {
+            connection.rollback();
+            logger.error("An error occurred while updating the database schema and the changes were rolled back");
+            throw e;
+        } finally {
+            connection.setAutoCommit(autoCommit);
+        }
+        updateSchema2(connection);
+    }
+
+    private void updateSchema2(Connection connection) throws SQLException {
+        logger.info("Updating database schema to version 3");
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("CREATE TABLE temp_proof (id integer, uid integer, uname text);");
+            statement.execute("INSERT INTO temp_proof (id, uid) SELECT id, created_by FROM proof;");
+            statement.execute("UPDATE temp_proof SET uname = users.username FROM users WHERE temp_proof.uid = users.id;");
+            statement.execute("ALTER TABLE proof DROP COLUMN created_by;");
+            statement.execute("ALTER TABLE proof ADD COLUMN created_by text;");
+            statement.execute("UPDATE proof SET created_by=temp_proof.uname FROM temp_proof WHERE proof.id = temp_proof.id;");
+            statement.execute("DROP TABLE temp_proof;");
+            statement.execute("UPDATE version SET version=3");
             connection.commit();
         } catch (Throwable e) {
             connection.rollback();

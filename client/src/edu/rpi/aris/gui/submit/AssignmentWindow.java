@@ -5,13 +5,18 @@ import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
 import edu.rpi.aris.proof.Proof;
+import edu.rpi.aris.proof.SaveInfoListener;
+import edu.rpi.aris.proof.SaveManager;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
+import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
@@ -19,10 +24,13 @@ import javafx.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.xml.transform.TransformerException;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.text.DateFormat;
 import java.util.Optional;
 
-public class AssignmentWindow {
+public class AssignmentWindow implements SaveInfoListener {
 
     public static final AssignmentWindow instance = new AssignmentWindow();
 
@@ -48,11 +56,25 @@ public class AssignmentWindow {
     private Tab studentTab;
     @FXML
     private Tab proofTab;
+    @FXML
+    private TableView<ProofInfo> proofTable;
+    @FXML
+    private TableColumn<ProofInfo, String> proofName;
+    @FXML
+    private TableColumn<ProofInfo, String> proofBy;
+    @FXML
+    private TableColumn<ProofInfo, String> proofOn;
+    @FXML
+    private TableColumn<ProofInfo, Button> proofEdit;
     private Stage stage;
     private ClientInfo clientInfo;
+    private ProofList proofList;
+    private SaveManager saveManager;
 
     public AssignmentWindow() {
         clientInfo = new ClientInfo();
+        proofList = new ProofList();
+        saveManager = new SaveManager(this);
         FXMLLoader loader = new FXMLLoader(AssignmentWindow.class.getResource("assignment_window.fxml"));
         loader.setController(this);
         Parent root;
@@ -107,6 +129,7 @@ public class AssignmentWindow {
             if (newValue) {
                 tabPane.getStyleClass().remove(HIDE_TAB);
             } else {
+                tabPane.getSelectionModel().select(assignmentTab);
                 if (!tabPane.getStyleClass().contains(HIDE_TAB))
                     tabPane.getStyleClass().add(HIDE_TAB);
             }
@@ -114,6 +137,31 @@ public class AssignmentWindow {
         tabPane.getStyleClass().add(HIDE_TAB);
         studentTab.disableProperty().bind(clientInfo.isInstructorProperty().not());
         proofTab.disableProperty().bind(clientInfo.isInstructorProperty().not());
+        tabPane.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue == proofTab)
+                proofList.load(false);
+        });
+        proofName.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getName()));
+        proofName.setOnEditCommit(event -> {
+            System.out.println("Proof " + event.getOldValue() + " changed to " + event.getNewValue());
+            //TODO
+        });
+        proofName.setStyle("-fx-alignment: CENTER;");
+        proofBy.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getCreatedBy()));
+        proofName.setCellFactory(TextFieldTableCell.forTableColumn());
+        proofBy.setStyle("-fx-alignment: CENTER;");
+        proofOn.setCellValueFactory(param -> new SimpleStringProperty(DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(param.getValue().getCreatedOn())));
+        proofOn.setStyle("-fx-alignment: CENTER;");
+        proofEdit.setCellValueFactory(param -> {
+            Button btn = new Button("View/Edit");
+            btn.setOnAction(event -> {
+                System.out.println("Button pressed");
+                //TODO
+            });
+            return new SimpleObjectProperty<>(btn);
+        });
+        proofEdit.setStyle("-fx-alignment: CENTER;");
+        Bindings.bindContent(proofTable.getItems(), proofList.getProofs());
     }
 
     private MenuBar setupMenu() {
@@ -185,12 +233,10 @@ public class AssignmentWindow {
                     client.disconnect();
                 }
                 final int id = classId;
-                Platform.runLater(() -> {
-                    clientInfo.load(() -> Platform.runLater(() -> {
-                        if (id >= 0)
-                            selectClass(id);
-                    }), true);
-                });
+                Platform.runLater(() -> clientInfo.load(() -> Platform.runLater(() -> {
+                    if (id >= 0)
+                        selectClass(id);
+                }), true));
             }).start();
         }
     }
@@ -227,7 +273,11 @@ public class AssignmentWindow {
     }
 
     public void load(boolean reload) {
-        clientInfo.load(() -> Platform.runLater(() -> selectClass(GuiConfig.getConfigManager().selectedCourseId.get())), reload);
+        clientInfo.load(() -> Platform.runLater(() -> {
+            selectClass(GuiConfig.getConfigManager().selectedCourseId.get());
+            if (clientInfo.isInstructorProperty().get() && tabPane.getSelectionModel().getSelectedItem() == proofTab)
+                proofList.load(reload);
+        }), reload);
     }
 
     private void selectClass(int classId) {
@@ -258,7 +308,26 @@ public class AssignmentWindow {
     }
 
     private void addProof(String name, Proof proof) {
-
+        new Thread(() -> {
+            Client client = Main.getClient();
+            try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+                saveManager.saveProof(proof, baos, false);
+                byte[] data = baos.toByteArray();
+                client.connect();
+                client.sendMessage(NetUtil.CREATE_PROOF);
+                client.sendMessage(name + "|" + data.length);
+                String msg = client.readMessage();
+                if (!NetUtil.OK.equals(Client.checkError(msg)))
+                    throw new IOException("Failed to add proof: " + msg);
+                client.sendData(data);
+                Client.checkError(client.readMessage());
+            } catch (IOException | TransformerException e) {
+                System.out.println("Error");
+                //TODO
+            } finally {
+                client.disconnect();
+            }
+        }).start();
     }
 
     @FXML
@@ -266,9 +335,7 @@ public class AssignmentWindow {
         try {
             AddProofDialog dialog = new AddProofDialog(stage);
             Optional<Pair<String, Proof>> result = dialog.showAndWait();
-            result.ifPresent(r -> {
-
-            });
+            result.ifPresent(r -> addProof(r.getKey(), r.getValue()));
         } catch (IOException e) {
             logger.error("Failed to show add proof dialog");
             Main.instance.showExceptionError(Thread.currentThread(), e, false);
@@ -280,4 +347,27 @@ public class AssignmentWindow {
         //TODO
     }
 
+    @Override
+    public boolean notArisFile(String filename, String programName, String programVersion) {
+        Alert noAris = new Alert(Alert.AlertType.CONFIRMATION);
+        noAris.setTitle("Not Aris File");
+        noAris.setHeaderText("Not Aris File");
+        noAris.setContentText("The given file \"" + filename + "\" was written by " + programName + " version " + programVersion + "\n" +
+                "Aris may still be able to read this file with varying success\n" +
+                "Would you like to attempt to load this file?");
+        Optional<ButtonType> option = noAris.showAndWait();
+        return option.isPresent() && option.get() == ButtonType.YES;
+    }
+
+    @Override
+    public void integrityCheckFailed(String filename) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("File integrity check failed");
+        alert.setHeaderText("File integrity check failed");
+        alert.setContentText("This file may be corrupted or may have been tampered with.\n" +
+                "If this file successfully loads the author will be marked as UNKNOWN.\n" +
+                "This will show up if this file is submitted and may affect your grade.");
+        alert.getDialogPane().setPrefWidth(500);
+        alert.showAndWait();
+    }
 }
