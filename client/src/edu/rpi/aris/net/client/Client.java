@@ -66,6 +66,7 @@ public class Client {
     }
 
     private ReentrantLock connectionLock = new ReentrantLock(true);
+    private ReentrantLock stateChangeLock = new ReentrantLock(true);
     private SSLSocketFactory socketFactory = null;
     private SSLSocket socket;
     private DataInputStream in;
@@ -394,6 +395,7 @@ public class Client {
     public void connect() throws IOException {
         connectionLock.lock();
         try {
+            stateChangeLock.lock();
             if (!ping()) {
                 disconnect();
                 String server = GuiConfig.serverAddress.get();
@@ -420,6 +422,8 @@ public class Client {
         } catch (IOException e) {
             disconnect();
             throw e;
+        } finally {
+            stateChangeLock.unlock();
         }
     }
 
@@ -560,6 +564,7 @@ public class Client {
 
     public synchronized void disconnect() {
         try {
+            stateChangeLock.lock();
             try {
                 if (in != null)
                     in.close();
@@ -581,11 +586,12 @@ public class Client {
             setConnectionStatus(ConnectionStatus.DISCONNECTED);
             if (connectionLock.isHeldByCurrentThread())
                 connectionLock.unlock();
+            stateChangeLock.unlock();
         }
     }
 
     public synchronized boolean ping() throws IOException {
-        if (socket != null) {
+        if (socket != null && out != null && in != null) {
             out.writeUTF("PING");
             out.flush();
             try {

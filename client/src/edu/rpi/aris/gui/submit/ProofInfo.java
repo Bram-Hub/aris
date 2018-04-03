@@ -91,4 +91,8 @@ public class ProofInfo extends AssignmentInfo {
     public long getCreatedOn() {
         return createdOn;
     }
+
+    public int getProofId() {
+        return proofId;
+    }
 }

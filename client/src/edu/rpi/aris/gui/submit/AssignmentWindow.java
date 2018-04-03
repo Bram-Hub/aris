@@ -13,12 +13,14 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -45,6 +47,8 @@ public class AssignmentWindow implements SaveInfoListener {
     @FXML
     private Button login;
     @FXML
+    private Button refreshButton;
+    @FXML
     private ProgressIndicator loading;
     @FXML
     private Label lblClass;
@@ -66,6 +70,8 @@ public class AssignmentWindow implements SaveInfoListener {
     private TableColumn<ProofInfo, String> proofOn;
     @FXML
     private TableColumn<ProofInfo, Button> proofEdit;
+    @FXML
+    private TableColumn<ProofInfo, Button> proofDelete;
     private Stage stage;
     private ClientInfo clientInfo;
     private ProofList proofList;
@@ -123,6 +129,10 @@ public class AssignmentWindow implements SaveInfoListener {
         login.visibleProperty().bind(Bindings.createBooleanBinding(() -> GuiConfig.getConfigManager().username.get() == null || !clientInfo.loadedProperty().get(), GuiConfig.getConfigManager().username, clientInfo.loadedProperty()));
         login.managedProperty().bind(login.visibleProperty());
         login.setOnAction(actionEvent -> load(true));
+        refreshButton.visibleProperty().bind(clientInfo.loadedProperty());
+        refreshButton.managedProperty().bind(clientInfo.loadedProperty());
+        refreshButton.disableProperty().bind(Main.getClient().getConnectionStatusProperty().isNotEqualTo(Client.ConnectionStatus.DISCONNECTED));
+        refreshButton.setPadding(new Insets(5));
         loading.visibleProperty().bind(Main.getClient().getConnectionStatusProperty().isNotEqualTo(Client.ConnectionStatus.DISCONNECTED));
         loading.managedProperty().bind(loading.visibleProperty());
         clientInfo.isInstructorProperty().addListener((observable, oldValue, newValue) -> {
@@ -154,13 +164,16 @@ public class AssignmentWindow implements SaveInfoListener {
         proofOn.setStyle("-fx-alignment: CENTER;");
         proofEdit.setCellValueFactory(param -> {
             Button btn = new Button("View/Edit");
-            btn.setOnAction(event -> {
-                System.out.println("Button pressed");
-                //TODO
-            });
+            btn.setOnAction(event -> editProof(param.getValue()));
             return new SimpleObjectProperty<>(btn);
         });
         proofEdit.setStyle("-fx-alignment: CENTER;");
+        proofDelete.setCellValueFactory(param -> {
+            Button btn = new Button("Delete");
+            btn.setOnAction(event -> deleteProof(param.getValue()));
+            return new SimpleObjectProperty<>(btn);
+        });
+        proofDelete.setStyle("-fx-alignment: CENTER;");
         Bindings.bindContent(proofTable.getItems(), proofList.getProofs());
     }
 
@@ -273,10 +286,16 @@ public class AssignmentWindow implements SaveInfoListener {
     }
 
     public void load(boolean reload) {
+        Tab selected = tabPane.getSelectionModel().getSelectedItem();
         clientInfo.load(() -> Platform.runLater(() -> {
             selectClass(GuiConfig.getConfigManager().selectedCourseId.get());
-            if (clientInfo.isInstructorProperty().get() && tabPane.getSelectionModel().getSelectedItem() == proofTab)
-                proofList.load(reload);
+            new Thread(() -> {
+                if (clientInfo.isInstructorProperty().get()) {
+                    Platform.runLater(() -> tabPane.getSelectionModel().select(selected));
+                    if (selected == proofTab)
+                        proofList.load(true);
+                }
+            }).start();
         }), reload);
     }
 
@@ -321,6 +340,7 @@ public class AssignmentWindow implements SaveInfoListener {
                     throw new IOException("Failed to add proof: " + msg);
                 client.sendData(data);
                 Client.checkError(client.readMessage());
+                proofList.load(true);
             } catch (IOException | TransformerException e) {
                 System.out.println("Error");
                 //TODO
@@ -328,6 +348,45 @@ public class AssignmentWindow implements SaveInfoListener {
                 client.disconnect();
             }
         }).start();
+    }
+
+    private void deleteProof(ProofInfo proof) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.initOwner(stage);
+        alert.initModality(Modality.WINDOW_MODAL);
+        alert.setTitle("Delete Proof");
+        alert.setHeaderText("Are you sure?");
+        Label lbl = new Label("Are you sure you want to delete the proof titled \"" + proof.getName() + "\"?\nThis will also remove the proof from any associated assignments and delete and associated submissions");
+        lbl.setWrapText(true);
+        alert.getDialogPane().setContent(lbl);
+        alert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
+        ((Button) alert.getDialogPane().lookupButton(ButtonType.YES)).setDefaultButton(false);
+        ((Button) alert.getDialogPane().lookupButton(ButtonType.NO)).setDefaultButton(true);
+        alert.showAndWait().ifPresent(type -> {
+            if (type == ButtonType.YES) {
+                new Thread(() -> {
+                    Client client = Main.getClient();
+                    try {
+                        client.connect();
+                        client.sendMessage(NetUtil.DELETE_PROOF);
+                        client.sendMessage(String.valueOf(proof.getProofId()));
+                        String msg = client.readMessage();
+                        if (!Client.checkError(msg).equals(NetUtil.OK))
+                            throw new IOException("Failed to delete proof: " + msg);
+                        Platform.runLater(() -> proofList.remove(proof));
+                    } catch (IOException e) {
+                        System.out.println("Connection error");
+                        //TODO
+                    } finally {
+                        client.disconnect();
+                    }
+                }).start();
+            }
+        });
+    }
+
+    private void editProof(ProofInfo proof) {
+
     }
 
     @FXML
@@ -345,6 +404,11 @@ public class AssignmentWindow implements SaveInfoListener {
     @FXML
     private void importProof() {
         //TODO
+    }
+
+    @FXML
+    private void refresh() {
+        load(true);
     }
 
     @Override

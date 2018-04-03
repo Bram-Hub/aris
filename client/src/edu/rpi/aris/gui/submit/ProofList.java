@@ -83,4 +83,8 @@ public class ProofList {
     public ObservableList<ProofInfo> getProofs() {
         return proofs;
     }
+
+    public void remove(ProofInfo proof) {
+        proofs.remove(proof);
+    }
 }
