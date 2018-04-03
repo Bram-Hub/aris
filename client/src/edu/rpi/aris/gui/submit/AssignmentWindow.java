@@ -290,11 +290,8 @@ public class AssignmentWindow implements SaveInfoListener {
         clientInfo.load(() -> Platform.runLater(() -> {
             selectClass(GuiConfig.getConfigManager().selectedCourseId.get());
             new Thread(() -> {
-                if (clientInfo.isInstructorProperty().get()) {
+                if (clientInfo.isInstructorProperty().get())
                     Platform.runLater(() -> tabPane.getSelectionModel().select(selected));
-                    if (selected == proofTab)
-                        proofList.load(true);
-                }
             }).start();
         }), reload);
     }

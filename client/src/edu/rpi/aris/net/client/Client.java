@@ -66,7 +66,6 @@ public class Client {
     }
 
     private ReentrantLock connectionLock = new ReentrantLock(true);
-    private ReentrantLock stateChangeLock = new ReentrantLock(true);
     private SSLSocketFactory socketFactory = null;
     private SSLSocket socket;
     private DataInputStream in;
@@ -293,6 +292,7 @@ public class Client {
         setConnectionStatus(ConnectionStatus.CONNECTING);
         socket = (SSLSocket) getSocketFactory().createSocket(serverAddress, port);
         socket.setSoTimeout(NetUtil.SOCKET_TIMEOUT);
+        final Object sync = new Object();
         socket.addHandshakeCompletedListener(listener -> {
             try {
                 X509Certificate cert = (X509Certificate) listener.getPeerCertificates()[0];
@@ -307,16 +307,16 @@ public class Client {
                 errorString = e.getMessage();
                 setConnectionStatus(ConnectionStatus.ERROR);
             }
-            synchronized (Client.this) {
-                Client.this.notify();
+            synchronized (sync) {
+                sync.notify();
             }
         });
         try {
             setConnectionStatus(ConnectionStatus.HANDSHAKING);
             socket.startHandshake();
-            synchronized (this) {
+            synchronized (sync) {
                 try {
-                    wait();
+                    sync.wait();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -361,7 +361,7 @@ public class Client {
         }
     }
 
-    private void doAuth(String user, String pass, boolean isAccessToken) throws IOException {
+    private synchronized void doAuth(String user, String pass, boolean isAccessToken) throws IOException {
         sendMessage(NetUtil.ARIS_NAME + " " + LibAris.VERSION);
         String version = in.readUTF();
         if (version.equals(NetUtil.INVALID_VERSION))
@@ -395,9 +395,8 @@ public class Client {
     public void connect() throws IOException {
         connectionLock.lock();
         try {
-            stateChangeLock.lock();
             if (!ping()) {
-                disconnect();
+                disconnect(false);
                 String server = GuiConfig.serverAddress.get();
                 if (server == null || server.length() == 0) {
                     Pair<String, Integer> info = getServerAddress(null);
@@ -422,8 +421,6 @@ public class Client {
         } catch (IOException e) {
             disconnect();
             throw e;
-        } finally {
-            stateChangeLock.unlock();
         }
     }
 
@@ -563,8 +560,13 @@ public class Client {
     }
 
     public synchronized void disconnect() {
+        disconnect(true);
+    }
+
+    private synchronized void disconnect(boolean releaseLock) {
+        if (!connectionLock.isHeldByCurrentThread())
+            return;
         try {
-            stateChangeLock.lock();
             try {
                 if (in != null)
                     in.close();
@@ -584,9 +586,8 @@ public class Client {
             out = null;
             socket = null;
             setConnectionStatus(ConnectionStatus.DISCONNECTED);
-            if (connectionLock.isHeldByCurrentThread())
+            if (releaseLock && connectionLock.isHeldByCurrentThread())
                 connectionLock.unlock();
-            stateChangeLock.unlock();
         }
     }
 
