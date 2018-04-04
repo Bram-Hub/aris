@@ -1,0 +1,9 @@
+commons-cli:commons-cli:1.4
+commons-collections:commons-collections:4.0-SNAPSHOT
+commons-io:commons-io:2.6
+org.apache.commons:commons-lang3:3.7
+org.apache.logging.log4j:log4j-api:2.10.0
+org.apache.logging.log4j:log4j-core:2.10.0
+org.bouncycastle:bcpkix-jdk15on:1.59
+org.bouncycastle:bcprov-jdk15on:1.59
+org.bouncycastle:bctls-jdk15on:1.59
