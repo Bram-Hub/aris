@@ -91,7 +91,7 @@ public class Update {
                 //http://central.maven.org/maven2/commons-io/commons-io/2.6/commons-io-2.6.jar
                 if (split.length != 3)
                     throw new IOException("Invalid library list in remote repository");
-                String groupId = split[0];
+                String groupId = split[0].replaceAll("\\.", "/");
                 String artifactId = split[1];
                 String version = split[2];
                 String name = artifactId + "-" + version + ".jar";
@@ -122,7 +122,7 @@ public class Update {
             return false;
         if (guessDevEnvironment()) {
             logger.warn("Aris appears to be running in a development environment so automatic updating has been disabled");
-            return false;
+//            return false;
         }
         logger.info("Starting update");
         logger.info("Getting download list");
