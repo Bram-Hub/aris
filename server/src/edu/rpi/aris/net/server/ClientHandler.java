@@ -1,8 +1,8 @@
 package edu.rpi.aris.net.server;
 
 import edu.rpi.aris.LibAris;
-import edu.rpi.aris.SelfExpiringHashMap;
 import edu.rpi.aris.net.NetUtil;
+import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -25,8 +25,8 @@ public abstract class ClientHandler implements Runnable {
     private static final Logger logger = LogManager.getLogger(ClientHandler.class);
 
     private static final SecureRandom random = new SecureRandom();
-    private static SelfExpiringHashMap<String, String> banList = new SelfExpiringHashMap<>(60 * 60 * 1000);
-    private static SelfExpiringHashMap<String, HashSet<Long>> loginAttempts = new SelfExpiringHashMap<>(10 * 60 * 1000);
+    private static PassiveExpiringMap<String, String> banList = new PassiveExpiringMap<>(60 * 60 * 1000);
+    private static PassiveExpiringMap<String, HashSet<Long>> loginAttempts = new PassiveExpiringMap<>(10 * 60 * 1000);
     private final SSLSocket socket;
     private DatabaseManager dbManager;
     private String clientName, clientVersion;

@@ -2,20 +2,21 @@
   <artifact build-on-make="true" name="aris-client:jar">
     <output-path>$PROJECT_DIR$/out/artifacts/aris_client_jar</output-path>
     <root id="root">
-      <element id="archive" name="client.jar">
+      <element id="archive" name="aris-client.jar">
         <element id="module-output" name="client" />
         <element id="module-output" name="libaris" />
       </element>
-      <element id="library" level="project" name="org.apache.logging.log4j:log4j-core:2.10.0" />
-      <element id="library" level="project" name="commons-cli:commons-cli:1.4" />
-      <element id="library" level="project" name="org.bouncycastle:bcprov-jdk15on:1.59" />
-      <element id="library" level="project" name="org.apache.logging.log4j:log4j-api:2.10.0" />
-      <element id="library" level="project" name="commons-io:commons-io:2.6" />
-      <element id="library" level="project" name="org.bouncycastle:bcpkix-jdk15on:1.59" />
-      <element id="library" level="project" name="commons-collections:commons-collections:4.0-SNAPSHOT" />
-      <element id="library" level="project" name="org.postgresql:postgresql:42.2.2" />
-      <element id="library" level="project" name="org.apache.commons:commons-lang3:3.7" />
-      <element id="library" level="project" name="org.bouncycastle:bctls-jdk15on:1.59" />
+      <element id="directory" name="lib">
+        <element id="library" level="project" name="commons-cli:commons-cli:1.4" />
+        <element id="library" level="project" name="commons-io:commons-io:2.6" />
+        <element id="library" level="project" name="org.apache.commons:commons-lang3:3.7" />
+        <element id="library" level="project" name="org.apache.logging.log4j:log4j-api:2.10.0" />
+        <element id="library" level="project" name="org.apache.logging.log4j:log4j-core:2.10.0" />
+        <element id="library" level="project" name="org.bouncycastle:bcpkix-jdk15on:1.59" />
+        <element id="library" level="project" name="org.bouncycastle:bcprov-jdk15on:1.59" />
+        <element id="library" level="project" name="org.bouncycastle:bctls-jdk15on:1.59" />
+        <element id="library" level="project" name="org.apache.commons:commons-collections4:4.1" />
+      </element>
     </root>
   </artifact>
 </component>
