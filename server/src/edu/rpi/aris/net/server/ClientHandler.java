@@ -398,7 +398,7 @@ public abstract class ClientHandler implements Runnable {
         try (Connection connection = dbManager.getConnection();
              PreparedStatement userStatement = connection.prepareStatement("SELECT u.id, u.username FROM users u, user_class uc WHERE uc.user_id = u.id AND u.user_type = 'student' AND uc.class_id = ? ORDER BY u.username;");
              PreparedStatement proofs = connection.prepareStatement("SELECT p.id, p.name, p.created_by, p.created_on FROM proof p, assignment a WHERE a.proof_id = p.id AND a.class_id = ? AND a.id = ? ORDER BY p.name;");
-             PreparedStatement userSubmissions = connection.prepareStatement("SELECT u.id, s.id, s.proof_id, s.time, s.status FROM users u, assignment a, submission s, proof p WHERE a.class_id = ? AND a.id = ? AND u.user_type = 'student' AND s.class_id = a.class_id AND s.assignment_id = a.id AND s.user_id = u.id AND p.id = s.proof_id ORDER BY u.username, p.name, s.time DESC;")) {
+             PreparedStatement userSubmissions = connection.prepareStatement("SELECT u.id, s.id, s.proof_id, s.time, s.status, s.short_status FROM users u, assignment a, submission s, proof p WHERE a.class_id = ? AND a.id = ? AND u.user_type = 'student' AND s.class_id = a.class_id AND s.assignment_id = a.id AND s.user_id = u.id AND p.id = s.proof_id ORDER BY u.username, p.name, s.time DESC;")) {
             userStatement.setInt(1, cid);
             ArrayList<String> messages = new ArrayList<>();
             try (ResultSet rs = userStatement.executeQuery()) {
@@ -425,8 +425,15 @@ public abstract class ClientHandler implements Runnable {
             userSubmissions.setInt(1, cid);
             userSubmissions.setInt(2, aid);
             try (ResultSet rs = userSubmissions.executeQuery()) {
-                while (rs.next())
-                    messages.add(rs.getInt(1) + "|" + rs.getInt(2) + "|" + rs.getInt(3) + "|" + URLEncoder.encode(NetUtil.DATE_FORMAT.format(rs.getTimestamp(4)), "UTF-8") + "|" + URLEncoder.encode(rs.getString(5), "UTF-8"));
+                while (rs.next()) {
+                    int uid = rs.getInt(1);
+                    int sid = rs.getInt(2);
+                    int pid = rs.getInt(3);
+                    String timestamp = URLEncoder.encode(NetUtil.DATE_FORMAT.format(rs.getTimestamp(4)), "UTF-8");
+                    String status = URLEncoder.encode(rs.getString(5), "UTF-8");
+                    String shortStatus = URLEncoder.encode(rs.getString(6), "UTF-8");
+                    messages.add(uid + "|" + sid + "|" + pid + "|" + timestamp + "|" + status + "|" + shortStatus);
+                }
             }
             sendMessage(String.valueOf(messages.size()));
             messages.forEach(this::sendMessage);

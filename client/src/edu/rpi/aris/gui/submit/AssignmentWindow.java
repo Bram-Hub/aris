@@ -262,7 +262,19 @@ public class AssignmentWindow implements SaveInfoListener {
         alert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
         alert.setTitle("Delete Class");
         alert.setHeaderText("Are you sure you want to delete the class \"" + course.getName() + "\"?");
-        alert.setContentText("This will also delete all the class's\nassociated assignments and submissions");
+        alert.initOwner(stage);
+        alert.initModality(Modality.WINDOW_MODAL);
+        Button yes = (Button) alert.getDialogPane().lookupButton(ButtonType.YES);
+        yes.setDefaultButton(false);
+        yes.setDisable(true);
+        ((Button) alert.getDialogPane().lookupButton(ButtonType.NO)).setDefaultButton(true);
+        VBox box = new VBox(5);
+        box.getChildren().add(new Label("WARNING! Cannot be undone\nThis will also delete all the class's\nassociated assignments and submissions\nTo confirm please type the class name below"));
+        TextField confirmText = new TextField();
+        confirmText.setPromptText("Class name");
+        confirmText.textProperty().addListener((observable, oldValue, newValue) -> yes.setDisable(!newValue.equals(course.getName())));
+        box.getChildren().add(confirmText);
+        alert.getDialogPane().setContent(box);
 
         Optional<ButtonType> response = alert.showAndWait();
         if (response.isPresent() && response.get() == ButtonType.YES) {
@@ -352,8 +364,8 @@ public class AssignmentWindow implements SaveInfoListener {
         alert.initOwner(stage);
         alert.initModality(Modality.WINDOW_MODAL);
         alert.setTitle("Delete Proof");
-        alert.setHeaderText("Are you sure?");
-        Label lbl = new Label("Are you sure you want to delete the proof titled \"" + proof.getName() + "\"?\nThis will also remove the proof from any associated assignments and delete and associated submissions");
+        alert.setHeaderText("Confirm Deletion");
+        Label lbl = new Label("WARNING! Cannot be undone\nAre you sure you want to delete the proof titled \"" + proof.getName() + "\" from the server? \nThis will also remove the proof from any associated assignments and delete any associated submissions.");
         lbl.setWrapText(true);
         alert.getDialogPane().setContent(lbl);
         alert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);

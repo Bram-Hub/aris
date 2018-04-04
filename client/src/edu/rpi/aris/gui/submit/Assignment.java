@@ -115,11 +115,13 @@ public class Assignment {
     }
 
     private void addChildren(AssignmentInfo rootInfo, TreeItem<AssignmentInfo> rootItem) {
-        rootInfo.getChildren().sort(Comparator.naturalOrder());
-        for (AssignmentInfo childInfo : rootInfo.getChildren()) {
-            TreeItem<AssignmentInfo> childItem = new TreeItem<>(childInfo);
-            rootItem.getChildren().add(childItem);
-            addChildren(childInfo, childItem);
+        if (rootInfo.getChildren() != null) {
+            rootInfo.getChildren().sort(Comparator.naturalOrder());
+            for (AssignmentInfo childInfo : rootInfo.getChildren()) {
+                TreeItem<AssignmentInfo> childItem = new TreeItem<>(childInfo);
+                rootItem.getChildren().add(childItem);
+                addChildren(childInfo, childItem);
+            }
         }
     }
 
@@ -201,13 +203,13 @@ public class Assignment {
             }
             int numSubmissions = Integer.parseInt(Client.checkError(client.readMessage()));
             for (int i = 0; i < numSubmissions; ++i) {
-                String[] split = Client.checkSplit(client.readMessage(), 5);
+                String[] split = Client.checkSplit(client.readMessage(), 6);
                 int uid = Integer.parseInt(split[0]);
                 int sid = Integer.parseInt(split[1]);
                 int pid = Integer.parseInt(split[2]);
                 long time = NetUtil.DATE_FORMAT.parse(URLDecoder.decode(split[3], "UTF-8")).getTime();
                 String statusStr = URLDecoder.decode(split[4], "UTF-8");
-                GradingStatus gradingStatus = null;
+                GradingStatus gradingStatus;
                 try {
                     gradingStatus = GradingStatus.valueOf(URLDecoder.decode(split[5], "UTF-8"));
                 } catch (IllegalArgumentException e) {

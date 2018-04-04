@@ -21,9 +21,7 @@ public class ClientInfo {
     private int userId = -1;
 
     public void load(Runnable runnable, boolean reload) {
-        if (reload)
-            loaded.set(false);
-        if (loaded.get())
+        if (!reload && loaded.get())
             return;
         isInstructor.set(false);
         courses.clear();
