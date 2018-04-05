@@ -14,16 +14,20 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Update {
 
     private static final String RELEASE_CHECK_URL = "https://api.github.com/repos/cicchr/ARIS-Java/releases/latest";
     private static final String REPO_BASE_URL = "https://raw.githubusercontent.com/cicchr/ARIS-Java/";
     private static final String MAVEN_BASE_URL = "http://central.maven.org/maven2/";
-    private static final String LIB_ARIS_LIBS_LOC = "/libaris/libs";
-    private static final String CLIENT_LIBS_LOC = "/client/libs";
-    private static final String SERVER_LIBS_LOC = "/server/libs";
+    private static final String LIB_ARIS_LIBS_LOC = "/libaris/libaris.iml";
+    private static final String CLIENT_LIBS_LOC = "/client/client.iml";
+    private static final String SERVER_LIBS_LOC = "/server/server.iml";
+    private static final String LIBRARY_LINE_ID = "type=\"library\"";
     private static final File UPDATE_DOWNLOAD_DIR = new File(System.getProperty("java.io.tmpdir"), "aris-update");
+    private static final Pattern LIB_PATTERN = Pattern.compile("(?<=name=\").*?(?=\")");
 
     private static final Logger logger = LogManager.getLogger(Update.class);
     private Stream updateStream;
@@ -79,10 +83,13 @@ public class Update {
              BufferedReader reader = new BufferedReader(isr)) {
             String line;
             while ((line = reader.readLine()) != null) {
-                if (line.trim().length() == 0)
+                if (!line.contains(LIBRARY_LINE_ID))
                     continue;
+                Matcher m = LIB_PATTERN.matcher(line);
+                if (!m.find())
+                    continue;
+                line = m.group();
                 String[] split = line.split(":");
-                //http://central.maven.org/maven2/commons-io/commons-io/2.6/commons-io-2.6.jar
                 if (split.length != 3)
                     throw new IOException("Invalid library list in remote repository");
                 String groupId = split[0].replaceAll("\\.", "/");

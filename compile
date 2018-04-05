@@ -19,13 +19,13 @@ get_libs() {
         return
     fi
     command -v wget &> /dev/null
-        if [ "$?" -ne "0" ]; then
-            echo "wget is required to download libraries and does not appear to be present"
-            exit 1
-        fi
+    if [ "$?" -ne "0" ]; then
+        echo "wget is required to download libraries and does not appear to be present"
+        exit 1
+    fi
     echo Checking $1 libraries
     mkdir -p build/lib
-    while read lib; do
+    for lib in $(cat $1/$1.iml| grep type=\"library\" |awk '{split($0,a,"name=\""); split(a[2],b,"\""); print b[1]}'); do
         IFS=':' read -r -a split <<< "$lib"
         group="${split[0]}"
         artifact="${split[1]}"
@@ -37,7 +37,7 @@ get_libs() {
             wget -q -O "build/lib/$name" "$MAVEN$group/$artifact/$version/$name"
             echo Done
         fi
-    done < $1/libs
+    done
 }
 
 compile() {

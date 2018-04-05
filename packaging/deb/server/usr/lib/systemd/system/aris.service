@@ -1,0 +1,16 @@
+[Unit]
+Description=Aris Logical Proof Grading Server
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=aris
+Group=aris
+UMask=000
+
+ExecStart=/usr/bin/aris-server
+
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

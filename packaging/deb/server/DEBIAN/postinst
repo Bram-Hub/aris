@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if ! id -u aris &> /dev/null; then
+	useradd --system aris
+fi
+chown -R aris:aris /usr/lib/aris
+chown root:aris /etc/aris.cfg
+
+systemctl daemon-reload
