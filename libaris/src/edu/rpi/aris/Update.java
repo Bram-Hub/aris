@@ -29,17 +29,19 @@ public class Update {
     private static final File UPDATE_DOWNLOAD_DIR = new File(System.getProperty("java.io.tmpdir"), "aris-update");
     private static final Pattern LIB_PATTERN = Pattern.compile("(?<=name=\").*?(?=\")");
 
+    private static final int UPDATE_EXIT_CODE = 52;
+
     private static final Logger logger = LogManager.getLogger(Update.class);
     private Stream updateStream;
     private JsonObject releaseData;
     private String updateVersion;
 
-    private Update(Stream updateStream) {
+    public Update(Stream updateStream) {
         Objects.requireNonNull(updateStream);
         this.updateStream = updateStream;
     }
 
-    private boolean checkUpdate() {
+    public boolean checkUpdate() {
         try {
             logger.info("Checking for update");
             URL releaseUrl = new URL(RELEASE_CHECK_URL);
@@ -118,7 +120,7 @@ public class Update {
         FileUtils.copyURLToFile(url, destination, 10000, 10000);
     }
 
-    private boolean update() {
+    public boolean update() {
         if (releaseData == null)
             return false;
         if (guessDevEnvironment()) {
@@ -148,6 +150,10 @@ public class Update {
             FileUtils.deleteQuietly(UPDATE_DOWNLOAD_DIR);
             return false;
         }
+    }
+
+    public void exit() {
+        System.exit(UPDATE_EXIT_CODE);
     }
 
     public enum Stream {

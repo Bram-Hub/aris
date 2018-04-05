@@ -1,6 +1,7 @@
 package edu.rpi.aris.net.server;
 
 import edu.rpi.aris.Main;
+import edu.rpi.aris.Update;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
@@ -67,6 +68,7 @@ public class Server implements Runnable {
     private final int port;
     private final File caCertificate;
     private final File privateKey;
+    private final Update update = new Update(Update.Stream.SERVER);
     private Logger logger = LogManager.getLogger(Server.class);
     private boolean selfSign, stopServer, shutdown;
     private DatabaseManager dbManager;
@@ -106,6 +108,18 @@ public class Server implements Runnable {
             RuntimeException e1 = new RuntimeException("Failed to open sql database", e);
             Main.instance.showExceptionError(Thread.currentThread(), e1, true);
         }
+        Timer updateTimer = new Timer();
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.HOUR_OF_DAY, 4);
+        calendar.set(Calendar.MINUTE, 0);
+        if (calendar.before(Calendar.getInstance()))
+            calendar.add(Calendar.DAY_OF_MONTH, 1);
+        updateTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                update.checkUpdate();
+            }
+        }, calendar.getTime(), 1000 * 60 * 60 * 24);
         logger.info("Server preparation complete");
     }
 
@@ -151,7 +165,6 @@ public class Server implements Runnable {
     }
 
     private void shutdown() {
-        logger.info("Received program interrupt");
         logger.info("Stopping server");
         stopServer = true;
         shutdown = true;
@@ -342,7 +355,18 @@ public class Server implements Runnable {
         return null;
     }
 
-    public void addUser(String username, String pass, String userType) throws SQLException, IOException {
+    public synchronized void addUser(String username, String pass, String userType) throws SQLException, IOException {
         dbManager.createUser(username, pass, userType);
     }
+
+    public synchronized boolean checkUpdate() {
+        if (update.checkUpdate() && update.update()) {
+            Runtime.getRuntime().removeShutdownHook(shutdownHook);
+            shutdown();
+            update.exit();
+            return true;
+        }
+        return false;
+    }
+
 }

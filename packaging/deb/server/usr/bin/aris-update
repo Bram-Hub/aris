@@ -1,0 +1,11 @@
+#!/bin/bash
+
+sudo -u aris java -Djava.io.tmpdir="$TMP" -jar /usr/lib/aris/aris-server.jar -u
+RC=$?
+if [ $RC -eq 52 ]; then
+    echo -n Updating aris ...
+    sudo -u aris rm -rf /usr/lib/aris/*
+    sudo -u aris cp -r $TMP/aris-update/* /usr/lib/aris
+    echo " Done"
+fi
+exit $RC

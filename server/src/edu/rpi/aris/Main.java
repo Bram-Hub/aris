@@ -43,6 +43,9 @@ public class Main implements Thread.UncaughtExceptionHandler {
             if (cmd.hasOption("add-user") && cmd.hasOption("password")) {
                 sendIpcMessage("add-user " + cmd.getOptionValue("add-user") + " " + cmd.getOptionValue("password"));
             }
+            if (cmd.hasOption('u')) {
+                sendIpcMessage("update");
+            }
             return;
         }
         Runtime.getRuntime().addShutdownHook(new Thread(Main::unlockFile));
@@ -70,6 +73,9 @@ public class Main implements Thread.UncaughtExceptionHandler {
         File caFile = ca == null ? null : new File(ca);
         File keyFile = key == null ? null : new File(key);
         server = new Server(port > 0 ? port : NetUtil.DEFAULT_PORT, caFile, keyFile);
+        if (cmd.hasOption('u'))
+            if (server.checkUpdate())
+                return;
         new Thread(() -> server.run()).start();
     }
 
@@ -179,6 +185,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
         options.addOption(null, "add-user", true, "Adds the given user to the database as an instructor");
         options.addOption(null, "password", true, "Sets the password for the given user");
         options.addOption("p", "port", true, "Sets the port to connect to or the port for the server to run on (Default: 9001)");
+        options.addOption("u", "update", false, "Runs an automatic update");
         CommandLineParser parser = new DefaultParser();
         cmd = parser.parse(options, args);
         if (cmd.hasOption("help")) {
