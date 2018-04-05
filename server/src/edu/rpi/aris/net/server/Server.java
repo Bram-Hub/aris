@@ -84,17 +84,21 @@ public class Server implements Runnable {
         this.privateKey = privateKey;
         stopServer = false;
         shutdown = false;
-        if (caCertificate == null || privateKey == null) {
+        if (caCertificate != null && privateKey != null) {
+            config.setCaFile(caCertificate);
+            config.setKeyFile(privateKey);
+        }
+        if (config.getCaFile() == null || config.getKeyFile() == null) {
             logger.warn("CA certificate and key not specified");
             logger.warn("Running server in self signing mode");
             logger.warn("Running the server in this mode is potentially insecure and not recommended");
             selfSign = true;
         } else {
             selfSign = false;
-            if (!caCertificate.exists())
-                throw new FileNotFoundException("ca certificate \"" + caCertificate.getPath() + "\" does not exist");
-            if (!privateKey.exists())
-                throw new FileNotFoundException("private key \"" + privateKey.getPath() + "\" does not exist");
+            if (!config.getCaFile().exists())
+                throw new FileNotFoundException("ca certificate \"" + config.getCaFile().getPath() + "\" does not exist");
+            if (!config.getKeyFile().exists())
+                throw new FileNotFoundException("private key \"" + config.getKeyFile().getPath() + "\" does not exist");
         }
         try {
             dbManager = new DatabaseManager(config.getDbHost(), config.getDbPort(), config.getDbName(), config.getDbUser(), config.getDbPass());

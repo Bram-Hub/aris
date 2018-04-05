@@ -9,31 +9,35 @@ RPM=0
 DEB=0
 WIN=0
 
+MAVEN="http://central.maven.org/maven2/"
+VERSION=$(cat libaris/res/edu/rpi/aris/VERSION)
+
 OPTIND=1
 
 get_libs() {
-    command -v mvn &> /dev/null
-    if [ "$?" -ne "0" ]; then
-        echo "Maven (mvn) is required to download libraries and does not appear to be present"
-        exit 1
+    if [ -z "$1" ]; then
+        return
     fi
-    command -v awk &> /dev/null
-    if [ "$?" -ne "0" ]; then
-        echo "awk is required to download libraries and does not appear to be present"
-        exit 1
-    fi
-    mkdir -p build/lib
-    echo Checking libraries
-    for file in .idea/libraries/*.xml; do
-        ARTIFACT_ID=$(grep maven-id $file | awk '{ split($0,a,"\""); print a[2] }')
-        JAR_NAME=$(echo $ARTIFACT_ID | awk '{ split($0,a,":"); print "build/lib/"a[2]"-"a[3]".jar" }')
-        if [ ! -f $JAR_NAME ]; then
-            echo -n Downloading $ARTIFACT_ID ...
-            mvn org.apache.maven.plugins:maven-dependency-plugin:2.8:get -Dartifact=$ARTIFACT_ID &> /dev/null
-            mvn org.apache.maven.plugins:maven-dependency-plugin:2.8:copy -Dartifact=$ARTIFACT_ID -DoutputDirectory=build/lib &> /dev/null
-            echo " Done"
+    command -v wget &> /dev/null
+        if [ "$?" -ne "0" ]; then
+            echo "wget is required to download libraries and does not appear to be present"
+            exit 1
         fi
-    done
+    echo Checking $1 libraries
+    mkdir -p build/lib
+    while read lib; do
+        IFS=':' read -r -a split <<< "$lib"
+        group="${split[0]}"
+        artifact="${split[1]}"
+        version="${split[2]}"
+        group="${group//.//}"
+        name=$artifact-$version.jar
+        if [ ! -f build/lib/$name ]; then
+            echo -n "Downloading $artifact Version $version ... "
+            wget -q -O "build/lib/$name" "$MAVEN$group/$artifact/$version/$name"
+            echo Done
+        fi
+    done < $1/libs
 }
 
 compile() {
@@ -47,19 +51,29 @@ compile() {
         echo "zip is required to create the jar file and does not appear to be present"
         exit 1
     fi
-    get_libs
-    mkdir -p build/classes
+    get_libs libaris
+    get_libs client
+    get_libs server
+    mkdir -p build/classes/client
+    mkdir -p build/classes/server
     shopt -s globstar
     echo -n Compiling java classes ...
-    javac -d build/classes -cp "build/lib/*" src/**/*.java
-    cp -r res/* build/classes
+    javac -d build/classes/client -cp "build/lib/*" libaris/src/**/*.java client/src/**/*.java
+    javac -d build/classes/server -cp "build/lib/*" libaris/src/**/*.java server/src/**/*.java
+    cp -r libaris/res/* build/classes/client
+    cp -r client/res/* build/classes/client
+    cp -r libaris/res/* build/classes/server
     echo " Done"
-    echo -n Building jar file ...
-    mkdir -p build/classes/META-INF
-    cp src/META-INF/MANIFEST.MF build/classes/META-INF
-    cd build/classes
-    zip -r ../aris.jar * &> /dev/null
-    cd ../..
+    echo -n Building jar files ...
+    mkdir -p build/classes/client/META-INF
+    mkdir -p build/classes/server/META-INF
+    cp client/src/META-INF/MANIFEST.MF build/classes/client/META-INF
+    cp server/src/META-INF/MANIFEST.MF build/classes/server/META-INF
+    cd build/classes/client
+    zip -r ../../aris-client.jar * &> /dev/null
+    cd ../server
+    zip -r ../../aris-server.jar * &> /dev/null
+    cd ../../..
     echo " Done"
 }
 
@@ -73,15 +87,22 @@ build_deb() {
         echo "dpkg is required to build deb package and does not appear to be present"
         exit 1
     fi
+    command -v sed &> /dev/null
+    if [ "$?" -ne "0" ]; then
+        echo "sed command is required to prepare files for packaging and does not appear to be present"
+        exit 1
+    fi
     echo -n Building deb package ...
     rm -rf build/deb
     mkdir -p build/deb
     cp -r packaging/deb/* build/deb
-    cd build
-    mkdir -p deb/usr/lib/aris
-    cp -r aris.jar lib deb/usr/lib/aris
-    dpkg --build deb
-    cd ..
+    cd build/deb
+    sed -i -e "s/__version__/$VERSION/g" server/DEBIAN/control
+    mkdir -p server/usr/lib/aris
+    cp -r ../aris-server.jar ../lib server/usr/lib/aris
+    dpkg --build server > /dev/null
+    mv server.deb ../aris-server-$VERSION.deb
+    cd ../..
     echo " Done"
 }
 

@@ -76,7 +76,6 @@ public abstract class ClientHandler implements Runnable {
                 logger.info("[" + clientName + "] IP address is temp banned. Disconnecting");
                 out.writeUTF(NetUtil.AUTH_BAN);
                 out.flush();
-                disconnect();
                 return;
             }
             logger.info("[" + clientName + "] Waiting for client version");

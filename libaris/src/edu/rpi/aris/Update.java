@@ -35,12 +35,6 @@ public class Update {
         this.updateStream = updateStream;
     }
 
-    public static void main(String[] args) {
-        Update update = new Update(Stream.CLIENT);
-        update.checkUpdate();
-        update.update();
-    }
-
     private boolean checkUpdate() {
         try {
             logger.info("Checking for update");
@@ -122,7 +116,7 @@ public class Update {
             return false;
         if (guessDevEnvironment()) {
             logger.warn("Aris appears to be running in a development environment so automatic updating has been disabled");
-//            return false;
+            return false;
         }
         logger.info("Starting update");
         logger.info("Getting download list");
@@ -137,8 +131,9 @@ public class Update {
                 return false;
             }
             downloadFile(jarUrl, new File(UPDATE_DOWNLOAD_DIR, updateStream.assetName));
+            File libDir = new File(UPDATE_DOWNLOAD_DIR, "lib");
             for (Map.Entry<String, String> lib : libs.entrySet())
-                downloadFile(lib.getValue(), new File(UPDATE_DOWNLOAD_DIR, lib.getKey()));
+                downloadFile(lib.getValue(), new File(libDir, lib.getKey()));
             logger.info("Download complete");
             return true;
         } catch (IOException e) {

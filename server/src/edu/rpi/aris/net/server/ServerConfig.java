@@ -15,6 +15,8 @@ public class ServerConfig {
 
     private static final String STORAGE_CONFIG = "storage-dir";
     private static final String LOG_CONFIG = "logfile-base";
+    private static final String CA_CONFIG = "ca";
+    private static final String KEY_CONFIG = "key";
     private static final String DATABASE_NAME_CONFIG = "db-name";
     private static final String DATABASE_USER_CONFIG = "db-user";
     private static final String DATABASE_PASS_CONFIG = "db-pass";
@@ -24,7 +26,7 @@ public class ServerConfig {
     private static ServerConfig instance;
     private static Logger logger = LogManager.getLogger(ServerConfig.class);
     private File configFile = new File(System.getProperty("user.home"), "aris.cfg");
-    private File storageDir, baseLogFile;
+    private File storageDir, baseLogFile, caFile, keyFile;
     private String dbHost, dbName, dbUser, dbPass;
     private int dbPort;
     private HashMap<String, String> configOptions = new HashMap<>();
@@ -64,13 +66,21 @@ public class ServerConfig {
                 configOptions.put(key, value);
             }
         }
-        storageDir = new File(getConfigOption(STORAGE_CONFIG, null));
-        baseLogFile = new File(getConfigOption(LOG_CONFIG, null));
-        dbName = getConfigOption(DATABASE_NAME_CONFIG, "aris");
-        dbUser = getConfigOption(DATABASE_USER_CONFIG, "aris");
-        dbPass = getConfigOption(DATABASE_PASS_CONFIG, null);
-        dbHost = getConfigOption(DATABASE_HOST_CONFIG, "localhost");
-        String portStr = getConfigOption(DATABASE_PORT_CONFIG, "5432");
+        // required configs
+        dbPass = getConfigOption(DATABASE_PASS_CONFIG, null, false);
+        storageDir = new File(getConfigOption(STORAGE_CONFIG, null, false));
+        baseLogFile = new File(getConfigOption(LOG_CONFIG, null, false));
+        // optional configs
+        String caStr = getConfigOption(CA_CONFIG, null, true);
+        if (caStr != null)
+            caFile = new File(caStr);
+        String keyStr = getConfigOption(KEY_CONFIG, null, true);
+        if (keyStr != null)
+            keyFile = new File(keyStr);
+        dbName = getConfigOption(DATABASE_NAME_CONFIG, "aris", true);
+        dbUser = getConfigOption(DATABASE_USER_CONFIG, "aris", true);
+        dbHost = getConfigOption(DATABASE_HOST_CONFIG, "localhost", true);
+        String portStr = getConfigOption(DATABASE_PORT_CONFIG, "5432", true);
         try {
             dbPort = Integer.parseInt(portStr);
         } catch (NumberFormatException e) {
@@ -85,9 +95,9 @@ public class ServerConfig {
             logger.error("Unknown configuration options: " + StringUtils.join(configOptions.keySet(), ", "));
     }
 
-    private String getConfigOption(String key, String defaultValue) throws IOException {
+    private String getConfigOption(String key, String defaultValue, boolean optional) throws IOException {
         String option = configOptions.remove(key);
-        if (option == null && defaultValue == null) {
+        if (option == null && defaultValue == null && !optional) {
             logger.fatal("Configuration (" + configFile.getCanonicalPath() + ") missing option: " + key);
             System.exit(1);
         }
@@ -120,5 +130,21 @@ public class ServerConfig {
 
     public int getDbPort() {
         return dbPort;
+    }
+
+    public File getCaFile() {
+        return caFile;
+    }
+
+    public void setCaFile(File caFile) {
+        this.caFile = caFile;
+    }
+
+    public File getKeyFile() {
+        return keyFile;
+    }
+
+    public void setKeyFile(File keyFile) {
+        this.keyFile = keyFile;
     }
 }
