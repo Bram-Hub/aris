@@ -1,21 +1,37 @@
 #!/bin/bash
 
-if [ "$(id -u)" -ne "0" ]; then
+if [ "$(id -u)" -ne "0" ] && [ "$USER" != "aris" ]; then
     echo This script must be run as root
     exit 1
 fi
 
-ARIS=/usr/lib/aris
-TMP=$(dirname $(mktemp -u))
-RC=52
-while [ $RC -eq 52 ]; do
-    sudo -u aris java -Djava.io.tmpdir="$TMP" -jar /usr/lib/aris/aris-server.jar
-    RC=$?
-    if [ $RC -eq 52 ]; then
-	echo -n Updating aris ...
-        sudo -u aris rm -rf /usr/lib/aris/*
-	sudo -u aris cp -r $TMP/aris-update/* /usr/lib/aris
-	echo " Done"
-    fi
-done
-exit $RC
+run_aris() {
+    RC=52
+    while [ $RC -eq 52 ]; do
+        if [ ! pgrep -x "aris-server" &> /dev/null ]; then
+            rm /tmp/aris*
+        fi
+        LOGDIR=$(cat /etc/aris.cfg | grep log-dir)
+        if [ $? -ne 0 ]; then
+            echo log-dir not specified in /etc/aris.cfg
+            RC=1
+            return
+        fi
+        LOGDIR=$(echo ${LOGDIR#"log-dir"} | xargs)
+        TMP=$(dirname $(mktemp -u))
+        java -Djava.io.tmpdir="$TMP" -Dlog4j.log-dir="$LOGDIR" -jar /usr/lib/aris/aris-server.jar
+        RC=$?
+        if [ $RC -eq 52 ]; then
+            echo -n Updating aris ...
+            rm -rf /usr/lib/aris/*
+            cp -r $TMP/aris-update/* /usr/lib/aris
+            echo " Done"
+        fi
+    done
+}
+
+if [ "$USER" = "aris" ]; then
+    run_aris
+else
+    sudo -u aris bash -c "$(declare -f run_aris); run_aris"
+fi

@@ -1,11 +1,36 @@
 #!/bin/bash
 
-sudo -u aris java -Djava.io.tmpdir="$TMP" -jar /usr/lib/aris/aris-server.jar -u
-RC=$?
-if [ $RC -eq 52 ]; then
-    echo -n Updating aris ...
-    sudo -u aris rm -rf /usr/lib/aris/*
-    sudo -u aris cp -r $TMP/aris-update/* /usr/lib/aris
-    echo " Done"
+if [ "$(id -u)" -ne "0" ] && [ "$USER" != "aris" ]; then
+        echo This script must be run as root
+        exit 1
 fi
+
+update_aris() {
+    if [ ! pgrep -x "aris-server" &> /dev/null ]; then
+        rm /tmp/aris*
+    fi
+    TMP=$(dirname $(mktemp -u))
+    LOGDIR=$(cat /etc/aris.cfg | grep log-dir)
+    if [ $? -ne 0 ]; then 
+        echo log-dir not specified in /etc/aris.cfg
+        RC=1
+        return
+    fi
+    LOGDIR=$(echo ${LOGDIR#"log-dir"} | xargs)
+    java -Djava.io.tmpdir="$TMP" -Dlog4j.log-dir="$LOGDIR" -jar /usr/lib/aris/aris-server.jar -u
+    RC=$?
+    if [ $RC -eq 52 ]; then
+        echo -n Updating aris ...
+        rm -rf /usr/lib/aris/*
+        cp -r $TMP/aris-update/* /usr/lib/aris
+        echo " Done"
+    fi
+}
+
+if [ "$USER" = "aris" ]; then
+    update_aris
+else
+    sudo -u aris bash -c "$(declare -f update_aris); update_aris"
+fi
+
 exit $RC

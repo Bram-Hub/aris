@@ -3,7 +3,14 @@
 if ! id -u aris &> /dev/null; then
 	useradd --system aris
 fi
+
+mkdir -p /var/lib/aris
+mkdir -p /var/log/aris
+chown -R aris:aris /var/lib/aris
+chown -R aris:aris /var/log/aris
 chown -R aris:aris /usr/lib/aris
 chown root:aris /etc/aris.cfg
+chmod 755 /var/lib/aris
+chmod 755 /var/log/aris
 
 systemctl daemon-reload

@@ -2,6 +2,7 @@ package edu.rpi.aris;
 
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.server.Server;
+import edu.rpi.aris.net.server.ServerConfig;
 import org.apache.commons.cli.*;
 import org.apache.commons.io.monitor.FileAlterationListener;
 import org.apache.commons.io.monitor.FileAlterationListenerAdaptor;
@@ -29,6 +30,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
 
     public static void main(String[] args) throws IOException {
         Thread.setDefaultUncaughtExceptionHandler(instance);
+        ServerConfig.getInstance();
         logger.info(LibAris.NAME + " version " + LibAris.VERSION);
         try {
             parseCommandLineArgs(args);
@@ -73,10 +75,11 @@ public class Main implements Thread.UncaughtExceptionHandler {
         File caFile = ca == null ? null : new File(ca);
         File keyFile = key == null ? null : new File(key);
         server = new Server(port > 0 ? port : NetUtil.DEFAULT_PORT, caFile, keyFile);
-        if (cmd.hasOption('u'))
-            if (server.checkUpdate())
-                return;
-        new Thread(() -> server.run()).start();
+        if (cmd.hasOption('u')) {
+            if (!server.checkUpdate())
+                System.exit(1);
+        } else
+            new Thread(() -> server.run()).start();
     }
 
     private static void startIpcWatch() throws IOException {
@@ -106,7 +109,8 @@ public class Main implements Thread.UncaughtExceptionHandler {
                                     e.printStackTrace();
                                 }
                             }
-                            System.out.println(line);
+                            if (args.length == 1 && args[0].equals("update"))
+                                server.checkUpdate();
                         }
                         raf.setLength(0);
                         ipcLock.release();
@@ -142,7 +146,8 @@ public class Main implements Thread.UncaughtExceptionHandler {
             writer = new PrintWriter(fos, true);
             writer.println(msg);
         } finally {
-            ipcLock.release();
+            if (ipcLock != null)
+                ipcLock.release();
             if (writer != null)
                 writer.close();
         }
@@ -156,9 +161,10 @@ public class Main implements Thread.UncaughtExceptionHandler {
                 lockFileChannel.close();
                 return false;
             }
-            lockFile.deleteOnExit();
         } catch (Throwable e) {
             return false;
+        } finally {
+            lockFile.deleteOnExit();
         }
         return true;
     }

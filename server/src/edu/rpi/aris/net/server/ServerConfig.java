@@ -14,7 +14,7 @@ import java.util.HashMap;
 public class ServerConfig {
 
     private static final String STORAGE_CONFIG = "storage-dir";
-    private static final String LOG_CONFIG = "logfile-base";
+    private static final String LOG_CONFIG = "log-dir";
     private static final String CA_CONFIG = "ca";
     private static final String KEY_CONFIG = "key";
     private static final String DATABASE_NAME_CONFIG = "db-name";
@@ -26,7 +26,7 @@ public class ServerConfig {
     private static ServerConfig instance;
     private static Logger logger = LogManager.getLogger(ServerConfig.class);
     private File configFile = new File(System.getProperty("user.home"), "aris.cfg");
-    private File storageDir, baseLogFile, caFile, keyFile;
+    private File storageDir, logDir, caFile, keyFile;
     private String dbHost, dbName, dbUser, dbPass;
     private int dbPort;
     private HashMap<String, String> configOptions = new HashMap<>();
@@ -69,7 +69,7 @@ public class ServerConfig {
         // required configs
         dbPass = getConfigOption(DATABASE_PASS_CONFIG, null, false);
         storageDir = new File(getConfigOption(STORAGE_CONFIG, null, false));
-        baseLogFile = new File(getConfigOption(LOG_CONFIG, null, false));
+        logDir = new File(getConfigOption(LOG_CONFIG, null, false));
         // optional configs
         String caStr = getConfigOption(CA_CONFIG, null, true);
         if (caStr != null)
@@ -109,7 +109,7 @@ public class ServerConfig {
     }
 
     public File getBaseLogfile() {
-        return baseLogFile;
+        return logDir;
     }
 
     public String getDbName() {

@@ -2,7 +2,7 @@
 
 echo This script will setup the postgres user and database that the aris-server will use
 
-if [ "$(id -u)" -ne "0" ]; then
+if [ "$(id -u)" -ne "0" ] && [ "$USER" != "aris" ]; then
 	echo This script must be run as root
 	exit 1
 fi

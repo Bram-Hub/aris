@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="WARN">
     <Appenders>
-        <RollingFile name="fileLogger" fileName="aris.log" filePattern="aris-%d{yyyy-MM-dd}.log">
+        <RollingFile name="fileLogger" fileName="${sys:log4j.log-dir}/aris.log"
+                     filePattern="${sys:log4j.log-dir}/aris-%d{yyyy-MM-dd}.log">
             <PatternLayout pattern="[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1} - %msg%n" />
             <Policies>
                 <TimeBasedTriggeringPolicy interval="1" modulate="true" />
