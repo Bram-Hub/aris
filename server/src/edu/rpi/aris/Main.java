@@ -38,10 +38,9 @@ public class Main implements Thread.UncaughtExceptionHandler {
             System.err.println(e.getMessage());
             System.exit(1);
         }
-        if (!tryLock()) {
+        if (ipcFile.exists() || !tryLock()) {
             logger.info("Program already running");
             logger.info("Sending message to running program");
-            //TODO
             if (cmd.hasOption("add-user") && cmd.hasOption("password")) {
                 sendIpcMessage("add-user " + cmd.getOptionValue("add-user") + " " + cmd.getOptionValue("password"));
             }
