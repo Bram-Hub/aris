@@ -5,6 +5,7 @@
 
 # Log file
 *.log
+*.log.gz
 
 #sqlite files
 *.db

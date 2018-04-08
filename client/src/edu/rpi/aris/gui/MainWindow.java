@@ -433,7 +433,8 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener {
                 }
             }
             line.verifyClaim();
-        }
+        } else if (lineNum < -1)
+            this.proof.verifyProof();
     }
 
     private void startSubProof() {
