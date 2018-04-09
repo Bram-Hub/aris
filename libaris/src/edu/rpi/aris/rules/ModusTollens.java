@@ -66,9 +66,9 @@ public class ModusTollens extends Rule {
                 return "Neither of the premises are a conditional";
             }
             else if (p1.getOperator() == Operator.CONDITIONAL) {
-                if (!p1.getExpressions()[1].negate().equals(p2) || !p1.getExpressions()[0].negate().equals(conclusion)) {
+                if (!p1.getExpressions()[1].isOpposite(p2) || !p1.getExpressions()[0].isOpposite(conclusion)) {
                     if (p2.getOperator() == Operator.CONDITIONAL) {
-                        if (!p2.getExpressions()[1].negate().equals(p1) || !p2.getExpressions()[0].negate().equals(conclusion)) {
+                        if (!p2.getExpressions()[1].isOpposite(p1) || !p2.getExpressions()[0].isOpposite(conclusion)) {
                             //generic error message
                             return "Invalid application of Modus Tollens";
                         }
@@ -78,7 +78,7 @@ public class ModusTollens extends Rule {
                 }
             }
             if (p2.getOperator() == Operator.CONDITIONAL) {
-                if (!p2.getExpressions()[1].negate().equals(p1) || !p2.getExpressions()[0].negate().equals(conclusion)) {
+                if (!p2.getExpressions()[1].isOpposite(p1) || !p2.getExpressions()[0].isOpposite(conclusion)) {
                     //specifc to p2 as conditional
                     return "\"" + p2.toLogicString() + "\" is not the same as \"(" + conclusion.negate().toLogicString() + " → " + p1.negate().toLogicString() + ")\"";
                 }
