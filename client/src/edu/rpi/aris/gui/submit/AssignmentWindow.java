@@ -23,14 +23,22 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Pair;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.xml.transform.TransformerException;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.text.DateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Collection;
+import java.util.Date;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class AssignmentWindow implements SaveInfoListener {
 
@@ -48,6 +56,8 @@ public class AssignmentWindow implements SaveInfoListener {
     private Button login;
     @FXML
     private Button refreshButton;
+    @FXML
+    private Button createAssignment;
     @FXML
     private ProgressIndicator loading;
     @FXML
@@ -110,18 +120,7 @@ public class AssignmentWindow implements SaveInfoListener {
             return user + " (" + (isInstructor ? NetUtil.USER_INSTRUCTOR : NetUtil.USER_STUDENT) + ")";
         }, clientInfo.isInstructorProperty(), GuiConfig.getConfigManager().username));
         Bindings.bindContent(classes.getItems(), clientInfo.getCourses());
-        classes.getSelectionModel().selectedItemProperty().addListener((observableValue, oldCourse, newCourse) -> {
-            Platform.runLater(() -> {
-                assignments.getPanes().clear();
-                if (newCourse == null)
-                    return;
-                GuiConfig.getConfigManager().selectedCourseId.set(newCourse.getId());
-                newCourse.load(() -> Platform.runLater(() -> {
-                    for (Assignment assignment : newCourse.getAssignments())
-                        assignments.getPanes().add(assignment.getPane());
-                }), false);
-            });
-        });
+        classes.getSelectionModel().selectedItemProperty().addListener((observableValue, oldCourse, newCourse) -> loadAssignments(newCourse, false));
         classes.visibleProperty().bind(clientInfo.loadedProperty());
         classes.managedProperty().bind(clientInfo.loadedProperty());
         lblClass.visibleProperty().bind(clientInfo.loadedProperty());
@@ -133,6 +132,8 @@ public class AssignmentWindow implements SaveInfoListener {
         refreshButton.managedProperty().bind(clientInfo.loadedProperty());
         refreshButton.disableProperty().bind(Main.getClient().getConnectionStatusProperty().isNotEqualTo(Client.ConnectionStatus.DISCONNECTED));
         refreshButton.setPadding(new Insets(5));
+        createAssignment.visibleProperty().bind(clientInfo.isInstructorProperty().and(classes.getSelectionModel().selectedItemProperty().isNotNull()));
+        createAssignment.managedProperty().bind(clientInfo.isInstructorProperty().and(classes.getSelectionModel().selectedItemProperty().isNotNull()));
         loading.visibleProperty().bind(Main.getClient().getConnectionStatusProperty().isNotEqualTo(Client.ConnectionStatus.DISCONNECTED));
         loading.managedProperty().bind(loading.visibleProperty());
         clientInfo.isInstructorProperty().addListener((observable, oldValue, newValue) -> {
@@ -175,6 +176,19 @@ public class AssignmentWindow implements SaveInfoListener {
         });
         proofDelete.setStyle("-fx-alignment: CENTER;");
         Bindings.bindContent(proofTable.getItems(), proofList.getProofs());
+    }
+
+    private void loadAssignments(Course newCourse, boolean reload) {
+        Platform.runLater(() -> {
+            assignments.getPanes().clear();
+            if (newCourse == null)
+                return;
+            GuiConfig.getConfigManager().selectedCourseId.set(newCourse.getId());
+            newCourse.load(() -> Platform.runLater(() -> {
+                for (Assignment assignment : newCourse.getAssignments())
+                    assignments.getPanes().add(assignment.getPane());
+            }), reload);
+        });
     }
 
     private MenuBar setupMenu() {
@@ -359,6 +373,27 @@ public class AssignmentWindow implements SaveInfoListener {
         }).start();
     }
 
+    private void addAssignment(String name, LocalDateTime date, Collection<ProofInfo> proofs) {
+        Course course = classes.getSelectionModel().getSelectedItem();
+        new Thread(() -> {
+            Client client = Main.getClient();
+            try {
+                String msg = classes.getSelectionModel().getSelectedItem().getId() + "|" + StringUtils.join(proofs.stream().map(ProofInfo::getProofId).collect(Collectors.toSet()), ',') + "|" + URLEncoder.encode(name, "UTF-8") + "|" + URLEncoder.encode(NetUtil.DATE_FORMAT.format(Date.from(date.atZone(ZoneId.systemDefault()).toInstant())), "UTF-8");
+                client.connect();
+                client.sendMessage(NetUtil.CREATE_ASSIGNMENT);
+                client.sendMessage(msg);
+                String res = client.readMessage();
+                if (!NetUtil.OK.equals(Client.checkError(res)))
+                    throw new IOException("Failed to add assignment: " + res);
+                loadAssignments(course, true);
+            } catch (IOException e) {
+                System.out.println("Error");
+            } finally {
+                client.disconnect();
+            }
+        }).start();
+    }
+
     private void deleteProof(ProofInfo proof) {
         Alert alert = new Alert(Alert.AlertType.WARNING);
         alert.initOwner(stage);
@@ -395,7 +430,7 @@ public class AssignmentWindow implements SaveInfoListener {
     }
 
     private void editProof(ProofInfo proof) {
-
+        //TODO
     }
 
     @FXML
@@ -418,6 +453,17 @@ public class AssignmentWindow implements SaveInfoListener {
     @FXML
     private void refresh() {
         load(true);
+    }
+
+    @FXML
+    private void createAssignment() throws IOException {
+        proofList.load(false);
+        AddAssignmentDialog dialog = new AddAssignmentDialog(stage, proofList);
+        Optional<Triple<String, LocalDateTime, Collection<ProofInfo>>> result = dialog.showAndWait();
+        if (result.isPresent()) {
+            Triple<String, LocalDateTime, Collection<ProofInfo>> r = result.get();
+            addAssignment(r.getLeft(), r.getMiddle(), r.getRight());
+        }
     }
 
     @Override

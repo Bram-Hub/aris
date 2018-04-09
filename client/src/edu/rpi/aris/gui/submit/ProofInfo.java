@@ -72,6 +72,11 @@ public class ProofInfo extends AssignmentInfo {
             return -1;
     }
 
+    @Override
+    public String toString() {
+        return name;
+    }
+
     public GradingStatus getGradingStatus() {
         return gradingStatus;
     }

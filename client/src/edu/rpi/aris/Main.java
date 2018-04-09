@@ -2,6 +2,7 @@ package edu.rpi.aris;
 
 import edu.rpi.aris.gui.Aris;
 import edu.rpi.aris.gui.GuiConfig;
+import edu.rpi.aris.gui.submit.AddAssignmentDialog;
 import edu.rpi.aris.net.client.Client;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
@@ -16,10 +17,13 @@ import org.apache.commons.io.monitor.FileAlterationListener;
 import org.apache.commons.io.monitor.FileAlterationListenerAdaptor;
 import org.apache.commons.io.monitor.FileAlterationMonitor;
 import org.apache.commons.io.monitor.FileAlterationObserver;
+import org.apache.commons.lang3.JavaVersion;
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.swing.*;
 import java.io.*;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
@@ -79,19 +83,26 @@ public class Main implements Thread.UncaughtExceptionHandler {
                 System.exit(1);
             }
         }
-            if (cmd.hasOption('a'))
-                GuiConfig.serverAddress.set(cmd.getOptionValue('a'));
-            if (port > 0)
-                GuiConfig.serverPort.set(port);
-            client = new Client();
-            client.setAllowInsecure(cmd.hasOption("allow-insecure"));
-            if (cmd.hasOption("add-cert")) {
-                String filename = cmd.getOptionValue("add-cert");
-                File file = new File(filename);
-                client.importSelfSignedCertificate(file);
-            }
+        if (cmd.hasOption('a'))
+            GuiConfig.serverAddress.set(cmd.getOptionValue('a'));
+        if (port > 0)
+            GuiConfig.serverPort.set(port);
+        client = new Client();
+        client.setAllowInsecure(cmd.hasOption("allow-insecure"));
+        if (cmd.hasOption("add-cert")) {
+            String filename = cmd.getOptionValue("add-cert");
+            File file = new File(filename);
+            client.importSelfSignedCertificate(file);
+        }
         switch (MODE) {
             case GUI:
+                String[] split = SystemUtils.JAVA_VERSION.split("_");
+                int update = split.length < 2 ? 0 : Integer.parseInt(split[1]);
+                if (!SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_1_8) || (SystemUtils.JAVA_SPECIFICATION_VERSION.equals(JavaVersion.JAVA_1_8.toString()) && update < 40)) {
+                    JOptionPane.showMessageDialog(null, "Aris has a minimum requirement of java 1.8.0_40\nYou are running java " + SystemUtils.JAVA_VERSION + "\nPlease update java before using Aris");
+                    System.exit(1);
+                    return;
+                }
                 Aris.launch(Aris.class, args);
                 break;
         }

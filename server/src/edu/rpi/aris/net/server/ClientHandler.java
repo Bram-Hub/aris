@@ -559,10 +559,8 @@ public abstract class ClientHandler implements Runnable {
         String[] proofIdStrings = assignmentData[1].split(",");
         int cid;
         int[] proof_ids = new int[proofIdStrings.length];
-        long time;
         try {
             cid = Integer.parseInt(assignmentData[0]);
-            time = Long.parseLong(assignmentData[3]);
             for (int i = 0; i < proofIdStrings.length; ++i)
                 proof_ids[i] = Integer.parseInt(proofIdStrings[i]);
         } catch (NumberFormatException e) {
@@ -570,27 +568,35 @@ public abstract class ClientHandler implements Runnable {
             return;
         }
         String name = URLDecoder.decode(assignmentData[2], "UTF-8");
-        String date = NetUtil.DATE_FORMAT.format(new Date(time));
+        String dateStr = URLDecoder.decode(assignmentData[3], "UTF-8");
         try (Connection connection = dbManager.getConnection();
              PreparedStatement select = connection.prepareStatement("SELECT id FROM assignment ORDER BY id DESC LIMIT 1;");
              PreparedStatement statement = connection.prepareStatement("INSERT INTO assignment VALUES(?, ?, ?, ?, ?, ?);")) {
-            int id = 0;
-            try (ResultSet rs = select.executeQuery()) {
-                if (rs.next())
-                    id = rs.getInt(1) + 1;
-            }
-            for (int pid : proof_ids) {
-                statement.setInt(1, id);
-                statement.setInt(2, cid);
-                statement.setInt(3, pid);
-                statement.setString(4, name);
-                try {
-                    statement.setTimestamp(5, new Timestamp(NetUtil.DATE_FORMAT.parse(date).getTime()));
-                } catch (ParseException e) {
-                    throw new IOException("Failed to parse date");
+            connection.setAutoCommit(false);
+            try {
+                int id = 0;
+                try (ResultSet rs = select.executeQuery()) {
+                    if (rs.next())
+                        id = rs.getInt(1) + 1;
                 }
-                statement.setInt(6, userId);
-                statement.executeUpdate();
+                for (int pid : proof_ids) {
+                    statement.setInt(1, id);
+                    statement.setInt(2, cid);
+                    statement.setInt(3, pid);
+                    statement.setString(4, name);
+                    try {
+                        statement.setTimestamp(5, new Timestamp(NetUtil.DATE_FORMAT.parse(dateStr).getTime()));
+                    } catch (ParseException e) {
+                        throw new IOException("Failed to parse date");
+                    }
+                    statement.setInt(6, userId);
+                    statement.executeUpdate();
+                }
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                sendMessage(NetUtil.ERROR);
+                throw e;
             }
         }
         sendMessage(NetUtil.OK);
