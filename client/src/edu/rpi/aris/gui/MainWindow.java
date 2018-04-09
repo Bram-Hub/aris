@@ -112,13 +112,14 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener {
         });
         setupScene();
         selectedLine.addListener((observableValue, oldVal, newVal) -> {
-            statusLbl.textProperty().unbind();
             errorRangeLbl.textProperty().unbind();
             if (newVal.intValue() >= 0) {
                 proof.getLine(newVal.intValue()).verifyClaim();
                 proofLines.get(newVal.intValue()).requestFocus();
             } else if (newVal.intValue() < -1) {
                 goalLines.get(newVal.intValue() * -1 - 2).requestFocus();
+                Goal goal = proof.getGoal(newVal.intValue() * -1 - 2);
+                statusString(goal, goal.getStatusString());
             }
             updateHighlighting(newVal.intValue());
         });
