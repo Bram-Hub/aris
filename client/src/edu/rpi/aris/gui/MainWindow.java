@@ -195,6 +195,9 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener {
         } else if (selectedLine.get() < -1 && selectedLine.get() > proof.getNumGoals() * -1 - 1) {
             requestFocus(selectedLine.get() - 1);
             autoScroll(goalScroll.getContent().getBoundsInLocal());
+        } else if (selectedLine.get() == proof.getNumLines() - 1) {
+            requestFocus(-2);
+            autoScroll(scrollPane.getContent().getBoundsInLocal());
         }
     }
 
