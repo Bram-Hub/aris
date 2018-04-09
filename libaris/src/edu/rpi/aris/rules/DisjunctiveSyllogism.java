@@ -91,7 +91,7 @@ public class DisjunctiveSyllogism extends Rule {
                 boolean works = false;
                 if (!conclusion.hasSubExpression(disjunct) && !conclusion.equals(disjunct)) {
                     for (Expression premise: premiseSet) {
-                        if (premise.negate().equals(disjunct)) {
+                        if (premise.isOpposite(disjunct)) {
                             premiseSetUsed.remove(premise);
                             works = true;
                             break;

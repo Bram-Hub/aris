@@ -234,6 +234,15 @@ public class Expression {
         return new Expression(new Expression[]{this}, Operator.NOT, parent, parentVariables);
     }
 
+    public boolean isOpposite(Expression exp) throws ExpressionParseException {
+        if (this.negate().equals(exp)) {
+            return true;
+        } else if (exp.negate().equals(this)) {
+            return true;
+        }
+        return false;
+    }
+
     //equals with commutativity for all and associativity for generalized premises
     public boolean equalsFullPower(Expression expr) throws ExpressionParseException {
         if ((operator == expr.operator) && (getNumExpressions() == expr.getNumExpressions())) {
