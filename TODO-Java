@@ -17,6 +17,7 @@ generalize <->, +, *?
 rename (equals,hasSubExpression,toLogicString)FullPower?
 Do we actually want things to use the FullPower and/or withoutDNs functions (equals,hasSubExpression,toLogicString)?
 Test server restart on certificate expiration
+Fix toPolish to allow for multiple equivalences in an expression (ie. a=b <-> b=a)
 
 Install Tasks:
     Make /etc/aris
