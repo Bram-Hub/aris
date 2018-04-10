@@ -7,17 +7,19 @@ fi
 
 add_user() {
     read -p "Please enter the username for the new user: " USER
-    if [ "$USER" -eq "" ]; then
+    if [ "$USER" == "" ]; then
         echo "No username entered"
         exit 1
     fi
     read -s -p "Enter the password for $USER: " PASS
-    if [ "$PASS" -eq "" ]; then
+    echo
+    if [ "$PASS" == "" ]; then
         echo "No password entered"
         exit 1
     fi
     read -s -p "Repeat the password for $USER: " REPASS
-    if [ "$PASS" -ne "$REPASS" ]; then
+    echo
+    if [ "$PASS" != "$REPASS" ]; then
         echo "Passwords do not match"
         unset PASS
         unset REPASS

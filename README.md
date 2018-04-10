@@ -26,11 +26,11 @@ TODO
     ```
 4. Run the aris-configdb command and follow the prompts to configure the database and start the server
     ```
-    aris-configdb
+    sudo aris-configdb
     ```
 5. Run the aris-adduser command and follow the prompts to create an instructor on the server for access through the standard interface
     ```
-    aris-adduser
+    sudo aris-adduser
     ``` 
 6. Ensure the port (default: 9001) is open on the server's firewall
  
