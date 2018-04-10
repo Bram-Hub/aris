@@ -1,4 +1,4 @@
-# Project Title
+# Aris
 
 Aris is a logical proof program, and supports propositional and predicate logic, Boolean algebra, and arithmetical logic
 
