@@ -19,10 +19,10 @@ TODO
     #/etc/aris.cfg
     
     # The CA certificate to use for connections. If this is not specified here or on the command line the server will run in self signing mode
-    ca &lt;certificate-file-path&gt;
+    ca <certificate-file-path>
     
     # The private key for the above certificate. If this is not specified here of on the command line the server will run in self signing mode
-    key &lt;key-file-path&gt;
+    key <key-file-path>
     ```
 4. Run the aris-configdb command and follow the prompts to configure the database and start the server
     ```
