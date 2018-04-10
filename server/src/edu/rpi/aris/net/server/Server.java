@@ -2,6 +2,7 @@ package edu.rpi.aris.net.server;
 
 import edu.rpi.aris.Main;
 import edu.rpi.aris.Update;
+import edu.rpi.aris.net.NetUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
@@ -25,7 +26,6 @@ import javax.net.ssl.SSLSocket;
 import javax.security.auth.x500.X500Principal;
 import java.io.*;
 import java.math.BigInteger;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.security.*;
 import java.security.cert.Certificate;
@@ -112,6 +112,7 @@ public class Server implements Runnable {
         Calendar calendar = Calendar.getInstance();
         calendar.set(Calendar.HOUR_OF_DAY, 4);
         calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
         if (calendar.before(Calendar.getInstance()))
             calendar.add(Calendar.DAY_OF_MONTH, 1);
         updateTimer.scheduleAtFixedRate(new TimerTask() {
@@ -119,7 +120,8 @@ public class Server implements Runnable {
             public void run() {
                 update.checkUpdate();
             }
-        }, calendar.getTime(), 1000 * 60 * 60 * 24);
+        }, calendar.getTime(), 1000 * 60 * 60 * 24); // run every 24 hours
+        logger.info("Update check scheduled for " + NetUtil.DATE_FORMAT.format(calendar.getTime()));
         logger.info("Server preparation complete");
     }
 
@@ -264,7 +266,10 @@ public class Server implements Runnable {
                     keyPairGenerator.initialize(4096, new SecureRandom());
                     KeyPair kp = keyPairGenerator.genKeyPair();
 
-                    X500Principal principal = new X500Principal("CN=" + InetAddress.getLocalHost().getHostName());
+                    if (config.getDomain() == null)
+                        throw new RuntimeException("Domain must be set if the server is running in self signing mode");
+
+                    X500Principal principal = new X500Principal("CN=" + config.getDomain());
                     BigInteger serialNum = new BigInteger(Long.toString(System.currentTimeMillis()));
 
                     Calendar cal = Calendar.getInstance();

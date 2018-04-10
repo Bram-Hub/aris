@@ -34,7 +34,10 @@ TODO
     ``` 
 6. Ensure the port (default: 9001) is open on the server's firewall
  
-Note: To run the server in self signing mode skip steps 2 and 3 (not recommended)
+Note: To run the server in self signing mode skip steps 2 and 3 (not recommended) and set the domain setting in /etc/aris.cfg
+```
+domain <example.com>
+```
 
 ## Authors
 

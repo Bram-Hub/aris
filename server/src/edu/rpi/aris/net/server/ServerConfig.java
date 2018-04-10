@@ -17,6 +17,7 @@ public class ServerConfig {
     private static final String LOG_CONFIG = "log-dir";
     private static final String CA_CONFIG = "ca";
     private static final String KEY_CONFIG = "key";
+    private static final String DOMAIN_KEY = "domain";
     private static final String DATABASE_NAME_CONFIG = "db-name";
     private static final String DATABASE_USER_CONFIG = "db-user";
     private static final String DATABASE_PASS_CONFIG = "db-pass";
@@ -27,7 +28,7 @@ public class ServerConfig {
     private static Logger logger = LogManager.getLogger(ServerConfig.class);
     private File configFile = new File(System.getProperty("user.home"), "aris.cfg");
     private File storageDir, logDir, caFile, keyFile;
-    private String dbHost, dbName, dbUser, dbPass;
+    private String dbHost, dbName, dbUser, dbPass, domain;
     private int dbPort;
     private HashMap<String, String> configOptions = new HashMap<>();
 
@@ -77,6 +78,7 @@ public class ServerConfig {
         String keyStr = getConfigOption(KEY_CONFIG, null, true);
         if (keyStr != null)
             keyFile = new File(keyStr);
+        domain = getConfigOption(DOMAIN_KEY, null, true);
         dbName = getConfigOption(DATABASE_NAME_CONFIG, "aris", true);
         dbUser = getConfigOption(DATABASE_USER_CONFIG, "aris", true);
         dbHost = getConfigOption(DATABASE_HOST_CONFIG, "localhost", true);
@@ -146,5 +148,9 @@ public class ServerConfig {
 
     public void setKeyFile(File keyFile) {
         this.keyFile = keyFile;
+    }
+
+    public String getDomain() {
+        return domain;
     }
 }
