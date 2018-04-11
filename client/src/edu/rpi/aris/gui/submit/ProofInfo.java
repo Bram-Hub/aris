@@ -77,6 +77,19 @@ public class ProofInfo extends AssignmentInfo {
         return name;
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof ProofInfo))
+            return false;
+        ProofInfo info = (ProofInfo) obj;
+        return info.proofId == proofId;
+    }
+
+    @Override
+    public int hashCode() {
+        return proofId;
+    }
+
     public GradingStatus getGradingStatus() {
         return gradingStatus;
     }

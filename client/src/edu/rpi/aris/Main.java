@@ -2,7 +2,6 @@ package edu.rpi.aris;
 
 import edu.rpi.aris.gui.Aris;
 import edu.rpi.aris.gui.GuiConfig;
-import edu.rpi.aris.gui.submit.AddAssignmentDialog;
 import edu.rpi.aris.net.client.Client;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;

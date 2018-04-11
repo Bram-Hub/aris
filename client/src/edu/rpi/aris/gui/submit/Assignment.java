@@ -5,47 +5,57 @@ import edu.rpi.aris.net.GradingStatus;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
 import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleLongProperty;
 import javafx.beans.property.SimpleObjectProperty;
-import javafx.scene.control.TitledPane;
-import javafx.scene.control.TreeItem;
-import javafx.scene.control.TreeTableColumn;
-import javafx.scene.control.TreeTableView;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.text.DateFormat;
 import java.text.ParseException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
 public class Assignment {
 
     private static Logger logger = LogManager.getLogger(Assignment.class);
-    private final String assignedBy;
     private final int id, classId;
-    private long dueDate;
-    private String name;
+    private final Course course;
+    private SimpleLongProperty dueDate = new SimpleLongProperty();
+    private SimpleStringProperty name = new SimpleStringProperty();
     private TitledPane titledPane;
-    private VBox tableBox = new VBox();
+    private VBox tableBox = new VBox(5);
     private SimpleBooleanProperty loaded = new SimpleBooleanProperty(false);
     private ArrayList<AssignmentInfo> rootNodes = new ArrayList<>();
+    private HashSet<ProofInfo> proofs = new HashSet<>();
 
-    public Assignment(String name, String dueDate, String assignedBy, int id, int classId) {
-        this.name = name;
+    public Assignment(String name, String dueDate, String assignedBy, int id, int classId, Course course) {
+        this.course = course;
+        this.name.set(name);
         try {
-            this.dueDate = NetUtil.DATE_FORMAT.parse(dueDate).getTime();
+            this.dueDate.set(NetUtil.DATE_FORMAT.parse(dueDate).getTime());
         } catch (ParseException e) {
             logger.error("Failed to parse due date", e);
-            this.dueDate = -1;
+            this.dueDate.set(-1);
         }
-        this.assignedBy = assignedBy;
         this.id = id;
         this.classId = classId;
-        String dateStr = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(this.dueDate));
-        titledPane = new TitledPane(name + "\nDue: " + dateStr + "\nAssigned by: " + assignedBy, tableBox);
+        titledPane = new TitledPane("", tableBox);
+        titledPane.textProperty().bind(Bindings.createStringBinding(() -> {
+            String dateStr = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(Assignment.this.dueDate.get()));
+            return Assignment.this.name.get() + "\nDue: " + dateStr + "\nAssigned by: " + assignedBy;
+        }, this.name, this.dueDate));
         titledPane.expandedProperty().addListener((observableValue, oldVal, newVal) -> {
             if (newVal)
                 load(false);
@@ -111,7 +121,105 @@ public class Assignment {
         view.setColumnResizePolicy(TreeTableView.CONSTRAINED_RESIZE_POLICY);
         view.setEditable(false);
         root.setExpanded(true);
+        if (AssignmentWindow.instance.getClientInfo().isInstructorProperty().get()) {
+            Button editAssignment = new Button("Edit Assignment");
+            Button deleteAssignment = new Button("Delete Assignment");
+            editAssignment.setOnAction(action -> editAssignment());
+            deleteAssignment.setOnAction(action -> deleteAssignment());
+            HBox box = new HBox(5);
+            box.getChildren().addAll(editAssignment, deleteAssignment);
+            tableBox.getChildren().add(box);
+        }
         tableBox.getChildren().add(view);
+    }
+
+    private void deleteAssignment() {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.initModality(Modality.WINDOW_MODAL);
+        alert.initOwner(AssignmentWindow.instance.getStage());
+        alert.setTitle("Delete Assignment?");
+        alert.setHeaderText("Are you sure you want to delete this assignment?");
+        alert.setContentText("This will also delete any student submissions for this assignment");
+        alert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
+        Optional<ButtonType> result = alert.showAndWait();
+        result.ifPresent(type -> {
+            if (type != ButtonType.YES)
+                return;
+            new Thread(() -> {
+                Client client = Main.getClient();
+                try {
+                    client.connect();
+                    client.sendMessage(NetUtil.DELETE_ASSIGNMENT);
+                    client.sendMessage(classId + "|" + id);
+                    String res = client.readMessage();
+                    if (!NetUtil.OK.equals(Client.checkError(res)))
+                        throw new IOException(res);
+                    AssignmentWindow.instance.loadAssignments(course, true);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    client.disconnect();
+                }
+            }).start();
+        });
+    }
+
+    private void editAssignment() {
+        ProofList proofList = AssignmentWindow.instance.getProofList();
+        proofList.load(false);
+        try {
+            AssignmentDialog dialog = new AssignmentDialog(AssignmentWindow.instance.getStage(), proofList, name.get(), new Date(dueDate.get()), proofs);
+            Optional<Triple<String, LocalDateTime, Collection<ProofInfo>>> result = dialog.showAndWait();
+            if (!result.isPresent())
+                return;
+            Triple<String, LocalDateTime, Collection<ProofInfo>> info = result.get();
+            String newName = info.getLeft().equals(name.get()) ? null : info.getLeft();
+            Date tmpDate = Date.from(info.getMiddle().atZone(ZoneId.systemDefault()).toInstant());
+            Date newDate = tmpDate.equals(new Date(dueDate.get())) ? null : tmpDate;
+            Collection<ProofInfo> newProofs = info.getRight();
+            Set<ProofInfo> remove = new HashSet<>();
+            Set<ProofInfo> add = new HashSet<>();
+            for (ProofInfo p : newProofs)
+                if (!proofs.contains(p))
+                    add.add(p);
+            for (ProofInfo p : proofs)
+                if (!newProofs.contains(p))
+                    remove.add(p);
+            if (newName != null || newDate != null || remove.size() > 0 || add.size() > 0) {
+                new Thread(() -> {
+                    Client client = Main.getClient();
+                    try {
+                        client.connect();
+                        client.sendMessage(NetUtil.UPDATE_ASSIGNMENT);
+                        if (newName != null)
+                            client.sendMessage(NetUtil.RENAME + "|" + classId + "|" + id + "|" + URLEncoder.encode(newName, "UTF-8"));
+                        if (newDate != null)
+                            client.sendMessage(NetUtil.CHANGE_DUE + "|" + classId + "|" + id + "|" + NetUtil.DATE_FORMAT.format(newDate));
+                        for (ProofInfo p : remove)
+                            client.sendMessage(NetUtil.REMOVE_PROOF + "|" + classId + "|" + id + "|" + p.getProofId());
+                        for (ProofInfo p : add)
+                            client.sendMessage(NetUtil.ADD_PROOF + "|" + classId + "|" + id + "|" + p.getProofId());
+                        client.sendMessage(NetUtil.DONE);
+                        String res = client.readMessage();
+                        if (!NetUtil.OK.equals(Client.checkError(res)))
+                            throw new IOException(res);
+                        Platform.runLater(() -> {
+                            if (newName != null)
+                                name.set(newName);
+                            if (newDate != null)
+                                dueDate.set(newDate.getTime());
+                            load(true);
+                        });
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } finally {
+                        client.disconnect();
+                    }
+                }).start();
+            }
+        } catch (IOException e) {
+            logger.error("Failed to show assignment dialog", e);
+        }
     }
 
     private void addChildren(AssignmentInfo rootInfo, TreeItem<AssignmentInfo> rootItem) {
@@ -195,6 +303,7 @@ public class Assignment {
                 String name = URLDecoder.decode(split[1], "UTF-8");
                 String createdBy = URLDecoder.decode(split[2], "UTF-8");
                 long timestamp = NetUtil.DATE_FORMAT.parse(URLDecoder.decode(split[3], "UTF-8")).getTime();
+                proofs.add(new ProofInfo(pid, name, createdBy, timestamp, true));
                 for (UserInfo info : users.values()) {
                     ProofInfo proofInfo = new ProofInfo(pid, name, createdBy, timestamp, true);
                     proofMap.computeIfAbsent(info.getUserId(), uid -> new HashMap<>()).put(pid, proofInfo);
@@ -230,7 +339,7 @@ public class Assignment {
     }
 
     public String getName() {
-        return name;
+        return name.get();
     }
 
     public TitledPane getPane() {

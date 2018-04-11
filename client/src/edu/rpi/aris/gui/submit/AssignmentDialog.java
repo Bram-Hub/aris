@@ -15,17 +15,18 @@ import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.commons.lang3.tuple.Triple;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import java.time.ZoneId;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-public class AddAssignmentDialog extends Dialog<Triple<String, LocalDateTime, Collection<ProofInfo>>> {
+public class AssignmentDialog extends Dialog<Triple<String, LocalDateTime, Collection<ProofInfo>>> {
 
     private static final Pattern timePattern = Pattern.compile("(?i)(?<hour>1[0-2]|0?[1-9]):(?<min>[0-5][0-9]) *?(?<ap>AM|PM)");
+    private static final SimpleDateFormat timeFormat = new SimpleDateFormat("h:mm a");
     private final ProofList availableProofs;
     @FXML
     private TextField nameField;
@@ -36,12 +37,13 @@ public class AddAssignmentDialog extends Dialog<Triple<String, LocalDateTime, Co
     @FXML
     private TextField timeInput;
     private Button okBtn;
+    private boolean edit = false;
 
-    public AddAssignmentDialog(Window parent, ProofList availableProofs) throws IOException {
+    public AssignmentDialog(Window parent, ProofList availableProofs) throws IOException {
         this.availableProofs = availableProofs;
         initModality(Modality.WINDOW_MODAL);
         initOwner(parent);
-        FXMLLoader loader = new FXMLLoader(AddAssignmentDialog.class.getResource("add_assignment.fxml"));
+        FXMLLoader loader = new FXMLLoader(AssignmentDialog.class.getResource("assignment_dialog.fxml"));
         loader.setController(this);
         getDialogPane().getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
         setTitle("Create Assignment");
@@ -59,16 +61,31 @@ public class AddAssignmentDialog extends Dialog<Triple<String, LocalDateTime, Co
             int hour = Integer.parseInt(m.group("hour"));
             int min = Integer.parseInt(m.group("min"));
             String ap = m.group("ap").toLowerCase();
-            hour = ap.equals("pm") ? hour + 12 : hour;
-            if (hour == 24)
-                hour = 0;
+            if (hour == 12) {
+                hour = ap.equals("pm") ? 12 : 0;
+            } else {
+                hour = ap.equals("pm") ? hour + 12 : hour;
+                if (hour == 24)
+                    hour = 0;
+            }
             LocalDateTime date = dueDate.getValue().atTime(hour, min);
             List<ProofInfo> list = proofBox.getChildren().stream().map(node -> (ProofInfo) ((ComboBox) ((HBox) node).getChildren().get(0)).getSelectionModel().getSelectedItem()).filter(Objects::nonNull).collect(Collectors.toList());
             return new ImmutableTriple<>(name, date, list);
         });
     }
 
-    private void addSelector() {
+    public AssignmentDialog(Window parent, ProofList availableProofs, String name, Date dueDate, Set<ProofInfo> proofs) throws IOException {
+        this(parent, availableProofs);
+        proofBox.getChildren().clear();
+        for (ProofInfo info : proofs)
+            addSelector().getSelectionModel().select(info);
+        nameField.setText(name);
+        timeInput.setText(timeFormat.format(dueDate));
+        this.dueDate.setValue(dueDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
+        edit = true;
+    }
+
+    private ComboBox<ProofInfo> addSelector() {
         HBox box = new HBox(5);
         ComboBox<ProofInfo> combo = new ComboBox<>();
         combo.setPromptText("Select Proof");
@@ -89,6 +106,19 @@ public class AddAssignmentDialog extends Dialog<Triple<String, LocalDateTime, Co
         Button delete = new Button("-");
         delete.disableProperty().bind(Bindings.createBooleanBinding(() -> combo.getSelectionModel().getSelectedItem() == null, combo.getSelectionModel().selectedItemProperty()));
         delete.setOnAction(action -> {
+            if (edit) {
+                Alert alert = new Alert(Alert.AlertType.WARNING);
+                alert.initModality(Modality.WINDOW_MODAL);
+                alert.initOwner(getDialogPane().getScene().getWindow());
+                alert.setTitle("Remove Proof?");
+                alert.setHeaderText("Are you sure you want to remove this proof");
+                alert.setContentText("This will also delete any student submissions\nfor this proof on this assignment");
+                alert.getButtonTypes().setAll(ButtonType.NO, ButtonType.YES);
+                alert.getDialogPane().getScene().getWindow().sizeToScene();
+                Optional<ButtonType> result = alert.showAndWait();
+                if (!result.isPresent() || result.get() != ButtonType.YES)
+                    return;
+            }
             proofBox.getChildren().remove(box);
             getDialogPane().getScene().getWindow().sizeToScene();
         });
@@ -96,6 +126,7 @@ public class AddAssignmentDialog extends Dialog<Triple<String, LocalDateTime, Co
         box.getChildren().addAll(combo, delete);
         proofBox.getChildren().add(box);
         getDialogPane().getScene().getWindow().sizeToScene();
+        return combo;
     }
 
     @FXML
@@ -103,5 +134,4 @@ public class AddAssignmentDialog extends Dialog<Triple<String, LocalDateTime, Co
         okBtn.disableProperty().bind(Bindings.createBooleanBinding(() -> !timePattern.matcher(timeInput.getText()).matches() || nameField.getText().length() == 0 || dueDate.getValue() == null || proofBox.getChildren().size() < 2, timeInput.textProperty(), nameField.textProperty(), dueDate.valueProperty(), proofBox.getChildren()));
         addSelector();
     }
-
 }

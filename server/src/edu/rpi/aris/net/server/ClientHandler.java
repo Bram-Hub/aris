@@ -630,93 +630,106 @@ public abstract class ClientHandler implements Runnable {
     }
 
     private void updateAssignment() throws IOException, SQLException {
-        String[] str = in.readUTF().split("\\|");
         if (!userType.equals(NetUtil.USER_INSTRUCTOR)) {
             sendMessage(NetUtil.UNAUTHORIZED);
             return;
         }
-        if (str.length != 4) {
-            sendMessage(NetUtil.INVALID);
-            return;
-        }
-        int aid, cid;
-        try {
-            cid = Integer.parseInt(str[1]);
-            aid = Integer.parseInt(str[2]);
-        } catch (NumberFormatException e) {
-            sendMessage(NetUtil.ERROR);
-            return;
-        }
-        try (Connection connection = dbManager.getConnection()) {
-            switch (str[0]) {
-                case "RENAME":
-                    String name = URLDecoder.decode(str[3], "UTF-8");
-                    try (PreparedStatement statement = connection.prepareStatement("UPDATE assignment SET name = ? WHERE id = ? AND class_id = ?;")) {
-                        statement.setString(1, name);
-                        statement.setInt(2, aid);
-                        statement.setInt(3, cid);
-                        statement.executeUpdate();
-                    }
-                    break;
-                case "ADD_PROOF":
-                    int pid;
-                    try {
-                        pid = Integer.parseInt(str[3]);
-                    } catch (NumberFormatException e) {
-                        sendMessage(NetUtil.ERROR);
-                        return;
-                    }
-                    try (PreparedStatement select = connection.prepareStatement("SELECT name, due_date, assigned_by FROM assignment WHERE id = ? AND class_id = ?;");
-                         PreparedStatement addProof = connection.prepareStatement("INSERT INTO assignment VALUES(?, ?, ?, ?, ?, ?);")) {
-                        select.setInt(1, aid);
-                        select.setInt(2, cid);
-                        try (ResultSet rs = select.executeQuery()) {
-                            if (!rs.next()) {
-                                sendMessage(NetUtil.ERROR);
-                                return;
-                            }
-                            String n = rs.getString(1);
-                            String due_date = rs.getString(2);
-                            String assigned = rs.getString(3);
-                            addProof.setInt(1, aid);
-                            addProof.setInt(2, cid);
-                            addProof.setInt(3, pid);
-                            addProof.setString(4, n);
-                            addProof.setString(5, due_date);
-                            addProof.setString(6, assigned);
-                            addProof.executeUpdate();
+        boolean done = false;
+        while (!done) {
+            String[] str = in.readUTF().split("\\|");
+            if (str.length == 1 && str[0].equals(NetUtil.DONE)) {
+                done = true;
+                continue;
+            }
+            if (str.length != 4) {
+                sendMessage(NetUtil.INVALID);
+                return;
+            }
+            int aid, cid;
+            try {
+                cid = Integer.parseInt(str[1]);
+                aid = Integer.parseInt(str[2]);
+            } catch (NumberFormatException e) {
+                sendMessage(NetUtil.ERROR);
+                return;
+            }
+            try (Connection connection = dbManager.getConnection()) {
+                switch (str[0]) {
+                    case NetUtil.RENAME:
+                        String name = URLDecoder.decode(str[3], "UTF-8");
+                        try (PreparedStatement statement = connection.prepareStatement("UPDATE assignment SET name = ? WHERE id = ? AND class_id = ?;")) {
+                            statement.setString(1, name);
+                            statement.setInt(2, aid);
+                            statement.setInt(3, cid);
+                            statement.executeUpdate();
                         }
-                    }
-                    break;
-                case "REMOVE_PROOF":
-                    try {
-                        pid = Integer.parseInt(str[3]);
-                    } catch (NumberFormatException e) {
-                        sendMessage(NetUtil.ERROR);
+                        break;
+                    case NetUtil.ADD_PROOF:
+                        int pid;
+                        try {
+                            pid = Integer.parseInt(str[3]);
+                        } catch (NumberFormatException e) {
+                            sendMessage(NetUtil.ERROR);
+                            return;
+                        }
+                        try (PreparedStatement select = connection.prepareStatement("SELECT name, due_date, assigned_by FROM assignment WHERE id = ? AND class_id = ?;");
+                             PreparedStatement addProof = connection.prepareStatement("INSERT INTO assignment VALUES(?, ?, ?, ?, ?, ?);")) {
+                            select.setInt(1, aid);
+                            select.setInt(2, cid);
+                            try (ResultSet rs = select.executeQuery()) {
+                                if (!rs.next()) {
+                                    sendMessage(NetUtil.ERROR);
+                                    return;
+                                }
+                                String n = rs.getString(1);
+                                String due_date = rs.getString(2);
+                                String assigned = rs.getString(3);
+                                addProof.setInt(1, aid);
+                                addProof.setInt(2, cid);
+                                addProof.setInt(3, pid);
+                                addProof.setString(4, n);
+                                addProof.setString(5, due_date);
+                                addProof.setString(6, assigned);
+                                addProof.executeUpdate();
+                            }
+                        }
+                        break;
+                    case NetUtil.REMOVE_PROOF:
+                        try {
+                            pid = Integer.parseInt(str[3]);
+                        } catch (NumberFormatException e) {
+                            sendMessage(NetUtil.ERROR);
+                            return;
+                        }
+                        try (PreparedStatement removeAssignment = connection.prepareStatement("DELETE FROM assignment WHERE id = ? AND class_id = ? AND proof_id = ?;")) {
+                            removeAssignment.setInt(1, aid);
+                            removeAssignment.setInt(2, cid);
+                            removeAssignment.setInt(3, pid);
+                            removeAssignment.executeUpdate();
+                        }
+                        break;
+                    case NetUtil.CHANGE_DUE:
+                        Date time;
+                        try {
+                            time = NetUtil.DATE_FORMAT.parse(str[3]);
+                        } catch (ParseException e) {
+                            sendMessage(NetUtil.ERROR);
+                            return;
+                        }
+                        try (PreparedStatement statement = connection.prepareStatement("UPDATE assignment SET due_date = ? WHERE id = ? AND class_id = ?;")) {
+                            statement.setTimestamp(1, new Timestamp(time.getTime()));
+                            statement.setInt(2, aid);
+                            statement.setInt(3, cid);
+                            statement.executeUpdate();
+                        }
+                        break;
+                    case NetUtil.DONE:
+                        done = true;
+                        break;
+                    default:
+                        sendMessage(NetUtil.INVALID);
                         return;
-                    }
-                    try (PreparedStatement removeAssignment = connection.prepareStatement("DELETE FROM assignment WHERE id = ? AND class_id = ? AND proof_id = ?;")) {
-                        removeAssignment.setInt(1, aid);
-                        removeAssignment.setInt(2, cid);
-                        removeAssignment.setInt(3, pid);
-                        removeAssignment.executeUpdate();
-                    }
-                    break;
-                case "CHANGE_DUE":
-                    long time;
-                    try {
-                        time = Long.parseLong(str[3]);
-                    } catch (NumberFormatException e) {
-                        sendMessage(NetUtil.ERROR);
-                        return;
-                    }
-                    try (PreparedStatement statement = connection.prepareStatement("UPDATE assignment SET due_date = ? WHERE id = ? AND class_id = ?;")) {
-                        statement.setString(1, NetUtil.DATE_FORMAT.format(new Date(time)));
-                        statement.setInt(2, aid);
-                        statement.setInt(3, cid);
-                        statement.executeUpdate();
-                    }
-                    break;
+                }
             }
         }
         sendMessage("OK");

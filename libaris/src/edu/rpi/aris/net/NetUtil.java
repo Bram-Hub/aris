@@ -60,6 +60,10 @@ public class NetUtil {
     public static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     public static final String TOO_LARGE = "TOO_LARGE";
     public static final String NO_DATA = "NO_DATA";
+    public static final String RENAME = "RENAME";
+    public static final String ADD_PROOF = "ADD_PROOF";
+    public static final String REMOVE_PROOF = "REMOVE_PROOF";
+    public static final String CHANGE_DUE = "CHANGE_DUE";
 
     /**
      * Compares two version strings.

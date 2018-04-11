@@ -178,7 +178,7 @@ public class AssignmentWindow implements SaveInfoListener {
         Bindings.bindContent(proofTable.getItems(), proofList.getProofs());
     }
 
-    private void loadAssignments(Course newCourse, boolean reload) {
+    public void loadAssignments(Course newCourse, boolean reload) {
         Platform.runLater(() -> {
             assignments.getPanes().clear();
             if (newCourse == null)
@@ -458,7 +458,7 @@ public class AssignmentWindow implements SaveInfoListener {
     @FXML
     private void createAssignment() throws IOException {
         proofList.load(false);
-        AddAssignmentDialog dialog = new AddAssignmentDialog(stage, proofList);
+        AssignmentDialog dialog = new AssignmentDialog(stage, proofList);
         Optional<Triple<String, LocalDateTime, Collection<ProofInfo>>> result = dialog.showAndWait();
         if (result.isPresent()) {
             Triple<String, LocalDateTime, Collection<ProofInfo>> r = result.get();
@@ -488,5 +488,13 @@ public class AssignmentWindow implements SaveInfoListener {
                 "This will show up if this file is submitted and may affect your grade.");
         alert.getDialogPane().setPrefWidth(500);
         alert.showAndWait();
+    }
+
+    public Stage getStage() {
+        return stage;
+    }
+
+    public ProofList getProofList() {
+        return proofList;
     }
 }

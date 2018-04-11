@@ -43,7 +43,7 @@ public class Course {
                         try {
                             Platform.runLater(() -> {
                                 try {
-                                    assignments.add(new Assignment(URLDecoder.decode(split[0], "UTF-8"), URLDecoder.decode(split[1], "UTF-8"), URLDecoder.decode(split[2], "UTF-8"), Integer.parseInt(split[3]), id));
+                                    assignments.add(new Assignment(URLDecoder.decode(split[0], "UTF-8"), URLDecoder.decode(split[1], "UTF-8"), URLDecoder.decode(split[2], "UTF-8"), Integer.parseInt(split[3]), id, this));
                                 } catch (UnsupportedEncodingException e) {
                                     e.printStackTrace();
                                 }
