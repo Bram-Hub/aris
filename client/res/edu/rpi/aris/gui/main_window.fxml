@@ -12,10 +12,7 @@
 
 <BorderPane stylesheets="@main_window.css" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1">
     <center>
-        <BorderPane>
-            <top>
-                <HBox BorderPane.alignment="CENTER" />
-            </top>
+        <BorderPane fx:id="proofBorderPane">
             <bottom>
                 <HBox alignment="CENTER_LEFT" BorderPane.alignment="CENTER">
                     <Label fx:id="statusLbl">

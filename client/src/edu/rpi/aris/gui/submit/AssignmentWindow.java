@@ -152,11 +152,27 @@ public class AssignmentWindow implements SaveInfoListener {
             if (newValue == proofTab)
                 proofList.load(false);
         });
-        proofName.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getName()));
-        proofName.setOnEditCommit(event -> {
-            System.out.println("Proof " + event.getOldValue() + " changed to " + event.getNewValue());
-            //TODO
-        });
+        proofName.setCellValueFactory(param -> param.getValue().nameProperty());
+        proofName.setOnEditCommit(event -> new Thread(() -> {
+            Client client = Main.getClient();
+            try {
+                client.connect();
+                client.sendMessage(NetUtil.UPDATE_PROOF);
+                client.sendMessage(NetUtil.RENAME + "|" + event.getRowValue().getProofId() + "|" + event.getNewValue());
+                String res = client.readMessage();
+                if (!NetUtil.OK.equals(Client.checkError(res)))
+                    throw new IOException(res);
+                event.getRowValue().setName(event.getNewValue());
+            } catch (IOException e) {
+                e.printStackTrace();
+                //TODO
+                int index = proofTable.getItems().indexOf(event.getRowValue());
+                event.getRowValue().setName(event.getOldValue());
+                proofTable.getItems().set(index, event.getRowValue());
+            } finally {
+                client.disconnect();
+            }
+        }).start());
         proofName.setStyle("-fx-alignment: CENTER;");
         proofBy.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getCreatedBy()));
         proofName.setCellFactory(TextFieldTableCell.forTableColumn());

@@ -19,6 +19,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -71,6 +72,8 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener {
     private VBox rulesPane;
     @FXML
     private TitledPane oprTitlePane;
+    @FXML
+    private BorderPane proofBorderPane;
     private ObjectProperty<Font> fontObjectProperty;
     private ArrayList<ProofLine> proofLines = new ArrayList<>();
     private ArrayList<GoalLine> goalLines = new ArrayList<>();
@@ -83,18 +86,28 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener {
     private HistoryManager history = new HistoryManager(this);
     private boolean loaded = false;
     private SaveManager saveManager;
+    private Node headerNode;
 
     public MainWindow(Stage primaryStage, EditMode editMode) throws IOException {
-        this(primaryStage, new Proof(GuiConfig.getConfigManager().username.get()), editMode);
+        this(primaryStage, editMode, null);
+    }
+
+    public MainWindow(Stage primaryStage, EditMode editMode, Node headerNode) throws IOException {
+        this(primaryStage, new Proof(GuiConfig.getConfigManager().username.get()), editMode, headerNode);
     }
 
     public MainWindow(Stage primaryStage, Proof proof, EditMode editMode) throws IOException {
+        this(primaryStage, proof, editMode, null);
+    }
+
+    public MainWindow(Stage primaryStage, Proof proof, EditMode editMode, Node headerNode) throws IOException {
         Objects.requireNonNull(primaryStage);
         Objects.requireNonNull(proof);
         Objects.requireNonNull(editMode);
         this.primaryStage = primaryStage;
         this.proof = proof;
         this.editMode = editMode;
+        this.headerNode = headerNode;
         primaryStage.setTitle("ARIS");
         primaryStage.setOnHidden(windowEvent -> System.gc());
         saveManager = new SaveManager(this);
@@ -167,9 +180,13 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener {
         FXMLLoader loader = new FXMLLoader(Aris.class.getResource("main_window.fxml"));
         loader.setController(this);
         Parent root = loader.load();
+        VBox box = new VBox();
         MenuBar bar = setupMenu();
+        box.getChildren().add(bar);
+        if (headerNode != null)
+            box.getChildren().add(headerNode);
         BorderPane pane = new BorderPane();
-        pane.setTop(bar);
+        pane.setTop(box);
         pane.setCenter(root);
         Scene scene = new Scene(pane, 1000, 800);
         primaryStage.setScene(scene);
@@ -461,6 +478,10 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener {
         primaryStage.show();
         selectedLine.set(0);
         proofLines.get(0).requestFocus();
+    }
+
+    public void hide() {
+        primaryStage.hide();
     }
 
     private synchronized void autoScroll(Bounds contentBounds) {
@@ -887,4 +908,5 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener {
                 break;
         }
     }
+
 }

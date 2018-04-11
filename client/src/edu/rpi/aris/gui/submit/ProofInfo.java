@@ -2,6 +2,7 @@ package edu.rpi.aris.gui.submit;
 
 import edu.rpi.aris.net.GradingStatus;
 import edu.rpi.aris.net.NetUtil;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.control.Button;
 
 import java.util.ArrayList;
@@ -10,10 +11,10 @@ import java.util.Comparator;
 public class ProofInfo extends AssignmentInfo {
 
     private final int proofId;
-    private final String name;
     private final String createdBy;
     private final long createdOn;
     private final boolean isInstructor;
+    private SimpleStringProperty name;
     private ArrayList<SubmissionInfo> children = new ArrayList<>();
     private GradingStatus gradingStatus = GradingStatus.NONE;
     private String status;
@@ -23,7 +24,7 @@ public class ProofInfo extends AssignmentInfo {
 
     public ProofInfo(int proofId, String name, String createdBy, long createdOn, boolean isInstructor) {
         this.proofId = proofId;
-        this.name = name;
+        this.name = new SimpleStringProperty(name);
         this.createdBy = createdBy;
         this.createdOn = createdOn;
         this.isInstructor = isInstructor;
@@ -67,14 +68,14 @@ public class ProofInfo extends AssignmentInfo {
     public int compareTo(AssignmentInfo o) {
         if (o instanceof ProofInfo) {
             ProofInfo p = (ProofInfo) o;
-            return name.compareTo(p.name);
+            return name.get().compareTo(p.name.get());
         } else
             return -1;
     }
 
     @Override
     public String toString() {
-        return name;
+        return name.get();
     }
 
     @Override
@@ -99,6 +100,14 @@ public class ProofInfo extends AssignmentInfo {
     }
 
     public String getName() {
+        return name.get();
+    }
+
+    public void setName(String name) {
+        this.name.set(name);
+    }
+
+    public SimpleStringProperty nameProperty() {
         return name;
     }
 

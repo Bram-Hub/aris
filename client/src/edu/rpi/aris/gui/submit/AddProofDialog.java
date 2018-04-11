@@ -8,10 +8,12 @@ import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.Dialog;
-import javafx.scene.control.TextField;
+import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
+import javafx.geometry.Pos;
+import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.Window;
@@ -55,7 +57,17 @@ public class AddProofDialog extends Dialog<Pair<String, Proof>> {
     private void openEditor() {
         if (window == null) {
             try {
-                window = new MainWindow(new Stage(), EditMode.UNRESTRICTED);
+                HBox header = new HBox(5);
+                header.setPadding(new Insets(5));
+                Label lbl = new Label("Creating proof " + (textField.getText().length() == 0 ? "" : "\"" + textField.getText() + "\" "));
+                header.setAlignment(Pos.CENTER_LEFT);
+                Button btn = new Button("Done");
+                Separator sep = new Separator(Orientation.HORIZONTAL);
+                sep.setVisible(false);
+                header.getChildren().addAll(lbl, sep, btn);
+                HBox.setHgrow(sep, Priority.ALWAYS);
+                window = new MainWindow(new Stage(), EditMode.UNRESTRICTED, header);
+                btn.setOnAction(action -> window.hide());
                 window.setModal(getDialogPane().getScene().getWindow());
                 proof.set(window.getProof());
             } catch (IOException e) {

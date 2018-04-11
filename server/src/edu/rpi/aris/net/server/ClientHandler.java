@@ -522,7 +522,7 @@ public abstract class ClientHandler implements Runnable {
                         throw new IOException("Invalid size");
                     }
                     if (size > NetUtil.MAX_FILE_SIZE) {
-                        sendMessage("TOO_LARGE");
+                        sendMessage(NetUtil.TOO_LARGE);
                         return;
                     }
                     byte[] data = new byte[(int) size];
@@ -810,40 +810,51 @@ public abstract class ClientHandler implements Runnable {
         }
         int id;
         try {
-            id = Integer.parseInt(proofData[0]);
+            id = Integer.parseInt(proofData[1]);
         } catch (NumberFormatException e) {
             sendMessage(NetUtil.ERROR);
             return;
         }
-        String name = proofData[1];
-        long size;
-        try {
-            size = Long.parseLong(proofData[2]);
-        } catch (NumberFormatException e) {
-            sendMessage(NetUtil.ERROR);
-            return;
-        }
-        try (Connection connection = dbManager.getConnection();
-             PreparedStatement updateName = connection.prepareStatement("UPDATE proof SET name = ? WHERE id = ?");
-             PreparedStatement updateData = connection.prepareStatement("UPDATE proof SET data = ? WHERE id = ?")) {
-            updateName.setString(1, name);
-            updateName.setInt(2, id);
-            updateName.executeUpdate();
-            if (size > 0) {
-                if (size > NetUtil.MAX_FILE_SIZE) {
-                    sendMessage("TOO_LARGE");
-                    return;
+        switch (proofData[0]) {
+            case NetUtil.RENAME:
+                String name = proofData[2];
+                try (Connection connection = dbManager.getConnection();
+                     PreparedStatement updateName = connection.prepareStatement("UPDATE proof SET name = ? WHERE id = ?")) {
+                    updateName.setString(1, name);
+                    updateName.setInt(2, id);
+                    updateName.executeUpdate();
                 }
-                byte[] data = new byte[(int) size];
-                if (size != in.read(data)) {
+                break;
+            case NetUtil.UPLOAD:
+                long size;
+                try {
+                    size = Long.parseLong(proofData[2]);
+                } catch (NumberFormatException e) {
                     sendMessage(NetUtil.ERROR);
                     return;
                 }
-                ByteArrayInputStream bis = new ByteArrayInputStream(data);
-                updateData.setBinaryStream(1, bis);
-                updateData.setInt(2, id);
-                updateData.executeUpdate();
-            }
+                try (Connection connection = dbManager.getConnection();
+                     PreparedStatement updateData = connection.prepareStatement("UPDATE proof SET data = ? WHERE id = ?")) {
+                    if (size > 0) {
+                        if (size > NetUtil.MAX_FILE_SIZE) {
+                            sendMessage(NetUtil.TOO_LARGE);
+                            return;
+                        }
+                        byte[] data = new byte[(int) size];
+                        if (size != in.read(data)) {
+                            sendMessage(NetUtil.ERROR);
+                            return;
+                        }
+                        ByteArrayInputStream bis = new ByteArrayInputStream(data);
+                        updateData.setBinaryStream(1, bis);
+                        updateData.setInt(2, id);
+                        updateData.executeUpdate();
+                    }
+                }
+                break;
+            default:
+                sendMessage(NetUtil.INVALID);
+                return;
         }
         sendMessage(NetUtil.OK);
     }

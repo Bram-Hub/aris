@@ -415,7 +415,8 @@ public class Client {
                         connect();
                         if (connectionLock.isHeldByCurrentThread())
                             connectionLock.unlock();
-                    }
+                    } else
+                        throw e;
                 }
             }
         } catch (IOException e) {

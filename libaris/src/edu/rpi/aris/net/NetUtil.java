@@ -64,6 +64,7 @@ public class NetUtil {
     public static final String ADD_PROOF = "ADD_PROOF";
     public static final String REMOVE_PROOF = "REMOVE_PROOF";
     public static final String CHANGE_DUE = "CHANGE_DUE";
+    public static final String UPLOAD = "UPLOAD";
 
     /**
      * Compares two version strings.
