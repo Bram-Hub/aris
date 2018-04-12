@@ -169,10 +169,10 @@ public class Update {
                 ZipEntry entry = entries.nextElement();
                 File entryDestination = new File(Update.UPDATE_DOWNLOAD_DIR, entry.getName());
                 if (entry.isDirectory()) {
-                    if (!entryDestination.mkdirs())
+                    if (!entryDestination.exists() && !entryDestination.mkdirs())
                         throw new IOException("Failed to unzip file: " + file.getCanonicalPath());
                 } else {
-                    if (!entryDestination.getParentFile().mkdirs())
+                    if (!entryDestination.getParentFile().exists() && !entryDestination.getParentFile().mkdirs())
                         throw new IOException("Failed to unzip file: " + file.getCanonicalPath());
                     try (InputStream in = zipFile.getInputStream(entry);
                          OutputStream out = new FileOutputStream(entryDestination)) {

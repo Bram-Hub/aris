@@ -45,6 +45,7 @@ run_aris() {
             echo -n Updating aris ...
             rm -rf /usr/lib/aris/*
             cp -r $TMP/aris-update/* /usr/lib/aris
+            chmod +x /usr/lib/aris/bin/*
             echo " Done"
         fi
     done
