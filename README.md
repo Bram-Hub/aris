@@ -24,10 +24,13 @@ TODO
     # The private key for the above certificate. If this is not specified here of on the command line the server will run in self signing mode
     key <key-file-path>
     ```
-4. Run the aris-configdb command and follow the prompts to configure the database and start the server
-    ```
-    sudo aris-configdb
-    ```
+4. Setup the database and start the server.
+    
+    Note: The aris-configdb command exists to simplify this process. Otherwise follow the steps listed below.
+    
+    1. 
+    2. 
+    
 5. Run the aris-adduser command and follow the prompts to create an instructor on the server for access through the standard interface
     ```
     sudo aris-adduser
