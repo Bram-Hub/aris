@@ -9,12 +9,15 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 
 public class ServerConfig {
 
     private static final String STORAGE_CONFIG = "storage-dir";
     private static final String LOG_CONFIG = "log-dir";
+    private static final String CONFIG_DIR = "config-dir";
     private static final String CA_CONFIG = "ca";
     private static final String KEY_CONFIG = "key";
     private static final String DOMAIN_KEY = "domain";
@@ -44,13 +47,8 @@ public class ServerConfig {
         return instance;
     }
 
-    private void load() throws IOException {
-        configOptions.clear();
-        if (!configFile.exists()) {
-            logger.fatal("Server configuration file does not exist: " + configFile.getCanonicalPath());
-            System.exit(1);
-        }
-        try (BufferedReader reader = new BufferedReader(new FileReader(configFile))) {
+    private void readFile(File file) throws IOException {
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.contains("#"))
@@ -65,6 +63,32 @@ public class ServerConfig {
                 String key = line.substring(0, line.indexOf(' '));
                 String value = line.substring(line.indexOf(' ') + 1);
                 configOptions.put(key, value);
+            }
+        }
+    }
+
+    private void load() throws IOException {
+        configOptions.clear();
+        if (!configFile.exists()) {
+            logger.fatal("Server configuration file does not exist: " + configFile.getCanonicalPath());
+            System.exit(1);
+        }
+        readFile(configFile);
+        String confDirStr;
+        if ((confDirStr = configOptions.remove(CONFIG_DIR)) != null) {
+            File confDir = new File(confDirStr);
+            if (!confDir.exists())
+                throw new IOException("Specified configuration directory \"" + confDir.getCanonicalPath() + "\" does not exist");
+            if (!confDir.isDirectory())
+                throw new IOException("Specified configuration directory \"" + confDir.getCanonicalPath() + "\" is not a directory");
+            File[] confFiles = confDir.listFiles();
+            if (confFiles != null) {
+                Arrays.sort(confFiles, (o1, o2) -> {
+                    Comparator<String> comp = Comparator.reverseOrder();
+                    return comp.compare(o1.getName(), o2.getName());
+                });
+                for (File file : confFiles)
+                    readFile(file);
             }
         }
         // required configs

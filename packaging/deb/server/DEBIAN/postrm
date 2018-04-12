@@ -1,4 +1,5 @@
 #!/bin/bash
 
 rm /usr/bin/aris-*
+rm /etc/aris.d/99-default.cfg
 systemctl daemon-reload

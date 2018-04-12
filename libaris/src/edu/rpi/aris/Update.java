@@ -6,16 +6,20 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import edu.rpi.aris.net.NetUtil;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.*;
 import java.net.URL;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 public class Update {
 
@@ -66,13 +70,13 @@ public class Update {
         return false;
     }
 
-    private String getArisJar() {
+    private String getAssetUrl(String assetName) {
         JsonArray array = releaseData.get("assets").getAsJsonArray();
         if (array == null)
             return null;
         for (int i = 0; i < array.size(); ++i) {
             JsonObject asset = array.get(i).getAsJsonObject();
-            if (asset.get("name").getAsString().equals(updateStream.assetName))
+            if (asset.get("name").getAsString().equals(assetName))
                 return asset.get("browser_download_url").getAsString();
         }
         return null;
@@ -129,8 +133,9 @@ public class Update {
         }
         logger.info("Starting update");
         logger.info("Getting download list");
-        String jarUrl = getArisJar();
-        if (jarUrl == null)
+        String jarUrl = getAssetUrl(updateStream.assetName);
+        String extraUrl = getAssetUrl(updateStream.extraName);
+        if (jarUrl == null || extraUrl == null)
             return false;
         try {
             HashMap<String, String> libs = getLibs();
@@ -140,6 +145,11 @@ public class Update {
                 return false;
             }
             downloadFile(jarUrl, new File(UPDATE_DOWNLOAD_DIR, updateStream.assetName));
+            File extraZip = new File(UPDATE_DOWNLOAD_DIR, updateStream.extraName);
+            downloadFile(extraUrl, extraZip);
+            if (!extraZip.exists())
+                throw new IOException("Failed to download extras zip");
+            unzipFile(extraZip);
             File libDir = new File(UPDATE_DOWNLOAD_DIR, "lib");
             for (Map.Entry<String, String> lib : libs.entrySet())
                 downloadFile(lib.getValue(), new File(libDir, lib.getKey()));
@@ -152,18 +162,41 @@ public class Update {
         }
     }
 
+    private void unzipFile(File file) throws IOException {
+        try (ZipFile zipFile = new ZipFile(file)) {
+            Enumeration<? extends ZipEntry> entries = zipFile.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                File entryDestination = new File(Update.UPDATE_DOWNLOAD_DIR, entry.getName());
+                if (entry.isDirectory()) {
+                    if (!entryDestination.mkdirs())
+                        throw new IOException("Failed to unzip file: " + file.getCanonicalPath());
+                } else {
+                    if (!entryDestination.getParentFile().mkdirs())
+                        throw new IOException("Failed to unzip file: " + file.getCanonicalPath());
+                    try (InputStream in = zipFile.getInputStream(entry);
+                         OutputStream out = new FileOutputStream(entryDestination)) {
+                        IOUtils.copy(in, out);
+                    }
+                }
+            }
+        }
+    }
+
     public void exit() {
         System.exit(UPDATE_EXIT_CODE);
     }
 
     public enum Stream {
-        CLIENT("aris-client.jar"),
-        SERVER("aris-server.jar");
+        CLIENT("aris-client.jar", "client-update.zip"),
+        SERVER("aris-server.jar", "server-update.zip");
 
         public final String assetName;
+        public final String extraName;
 
-        Stream(String assetName) {
+        Stream(String assetName, String extraName) {
             this.assetName = assetName;
+            this.extraName = extraName;
         }
 
     }

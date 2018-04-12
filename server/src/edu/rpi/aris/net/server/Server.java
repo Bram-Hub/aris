@@ -239,7 +239,7 @@ public class Server implements Runnable {
             context.init(keyManagerFactory.getKeyManagers(), null, null);
             socketFactory = context.getServerSocketFactory();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to get socket factory", e);
         }
         return socketFactory;
     }

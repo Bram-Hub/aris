@@ -8,6 +8,7 @@ COMPILE=0
 RPM=0
 DEB=0
 WIN=0
+EXTRA=0
 
 MAVEN="http://central.maven.org/maven2/"
 VERSION=$(cat libaris/res/edu/rpi/aris/VERSION)
@@ -77,6 +78,19 @@ compile() {
     echo " Done"
 }
 
+build_extra() {
+    if [ "$?" -ne "0" ]; then
+        echo "zip is required to build packages and does not appear to be present"
+        exit 1
+    fi
+    rm build/server-update.zip &> /dev/null
+    echo -n Building extras zip files ...
+    cd packaging/extra/server
+    zip -r ../../../build/server-update.zip * > /dev/null
+    cd ../../..
+    echo " Done"
+}
+
 build_rpm() {
     echo Hi
 }
@@ -100,6 +114,7 @@ build_deb() {
     sed -i -e "s/__version__/$VERSION/g" server/DEBIAN/control
     mkdir -p server/usr/lib/aris
     cp -r ../aris-server.jar ../lib server/usr/lib/aris
+    cp -r ../../packaging/extra/server/* server/usr/lib/aris
     dpkg --build server > /dev/null
     mv server.deb ../aris-server-$VERSION.deb
     cd ../..
@@ -129,18 +144,22 @@ while getopts "crdwah" opt; do
         ;;
     r)
         compile
+        build_extra
         build_rpm
         ;;
     d)
         compile
+        build_extra
         build_deb
         ;;
     w)
         compile
+        build_extra
         build_win
         ;;
     a)
         compile
+        build_extra
         build_rpm
         build_deb
         build_win
