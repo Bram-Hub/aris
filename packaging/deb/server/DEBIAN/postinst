@@ -15,6 +15,6 @@ chmod 755 /var/log/aris
 chmod 755 /etc/aris.d
 
 ln -s /usr/lib/aris/bin/* /usr/bin
-ln -s /usr/lib/aris/default.cfg /etc/aris.d/99default.cfg
+ln -s /usr/lib/aris/default.cfg /etc/aris.d/99-default.cfg
 
 systemctl daemon-reload
