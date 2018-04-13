@@ -80,7 +80,7 @@ public class DatabaseManager {
         }
     }
 
-    private void createTables(Connection connection) throws SQLException {
+    private void createTables(Connection connection) throws SQLException, IOException {
         logger.warn("Creating non existent tables");
         logger.warn("If this is not the first run of the program this may have unexpected results");
         boolean autoCommit = connection.getAutoCommit();
@@ -137,6 +137,7 @@ public class DatabaseManager {
                     "constraint s_ufk foreign key (user_id) references users(id) on delete cascade," +
                     "constraint s_pfk foreign key (proof_id) references proof(id) on delete cascade);");
             connection.commit();
+            createUser("admin", "ArisAdmin1", NetUtil.USER_INSTRUCTOR);
         } catch (Throwable e) {
             connection.rollback();
             logger.error("An error occurred while creating the tables and the changes were rolled back");
