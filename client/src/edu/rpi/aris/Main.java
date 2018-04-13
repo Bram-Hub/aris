@@ -39,6 +39,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
     private static Logger logger = LogManager.getLogger(Main.class);
     private static FileLock lock, ipcLock;
     private static FileChannel lockFileChannel;
+    private static boolean update = false;
 
     static {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -60,38 +61,41 @@ public class Main implements Thread.UncaughtExceptionHandler {
             System.err.println(e.getMessage());
             System.exit(1);
         }
-        if (!tryLock()) {
-            logger.info("Program already running");
-            logger.info("Sending message to running program");
-            //TODO
-            return;
-        }
-        Runtime.getRuntime().addShutdownHook(new Thread(Main::unlockFile));
-        startIpcWatch();
-        int port = -1;
-        if (cmd.hasOption('p')) {
-            String portStr = cmd.getOptionValue('p');
-            boolean error = false;
-            try {
-                port = Integer.parseInt(portStr);
-            } catch (NumberFormatException e) {
-                error = true;
+        update = cmd.hasOption("update");
+        if (!update) {
+            if (!tryLock()) {
+                logger.info("Program already running");
+                logger.info("Sending message to running program");
+                //TODO
+                return;
             }
-            if (error || port <= 0 || port > 65535) {
-                logger.error("Invalid port specified: " + portStr);
-                System.exit(1);
+            Runtime.getRuntime().addShutdownHook(new Thread(Main::unlockFile));
+            startIpcWatch();
+            int port = -1;
+            if (cmd.hasOption('p')) {
+                String portStr = cmd.getOptionValue('p');
+                boolean error = false;
+                try {
+                    port = Integer.parseInt(portStr);
+                } catch (NumberFormatException e) {
+                    error = true;
+                }
+                if (error || port <= 0 || port > 65535) {
+                    logger.error("Invalid port specified: " + portStr);
+                    System.exit(1);
+                }
             }
-        }
-        if (cmd.hasOption('a'))
-            GuiConfig.serverAddress.set(cmd.getOptionValue('a'));
-        if (port > 0)
-            GuiConfig.serverPort.set(port);
-        client = new Client();
-        client.setAllowInsecure(cmd.hasOption("allow-insecure"));
-        if (cmd.hasOption("add-cert")) {
-            String filename = cmd.getOptionValue("add-cert");
-            File file = new File(filename);
-            client.importSelfSignedCertificate(file);
+            if (cmd.hasOption('a'))
+                GuiConfig.serverAddress.set(cmd.getOptionValue('a'));
+            if (port > 0)
+                GuiConfig.serverPort.set(port);
+            client = new Client();
+            client.setAllowInsecure(cmd.hasOption("allow-insecure"));
+            if (cmd.hasOption("add-cert")) {
+                String filename = cmd.getOptionValue("add-cert");
+                File file = new File(filename);
+                client.importSelfSignedCertificate(file);
+            }
         }
         switch (MODE) {
             case GUI:
@@ -208,6 +212,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
         options.addOption(null, "add-cert", true, "Adds the given X509 encoded certificate to the client's trusted certificate store");
         options.addOption("a", "server-address", true, "Sets the server address to connect to");
         options.addOption("p", "port", true, "Sets the port to connect to or the port for the server to run on (Default: 9001)");
+        options.addOption("u", "update", false, "Runs a self update then exits");
         CommandLineParser parser = new DefaultParser();
         cmd = parser.parse(options, args);
         if (cmd.hasOption("help")) {
@@ -244,6 +249,10 @@ public class Main implements Thread.UncaughtExceptionHandler {
             return readLine().toCharArray();
         else
             return System.console().readPassword();
+    }
+
+    public static boolean doUpdate() {
+        return update;
     }
 
     public void showExceptionError(Thread t, Throwable e, boolean fatal) {

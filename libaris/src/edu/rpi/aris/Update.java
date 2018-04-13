@@ -37,6 +37,7 @@ public class Update {
     private Stream updateStream;
     private JsonObject releaseData;
     private String updateVersion;
+    private UpdateProgress progress;
 
     public Update(Stream updateStream, File updateDownloadDir) {
         Objects.requireNonNull(updateStream);
@@ -45,8 +46,16 @@ public class Update {
         this.updateStream = updateStream;
     }
 
+    public void setUpdateProgress(UpdateProgress progress) {
+        this.progress = progress;
+    }
+
     public boolean checkUpdate() {
         try {
+            if (progress != null) {
+                progress.setTotalDownloads(-1);
+                progress.setDescription("Checking for update");
+            }
             logger.info("Checking for update");
             URL releaseUrl = new URL(RELEASE_CHECK_URL);
             try (InputStream in = releaseUrl.openStream();
@@ -133,31 +142,57 @@ public class Update {
         }
         logger.info("Starting update");
         logger.info("Getting download list");
+        if (progress != null) {
+            progress.setTotalDownloads(-1);
+            progress.setDescription("Starting update");
+        }
         String jarUrl = getAssetUrl(updateStream.assetName);
         String extraUrl = getAssetUrl(updateStream.extraName);
-        if (jarUrl == null || extraUrl == null)
+        if (jarUrl == null)
             return false;
         try {
             HashMap<String, String> libs = getLibs();
-            FileUtils.deleteQuietly(downloadDir);
-            if (!downloadDir.mkdirs()) {
+            if (!downloadDir.exists() && !downloadDir.mkdirs()) {
                 logger.error("Failed to create temporary download directory");
                 return false;
             }
+            int current = 0;
+            if (progress != null) {
+                progress.setTotalDownloads(libs.size() + (extraUrl == null ? 1 : 2));
+                progress.setCurrentDownload(current);
+                progress.setDescription("Downloading " + updateStream.assetName);
+            }
             downloadFile(jarUrl, new File(downloadDir, updateStream.assetName));
-            File extraZip = new File(downloadDir, updateStream.extraName);
-            downloadFile(extraUrl, extraZip);
-            if (!extraZip.exists())
-                throw new IOException("Failed to download extras zip");
-            unzipFile(extraZip);
+            current++;
+            if (extraUrl != null) {
+                if (progress != null) {
+                    progress.setCurrentDownload(current);
+                    progress.setDescription("Downloading " + updateStream.extraName);
+                }
+                File extraZip = new File(downloadDir, updateStream.extraName);
+                downloadFile(extraUrl, extraZip);
+                current++;
+                if (!extraZip.exists())
+                    throw new IOException("Failed to download extras zip");
+                unzipFile(extraZip);
+            }
             File libDir = new File(downloadDir, "lib");
-            for (Map.Entry<String, String> lib : libs.entrySet())
+            for (Map.Entry<String, String> lib : libs.entrySet()) {
+                if (progress != null) {
+                    progress.setCurrentDownload(current);
+                    progress.setDescription("Downloading " + lib.getKey());
+                }
                 downloadFile(lib.getValue(), new File(libDir, lib.getKey()));
+                current++;
+            }
+            if(progress != null) {
+                progress.setCurrentDownload(current);
+                progress.setDescription("Download complete!");
+            }
             logger.info("Download complete");
             return true;
         } catch (IOException e) {
             logger.error("Failed to update aris", e);
-            FileUtils.deleteQuietly(downloadDir);
             return false;
         }
     }

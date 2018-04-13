@@ -1,11 +1,14 @@
 package edu.rpi.aris.gui;
 
+import edu.rpi.aris.Main;
 import edu.rpi.aris.Update;
+import edu.rpi.aris.UpdateProgress;
 import edu.rpi.aris.proof.Proof;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonType;
+import javafx.event.Event;
+import javafx.scene.control.*;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.logging.log4j.LogManager;
@@ -40,10 +43,18 @@ public class Aris extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
-        instance = this;
-        mainWindow = showProofWindow(stage, null);
+        if (Main.doUpdate()) {
+            selfUpdate();
+        } else {
+            instance = this;
+            mainWindow = showProofWindow(stage, null);
+            checkUpdate();
+        }
+    }
+
+    public void checkUpdate() {
         new Thread(() -> {
-            if (checkUpdate()) {
+            if (update.checkUpdate()) {
                 Platform.runLater(() -> {
                     Alert alert = new Alert(Alert.AlertType.INFORMATION);
                     alert.setTitle("Update available");
@@ -66,18 +77,14 @@ public class Aris extends Application {
         }).start();
     }
 
-    public boolean checkUpdate() {
-        return update.checkUpdate();
-    }
-
     public void startUpdate() throws IOException, InterruptedException {
         if (SystemUtils.IS_OS_LINUX) {
             //TODO
         } else if (SystemUtils.IS_OS_WINDOWS) {
             File java = new File(SystemUtils.JAVA_HOME);
             java = new File(java, "bin");
-            java = new File(java, "java.exe");
-            Process process = Runtime.getRuntime().exec(new String[]{"powershell.exe", "-Command", "Start-Process \"" + java.getCanonicalPath() + "\" \"-jar aris-client.jar\" -Verb RunAs -Wait"});
+            java = new File(java, "javaw.exe");
+            Process process = Runtime.getRuntime().exec(new String[]{"powershell.exe", "-Command", "\"Start-Process \\\"" + java.getCanonicalPath() + "\\\" \\\"-Dlog4j.log-dir=" + System.getProperty("log4j.log-dir").replaceAll(" ", "\\ ") + " -jar aris-client.jar -u\\\" -Verb RunAs -Wait\""});
             process.waitFor();
             Platform.exit();
             System.exit(52);
@@ -87,7 +94,58 @@ public class Aris extends Application {
     }
 
     public void selfUpdate() {
+        Label description = new Label();
+        ProgressBar progress = new ProgressBar();
+        progress.setMaxWidth(Double.MAX_VALUE);
+        update.setUpdateProgress(new UpdateProgress() {
 
+            private double current = 0;
+            private double total = 0;
+
+            @Override
+            public void setTotalDownloads(double total) {
+                this.total = total;
+                Platform.runLater(() -> {
+                    if (total <= 0)
+                        progress.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
+                    else
+                        progress.setProgress(current / this.total);
+                });
+            }
+
+            @Override
+            public void setCurrentDownload(double current) {
+                this.current = current;
+                if (total > 0)
+                    Platform.runLater(() -> progress.setProgress(current / total));
+            }
+
+            @Override
+            public void setDescription(String desc) {
+                Platform.runLater(() -> description.setText(desc));
+            }
+        });
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Updating");
+            alert.setHeaderText("Aris is performing a self update");
+            VBox box = new VBox(5);
+            box.setFillWidth(true);
+            box.getChildren().addAll(description, progress);
+            alert.getDialogPane().setContent(box);
+            alert.getButtonTypes().clear();
+            alert.setOnCloseRequest(Event::consume);
+            alert.show();
+            new Thread(() -> {
+                if (update.checkUpdate())
+                    update.update();
+                update.setUpdateProgress(null);
+                Platform.runLater(() -> {
+                    alert.hide();
+                    Platform.exit();
+                });
+            }).start();
+        });
     }
 
     public MainWindow getMainWindow() {
