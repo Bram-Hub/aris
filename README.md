@@ -14,7 +14,7 @@ TODO
 
 1. Download and install the server package for your system from the [Releases](https://github.com/cicchr/ARIS-Java/releases) section
 2. Obtain signed SSL certificates from a valid certificate authority and save the ca certificate and private key using the x509 encoded pem format
-3. Create a configuration file in /etc/aris.d/ (You can add a 2 digit suffix to set the file's priority) and set the ca and key options to the location where the certificate and key are stored
+3. Create a configuration file in /etc/aris.d/ (You can add a 2 digit prefix to set the file's priority) and set the ca and key options to the location where the certificate and key are stored
     ```
     # /etc/aris.d/<filename>
     

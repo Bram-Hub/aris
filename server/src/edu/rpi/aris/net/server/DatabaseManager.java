@@ -80,7 +80,7 @@ public class DatabaseManager {
         }
     }
 
-    private void createTables(Connection connection) throws SQLException, IOException {
+    private void createTables(Connection connection) throws SQLException {
         logger.warn("Creating non existent tables");
         logger.warn("If this is not the first run of the program this may have unexpected results");
         boolean autoCommit = connection.getAutoCommit();
@@ -190,7 +190,7 @@ public class DatabaseManager {
         }
     }
 
-    public Pair<String, String> createUser(String username, String password, String userType) throws SQLException, IOException {
+    public Pair<String, String> createUser(String username, String password, String userType) throws SQLException {
         if (username == null || username.length() == 0 || userType == null || !(userType.equals(NetUtil.USER_STUDENT) || userType.equals(NetUtil.USER_INSTRUCTOR)))
             return new ImmutablePair<>(null, NetUtil.INVALID);
         if (password == null)
