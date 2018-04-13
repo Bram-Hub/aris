@@ -1,0 +1,11 @@
+<launch4jConfig>
+  <headerType>gui</headerType>
+  <outfile>aris.exe</outfile>
+  <jar>aris-client.jar</jar>
+  <dontWrapJar>true</dontWrapJar>
+  <stayAlive>true</stayAlive>
+  <restartOnCrash>true</restartOnCrash>
+  <jre>
+    <minVersion>1.8.0_40</minVersion>
+  </jre>
+</launch4jConfig>

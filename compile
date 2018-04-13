@@ -122,7 +122,22 @@ build_deb() {
 }
 
 build_win() {
-    echo Hi
+    mkdir -p build/win
+    if [ ! -e build/win/launch4j/launch4j ]; then
+        echo -n Downloading launch4j ...
+        wget -O build/win/launch4j.tgz https://cytranet.dl.sourceforge.net/project/launch4j/launch4j-3/3.11/launch4j-3.11-linux-x64.tgz &> /dev/null
+        tar -xzf build/win/launch4j.tgz -C build/win > /dev/null
+        echo " Done"
+    fi
+    echo -n Building windows package ...
+    cp packaging/win/launch4j.xml build/win
+    cd build/win
+    launch4j/launch4j launch4j.xml > /dev/null
+    cp aris.exe ..
+    cd ..
+    zip -r aris-win.zip aris.exe aris-client.jar lib > /dev/null
+    cd ..
+    echo " Done"
 }
 
 usage() {

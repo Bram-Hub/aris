@@ -68,7 +68,7 @@ public class Server implements Runnable {
     private final int port;
     private final File caCertificate;
     private final File privateKey;
-    private final Update update = new Update(Update.Stream.SERVER);
+    private final Update update = new Update(Update.Stream.SERVER, new File(System.getProperty("java.io.tmpdir"), "aris-update"));
     private Logger logger = LogManager.getLogger(Server.class);
     private boolean selfSign, stopServer, shutdown;
     private DatabaseManager dbManager;

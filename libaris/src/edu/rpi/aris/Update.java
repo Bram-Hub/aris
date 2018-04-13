@@ -30,18 +30,18 @@ public class Update {
     private static final String CLIENT_LIBS_LOC = "/client/client.iml";
     private static final String SERVER_LIBS_LOC = "/server/server.iml";
     private static final String LIBRARY_LINE_ID = "type=\"library\"";
-    private static final File UPDATE_DOWNLOAD_DIR = new File(System.getProperty("java.io.tmpdir"), "aris-update");
     private static final Pattern LIB_PATTERN = Pattern.compile("(?<=name=\").*?(?=\")");
-
     private static final int UPDATE_EXIT_CODE = 52;
-
     private static final Logger logger = LogManager.getLogger(Update.class);
+    private File downloadDir;
     private Stream updateStream;
     private JsonObject releaseData;
     private String updateVersion;
 
-    public Update(Stream updateStream) {
+    public Update(Stream updateStream, File updateDownloadDir) {
         Objects.requireNonNull(updateStream);
+        Objects.requireNonNull(updateDownloadDir);
+        this.downloadDir = updateDownloadDir;
         this.updateStream = updateStream;
     }
 
@@ -139,25 +139,25 @@ public class Update {
             return false;
         try {
             HashMap<String, String> libs = getLibs();
-            FileUtils.deleteQuietly(UPDATE_DOWNLOAD_DIR);
-            if (!UPDATE_DOWNLOAD_DIR.mkdirs()) {
+            FileUtils.deleteQuietly(downloadDir);
+            if (!downloadDir.mkdirs()) {
                 logger.error("Failed to create temporary download directory");
                 return false;
             }
-            downloadFile(jarUrl, new File(UPDATE_DOWNLOAD_DIR, updateStream.assetName));
-            File extraZip = new File(UPDATE_DOWNLOAD_DIR, updateStream.extraName);
+            downloadFile(jarUrl, new File(downloadDir, updateStream.assetName));
+            File extraZip = new File(downloadDir, updateStream.extraName);
             downloadFile(extraUrl, extraZip);
             if (!extraZip.exists())
                 throw new IOException("Failed to download extras zip");
             unzipFile(extraZip);
-            File libDir = new File(UPDATE_DOWNLOAD_DIR, "lib");
+            File libDir = new File(downloadDir, "lib");
             for (Map.Entry<String, String> lib : libs.entrySet())
                 downloadFile(lib.getValue(), new File(libDir, lib.getKey()));
             logger.info("Download complete");
             return true;
         } catch (IOException e) {
             logger.error("Failed to update aris", e);
-            FileUtils.deleteQuietly(UPDATE_DOWNLOAD_DIR);
+            FileUtils.deleteQuietly(downloadDir);
             return false;
         }
     }
@@ -167,7 +167,7 @@ public class Update {
             Enumeration<? extends ZipEntry> entries = zipFile.entries();
             while (entries.hasMoreElements()) {
                 ZipEntry entry = entries.nextElement();
-                File entryDestination = new File(Update.UPDATE_DOWNLOAD_DIR, entry.getName());
+                File entryDestination = new File(downloadDir, entry.getName());
                 if (entry.isDirectory()) {
                     if (!entryDestination.exists() && !entryDestination.mkdirs())
                         throw new IOException("Failed to unzip file: " + file.getCanonicalPath());
