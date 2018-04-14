@@ -131,13 +131,20 @@ build_win() {
     fi
     echo -n Building windows package ...
     cp packaging/win/launch4j.xml build/win
+    cp logo.ico build/win
     cd build/win
     launch4j/launch4j launch4j.xml > /dev/null
     cp aris.exe ..
     cd ..
     zip -r aris-win.zip aris.exe aris-client.jar lib > /dev/null
+    echo " Done"
+    echo -n Preparing installer files for NSIS ...
+    mkdir -p win-installer
+    cp -r aris.exe aris-client.jar lib ../logo.ico ../packaging/win/installscript.nsi win-installer
+    cp ../LICENSE win-installer/LICENSE.txt
     cd ..
     echo " Done"
+    echo To create the installer please use NSIS to run the script located in build/win-installer
 }
 
 usage() {
