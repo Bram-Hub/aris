@@ -32,20 +32,7 @@ For production installation it is recommended to use the latest packages availab
     
     Note: The aris-configdb command exists to simplify this process. Otherwise follow the steps listed below.
     
-    1. Create the database for aris in postgres.
-        ```
-        # Open the postgres interactive terminal
-        sudo -u postgres psql
-        
-        # The following commands should be run in postgres
-        CREATE DATABASE <aris-database-name>;
-        CREATE USER <aris-username>;
-        ALTER USER <aris-username> WITH ENCRYPTED PASSWORD '<aris-password>';
-        GRANT ALL PRIVILEGES ON DATABASE <aris-database-name> TO <aris-username>;
-        
-        # To exit the interface type \q
-        ```
-    2. Either create a new configuration file in /etc/aris.d/ or use the same as in step 3 and add the following settings
+    1. Either create a new configuration file in /etc/aris.d/ or use the same as in step 3 and add the following settings
         ```
         # /etc/aris.d/<filename>
         
@@ -61,6 +48,19 @@ For production installation it is recommended to use the latest packages availab
         # The domain name of the server
         # Note this is only required when the server is running in self signing mode
         domain <example.com>
+        ```
+    2. Create the database for aris in postgres. You can either run the commands listed below or run the aris-createdb script as root which will run the below commands using the settings from the previous step
+        ```
+        # Open the postgres interactive terminal
+        sudo -u postgres psql
+        
+        # The following commands should be run in postgres
+        CREATE DATABASE <aris-database-name>;
+        CREATE USER <aris-username>;
+        ALTER USER <aris-username> WITH ENCRYPTED PASSWORD '<aris-password>';
+        GRANT ALL PRIVILEGES ON DATABASE <aris-database-name> TO <aris-username>;
+        
+        # To exit the interface type \q
         ``` 
 5. Start and enable the service
 
