@@ -8,7 +8,11 @@ For production installation it is recommended to use the latest packages availab
 
 ### Client
 
-TODO
+* Windows
+    1. Download the installer from the [Releases](https://github.com/cicchr/ARIS-Java/releases) section
+    2. Run the installer (Note: Windows Smart Screen filter may show a warning due to the installer not being signed. To bypass this click "More Info" then "Run Anyway")
+    3. Follow the installer's prompts
+    4. Aris should now be installed and accessible from the Start Menu 
 
 ### Server
 
