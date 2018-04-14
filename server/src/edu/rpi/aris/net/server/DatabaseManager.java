@@ -219,7 +219,7 @@ public class DatabaseManager {
         if (password == null)
             password = RandomStringUtils.randomAlphabetic(16);
         try (Connection connection = getConnection();
-             PreparedStatement statement = connection.prepareStatement("UPDATE users SET salt = ?, password = ? WHERE username = ?;");) {
+             PreparedStatement statement = connection.prepareStatement("UPDATE users SET salt = ?, password_hash = ? WHERE username = ?;");) {
             Pair<String, String> sh = getSaltAndHash(password);
             statement.setString(1, sh.getKey());
             statement.setString(2, sh.getValue());

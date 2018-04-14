@@ -18,6 +18,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.TextFieldTableCell;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
@@ -213,11 +214,15 @@ public class AssignmentWindow implements SaveInfoListener {
         Menu account = new Menu("Account");
 
         MenuItem loginOut = new MenuItem();
+        MenuItem changePassword = new MenuItem("Change Password");
 
         loginOut.setOnAction(actionEvent -> loginOut());
         loginOut.textProperty().bind(Bindings.createStringBinding(() -> clientInfo.loadedProperty().get() ? "Logout" : "Login", clientInfo.loadedProperty()));
 
-        account.getItems().addAll(loginOut);
+        changePassword.setOnAction(actionEvent -> changePassword(null));
+        changePassword.visibleProperty().bind(clientInfo.loadedProperty());
+
+        account.getItems().addAll(loginOut, changePassword);
 
         Menu classMenu = new Menu("Class");
 
@@ -234,6 +239,58 @@ public class AssignmentWindow implements SaveInfoListener {
         menuBar.getMenus().addAll(account, classMenu);
 
         return menuBar;
+    }
+
+    private void changePassword(String username) {
+        Dialog<Pair<String, String>> enterPass = new Dialog<>();
+        enterPass.setTitle("Change Password");
+        enterPass.setHeaderText("Change password for user: " + (username == null ? GuiConfig.getConfigManager().username.get() : username));
+        GridPane gridPane = new GridPane();
+        PasswordField oldPass = new PasswordField();
+        oldPass.setPromptText("Current Password");
+        PasswordField newPass = new PasswordField();
+        newPass.setPromptText("New Password");
+        PasswordField retypePass = new PasswordField();
+        retypePass.setPromptText("Retype New Password");
+        int i = 0;
+        gridPane.setHgap(5);
+        gridPane.setVgap(5);
+        if (username == null)
+            gridPane.addRow(i++, new Label("Current Password:"), oldPass);
+        gridPane.addRow(i++, new Label("New Password:"), newPass);
+        gridPane.addRow(i, new Label("Retype Password:"), retypePass);
+        enterPass.getDialogPane().setContent(gridPane);
+        enterPass.getDialogPane().getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
+        Button okBtn = (Button) enterPass.getDialogPane().lookupButton(ButtonType.OK);
+        okBtn.disableProperty().bind(newPass.textProperty().isNotEqualTo(retypePass.textProperty()).or(newPass.textProperty().length().isEqualTo(0)));
+        enterPass.setResultConverter(param -> {
+            if (param != ButtonType.OK)
+                return null;
+            return new Pair<>(oldPass.getText(), newPass.getText());
+        });
+        Optional<Pair<String, String>> newPassPair = enterPass.showAndWait();
+        if (!newPassPair.isPresent())
+            return;
+        if (username != null) {
+            //TODO get instructor's password
+        }
+        new Thread(() -> {
+            Client client = Main.getClient();
+            try {
+                client.connect();
+                client.sendMessage(NetUtil.UPDATE_USER);
+                String user = URLEncoder.encode(username == null ? GuiConfig.getConfigManager().username.get() : username, "UTF-8");
+                String type = clientInfo.isInstructorProperty().get() ? NetUtil.USER_INSTRUCTOR : NetUtil.USER_STUDENT;
+                client.sendMessage(user + "|" + URLEncoder.encode(newPassPair.get().getValue(), "UTF-8") + "|" + type + "|" + newPassPair.get().getKey());
+                String res = client.readMessage();
+                if (!NetUtil.OK.equals(Client.checkError(res)))
+                    throw new IOException(res);
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                client.disconnect();
+            }
+        }).start();
     }
 
     private void loginOut() {

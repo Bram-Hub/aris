@@ -139,9 +139,7 @@ public abstract class ClientHandler implements Runnable {
                     String savedHash = set.getString(auth[1].equals(NetUtil.AUTH_PASS) ? 2 : 3);
                     userId = set.getInt(4);
                     userType = set.getString(5);
-                    digest.update(Base64.getDecoder().decode(salt));
-                    String hash = Base64.getEncoder().encodeToString(digest.digest(pass.getBytes()));
-                    if (hash.equals(savedHash)) {
+                    if (checkPass(pass, salt, savedHash)) {
                         String access_token = generateAccessToken();
                         digest.update(Base64.getDecoder().decode(salt));
                         String hashed = Base64.getEncoder().encodeToString(digest.digest(access_token.getBytes()));
@@ -177,6 +175,11 @@ public abstract class ClientHandler implements Runnable {
             sendMessage(NetUtil.AUTH_ERR);
             return false;
         }
+    }
+
+    private boolean checkPass(String pass, String salt, String savedHash) {
+        digest.update(Base64.getDecoder().decode(salt));
+        return Base64.getEncoder().encodeToString(digest.digest(pass.getBytes())).equals(savedHash);
     }
 
     private boolean updateBanList() {
@@ -915,7 +918,7 @@ public abstract class ClientHandler implements Runnable {
 
     private void updateUser() throws IOException, SQLException {
         String[] userData = in.readUTF().split("\\|");
-        if (userData.length != 3) {
+        if (userData.length != 4) {
             sendMessage(NetUtil.INVALID);
             return;
         }
@@ -926,8 +929,21 @@ public abstract class ClientHandler implements Runnable {
         }
         String newPass = URLDecoder.decode(userData[1], "UTF-8");
         String type = URLDecoder.decode(userData[2], "UTF-8");
+        String pass = URLDecoder.decode(userData[3], "UTF-8");
+        if (userType.equals(NetUtil.USER_STUDENT) && !type.equals(NetUtil.USER_STUDENT)) {
+            sendMessage(NetUtil.UNAUTHORIZED);
+            return;
+        }
         try (Connection connection = dbManager.getConnection();
+             PreparedStatement getHash = connection.prepareStatement("SELECT salt, password_hash FROM users WHERE username = ?;");
              PreparedStatement update = connection.prepareStatement("UPDATE users SET user_type = ? WHERE username = ?;")) {
+            getHash.setString(1, username);
+            try (ResultSet rs = getHash.executeQuery()) {
+                if (!rs.next() || !checkPass(pass, rs.getString(1), rs.getString(2))) {
+                    sendMessage(NetUtil.AUTH_FAIL);
+                    return;
+                }
+            }
             update.setString(1, type);
             update.setString(2, username);
             update.executeUpdate();
