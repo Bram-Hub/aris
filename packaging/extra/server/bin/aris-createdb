@@ -1,0 +1,62 @@
+#!/bin/bash
+
+if [ "$(id -u)" -ne "0" ] && [ "$USER" != "aris" ]; then
+    echo This script must be run as root
+    exit 1
+fi
+
+function getParam() {
+    NAME=$1
+    unset PARAM
+    shopt -s globstar
+    CFG=$(cat /etc/aris.cfg | grep config-dir | grep -vm 1 '#')
+    if [ $? -eq 0 ]; then
+        CFG=$(echo ${CFG#"config-dir"} | xargs)
+        for f in $(ls -d -1 $CFG//**/*); do
+            PARAM=$(cat $f | grep $NAME | grep -vm 1 '#')
+            if [ $? -eq 0 ]; then
+                PARAM=$(echo ${PARAM#"$NAME"} | xargs)
+                break
+            else
+                unset PARAM
+            fi
+        done
+    fi
+    if [ -z "$PARAM" ]; then
+        PARAM=$(cat /etc/aris.cfg | grep $NAME | grep -vm 1 '#')
+        if [ $? -eq 0 ]; then
+            PARAM=$(echo ${PARAM#"$NAME"} | xargs)
+        else
+            unset PARAM
+        fi
+    fi
+}
+
+getParam db-name
+if [ -z "$PARAM" ]; then
+    echo db-name not set in config
+    exit 1
+else
+    DBNAME=$PARAM
+fi
+
+getParam db-user
+if [ -z "$PARAM" ]; then
+    echo db-user not set in config
+    exit 1
+else
+    DBUSER=$PARAM
+fi
+
+getParam db-pass
+if [ -z "$PARAM" ]; then
+    echo db-pass not set in config
+    exit 1
+else
+    DBPASS=$PARAM
+fi
+
+sudo -u postgres psql -c "CREATE DATABASE $DBNAME;"
+sudo -u postgres psql -c "CREATE USER $DBUSER;"
+sudo -u postgres psql -c "ALTER USER $DBUSER with encrypted password '$DBPASS';"
+sudo -u postgres psql -c "grant all privileges on database $DBNAME to $DBUSER;"
