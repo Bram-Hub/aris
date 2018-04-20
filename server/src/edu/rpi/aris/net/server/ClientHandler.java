@@ -1,7 +1,12 @@
 package edu.rpi.aris.net.server;
 
 import edu.rpi.aris.LibAris;
+import edu.rpi.aris.net.MessageCommunication;
+import edu.rpi.aris.net.MessageHandler;
 import edu.rpi.aris.net.NetUtil;
+import edu.rpi.aris.net.message.ErrorType;
+import edu.rpi.aris.net.message.Message;
+import edu.rpi.aris.net.message.UserInfoMsg;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -20,7 +25,7 @@ import java.text.ParseException;
 import java.util.*;
 import java.util.Date;
 
-public abstract class ClientHandler implements Runnable {
+public abstract class ClientHandler implements Runnable, MessageCommunication, MessageHandler {
 
     private static final Logger logger = LogManager.getLogger(ClientHandler.class);
 
@@ -206,70 +211,10 @@ public abstract class ClientHandler implements Runnable {
         try {
             //noinspection InfiniteLoopStatement
             while (true) {
-                String msg = in.readUTF();
-                logger.info("[" + clientName + "] Request: " + msg);
                 try {
-                    switch (msg) {
-                        case NetUtil.GET_USER_INFO:
-                            getUserInfo();
-                            break;
-                        case NetUtil.GET_ASSIGNMENTS:
-                            getAssignments();
-                            break;
-                        case NetUtil.GET_ASSIGNMENT_DETAIL:
-                            getAssignmentDetail();
-                            break;
-                        case NetUtil.GET_PROOFS:
-                            getProofs();
-                            break;
-                        case NetUtil.LIST_SUBMISSIONS:
-                            getSubmissions();
-                            break;
-                        case NetUtil.GET_SUBMISSION_DETAIL:
-                            getSubmissionDetail();
-                            break;
-                        case NetUtil.CREATE_SUBMISSION:
-                            createSubmission();
-                            break;
-                        case NetUtil.CREATE_ASSIGNMENT:
-                            createAssignment();
-                            break;
-                        case NetUtil.DELETE_ASSIGNMENT:
-                            deleteAssignment();
-                            break;
-                        case NetUtil.UPDATE_ASSIGNMENT:
-                            updateAssignment();
-                            break;
-                        case NetUtil.CREATE_PROOF:
-                            createProof();
-                            break;
-                        case NetUtil.DELETE_PROOF:
-                            deleteProof();
-                            break;
-                        case NetUtil.UPDATE_PROOF:
-                            updateProof();
-                            break;
-                        case NetUtil.CREATE_USER:
-                            createUser();
-                            break;
-                        case NetUtil.DELETE_USER:
-                            deleteUser();
-                            break;
-                        case NetUtil.UPDATE_USER:
-                            updateUser();
-                            break;
-                        case NetUtil.CREATE_CLASS:
-                            createClass();
-                            break;
-                        case NetUtil.DELETE_CLASS:
-                            deleteClass();
-                            break;
-                        case NetUtil.UPDATE_CLASS:
-                            updateClass();
-                            break;
-                        default:
-                            sendMessage("UNKNOWN REQUEST");
-                    }
+                    Message msg = Message.parse(this);
+                    if (msg != null)
+                        msg.processMessage(this);
                 } catch (SQLException e) {
                     logger.error("SQL Error", e);
                     sendMessage(NetUtil.ERROR);
@@ -282,7 +227,7 @@ public abstract class ClientHandler implements Runnable {
         }
     }
 
-    private void getUserInfo() throws SQLException, IOException {
+    public ErrorType getUserInfo(UserInfoMsg msg) throws SQLException, IOException {
         sendMessage(String.valueOf(userId));
         try (Connection connection = dbManager.getConnection();
              PreparedStatement getUserType = connection.prepareStatement("SELECT user_type FROM users WHERE username = ?;");
@@ -301,6 +246,7 @@ public abstract class ClientHandler implements Runnable {
             }
             sendMessage(NetUtil.DONE);
         }
+        return null;
     }
 
     private void getAssignments() throws SQLException, IOException {
@@ -359,7 +305,9 @@ public abstract class ClientHandler implements Runnable {
                 }
             }
             sendMessage(String.valueOf(messages.size()));
-            messages.forEach(this::sendMessage);
+            for (String message : messages) {
+                sendMessage(message);
+            }
             messages.clear();
             submissions.setInt(1, cid);
             submissions.setInt(2, aid);
@@ -376,7 +324,9 @@ public abstract class ClientHandler implements Runnable {
             }
         }
         sendMessage(String.valueOf(messages.size()));
-        messages.forEach(this::sendMessage);
+        for (String message : messages) {
+            sendMessage(message);
+        }
     }
 
     private void getSubmissionDetail() throws IOException, SQLException {
@@ -408,7 +358,9 @@ public abstract class ClientHandler implements Runnable {
                     messages.add(rs.getInt(1) + "|" + URLEncoder.encode(rs.getString(2), "UTF-8"));
             }
             sendMessage(String.valueOf(messages.size()));
-            messages.forEach(this::sendMessage);
+            for (String message : messages) {
+                sendMessage(message);
+            }
             messages.clear();
             proofs.setInt(1, cid);
             proofs.setInt(2, aid);
@@ -422,7 +374,9 @@ public abstract class ClientHandler implements Runnable {
                 }
             }
             sendMessage(String.valueOf(messages.size()));
-            messages.forEach(this::sendMessage);
+            for (String message : messages) {
+                sendMessage(message);
+            }
             messages.clear();
             userSubmissions.setInt(1, cid);
             userSubmissions.setInt(2, aid);
@@ -438,7 +392,9 @@ public abstract class ClientHandler implements Runnable {
                 }
             }
             sendMessage(String.valueOf(messages.size()));
-            messages.forEach(this::sendMessage);
+            for (String message : messages) {
+                sendMessage(message);
+            }
         }
     }
 
@@ -1030,15 +986,26 @@ public abstract class ClientHandler implements Runnable {
         sendMessage(NetUtil.OK);
     }
 
-    private void sendMessage(String msg) {
-        try {
-            out.writeUTF(msg);
-            out.flush();
-        } catch (IOException e) {
-            logger.error("[" + clientName + "] Failed to send message", e);
-            logger.error("[" + clientName + "] Disconnecting");
-            disconnect();
-        }
+    @Override
+    public String readMessage() throws IOException {
+        return in.readUTF();
+    }
+
+    @Override
+    public void sendMessage(String msg) throws IOException {
+        out.writeUTF(msg);
+        out.flush();
+    }
+
+    @Override
+    public boolean readData(byte[] data) throws IOException {
+        return in.read(data) == data.length;
+    }
+
+    @Override
+    public void sendData(byte[] data) throws IOException {
+        out.write(data);
+        out.flush();
     }
 
     public void disconnect() {
