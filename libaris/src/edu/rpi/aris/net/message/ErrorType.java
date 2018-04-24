@@ -5,6 +5,6 @@ public enum ErrorType {
     ERROR,
     PARSE_ERR,
     NOT_IMPLEMENTED,
-    UNKNOWN_MSG_TYPE
-
+    UNKNOWN_MSG_TYPE,
+    NOT_FOUND
 }

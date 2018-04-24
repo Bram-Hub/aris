@@ -4,6 +4,7 @@ import edu.rpi.aris.LibAris;
 import edu.rpi.aris.net.MessageCommunication;
 import edu.rpi.aris.net.MessageHandler;
 import edu.rpi.aris.net.NetUtil;
+import edu.rpi.aris.net.User;
 import edu.rpi.aris.net.message.ErrorType;
 import edu.rpi.aris.net.message.Message;
 import edu.rpi.aris.net.message.UserInfoMsg;
@@ -25,7 +26,7 @@ import java.text.ParseException;
 import java.util.*;
 import java.util.Date;
 
-public abstract class ClientHandler implements Runnable, MessageCommunication, MessageHandler {
+public abstract class ClientHandler implements Runnable, MessageCommunication {
 
     private static final Logger logger = LogManager.getLogger(ClientHandler.class);
 
@@ -37,8 +38,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication, M
     private String clientName, clientVersion;
     private DataInputStream in;
     private DataOutputStream out;
-    private String username, userType;
-    private int userId;
+    private User user;
     private MessageDigest digest;
 
     ClientHandler(SSLSocket socket, DatabaseManager dbManager) {
@@ -132,7 +132,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication, M
             sendMessage(NetUtil.AUTH_INVALID);
             return false;
         }
-        username = URLDecoder.decode(auth[2], "UTF-8").toLowerCase();
+        String username = URLDecoder.decode(auth[2], "UTF-8").toLowerCase();
         logger.info("[" + clientName + "] Authenticating user: " + username);
         String pass = URLDecoder.decode(auth[3], "UTF-8");
         try (Connection connection = dbManager.getConnection();
@@ -142,8 +142,8 @@ public abstract class ClientHandler implements Runnable, MessageCommunication, M
                 if (set.next()) {
                     String salt = set.getString(1);
                     String savedHash = set.getString(auth[1].equals(NetUtil.AUTH_PASS) ? 2 : 3);
-                    userId = set.getInt(4);
-                    userType = set.getString(5);
+                    int userId = set.getInt(4);
+                    String userType = set.getString(5);
                     if (checkPass(pass, salt, savedHash)) {
                         String access_token = generateAccessToken();
                         digest.update(Base64.getDecoder().decode(salt));
@@ -154,6 +154,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication, M
                             updateAccessToken.executeUpdate();
                         }
                         sendMessage(NetUtil.AUTH_OK + " " + URLEncoder.encode(access_token, "UTF-8"));
+                        user = new User(userId, username, userType);
                         return true;
                     } else {
                         if (auth[1].equals(NetUtil.AUTH_PASS)) {
@@ -213,8 +214,18 @@ public abstract class ClientHandler implements Runnable, MessageCommunication, M
             while (true) {
                 try {
                     Message msg = Message.parse(this);
-                    if (msg != null)
-                        msg.processMessage(this);
+                    if (msg != null) {
+                        try (Connection connection = dbManager.getConnection()) {
+                            try {
+                                connection.setAutoCommit(false);
+                                msg.processMessage(connection, user);
+                                connection.commit();
+                            } catch (Exception e) {
+                                connection.rollback();
+                                throw e;
+                            }
+                        }
+                    }
                 } catch (SQLException e) {
                     logger.error("SQL Error", e);
                     sendMessage(NetUtil.ERROR);
@@ -225,28 +236,6 @@ public abstract class ClientHandler implements Runnable, MessageCommunication, M
         } catch (Throwable e) {
             logger.error("Unexpected error occurred", e);
         }
-    }
-
-    public ErrorType getUserInfo(UserInfoMsg msg) throws SQLException, IOException {
-        sendMessage(String.valueOf(userId));
-        try (Connection connection = dbManager.getConnection();
-             PreparedStatement getUserType = connection.prepareStatement("SELECT user_type FROM users WHERE username = ?;");
-             PreparedStatement getInfo = connection.prepareStatement("SELECT c.id, c.name FROM class c, users u, user_class uc WHERE u.id = uc.user_id AND c.id = uc.class_id AND u.id = ?")) {
-            getUserType.setString(1, username);
-            try (ResultSet userTypeRs = getUserType.executeQuery()) {
-                if (userTypeRs.next())
-                    sendMessage(userTypeRs.getString(1));
-                else
-                    sendMessage(NetUtil.ERROR);
-            }
-            getInfo.setInt(1, userId);
-            try (ResultSet infoRs = getInfo.executeQuery()) {
-                while (infoRs.next())
-                    sendMessage(infoRs.getInt(1) + "|" + URLEncoder.encode(infoRs.getString(2), "UTF-8"));
-            }
-            sendMessage(NetUtil.DONE);
-        }
-        return null;
     }
 
     private void getAssignments() throws SQLException, IOException {

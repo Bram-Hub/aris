@@ -5,13 +5,14 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import edu.rpi.aris.net.MessageBuildException;
 import edu.rpi.aris.net.MessageCommunication;
-import edu.rpi.aris.net.MessageHandler;
 import edu.rpi.aris.net.MessageParseException;
+import edu.rpi.aris.net.User;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.sql.Connection;
 import java.sql.SQLException;
 
 public abstract class Message {
@@ -129,7 +130,7 @@ public abstract class Message {
 
     protected abstract void parseResponse(JsonObject jsonMsg) throws MessageParseException;
 
-    public abstract ErrorType processMessage(MessageHandler handler) throws SQLException, IOException;
+    public abstract ErrorType processMessage(Connection connection, User user) throws SQLException, IOException;
 
     public abstract Pair<JsonObject, byte[]> buildMessage() throws MessageBuildException;
 
