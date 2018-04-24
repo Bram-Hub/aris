@@ -93,7 +93,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener {
     }
 
     public MainWindow(Stage primaryStage, EditMode editMode, Node headerNode) throws IOException {
-        this(primaryStage, new Proof(GuiConfig.getConfigManager().username.get()), editMode, headerNode);
+        this(primaryStage, new Proof(GuiConfig.getConfigManager().username.get() == null ? "UNKNOWN" : GuiConfig.getConfigManager().username.get()), editMode, headerNode);
     }
 
     public MainWindow(Stage primaryStage, Proof proof, EditMode editMode) throws IOException {

@@ -16,7 +16,7 @@ public class Proof {
     private boolean modified = false;
 
     public Proof(String author) {
-        authors.add(author);
+        authors.add(author == null ? "UNKNOWN" : author);
         modify();
     }
 
@@ -24,6 +24,8 @@ public class Proof {
         this(author);
         modified = !authors.contains(author);
         this.authors.addAll(authors);
+        if(authors.remove(null))
+            authors.add("UNKNOWN");
     }
 
     public Line getLine(int index) {
