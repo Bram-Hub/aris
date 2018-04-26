@@ -2,12 +2,10 @@ package edu.rpi.aris.net.server;
 
 import edu.rpi.aris.LibAris;
 import edu.rpi.aris.net.MessageCommunication;
-import edu.rpi.aris.net.MessageHandler;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.User;
 import edu.rpi.aris.net.message.ErrorType;
 import edu.rpi.aris.net.message.Message;
-import edu.rpi.aris.net.message.UserInfoMsg;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -218,17 +216,28 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                         try (Connection connection = dbManager.getConnection()) {
                             try {
                                 connection.setAutoCommit(false);
-                                msg.processMessage(connection, user);
-                                connection.commit();
+                                ErrorType error = msg.processMessage(connection, user);
+                                if (error == null) {
+                                    connection.commit();
+                                    msg.replyMessage(this);
+                                } else {
+                                    connection.rollback();
+                                    logger.error("[" + clientName + "] " + msg.getMessageType().name() + " processing failed with error: " + error.name());
+                                    Message.sendError(error, this);
+                                }
+                            } catch (IOException | SQLException e) {
+                                connection.rollback();
+                                throw e;
                             } catch (Exception e) {
                                 connection.rollback();
+                                Message.sendError(ErrorType.EXCEPTION, e.getClass().getCanonicalName() + ": " + e.getMessage(), this);
                                 throw e;
                             }
                         }
                     }
                 } catch (SQLException e) {
-                    logger.error("SQL Error", e);
-                    sendMessage(NetUtil.ERROR);
+                    logger.error("[" + clientName + "] SQL Error", e);
+                    Message.sendError(ErrorType.SQL_ERR, this);
                 }
             }
         } catch (IOException ignored) {

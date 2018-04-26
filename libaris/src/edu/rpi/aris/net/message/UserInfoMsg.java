@@ -8,7 +8,6 @@ import edu.rpi.aris.net.User;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -28,16 +27,28 @@ public class UserInfoMsg extends Message {
     private String userType;
     private HashMap<Integer, String> classes = new HashMap<>();
 
-    public void setUserId(int userId) {
-        this.userId = userId;
+    public UserInfoMsg() {
+        super(MessageType.GET_USER_INFO);
     }
 
     public void setUserType(String userType) {
         this.userType = userType;
     }
 
+    public String getUserType() {
+        return userType;
+    }
+
     public HashMap<Integer, String> getClasses() {
         return classes;
+    }
+
+    public int getUserId() {
+        return userId;
+    }
+
+    public void setUserId(int userId) {
+        this.userId = userId;
     }
 
     @Override
@@ -55,7 +66,7 @@ public class UserInfoMsg extends Message {
                 JsonObject o = e.getAsJsonObject();
                 classes.put(o.get(CLS_ID).getAsInt(), o.get(CLS_NAME).getAsString());
             }
-        } catch (ClassCastException | IllegalStateException e) {
+        } catch (NullPointerException | ClassCastException | IllegalStateException e) {
             throw new MessageParseException(e);
         }
     }
@@ -101,4 +112,5 @@ public class UserInfoMsg extends Message {
         obj.add(CLASSES, classArr);
         return new ImmutablePair<>(obj, null);
     }
+
 }

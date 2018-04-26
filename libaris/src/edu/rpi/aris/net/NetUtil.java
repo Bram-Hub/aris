@@ -8,7 +8,7 @@ public class NetUtil {
     public static final String AUTH_BAN = "AUTH BAN";
     public static final String AUTH_FAIL = "AUTH FAIL";
     public static final String AUTH_OK = "AUTH OK";
-    public static final String AUTH_ERR = "AUTH ERROR";
+    public static final String AUTH_ERR = "AUTH UNKNOWN_ERROR";
     public static final String AUTH_INVALID = "AUTH INVALID";
     public static final String AUTH = "AUTH";
     public static final String AUTH_PASS = "PASS";
@@ -40,7 +40,7 @@ public class NetUtil {
 
     public static final long MAX_FILE_SIZE = 5242880; // 5MiB
     public static final String UNAUTHORIZED = "UNAUTHORIZED";
-    public static final String ERROR = "ERROR";
+    public static final String ERROR = "UNKNOWN_ERROR";
     public static final String OK = "OK";
     public static final String INVALID = "INVALID";
 

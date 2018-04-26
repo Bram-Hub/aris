@@ -2,16 +2,18 @@ package edu.rpi.aris.gui.submit;
 
 import edu.rpi.aris.Main;
 import edu.rpi.aris.gui.GuiConfig;
+import edu.rpi.aris.net.MessageBuildException;
+import edu.rpi.aris.net.MessageParseException;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
+import edu.rpi.aris.net.message.Message;
+import edu.rpi.aris.net.message.UserInfoMsg;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
 
 public class ClientInfo {
 
@@ -29,39 +31,21 @@ public class ClientInfo {
             Client client = Main.getClient();
             try {
                 client.connect();
-                client.sendMessage(NetUtil.GET_USER_INFO);
-                try {
-                    userId = Integer.parseInt(Client.checkError(client.readMessage()));
-                } catch (NumberFormatException e) {
-                    throw new IOException("Error fetching user data");
-                }
-                String clientType = Client.checkError(client.readMessage());
-                Platform.runLater(() -> isInstructor.set(NetUtil.USER_INSTRUCTOR.equals(clientType)));
-                String res;
-                while ((res = client.readMessage()) != null && !res.equals(NetUtil.ERROR) && !res.equals(NetUtil.DONE)) {
-                    String[] split = res.split("\\|");
-                    if (split.length == 2) {
-                        try {
-                            Platform.runLater(() -> {
-                                try {
-                                    courses.add(new Course(Integer.parseInt(split[0]), URLDecoder.decode(split[1], "UTF-8")));
-                                } catch (UnsupportedEncodingException e) {
-                                    e.printStackTrace();
-                                }
-                            });
-                        } catch (NumberFormatException e) {
-                            throw new IOException("Error fetching user data");
-                        }
-                    } else {
-                        throw new IOException("Error fetching user data");
-                    }
-                }
-                if (res == null || res.equals(NetUtil.ERROR))
-                    throw new IOException("Error fetching user data");
-                Platform.runLater(() -> loaded.set(true));
+                UserInfoMsg msg = new UserInfoMsg();
+                msg.sendMessage(client);
+                Message replyMsg = Message.parseReply(client);
+                if (!(replyMsg instanceof UserInfoMsg))
+                    throw new MessageParseException("Unexpected message type received");
+                UserInfoMsg reply = (UserInfoMsg) replyMsg;
+                userId = reply.getUserId();
+                Platform.runLater(() -> {
+                    isInstructor.set(reply.getUserType().equals(NetUtil.USER_INSTRUCTOR));
+                    reply.getClasses().forEach((id, name) -> courses.add(new Course(id, name)));
+                    loaded.set(true);
+                });
                 if (runnable != null)
                     runnable.run();
-            } catch (IOException e) {
+            } catch (IOException | MessageBuildException | MessageParseException e) {
                 userId = -1;
                 Platform.runLater(() -> {
                     isInstructor.set(false);

@@ -14,22 +14,19 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Objects;
 
 public abstract class Message {
 
     public static final String MSG_TYPE_KEY = "msg_type";
-    public static final String ERR_TYPE_KEY = "err_type";
-    public static final String ERR_MSG_KEY = "err_msg";
 
     private static Logger logger = LogManager.getLogger(Message.class);
     private static JsonParser parser = new JsonParser();
 
-    private MessageType type;
-
-    Message() {
-    }
+    private final MessageType type;
 
     Message(MessageType type) {
+        Objects.requireNonNull(type);
         this.type = type;
     }
 
@@ -57,7 +54,6 @@ public abstract class Message {
                 }
                 try {
                     Message msg = msgType.msgClass.newInstance();
-                    msg.setMessageType(msgType);
                     if (isReply)
                         msg.parseResponse(msgObject);
                     else
@@ -86,37 +82,31 @@ public abstract class Message {
         return null;
     }
 
+    public static void sendError(ErrorType errorType, MessageCommunication com) throws IOException {
+        sendError(errorType, null, com);
+    }
+
     public static void sendError(ErrorType errorType, String msg, MessageCommunication com) throws IOException {
-        JsonObject jsonObject = new JsonObject();
-        jsonObject.add(MSG_TYPE_KEY, new JsonPrimitive(MessageType.ERROR.name()));
-        jsonObject.add(ERR_TYPE_KEY, new JsonPrimitive(errorType.name()));
-        if (msg != null)
-            jsonObject.add(ERR_MSG_KEY, new JsonPrimitive(msg));
-        com.sendMessage(jsonObject.toString());
-        com.sendMessage(String.valueOf(0));
+        try {
+            new ErrorMsg(errorType, msg).sendMessage(com);
+        } catch (MessageBuildException e) {
+            logger.error("Failed to reply with error message", e);
+        }
     }
 
     public final MessageType getMessageType() {
         return type;
     }
 
-    public final void setMessageType(MessageType type) {
-        this.type = type;
+    public final void sendMessage(MessageCommunication com) throws IOException, MessageBuildException {
+        send(buildMessage(), com);
     }
 
-    public void sendMessage(MessageCommunication com) throws IOException, MessageBuildException {
-        Pair<JsonObject, byte[]> msg = buildMessage();
-        msg.getLeft().add(MSG_TYPE_KEY, new JsonPrimitive(type.name()));
-        com.sendMessage(msg.getLeft().toString());
-        if (msg.getRight() != null) {
-            com.sendMessage(String.valueOf(msg.getRight().length));
-            com.sendData(msg.getRight());
-        } else
-            com.sendMessage(String.valueOf(0));
+    public final void replyMessage(MessageCommunication com) throws IOException, MessageBuildException {
+        send(buildReplyMessage(), com);
     }
 
-    public void replyMessage(MessageCommunication com) throws IOException, MessageBuildException {
-        Pair<JsonObject, byte[]> msg = buildReplyMessage();
+    private void send(Pair<JsonObject, byte[]> msg, MessageCommunication com) throws IOException {
         msg.getLeft().add(MSG_TYPE_KEY, new JsonPrimitive(type.name()));
         com.sendMessage(msg.getLeft().toString());
         if (msg.getRight() != null) {

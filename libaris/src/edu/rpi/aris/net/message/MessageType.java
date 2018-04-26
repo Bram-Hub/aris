@@ -22,7 +22,7 @@ public enum MessageType {
     CREATE_CLASS(null),
     DELETE_CLASS(null),
     UPDATE_CLASS(null),
-    ERROR(null);
+    ERROR(ErrorMsg.class);
 
     public final Class<? extends Message> msgClass;
 

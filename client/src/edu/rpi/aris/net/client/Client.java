@@ -3,6 +3,7 @@ package edu.rpi.aris.net.client;
 import edu.rpi.aris.LibAris;
 import edu.rpi.aris.Main;
 import edu.rpi.aris.gui.GuiConfig;
+import edu.rpi.aris.net.MessageCommunication;
 import edu.rpi.aris.net.NetUtil;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -52,7 +53,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class Client {
+public class Client implements MessageCommunication {
 
     private static final char[] KEYSTORE_PASSWORD = "ARIS_CLIENT".toCharArray();
     private static final File KEYSTORE_FILE = new File(GuiConfig.CLIENT_CONFIG_DIR, "client.keystore");
