@@ -1,8 +1,12 @@
 package edu.rpi.aris.gui.submit;
 
 import edu.rpi.aris.Main;
+import edu.rpi.aris.net.MessageBuildException;
+import edu.rpi.aris.net.MessageParseException;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
+import edu.rpi.aris.net.message.AssignmentsMsg;
+import edu.rpi.aris.net.message.Message;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.collections.FXCollections;
@@ -34,8 +38,9 @@ public class Course {
             Client client = Main.getClient();
             try {
                 client.connect();
-                client.sendMessage(NetUtil.GET_ASSIGNMENTS);
-                client.sendMessage(String.valueOf(id));
+                AssignmentsMsg msg = new AssignmentsMsg(id);
+                msg.sendMessage(client);
+                Message replyMsg = Message.parseReply(client);
                 String res;
                 while ((res = client.readMessage()) != null && !res.equals(NetUtil.ERROR) && !res.equals(NetUtil.DONE)) {
                     String[] split = res.split("\\|");
@@ -60,7 +65,7 @@ public class Course {
                 Platform.runLater(() -> loaded.set(true));
                 if (runnable != null)
                     runnable.run();
-            } catch (IOException e) {
+            } catch (IOException | MessageBuildException | MessageParseException e) {
                 Platform.runLater(() -> {
                     assignments.clear();
                     loaded.set(false);

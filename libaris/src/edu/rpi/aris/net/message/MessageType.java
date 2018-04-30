@@ -3,7 +3,7 @@ package edu.rpi.aris.net.message;
 public enum MessageType {
 
     GET_USER_INFO(UserInfoMsg.class),
-    GET_ASSIGNMENTS(null),
+    GET_ASSIGNMENTS(AssignmentsMsg.class),
     GET_ASSIGNMENT_DETAIL(null),
     GET_PROOFS(null),
     LIST_SUBMISSIONS(null),

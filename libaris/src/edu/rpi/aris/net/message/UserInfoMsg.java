@@ -31,12 +31,12 @@ public class UserInfoMsg extends Message {
         super(MessageType.GET_USER_INFO);
     }
 
-    public void setUserType(String userType) {
-        this.userType = userType;
-    }
-
     public String getUserType() {
         return userType;
+    }
+
+    public void setUserType(String userType) {
+        this.userType = userType;
     }
 
     public HashMap<Integer, String> getClasses() {
@@ -58,16 +58,12 @@ public class UserInfoMsg extends Message {
 
     @Override
     protected void parseResponse(JsonObject jsonMsg) throws MessageParseException {
-        try {
-            userId = jsonMsg.get(USR_ID).getAsInt();
-            userType = jsonMsg.get(USR_TYPE).getAsString();
-            JsonArray classArray = jsonMsg.get(CLASSES).getAsJsonArray();
-            for (JsonElement e : classArray) {
-                JsonObject o = e.getAsJsonObject();
-                classes.put(o.get(CLS_ID).getAsInt(), o.get(CLS_NAME).getAsString());
-            }
-        } catch (NullPointerException | ClassCastException | IllegalStateException e) {
-            throw new MessageParseException(e);
+        userId = Message.getInt(jsonMsg, USR_ID, -1, true);
+        userType = Message.getString(jsonMsg, USR_TYPE, null, true);
+        JsonArray classArray = Message.getArray(jsonMsg, CLASSES);
+        for (JsonElement e : classArray) {
+            JsonObject o = Message.getAsObject(e);
+            classes.put(Message.getInt(o, CLS_ID, -1, true), Message.getString(o, CLS_NAME, null, true));
         }
     }
 

@@ -1,6 +1,11 @@
 package edu.rpi.aris.net;
 
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class NetUtil {
 
@@ -58,6 +63,7 @@ public class NetUtil {
     public static final int DEFAULT_PORT = 9001; // IT'S OVER 9000!
     public static final int SOCKET_TIMEOUT = 15000;
     public static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    public static final DateTimeFormatter ZDT_FORMAT = DateTimeFormatter.ISO_DATE_TIME;
     public static final String TOO_LARGE = "TOO_LARGE";
     public static final String NO_DATA = "NO_DATA";
     public static final String RENAME = "RENAME";
@@ -98,6 +104,14 @@ public class NetUtil {
         // the strings are equal or one string is a substring of the other
         // e.g. "1.2.3" = "1.2.3" or "1.2.3" < "1.2.3.4"
         return Integer.signum(vals1.length - vals2.length);
+    }
+
+    public static ZonedDateTime localToUTC(LocalDateTime localDateTime) {
+        return localDateTime.atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC);
+    }
+
+    public static LocalDateTime UTCToLocal(ZonedDateTime utcTime) {
+        return utcTime.withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
     }
 
 }

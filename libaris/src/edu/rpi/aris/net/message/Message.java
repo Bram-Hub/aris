@@ -1,8 +1,6 @@
 package edu.rpi.aris.net.message;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.google.gson.JsonPrimitive;
+import com.google.gson.*;
 import edu.rpi.aris.net.MessageBuildException;
 import edu.rpi.aris.net.MessageCommunication;
 import edu.rpi.aris.net.MessageParseException;
@@ -91,6 +89,42 @@ public abstract class Message {
             new ErrorMsg(errorType, msg).sendMessage(com);
         } catch (MessageBuildException e) {
             logger.error("Failed to reply with error message", e);
+        }
+    }
+
+    public static int getInt(JsonObject obj, String key, int defaultValue, boolean error) throws MessageParseException {
+        try {
+            return obj.get(key).getAsInt();
+        } catch (NullPointerException | ClassCastException | IllegalStateException e) {
+            if (error)
+                throw new MessageParseException("Missing value or mismatched type for key: " + key, e);
+            return defaultValue;
+        }
+    }
+
+    public static String getString(JsonObject obj, String key, String defaultValue, boolean error) throws MessageParseException {
+        try {
+            return obj.get(key).getAsString();
+        } catch (NullPointerException | ClassCastException | IllegalStateException e) {
+            if (error)
+                throw new MessageParseException("Missing value or mismatched type for key: " + key, e);
+            return defaultValue;
+        }
+    }
+
+    public static JsonArray getArray(JsonObject obj, String key) throws MessageParseException {
+        try {
+            return obj.get(key).getAsJsonArray();
+        } catch (NullPointerException | IllegalStateException e) {
+            throw new MessageParseException("Missing value or mismatched type for key: " + key, e);
+        }
+    }
+
+    public static JsonObject getAsObject(JsonElement element) throws MessageParseException {
+        try {
+            return element.getAsJsonObject();
+        } catch (IllegalStateException e) {
+            throw new MessageParseException("Invalid json object in message", e);
         }
     }
 

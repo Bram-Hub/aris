@@ -1,6 +1,7 @@
 package edu.rpi.aris.net.message;
 
 import com.google.gson.JsonObject;
+import edu.rpi.aris.net.MessageParseException;
 import edu.rpi.aris.net.User;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -34,21 +35,13 @@ public class ErrorMsg extends Message {
     }
 
     @Override
-    protected void parseMessage(JsonObject jsonMsg) {
-        try {
-            errorType = ErrorType.valueOf(jsonMsg.get(ERR_TYPE_KEY).getAsString());
-        } catch (NullPointerException | ClassCastException | IllegalStateException | IllegalArgumentException e) {
-            errorType = ErrorType.UNKNOWN_ERROR;
-        }
-        try {
-            errorMsg = jsonMsg.get(ERR_MSG_KEY).getAsString();
-        } catch (NullPointerException | ClassCastException | IllegalStateException | IllegalArgumentException e) {
-            errorMsg = null;
-        }
+    protected void parseMessage(JsonObject jsonMsg) throws MessageParseException {
+        errorType = ErrorType.valueOf(Message.getString(jsonMsg, ERR_TYPE_KEY, ErrorType.UNKNOWN_ERROR.name(), false));
+        errorMsg = Message.getString(jsonMsg, ERR_MSG_KEY, null, false);
     }
 
     @Override
-    protected void parseResponse(JsonObject jsonMsg) {
+    protected void parseResponse(JsonObject jsonMsg) throws MessageParseException {
         parseMessage(jsonMsg);
     }
 

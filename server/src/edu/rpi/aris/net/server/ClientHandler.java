@@ -247,32 +247,6 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
         }
     }
 
-    private void getAssignments() throws SQLException, IOException {
-        String idStr = in.readUTF();
-        int id;
-        try {
-            id = Integer.parseInt(idStr);
-        } catch (NumberFormatException e) {
-            sendMessage(NetUtil.ERROR);
-            return;
-        }
-        try (Connection connection = dbManager.getConnection();
-             PreparedStatement statement = connection.prepareStatement("SELECT a.name, a.due_date, u2.username, a.id FROM assignment a, users u, users u2, class c, user_class uc WHERE uc.user_id = u.id AND uc.class_id = c.id AND a.class_id = uc.class_id AND a.assigned_by = u2.id AND u.username = ? AND c.id = ? GROUP BY a.id, a.name, a.due_date, u2.username ORDER BY a.due_date;")) {
-            statement.setString(1, username);
-            statement.setInt(2, id);
-            try (ResultSet rs = statement.executeQuery()) {
-                while (rs.next()) {
-                    String assignmentName = URLEncoder.encode(rs.getString(1), "UTF-8");
-                    String dueDate = URLEncoder.encode(NetUtil.DATE_FORMAT.format(rs.getTimestamp(2)), "UTF-8");
-                    String assignedBy = URLEncoder.encode(rs.getString(3), "UTF-8");
-                    int assignmentId = rs.getInt(4);
-                    sendMessage(assignmentName + "|" + dueDate + "|" + assignedBy + "|" + assignmentId);
-                }
-            }
-        }
-        sendMessage(NetUtil.DONE);
-    }
-
     private void getAssignmentDetail() throws IOException, SQLException {
         String[] idData = in.readUTF().split("\\|");
         if (idData.length != 2) {
