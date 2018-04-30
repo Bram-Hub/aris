@@ -2,8 +2,11 @@ package edu.rpi.aris.gui.submit;
 
 import edu.rpi.aris.Main;
 import edu.rpi.aris.gui.GuiConfig;
+import edu.rpi.aris.net.MessageBuildException;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
+import edu.rpi.aris.net.message.ErrorMsg;
+import edu.rpi.aris.net.message.Message;
 import edu.rpi.aris.proof.Proof;
 import edu.rpi.aris.proof.SaveInfoListener;
 import edu.rpi.aris.proof.SaveManager;
@@ -39,6 +42,7 @@ import java.time.ZoneId;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class AssignmentWindow implements SaveInfoListener {
@@ -561,6 +565,33 @@ public class AssignmentWindow implements SaveInfoListener {
                 "This will show up if this file is submitted and may affect your grade.");
         alert.getDialogPane().setPrefWidth(500);
         alert.showAndWait();
+    }
+
+    public void transmitMessage(final Message msg, final Consumer<Message> call) {
+        new Thread(() -> {
+            Client client = Main.getClient();
+            Message response = null;
+            try {
+                client.connect();
+                msg.sendMessage(client);
+                response = Message.parseReply(client);
+                if (response == null || response instanceof ErrorMsg) {
+                    processError((ErrorMsg) response);
+                } else if (!response.getClass().equals(msg.getClass())) {
+                    //TODO
+                }
+            } catch (IOException | MessageBuildException e) {
+                //TODO
+                System.out.println("Network error");
+            } finally {
+                client.disconnect();
+            }
+            call.accept(response);
+        }).start();
+    }
+
+    public void processError(ErrorMsg error) {
+        //TODO
     }
 
     public Stage getStage() {

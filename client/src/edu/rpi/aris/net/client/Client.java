@@ -5,6 +5,7 @@ import edu.rpi.aris.Main;
 import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.net.MessageCommunication;
 import edu.rpi.aris.net.NetUtil;
+import edu.rpi.aris.net.message.Message;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleObjectProperty;
@@ -605,6 +606,7 @@ public class Client implements MessageCommunication {
         return false;
     }
 
+    @Override
     public synchronized void sendMessage(String msg) throws IOException {
         if (connectionStatus == ConnectionStatus.CONNECTED && socket != null && out != null) {
             try {
@@ -618,6 +620,7 @@ public class Client implements MessageCommunication {
             throw new IOException("Not connected to server");
     }
 
+    @Override
     public synchronized String readMessage() throws IOException {
         try {
             return in.readUTF();
@@ -627,6 +630,7 @@ public class Client implements MessageCommunication {
         }
     }
 
+    @Override
     public synchronized void sendData(byte[] data) throws IOException {
         if (connectionStatus == ConnectionStatus.CONNECTED && socket != null && out != null) {
             try {
@@ -640,6 +644,7 @@ public class Client implements MessageCommunication {
             throw new IOException("Not connected to server");
     }
 
+    @Override
     public synchronized boolean readData(byte[] data) throws IOException {
         try {
             return in.read(data) == data.length;
