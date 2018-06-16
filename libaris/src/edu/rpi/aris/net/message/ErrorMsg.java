@@ -10,9 +10,6 @@ import java.sql.Connection;
 
 public class ErrorMsg extends Message {
 
-    private static final String ERR_TYPE_KEY = "err_type";
-    private static final String ERR_MSG_KEY = "err_msg";
-
     private ErrorType errorType;
     private String errorMsg;
 
@@ -36,12 +33,12 @@ public class ErrorMsg extends Message {
 
     @Override
     protected void parseMessage(JsonObject jsonMsg) throws MessageParseException {
-        errorType = ErrorType.valueOf(Message.getString(jsonMsg, ERR_TYPE_KEY, ErrorType.UNKNOWN_ERROR.name(), false));
-        errorMsg = Message.getString(jsonMsg, ERR_MSG_KEY, null, false);
+        errorType = ErrorType.valueOf(getString(jsonMsg, ERR_TYPE, ErrorType.UNKNOWN_ERROR.name(), false));
+        errorMsg = getString(jsonMsg, ERR_MSG, null, false);
     }
 
     @Override
-    protected void parseResponse(JsonObject jsonMsg) throws MessageParseException {
+    protected void parseReply(JsonObject jsonMsg) throws MessageParseException {
         parseMessage(jsonMsg);
     }
 
@@ -53,9 +50,9 @@ public class ErrorMsg extends Message {
     @Override
     public Pair<JsonObject, byte[]> buildMessage() {
         JsonObject obj = new JsonObject();
-        obj.addProperty(ERR_TYPE_KEY, errorType.name());
+        obj.addProperty(ERR_TYPE, errorType.name());
         if (errorMsg != null)
-            obj.addProperty(ERR_MSG_KEY, errorMsg);
+            obj.addProperty(ERR_MSG, errorMsg);
         return new ImmutablePair<>(obj, null);
     }
 

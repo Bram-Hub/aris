@@ -17,12 +17,6 @@ import java.util.Map;
 
 public class UserInfoMsg extends Message {
 
-    public static final String USR_ID = "usr_id";
-    public static final String USR_TYPE = "usr_type";
-    public static final String CLASSES = "classes";
-    public static final String CLS_ID = "cls_id";
-    public static final String CLS_NAME = "cls_name";
-
     private int userId;
     private String userType;
     private HashMap<Integer, String> classes = new HashMap<>();
@@ -57,13 +51,13 @@ public class UserInfoMsg extends Message {
     }
 
     @Override
-    protected void parseResponse(JsonObject jsonMsg) throws MessageParseException {
-        userId = Message.getInt(jsonMsg, USR_ID, -1, true);
-        userType = Message.getString(jsonMsg, USR_TYPE, null, true);
-        JsonArray classArray = Message.getArray(jsonMsg, CLASSES);
+    protected void parseReply(JsonObject jsonMsg) throws MessageParseException {
+        userId = getInt(jsonMsg, USR_ID, -1, true);
+        userType = getString(jsonMsg, USR_TYPE, null, true);
+        JsonArray classArray = getArray(jsonMsg, CLASSES);
         for (JsonElement e : classArray) {
-            JsonObject o = Message.getAsObject(e);
-            classes.put(Message.getInt(o, CLS_ID, -1, true), Message.getString(o, CLS_NAME, null, true));
+            JsonObject o = getAsObject(e);
+            classes.put(getInt(o, CLASS_ID, -1, true), getString(o, NAME, null, true));
         }
     }
 
@@ -101,8 +95,8 @@ public class UserInfoMsg extends Message {
         JsonArray classArr = new JsonArray();
         for (Map.Entry<Integer, String> c : classes.entrySet()) {
             JsonObject cObj = new JsonObject();
-            cObj.addProperty(CLS_ID, c.getKey());
-            cObj.addProperty(CLS_NAME, c.getValue());
+            cObj.addProperty(CLASS_ID, c.getKey());
+            cObj.addProperty(NAME, c.getValue());
             classArr.add(cObj);
         }
         obj.add(CLASSES, classArr);

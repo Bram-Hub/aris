@@ -16,7 +16,19 @@ import java.util.Objects;
 
 public abstract class Message {
 
-    public static final String MSG_TYPE_KEY = "msg_type";
+    static final String CLASSES = "classes";
+    static final String USR_TYPE = "usr_type";
+    static final String USR_ID = "usr_id";
+    static final String CLASS_ID = "cls_id";
+    static final String ASSIGNMENTS = "assignments";
+    static final String NAME = "name";
+    static final String BY = "by";
+    static final String ID = "id";
+    static final String DUE = "due";
+    static final String ERR_TYPE = "err_type";
+    static final String ERR_MSG = "err_msg";
+
+    private static final String MSG_TYPE_KEY = "msg_type";
 
     private static Logger logger = LogManager.getLogger(Message.class);
     private static JsonParser parser = new JsonParser();
@@ -28,15 +40,15 @@ public abstract class Message {
         this.type = type;
     }
 
-    public static Message parse(MessageCommunication com) {
-        return parse(com, false);
+    public static Message parseOld(MessageCommunication com) {
+        return parseOld(com, false);
     }
 
     public static Message parseReply(MessageCommunication com) {
-        return parse(com, true);
+        return parseOld(com, true);
     }
 
-    public static Message parse(MessageCommunication com, boolean isReply) {
+    public static Message parseOld(MessageCommunication com, boolean isReply) {
         MessageType msgType = null;
         try {
             try {
@@ -48,12 +60,12 @@ public abstract class Message {
                 } catch (IllegalArgumentException e) {
                     if (!isReply)
                         sendError(ErrorType.UNKNOWN_MSG_TYPE, "Invalid message type: " + msgTypeName, com);
-                    throw new IOException("Invalid message type: " + msgTypeName, e);
+                    throw new MessageParseException("Invalid message type: " + msgTypeName, e);
                 }
                 try {
                     Message msg = msgType.msgClass.newInstance();
                     if (isReply)
-                        msg.parseResponse(msgObject);
+                        msg.parseReply(msgObject);
                     else
                         msg.parseMessage(msgObject);
                     return msg;
@@ -67,15 +79,14 @@ public abstract class Message {
             } catch (MessageParseException e) {
                 logger.error("Malformed message received from peer", e);
                 if (!isReply)
-                    sendError(ErrorType.PARSE_ERR, "Invalid syntax for message type " + msgType.name(), com);
+                    sendError(ErrorType.PARSE_ERR, "Invalid syntax for message type " + msgType, com);
             } catch (RuntimeException e) {
-                if (msgType != null)
-                    logger.error("MessageType " + msgType.name() + " has not been fully implemented", e);
+                logger.error("MessageType " + msgType + " has not been fully implemented", e);
                 if (!isReply)
                     sendError(ErrorType.NOT_IMPLEMENTED, "Function not implemented", com);
             }
         } catch (IOException e) {
-            logger.error("Failed to parse message", e);
+            logger.error("Failed to parseOld message", e);
         }
         return null;
     }
@@ -92,7 +103,7 @@ public abstract class Message {
         }
     }
 
-    public static int getInt(JsonObject obj, String key, int defaultValue, boolean error) throws MessageParseException {
+    static int getInt(JsonObject obj, String key, int defaultValue, boolean error) throws MessageParseException {
         try {
             return obj.get(key).getAsInt();
         } catch (NullPointerException | ClassCastException | IllegalStateException e) {
@@ -102,7 +113,7 @@ public abstract class Message {
         }
     }
 
-    public static String getString(JsonObject obj, String key, String defaultValue, boolean error) throws MessageParseException {
+    static String getString(JsonObject obj, String key, String defaultValue, boolean error) throws MessageParseException {
         try {
             return obj.get(key).getAsString();
         } catch (NullPointerException | ClassCastException | IllegalStateException e) {
@@ -112,7 +123,7 @@ public abstract class Message {
         }
     }
 
-    public static JsonArray getArray(JsonObject obj, String key) throws MessageParseException {
+    static JsonArray getArray(JsonObject obj, String key) throws MessageParseException {
         try {
             return obj.get(key).getAsJsonArray();
         } catch (NullPointerException | IllegalStateException e) {
@@ -120,7 +131,7 @@ public abstract class Message {
         }
     }
 
-    public static JsonObject getAsObject(JsonElement element) throws MessageParseException {
+    static JsonObject getAsObject(JsonElement element) throws MessageParseException {
         try {
             return element.getAsJsonObject();
         } catch (IllegalStateException e) {
@@ -152,11 +163,11 @@ public abstract class Message {
 
     protected abstract void parseMessage(JsonObject jsonMsg) throws MessageParseException;
 
-    protected abstract void parseResponse(JsonObject jsonMsg) throws MessageParseException;
+    protected abstract void parseReply(JsonObject jsonMsg) throws MessageParseException;
 
-    public abstract ErrorType processMessage(Connection connection, User user) throws SQLException, IOException;
+    protected abstract ErrorType processMessage(Connection connection, User user) throws SQLException, IOException;
 
-    public abstract Pair<JsonObject, byte[]> buildMessage() throws MessageBuildException;
+    protected abstract Pair<JsonObject, byte[]> buildMessage() throws MessageBuildException;
 
-    public abstract Pair<JsonObject, byte[]> buildReplyMessage() throws MessageBuildException;
+    protected abstract Pair<JsonObject, byte[]> buildReplyMessage() throws MessageBuildException;
 }

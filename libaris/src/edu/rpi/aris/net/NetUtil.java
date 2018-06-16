@@ -110,8 +110,16 @@ public class NetUtil {
         return localDateTime.atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC);
     }
 
+    public static ZonedDateTime zoneToUTC(ZonedDateTime dateTime) {
+        return dateTime.withZoneSameInstant(ZoneOffset.UTC);
+    }
+
     public static LocalDateTime UTCToLocal(ZonedDateTime utcTime) {
         return utcTime.withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
+    }
+
+    public static ZonedDateTime zoneToLocal(ZonedDateTime dateTime) {
+        return dateTime.withZoneSameInstant(ZoneOffset.systemDefault());
     }
 
 }

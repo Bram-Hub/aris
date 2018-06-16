@@ -60,7 +60,7 @@ public class ProofList {
                     try {
                         timestamp = NetUtil.DATE_FORMAT.parse(URLDecoder.decode(split[3], "UTF-8")).getTime();
                     } catch (ParseException e) {
-                        logger.error("Failed to parse date string: " + split[3]);
+                        logger.error("Failed to parseOld date string: " + split[3]);
                         timestamp = 0;
                     }
                     long finalTimestamp = timestamp;

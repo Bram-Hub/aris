@@ -19,13 +19,6 @@ import java.util.ArrayList;
 
 public class AssignmentsMsg extends Message {
 
-    private static final String CLASS_ID = "cls_id";
-    private static final String ASSIGNMENTS = "assignments";
-    private static final String NAME = "name";
-    private static final String BY = "by";
-    private static final String ID = "id";
-    private static final String DUE = "due";
-
     private int classId;
     private ArrayList<AssignmentData> assignments = new ArrayList<>();
 
@@ -38,25 +31,29 @@ public class AssignmentsMsg extends Message {
         this.classId = classId;
     }
 
+    public ArrayList<AssignmentData> getAssignments() {
+        return assignments;
+    }
+
     @Override
     protected void parseMessage(JsonObject jsonMsg) throws MessageParseException {
-        classId = Message.getInt(jsonMsg, CLASS_ID, -1, true);
+        classId = getInt(jsonMsg, CLASS_ID, -1, true);
         if (classId <= 0)
             throw new MessageParseException("Invalid class id: " + classId);
     }
 
     @Override
-    protected void parseResponse(JsonObject jsonMsg) throws MessageParseException {
-        int cid = Message.getInt(jsonMsg, CLASS_ID, classId, false);
+    protected void parseReply(JsonObject jsonMsg) throws MessageParseException {
+        int cid = getInt(jsonMsg, CLASS_ID, classId, false);
         if (cid != classId)
             throw new MessageParseException("Response class id does not match expected class id");
-        JsonArray arr = Message.getArray(jsonMsg, ASSIGNMENTS);
+        JsonArray arr = getArray(jsonMsg, ASSIGNMENTS);
         for (JsonElement element : arr) {
-            JsonObject obj = Message.getAsObject(element);
-            String name = Message.getString(obj, NAME, null, true);
-            String assignedBy = Message.getString(obj, BY, "unknown", false);
-            ZonedDateTime zdt = ZonedDateTime.parse(Message.getString(obj, DUE, null, true), NetUtil.ZDT_FORMAT);
-            int aid = Message.getInt(obj, ID, -1, true);
+            JsonObject obj = getAsObject(element);
+            String name = getString(obj, NAME, null, true);
+            String assignedBy = getString(obj, BY, "unknown", false);
+            ZonedDateTime zdt = ZonedDateTime.parse(getString(obj, DUE, null, true), NetUtil.ZDT_FORMAT);
+            int aid = getInt(obj, ID, -1, true);
             assignments.add(new AssignmentData(name, assignedBy, zdt, aid));
         }
     }

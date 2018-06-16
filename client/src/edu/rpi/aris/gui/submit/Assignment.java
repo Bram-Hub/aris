@@ -40,15 +40,10 @@ public class Assignment {
     private ArrayList<AssignmentInfo> rootNodes = new ArrayList<>();
     private HashSet<ProofInfo> proofs = new HashSet<>();
 
-    public Assignment(String name, String dueDate, String assignedBy, int id, int classId, Course course) {
+    public Assignment(String name, long dueDate, String assignedBy, int id, int classId, Course course) {
         this.course = course;
         this.name.set(name);
-        try {
-            this.dueDate.set(NetUtil.DATE_FORMAT.parse(dueDate).getTime());
-        } catch (ParseException e) {
-            logger.error("Failed to parse due date", e);
-            this.dueDate.set(-1);
-        }
+        this.dueDate.set(dueDate);
         this.id = id;
         this.classId = classId;
         titledPane = new TitledPane("", tableBox);

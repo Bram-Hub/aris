@@ -13,8 +13,6 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
 
 public class Course {
 
@@ -41,27 +39,13 @@ public class Course {
                 AssignmentsMsg msg = new AssignmentsMsg(id);
                 msg.sendMessage(client);
                 Message replyMsg = Message.parseReply(client);
-                String res;
-                while ((res = client.readMessage()) != null && !res.equals(NetUtil.ERROR) && !res.equals(NetUtil.DONE)) {
-                    String[] split = res.split("\\|");
-                    if (split.length == 4) {
-                        try {
-                            Platform.runLater(() -> {
-                                try {
-                                    assignments.add(new Assignment(URLDecoder.decode(split[0], "UTF-8"), URLDecoder.decode(split[1], "UTF-8"), URLDecoder.decode(split[2], "UTF-8"), Integer.parseInt(split[3]), id, this));
-                                } catch (UnsupportedEncodingException e) {
-                                    e.printStackTrace();
-                                }
-                            });
-                        } catch (NumberFormatException e) {
-                            throw new IOException("Error fetching user data");
-                        }
-                    } else {
-                        throw new IOException("Error fetching user data");
-                    }
+                if (!(replyMsg instanceof AssignmentsMsg))
+                    throw new MessageParseException("Unexpected message type received");
+                AssignmentsMsg reply = (AssignmentsMsg) replyMsg;
+                for (AssignmentsMsg.AssignmentData date : reply.getAssignments()) {
+                    Assignment assignment = new Assignment(date.name, NetUtil.zoneToLocal(date.dueDateUTC).toInstant().toEpochMilli(), date.assignedBy, date.id, this.id, this);
+                    this.assignments.add(assignment);
                 }
-                if (res == null || res.equals(NetUtil.ERROR))
-                    throw new IOException("Error fetching user data");
                 Platform.runLater(() -> loaded.set(true));
                 if (runnable != null)
                     runnable.run();

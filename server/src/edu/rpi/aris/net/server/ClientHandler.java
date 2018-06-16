@@ -64,9 +64,9 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                 }
             });
             logger.info("[" + clientName + "] Starting handshake");
-            socket.startHandshake();
             synchronized (socket) {
                 try {
+                    socket.startHandshake();
                     socket.wait();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
@@ -211,7 +211,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
             //noinspection InfiniteLoopStatement
             while (true) {
                 try {
-                    Message msg = Message.parse(this);
+                    Message msg = Message.parseOld(this);
                     if (msg != null) {
                         try (Connection connection = dbManager.getConnection()) {
                             try {
@@ -518,7 +518,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                     try {
                         statement.setTimestamp(5, new Timestamp(NetUtil.DATE_FORMAT.parse(dateStr).getTime()));
                     } catch (ParseException e) {
-                        throw new IOException("Failed to parse date");
+                        throw new IOException("Failed to parseOld date");
                     }
                     statement.setInt(6, userId);
                     statement.executeUpdate();
