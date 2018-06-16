@@ -33,7 +33,7 @@ public class ClientInfo {
                 client.connect();
                 UserInfoMsg msg = new UserInfoMsg();
                 msg.sendMessage(client);
-                Message replyMsg = Message.parseReply(client);
+                Message replyMsg = Message.parse(client);
                 if (!(replyMsg instanceof UserInfoMsg))
                     throw new MessageParseException("Unexpected message type received");
                 UserInfoMsg reply = (UserInfoMsg) replyMsg;
@@ -45,7 +45,7 @@ public class ClientInfo {
                 });
                 if (runnable != null)
                     runnable.run();
-            } catch (IOException | MessageBuildException | MessageParseException e) {
+            } catch (IOException | MessageParseException e) {
                 userId = -1;
                 Platform.runLater(() -> {
                     isInstructor.set(false);

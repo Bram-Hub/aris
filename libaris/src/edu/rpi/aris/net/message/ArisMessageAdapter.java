@@ -1,7 +1,6 @@
 package edu.rpi.aris.net.message;
 
 import com.google.gson.*;
-import edu.rpi.aris.net.MessageParseException;
 
 import java.lang.reflect.Type;
 
@@ -14,7 +13,7 @@ public class ArisMessageAdapter implements JsonSerializer<Message>, JsonDeserial
     public Message deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
         try {
             JsonObject obj = json.getAsJsonObject();
-            String typeName = Message.getString(obj, MESSAGE_TYPE_TAG, null, true);
+            String typeName = obj.getAsJsonPrimitive(MESSAGE_TYPE_TAG).getAsString();
             MessageType type = MessageType.valueOf(typeName);
             if (type.msgClass == null)
                 throw new JsonParseException("MessageType \"" + type + "\" has not been implemented");
@@ -24,7 +23,7 @@ public class ArisMessageAdapter implements JsonSerializer<Message>, JsonDeserial
             return context.deserialize(msgBody, type.msgClass);
         } catch (IllegalStateException e) {
             throw new JsonParseException("json root element is not an object", e);
-        } catch (MessageParseException | IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) {
             throw new JsonParseException("json does message type missing or invalid", e);
         }
     }

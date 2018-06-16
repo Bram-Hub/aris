@@ -211,7 +211,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
             //noinspection InfiniteLoopStatement
             while (true) {
                 try {
-                    Message msg = Message.parseOld(this);
+                    Message msg = Message.parse(this);
                     if (msg != null) {
                         try (Connection connection = dbManager.getConnection()) {
                             try {
@@ -219,7 +219,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                                 ErrorType error = msg.processMessage(connection, user);
                                 if (error == null) {
                                     connection.commit();
-                                    msg.replyMessage(this);
+                                    msg.sendMessage(this);
                                 } else {
                                     connection.rollback();
                                     logger.error("[" + clientName + "] " + msg.getMessageType().name() + " processing failed with error: " + error.name());

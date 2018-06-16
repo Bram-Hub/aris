@@ -38,7 +38,7 @@ public class Course {
                 client.connect();
                 AssignmentsMsg msg = new AssignmentsMsg(id);
                 msg.sendMessage(client);
-                Message replyMsg = Message.parseReply(client);
+                Message replyMsg = Message.parse(client);
                 if (!(replyMsg instanceof AssignmentsMsg))
                     throw new MessageParseException("Unexpected message type received");
                 AssignmentsMsg reply = (AssignmentsMsg) replyMsg;
@@ -49,7 +49,7 @@ public class Course {
                 Platform.runLater(() -> loaded.set(true));
                 if (runnable != null)
                     runnable.run();
-            } catch (IOException | MessageBuildException | MessageParseException e) {
+            } catch (IOException | MessageParseException e) {
                 Platform.runLater(() -> {
                     assignments.clear();
                     loaded.set(false);
