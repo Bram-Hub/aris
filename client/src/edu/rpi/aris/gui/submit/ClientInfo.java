@@ -2,7 +2,6 @@ package edu.rpi.aris.gui.submit;
 
 import edu.rpi.aris.Main;
 import edu.rpi.aris.gui.GuiConfig;
-import edu.rpi.aris.net.MessageBuildException;
 import edu.rpi.aris.net.MessageParseException;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
@@ -32,7 +31,7 @@ public class ClientInfo {
             try {
                 client.connect();
                 UserInfoMsg msg = new UserInfoMsg();
-                msg.sendMessage(client);
+                msg.send(client);
                 Message replyMsg = Message.parse(client);
                 if (!(replyMsg instanceof UserInfoMsg))
                     throw new MessageParseException("Unexpected message type received");

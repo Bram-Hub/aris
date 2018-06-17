@@ -1,5 +1,7 @@
 package edu.rpi.aris.net;
 
+import edu.rpi.aris.net.message.ErrorMsg;
+
 import java.io.IOException;
 
 public interface MessageCommunication {
@@ -8,8 +10,6 @@ public interface MessageCommunication {
 
     void sendMessage(String msg) throws IOException;
 
-    boolean readData(byte[] data) throws IOException;
-
-    void sendData(byte[] data) throws IOException;
+    void handleErrorMsg(ErrorMsg msg);
 
 }

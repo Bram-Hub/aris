@@ -122,4 +122,8 @@ public class NetUtil {
         return dateTime.withZoneSameInstant(ZoneOffset.systemDefault());
     }
 
+    public static long UTCToMilli(ZonedDateTime utcTime) {
+        return zoneToLocal(utcTime).toInstant().toEpochMilli();
+    }
+
 }

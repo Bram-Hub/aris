@@ -1,6 +1,8 @@
 package edu.rpi.aris.gui.submit;
 
 import edu.rpi.aris.net.GradingStatus;
+import edu.rpi.aris.net.NetUtil;
+import edu.rpi.aris.net.message.MsgUtil;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Pos;
@@ -23,6 +25,10 @@ public class SubmissionInfo extends AssignmentInfo implements EventHandler<Actio
     private GradingStatus gradingStatus;
     private int proofId;
     private Button btn;
+
+    public SubmissionInfo(MsgUtil.SubmissionInfo info, String subName, boolean isInstructor) {
+        this(info.uid, info.sid, info.pid, info.cid, info.aid, subName, NetUtil.UTCToMilli(info.submissionTime), info.statusStr, info.status, isInstructor);
+    }
 
     public SubmissionInfo(int userId, int submissionId, int proofId, int classId, int assignmentId, String name, long timestamp, String status, GradingStatus gradingStatus, boolean isInstructor) {
         this.userId = userId;

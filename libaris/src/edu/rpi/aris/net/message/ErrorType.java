@@ -8,5 +8,8 @@ public enum ErrorType {
     SQL_ERR,
     EXCEPTION,
     UNKNOWN_MSG_TYPE,
-    NOT_FOUND
+    IO_ERROR,
+    INCORRECT_MSG_TYPE,
+    NOT_FOUND,
+    UNAUTHORIZED
 }

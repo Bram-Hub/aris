@@ -2,6 +2,7 @@ package edu.rpi.aris.gui.submit;
 
 import edu.rpi.aris.net.GradingStatus;
 import edu.rpi.aris.net.NetUtil;
+import edu.rpi.aris.net.message.MsgUtil;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.control.Button;
 
@@ -21,6 +22,10 @@ public class ProofInfo extends AssignmentInfo {
     private String date;
     private Button btn;
     private long timestamp;
+
+    public ProofInfo(MsgUtil.ProofInfo info, boolean isInstructor) {
+        this(info.pid, info.name, info.createdBy, NetUtil.UTCToMilli(info.createdDateUTC), isInstructor);
+    }
 
     public ProofInfo(int proofId, String name, String createdBy, long createdOn, boolean isInstructor) {
         this.proofId = proofId;

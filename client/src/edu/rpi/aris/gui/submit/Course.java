@@ -1,12 +1,10 @@
 package edu.rpi.aris.gui.submit;
 
 import edu.rpi.aris.Main;
-import edu.rpi.aris.net.MessageBuildException;
-import edu.rpi.aris.net.MessageParseException;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
 import edu.rpi.aris.net.message.AssignmentsMsg;
-import edu.rpi.aris.net.message.Message;
+import edu.rpi.aris.net.message.MsgUtil;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.collections.FXCollections;
@@ -37,19 +35,17 @@ public class Course {
             try {
                 client.connect();
                 AssignmentsMsg msg = new AssignmentsMsg(id);
-                msg.sendMessage(client);
-                Message replyMsg = Message.parse(client);
-                if (!(replyMsg instanceof AssignmentsMsg))
-                    throw new MessageParseException("Unexpected message type received");
-                AssignmentsMsg reply = (AssignmentsMsg) replyMsg;
-                for (AssignmentsMsg.AssignmentData date : reply.getAssignments()) {
+                AssignmentsMsg reply = (AssignmentsMsg) msg.sendAndGet(client);
+                if (reply == null)
+                    return;
+                for (MsgUtil.AssignmentData date : reply.getAssignments()) {
                     Assignment assignment = new Assignment(date.name, NetUtil.zoneToLocal(date.dueDateUTC).toInstant().toEpochMilli(), date.assignedBy, date.id, this.id, this);
                     this.assignments.add(assignment);
                 }
                 Platform.runLater(() -> loaded.set(true));
                 if (runnable != null)
                     runnable.run();
-            } catch (IOException | MessageParseException e) {
+            } catch (IOException e) {
                 Platform.runLater(() -> {
                     assignments.clear();
                     loaded.set(false);

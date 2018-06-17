@@ -4,7 +4,8 @@ public enum MessageType {
 
     GET_USER_INFO(UserInfoMsg.class),
     GET_ASSIGNMENTS(AssignmentsMsg.class),
-    GET_ASSIGNMENT_DETAIL(AssignmentDetailMsg.class),
+    GET_SUBMISSIONS_STUDENT(StudentSubmissionMsg.class),
+    GET_SUBMISSIONS_INST(InstructorSubmissionMsg.class),
     GET_PROOFS(null),
     LIST_SUBMISSIONS(null),
     GET_SUBMISSION(null),

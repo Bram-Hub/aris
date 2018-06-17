@@ -5,7 +5,7 @@ import edu.rpi.aris.Main;
 import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.net.MessageCommunication;
 import edu.rpi.aris.net.NetUtil;
-import edu.rpi.aris.net.message.Message;
+import edu.rpi.aris.net.message.ErrorMsg;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleObjectProperty;
@@ -631,27 +631,9 @@ public class Client implements MessageCommunication {
     }
 
     @Override
-    public synchronized void sendData(byte[] data) throws IOException {
-        if (connectionStatus == ConnectionStatus.CONNECTED && socket != null && out != null) {
-            try {
-                out.write(data);
-                out.flush();
-            } catch (IOException e) {
-                disconnect();
-                throw e;
-            }
-        } else
-            throw new IOException("Not connected to server");
-    }
-
-    @Override
-    public synchronized boolean readData(byte[] data) throws IOException {
-        try {
-            return in.read(data) == data.length;
-        } catch (IOException e) {
-            disconnect();
-            throw e;
-        }
+    public void handleErrorMsg(ErrorMsg msg) {
+        // TODO: implement
+        throw new RuntimeException("Not implemented");
     }
 
     private boolean showCertWarning() {

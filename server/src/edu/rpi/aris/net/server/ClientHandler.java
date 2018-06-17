@@ -4,6 +4,7 @@ import edu.rpi.aris.LibAris;
 import edu.rpi.aris.net.MessageCommunication;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.User;
+import edu.rpi.aris.net.message.ErrorMsg;
 import edu.rpi.aris.net.message.ErrorType;
 import edu.rpi.aris.net.message.Message;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
@@ -211,7 +212,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
             //noinspection InfiniteLoopStatement
             while (true) {
                 try {
-                    Message msg = Message.parse(this);
+                    Message msg = Message.get(this);
                     if (msg != null) {
                         try (Connection connection = dbManager.getConnection()) {
                             try {
@@ -219,154 +220,34 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                                 ErrorType error = msg.processMessage(connection, user);
                                 if (error == null) {
                                     connection.commit();
-                                    msg.sendMessage(this);
+                                    msg.send(this);
                                 } else {
                                     connection.rollback();
                                     logger.error("[" + clientName + "] " + msg.getMessageType().name() + " processing failed with error: " + error.name());
-                                    Message.sendError(error, this);
+                                    if(msg instanceof ErrorMsg)
+                                        msg.send(this);
+                                    else
+                                        new ErrorMsg(error).send(this);
                                 }
                             } catch (IOException | SQLException e) {
                                 connection.rollback();
                                 throw e;
                             } catch (Exception e) {
                                 connection.rollback();
-                                Message.sendError(ErrorType.EXCEPTION, e.getClass().getCanonicalName() + ": " + e.getMessage(), this);
+                                new ErrorMsg(ErrorType.EXCEPTION, e.getClass().getCanonicalName() + ": " + e.getMessage()).send(this);
                                 throw e;
                             }
                         }
                     }
                 } catch (SQLException e) {
                     logger.error("[" + clientName + "] SQL Error", e);
-                    Message.sendError(ErrorType.SQL_ERR, this);
+                    new ErrorMsg(ErrorType.SQL_ERR, e.getMessage()).send(this);
                 }
             }
         } catch (IOException ignored) {
             // ignored so we don't print an exception whenever client disconnects
         } catch (Throwable e) {
             logger.error("Unexpected error occurred", e);
-        }
-    }
-
-    private void getAssignmentDetail() throws IOException, SQLException {
-        String[] idData = in.readUTF().split("\\|");
-        if (idData.length != 2) {
-            sendMessage(NetUtil.INVALID);
-            return;
-        }
-        int cid, aid;
-        try {
-            cid = Integer.parseInt(idData[0]);
-            aid = Integer.parseInt(idData[1]);
-        } catch (NumberFormatException e) {
-            sendMessage(NetUtil.ERROR);
-            return;
-        }
-        ArrayList<String> messages = new ArrayList<>();
-        try (Connection connection = dbManager.getConnection();
-             PreparedStatement assignments = connection.prepareStatement("SELECT p.id, p.name, p.created_by, p.created_on FROM assignment a, proof p WHERE a.class_id = ? AND a.id = ? AND a.proof_id = p.id;");
-             PreparedStatement submissions = connection.prepareStatement("SELECT id, proof_id, time, status, short_status FROM submission WHERE class_id = ? AND assignment_id = ? AND user_id = ? ORDER BY proof_id, id DESC;")) {
-            assignments.setInt(1, cid);
-            assignments.setInt(2, aid);
-            try (ResultSet rs = assignments.executeQuery()) {
-                while (rs.next()) {
-                    int pid = rs.getInt(1);
-                    String pName = URLEncoder.encode(rs.getString(2), "UTF-8");
-                    String createdBy = URLEncoder.encode(rs.getString(3), "UTF-8");
-                    String timestamp = URLEncoder.encode(NetUtil.DATE_FORMAT.format(rs.getTimestamp(4)), "UTF-8");
-                    messages.add(pid + "|" + pName + "|" + createdBy + "|" + timestamp);
-                }
-            }
-            sendMessage(String.valueOf(messages.size()));
-            for (String message : messages) {
-                sendMessage(message);
-            }
-            messages.clear();
-            submissions.setInt(1, cid);
-            submissions.setInt(2, aid);
-            submissions.setInt(3, userId);
-            try (ResultSet rs = submissions.executeQuery()) {
-                while (rs.next()) {
-                    int sid = rs.getInt(1);
-                    int pid = rs.getInt(2);
-                    String time = URLEncoder.encode(NetUtil.DATE_FORMAT.format(rs.getTimestamp(3)), "UTF-8");
-                    String statusStr = URLEncoder.encode(rs.getString(4), "UTF-8");
-                    String status = URLEncoder.encode(rs.getString(5), "UTF-8");
-                    messages.add(sid + "|" + pid + "|" + time + "|" + statusStr + "|" + status);
-                }
-            }
-        }
-        sendMessage(String.valueOf(messages.size()));
-        for (String message : messages) {
-            sendMessage(message);
-        }
-    }
-
-    private void getSubmissionDetail() throws IOException, SQLException {
-        String[] idData = in.readUTF().split("\\|");
-        if (!userType.equals(NetUtil.USER_INSTRUCTOR)) {
-            sendMessage(NetUtil.UNAUTHORIZED);
-            return;
-        }
-        if (idData.length != 2) {
-            sendMessage(NetUtil.INVALID);
-            return;
-        }
-        int cid, aid;
-        try {
-            cid = Integer.parseInt(idData[0]);
-            aid = Integer.parseInt(idData[1]);
-        } catch (NumberFormatException e) {
-            sendMessage(NetUtil.ERROR);
-            return;
-        }
-        try (Connection connection = dbManager.getConnection();
-             PreparedStatement userStatement = connection.prepareStatement("SELECT u.id, u.username FROM users u, user_class uc WHERE uc.user_id = u.id AND u.user_type = 'student' AND uc.class_id = ? ORDER BY u.username;");
-             PreparedStatement proofs = connection.prepareStatement("SELECT p.id, p.name, p.created_by, p.created_on FROM proof p, assignment a WHERE a.proof_id = p.id AND a.class_id = ? AND a.id = ? ORDER BY p.name;");
-             PreparedStatement userSubmissions = connection.prepareStatement("SELECT u.id, s.id, s.proof_id, s.time, s.status, s.short_status FROM users u, assignment a, submission s, proof p WHERE a.class_id = ? AND a.id = ? AND u.user_type = 'student' AND s.class_id = a.class_id AND s.assignment_id = a.id AND s.user_id = u.id AND p.id = s.proof_id ORDER BY u.username, p.name, s.time DESC;")) {
-            userStatement.setInt(1, cid);
-            ArrayList<String> messages = new ArrayList<>();
-            try (ResultSet rs = userStatement.executeQuery()) {
-                while (rs.next())
-                    messages.add(rs.getInt(1) + "|" + URLEncoder.encode(rs.getString(2), "UTF-8"));
-            }
-            sendMessage(String.valueOf(messages.size()));
-            for (String message : messages) {
-                sendMessage(message);
-            }
-            messages.clear();
-            proofs.setInt(1, cid);
-            proofs.setInt(2, aid);
-            try (ResultSet rs = proofs.executeQuery()) {
-                while (rs.next()) {
-                    int pid = rs.getInt(1);
-                    String pName = URLEncoder.encode(rs.getString(2), "UTF-8");
-                    String createdBy = URLEncoder.encode(rs.getString(3), "UTF-8");
-                    String createdOn = URLEncoder.encode(NetUtil.DATE_FORMAT.format(rs.getTimestamp(4)), "UTF-8");
-                    messages.add(pid + "|" + pName + "|" + createdBy + "|" + createdOn);
-                }
-            }
-            sendMessage(String.valueOf(messages.size()));
-            for (String message : messages) {
-                sendMessage(message);
-            }
-            messages.clear();
-            userSubmissions.setInt(1, cid);
-            userSubmissions.setInt(2, aid);
-            try (ResultSet rs = userSubmissions.executeQuery()) {
-                while (rs.next()) {
-                    int uid = rs.getInt(1);
-                    int sid = rs.getInt(2);
-                    int pid = rs.getInt(3);
-                    String timestamp = URLEncoder.encode(NetUtil.DATE_FORMAT.format(rs.getTimestamp(4)), "UTF-8");
-                    String status = URLEncoder.encode(rs.getString(5), "UTF-8");
-                    String shortStatus = URLEncoder.encode(rs.getString(6), "UTF-8");
-                    messages.add(uid + "|" + sid + "|" + pid + "|" + timestamp + "|" + status + "|" + shortStatus);
-                }
-            }
-            sendMessage(String.valueOf(messages.size()));
-            for (String message : messages) {
-                sendMessage(message);
-            }
         }
     }
 
@@ -970,14 +851,9 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
     }
 
     @Override
-    public boolean readData(byte[] data) throws IOException {
-        return in.read(data) == data.length;
-    }
-
-    @Override
-    public void sendData(byte[] data) throws IOException {
-        out.write(data);
-        out.flush();
+    public void handleErrorMsg(ErrorMsg msg) {
+        //TODO: implement
+        throw new RuntimeException("Not implemented");
     }
 
     public void disconnect() {

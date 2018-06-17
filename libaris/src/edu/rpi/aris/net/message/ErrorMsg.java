@@ -6,11 +6,17 @@ import java.sql.Connection;
 
 public class ErrorMsg extends Message {
 
-    private ErrorType errorType;
-    private String errorMsg;
+    private final ErrorType errorType;
+    private final String errorMsg;
 
     public ErrorMsg(String msg) {
         this(null, msg);
+    }
+
+    // DO NOT REMOVE!! Default constructor is required for gson deserialization
+    private ErrorMsg() {
+        errorMsg = null;
+        errorType = null;
     }
 
     public ErrorMsg(ErrorType error) {
@@ -20,6 +26,14 @@ public class ErrorMsg extends Message {
     public ErrorMsg(ErrorType error, String msg) {
         errorType = error == null ? ErrorType.UNKNOWN_ERROR : error;
         errorMsg = msg;
+    }
+
+    public String getErrorMsg() {
+        return errorMsg;
+    }
+
+    public ErrorType getErrorType() {
+        return errorType;
     }
 
     @Override

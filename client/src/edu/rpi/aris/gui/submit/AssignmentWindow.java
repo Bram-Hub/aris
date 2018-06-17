@@ -573,7 +573,7 @@ public class AssignmentWindow implements SaveInfoListener {
             Message response = null;
             try {
                 client.connect();
-                msg.sendMessage(client);
+                msg.send(client);
                 response = Message.parseReply(client);
                 if (response == null || response instanceof ErrorMsg) {
                     processError((ErrorMsg) response);

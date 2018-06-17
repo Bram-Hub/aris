@@ -13,13 +13,17 @@ import java.util.ArrayList;
 public class AssignmentsMsg extends Message {
 
     private int classId;
-    private ArrayList<AssignmentData> assignments = new ArrayList<>();
+    private ArrayList<MsgUtil.AssignmentData> assignments = new ArrayList<>();
 
     public AssignmentsMsg(int classId) {
         this.classId = classId;
     }
 
-    public ArrayList<AssignmentData> getAssignments() {
+    // DO NOT REMOVE!! Default constructor is required for gson deserialization
+    private AssignmentsMsg() {
+    }
+
+    public ArrayList<MsgUtil.AssignmentData> getAssignments() {
         return assignments;
     }
 
@@ -34,7 +38,7 @@ public class AssignmentsMsg extends Message {
                     ZonedDateTime dueDate = NetUtil.localToUTC(rs.getTimestamp(2).toLocalDateTime());
                     String assignedBy = rs.getString(3);
                     int assignmentId = rs.getInt(4);
-                    assignments.add(new AssignmentData(assignmentName, assignedBy, dueDate, assignmentId));
+                    assignments.add(new MsgUtil.AssignmentData(assignmentName, assignedBy, dueDate, assignmentId));
                 }
             }
         }
@@ -44,21 +48,6 @@ public class AssignmentsMsg extends Message {
     @Override
     public MessageType getMessageType() {
         return MessageType.GET_ASSIGNMENTS;
-    }
-
-    public static class AssignmentData {
-
-        public final String name, assignedBy;
-        public final int id;
-        public final ZonedDateTime dueDateUTC;
-
-        AssignmentData(String name, String assignedBy, ZonedDateTime dueDateUTC, int id) {
-            this.name = name;
-            this.assignedBy = assignedBy;
-            this.dueDateUTC = dueDateUTC;
-            this.id = id;
-        }
-
     }
 
 }
