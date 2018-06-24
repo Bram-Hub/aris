@@ -66,15 +66,14 @@ public class Server implements Runnable {
     }
 
     private final int port;
-    private final File caCertificate;
-    private final File privateKey;
+//    private final File caCertificate;
+//    private final File privateKey;
     private final Update update = new Update(Update.Stream.SERVER, new File(System.getProperty("java.io.tmpdir"), "aris-update"));
     private Logger logger = LogManager.getLogger(Server.class);
     private boolean selfSign, stopServer, shutdown;
     private DatabaseManager dbManager;
     private Timer certExpireTimer = null;
     private ServerSocket serverSocket;
-    private ReentrantLock serverLock = new ReentrantLock(true);
     private HashSet<ClientHandler> clients = new HashSet<>();
     private Thread serverThread = null;
     private final Thread shutdownHook = new Thread(this::shutdown);
@@ -82,8 +81,8 @@ public class Server implements Runnable {
     public Server(int port, File caCertificate, File privateKey) throws FileNotFoundException {
         logger.info("Preparing server");
         this.port = port;
-        this.caCertificate = caCertificate;
-        this.privateKey = privateKey;
+//        this.caCertificate = caCertificate;
+//        this.privateKey = privateKey;
         stopServer = false;
         shutdown = false;
         if (caCertificate != null && privateKey != null) {
@@ -128,13 +127,6 @@ public class Server implements Runnable {
     @Override
     public void run() {
         try {
-            if (!serverLock.tryLock(10, TimeUnit.SECONDS))
-                return;
-        } catch (InterruptedException e) {
-            logger.error("An error occurred while attempting to acquire the server lock", e);
-            return;
-        }
-        try {
             serverThread = Thread.currentThread();
             Runtime.getRuntime().addShutdownHook(shutdownHook);
             logger.info("Starting Server on port " + port + (port == 9001 ? " (IT'S OVER 9000!!!)" : ""));
@@ -156,13 +148,17 @@ public class Server implements Runnable {
         } catch (IOException e) {
             if (!stopServer)
                 logger.fatal("An error occurred with the Aris ServerSocket", e);
+        } catch (Throwable e) {
+            logger.fatal("A fatal error occurred in the main server loop", e);
+            shutdown = true;
+            Runtime.getRuntime().removeShutdownHook(shutdownHook);
+            System.exit(1);
         } finally {
             if (!shutdown) {
                 Runtime.getRuntime().removeShutdownHook(shutdownHook);
                 serverThread = null;
             }
             logger.info("ServerSocket closed");
-            serverLock.unlock();
         }
     }
 
@@ -196,7 +192,11 @@ public class Server implements Runnable {
 
             keyManagerFactory = KeyManagerFactory.getInstance("X.509");
             logger.info("Preparing server certificate");
-            keyStore = getKeyStore();
+            try {
+                keyStore = getKeyStore();
+            } catch (Throwable e) {
+                throw new RuntimeException("Failed to get certificate keystore", e);
+            }
             if (keyStore == null)
                 throw new NullPointerException("Failed to get certificate keystore");
             Certificate[] certChain = keyStore.getCertificateChain("aris_server");
@@ -333,7 +333,7 @@ public class Server implements Runnable {
         } else {
             try {
                 logger.info("Loading provided certificate");
-                PEMParser parser = new PEMParser(new FileReader(caCertificate));
+                PEMParser parser = new PEMParser(new FileReader(config.getCaFile()));
                 ArrayList<X509Certificate> certs = new ArrayList<>();
                 Object objCert;
                 while ((objCert = parser.readObject()) != null) {
@@ -342,7 +342,7 @@ public class Server implements Runnable {
                     X509Certificate cert = new JcaX509CertificateConverter().setProvider("BC").getCertificate((X509CertificateHolder) objCert);
                     certs.add(cert);
                 }
-                parser = new PEMParser(new FileReader(privateKey));
+                parser = new PEMParser(new FileReader(config.getKeyFile()));
                 Object objKey = parser.readObject();
                 if (!(objKey instanceof PrivateKeyInfo))
                     throw new IOException("Provided private key file does not contain a private key");

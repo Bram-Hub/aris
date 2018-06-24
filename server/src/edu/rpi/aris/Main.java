@@ -78,7 +78,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
             if (!server.checkUpdate())
                 System.exit(1);
         } else
-            new Thread(() -> server.run()).start();
+            new Thread(server).start();
     }
 
     private static void startIpcWatch() throws IOException {
