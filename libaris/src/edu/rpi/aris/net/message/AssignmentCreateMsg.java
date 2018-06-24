@@ -20,14 +20,13 @@ public class AssignmentCreateMsg extends Message {
 
     private final int cid;
     private final ArrayList<Integer> proofs = new ArrayList<>();
-    private final String name, zdtString;
-    private transient ZonedDateTime dueDate;
+    private final String name;
+    private final ZonedDateTime dueDate;
 
     public AssignmentCreateMsg(int cid, String name, ZonedDateTime dueDate) {
         this.cid = cid;
         this.name = name;
         this.dueDate = dueDate;
-        zdtString = dueDate.toString();
     }
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
@@ -35,7 +34,6 @@ public class AssignmentCreateMsg extends Message {
         cid = 0;
         name = null;
         dueDate = null;
-        zdtString = null;
     }
 
     public void addProof(int pid) {
@@ -50,15 +48,6 @@ public class AssignmentCreateMsg extends Message {
     public ErrorType processMessage(Connection connection, User user) throws SQLException {
         if (!user.userType.equals(NetUtil.USER_INSTRUCTOR))
             return ErrorType.UNAUTHORIZED;
-        if (zdtString == null)
-            return ErrorType.PARSE_ERR;
-        if (dueDate == null)
-            try {
-                dueDate = ZonedDateTime.parse(zdtString);
-            } catch (DateTimeParseException e) {
-                logger.error(e);
-                return ErrorType.PARSE_ERR;
-            }
         try (PreparedStatement select = connection.prepareStatement("SELECT id FROM assignment ORDER BY id DESC LIMIT 1;");
              PreparedStatement statement = connection.prepareStatement("INSERT INTO assignment VALUES(?, ?, ?, ?, ?, ?);")) {
             int id = 1;
@@ -87,13 +76,6 @@ public class AssignmentCreateMsg extends Message {
 
     @Override
     public boolean checkValid() {
-        if (dueDate == null && zdtString != null)
-            try {
-                dueDate = ZonedDateTime.parse(zdtString);
-            } catch (DateTimeParseException e) {
-                logger.error(e);
-                return false;
-            }
         for (Integer i : proofs)
             if (i == null)
                 return false;

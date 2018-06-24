@@ -5,7 +5,6 @@ import edu.rpi.aris.net.User;
 
 import java.sql.*;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 
 public class AssignmentEditMsg extends Message {
@@ -13,10 +12,9 @@ public class AssignmentEditMsg extends Message {
     private final int cid;
     private final int aid;
     private String newName = null;
-    private String zdtString = null;
     private ArrayList<Integer> removeProofs = new ArrayList<>();
     private ArrayList<Integer> addProofs = new ArrayList<>();
-    private transient ZonedDateTime newDueDate = null;
+    private ZonedDateTime newDueDate = null;
 
     public AssignmentEditMsg(int cid, int aid) {
         this.cid = cid;
@@ -34,7 +32,6 @@ public class AssignmentEditMsg extends Message {
 
     public void setNewDueDate(ZonedDateTime utcTime) {
         newDueDate = utcTime;
-        zdtString = utcTime.toString();
     }
 
     public void removeProof(int pid) {
@@ -57,13 +54,6 @@ public class AssignmentEditMsg extends Message {
     }
 
     private void changeDue(Connection connection) throws SQLException {
-        if (zdtString == null)
-            return;
-        if (newDueDate == null)
-            try {
-                newDueDate = ZonedDateTime.parse(zdtString);
-            } catch (DateTimeParseException ignored) {
-            }
         try (PreparedStatement statement = connection.prepareStatement("UPDATE assignment SET due_date = ? WHERE id = ? AND class_id = ?;")) {
             statement.setTimestamp(1, NetUtil.ZDTToTimestamp(newDueDate));
             statement.setInt(2, aid);

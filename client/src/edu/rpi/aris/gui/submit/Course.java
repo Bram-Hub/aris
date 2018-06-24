@@ -40,7 +40,7 @@ public class Course {
                 if (reply == null)
                     return;
                 for (MsgUtil.AssignmentData date : reply.getAssignments()) {
-                    Assignment assignment = new Assignment(date.name, NetUtil.zoneToLocal(date.getDueDate()).toInstant().toEpochMilli(), date.assignedBy, date.id, this.id, this);
+                    Assignment assignment = new Assignment(date.name, NetUtil.zoneToLocal(date.dueDateUTC).toInstant().toEpochMilli(), date.assignedBy, date.id, this.id, this);
                     this.assignments.add(assignment);
                 }
                 Platform.runLater(() -> loaded.set(true));

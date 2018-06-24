@@ -13,6 +13,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.ZonedDateTime;
 
 public abstract class Message {
 
@@ -22,6 +23,8 @@ public abstract class Message {
     static {
         GsonBuilder gsonBuilder = new GsonBuilder();
         gsonBuilder.registerTypeAdapter(Message.class, new ArisMessageAdapter());
+        gsonBuilder.registerTypeAdapter(byte[].class, new ByteArrayAdapter());
+        gsonBuilder.registerTypeAdapter(ZonedDateTime.class, new ZDTGsonAdapter());
         gson = gsonBuilder.create();
     }
 

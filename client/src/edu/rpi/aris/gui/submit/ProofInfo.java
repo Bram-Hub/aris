@@ -24,7 +24,7 @@ public class ProofInfo extends AssignmentInfo {
     private long timestamp;
 
     public ProofInfo(MsgUtil.ProofInfo info, boolean isInstructor) {
-        this(info.pid, info.name, info.createdBy, NetUtil.UTCToMilli(info.getCreationTime()), isInstructor);
+        this(info.pid, info.name, info.createdBy, NetUtil.UTCToMilli(info.createdDateUTC), isInstructor);
     }
 
     public ProofInfo(int proofId, String name, String createdBy, long createdOn, boolean isInstructor) {
