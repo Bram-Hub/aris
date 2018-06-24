@@ -10,17 +10,18 @@ import java.sql.SQLException;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 
-public class AssignmentsMsg extends Message {
+public class AssignmentsGetMsg extends Message {
 
-    private int classId;
-    private ArrayList<MsgUtil.AssignmentData> assignments = new ArrayList<>();
+    private final int classId;
+    private final ArrayList<MsgUtil.AssignmentData> assignments = new ArrayList<>();
 
-    public AssignmentsMsg(int classId) {
+    public AssignmentsGetMsg(int classId) {
         this.classId = classId;
     }
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
-    private AssignmentsMsg() {
+    private AssignmentsGetMsg() {
+        classId = 0;
     }
 
     public ArrayList<MsgUtil.AssignmentData> getAssignments() {
@@ -48,6 +49,14 @@ public class AssignmentsMsg extends Message {
     @Override
     public MessageType getMessageType() {
         return MessageType.GET_ASSIGNMENTS;
+    }
+
+    @Override
+    public boolean checkValid() {
+        for (MsgUtil.AssignmentData data : assignments)
+            if (data == null || !data.checkValid())
+                return false;
+        return classId > 0;
     }
 
 }

@@ -11,20 +11,21 @@ import java.sql.SQLException;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 
-public class StudentSubmissionMsg extends Message {
+public class SubmissionGetStudentMsg extends Message {
 
     private final int aid, cid;
     private final ArrayList<MsgUtil.ProofInfo> assignedProofs = new ArrayList<>();
     private final HashMap<Integer, ArrayList<MsgUtil.SubmissionInfo>> submissions = new HashMap<>();
 
-    public StudentSubmissionMsg(int aid, int cid) {
+    public SubmissionGetStudentMsg(int aid, int cid) {
         this.aid = aid;
         this.cid = cid;
     }
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
-    private StudentSubmissionMsg() {
+    private SubmissionGetStudentMsg() {
         aid = 0;
         cid = 0;
     }
@@ -72,6 +73,21 @@ public class StudentSubmissionMsg extends Message {
     @Override
     public MessageType getMessageType() {
         return MessageType.GET_SUBMISSIONS_STUDENT;
+    }
+
+    @Override
+    public boolean checkValid() {
+        for (MsgUtil.ProofInfo info : assignedProofs)
+            if (info == null || !info.checkValid())
+                return false;
+        for (Map.Entry<Integer, ArrayList<MsgUtil.SubmissionInfo>> sub : submissions.entrySet()) {
+            if (sub.getKey() == null || sub.getValue() == null)
+                return false;
+            for (MsgUtil.SubmissionInfo info : sub.getValue())
+                if (info == null || !info.checkValid())
+                    return false;
+        }
+        return aid > 0 && cid > 0;
     }
 
 }

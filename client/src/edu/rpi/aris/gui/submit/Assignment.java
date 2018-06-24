@@ -3,9 +3,7 @@ package edu.rpi.aris.gui.submit;
 import edu.rpi.aris.Main;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
-import edu.rpi.aris.net.message.InstructorSubmissionMsg;
-import edu.rpi.aris.net.message.MsgUtil;
-import edu.rpi.aris.net.message.StudentSubmissionMsg;
+import edu.rpi.aris.net.message.*;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -21,10 +19,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.text.DateFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.*;
 
 public class Assignment {
@@ -144,11 +142,9 @@ public class Assignment {
                 Client client = Main.getClient();
                 try {
                     client.connect();
-                    client.sendMessage(NetUtil.DELETE_ASSIGNMENT);
-                    client.sendMessage(classId + "|" + id);
-                    String res = client.readMessage();
-                    if (!NetUtil.OK.equals(Client.checkError(res)))
-                        throw new IOException(res);
+                    AssignmentDeleteMsg msg = (AssignmentDeleteMsg) new AssignmentDeleteMsg(classId, id).sendAndGet(client);
+                    if (msg == null)
+                        return;
                     AssignmentWindow.instance.loadAssignments(course, true);
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -169,8 +165,7 @@ public class Assignment {
                 return;
             Triple<String, LocalDateTime, Collection<ProofInfo>> info = result.get();
             String newName = info.getLeft().equals(name.get()) ? null : info.getLeft();
-            Date tmpDate = Date.from(info.getMiddle().atZone(ZoneId.systemDefault()).toInstant());
-            Date newDate = tmpDate.equals(new Date(dueDate.get())) ? null : tmpDate;
+            ZonedDateTime newDueDate = info.getMiddle().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() == dueDate.get() ? null : NetUtil.localToUTC(info.getMiddle());
             Collection<ProofInfo> newProofs = info.getRight();
             Set<ProofInfo> remove = new HashSet<>();
             Set<ProofInfo> add = new HashSet<>();
@@ -180,29 +175,26 @@ public class Assignment {
             for (ProofInfo p : proofs)
                 if (!newProofs.contains(p))
                     remove.add(p);
-            if (newName != null || newDate != null || remove.size() > 0 || add.size() > 0) {
+            if (newName != null || newDueDate != null || remove.size() > 0 || add.size() > 0) {
                 new Thread(() -> {
                     Client client = Main.getClient();
                     try {
                         client.connect();
-                        client.sendMessage(NetUtil.UPDATE_ASSIGNMENT);
-                        if (newName != null)
-                            client.sendMessage(NetUtil.RENAME + "|" + classId + "|" + id + "|" + URLEncoder.encode(newName, "UTF-8"));
-                        if (newDate != null)
-                            client.sendMessage(NetUtil.CHANGE_DUE + "|" + classId + "|" + id + "|" + NetUtil.DATE_FORMAT.format(newDate));
+                        AssignmentEditMsg msg = new AssignmentEditMsg(classId, id);
+                        msg.setName(newName);
+                        msg.setNewDueDate(newDueDate);
                         for (ProofInfo p : remove)
-                            client.sendMessage(NetUtil.REMOVE_PROOF + "|" + classId + "|" + id + "|" + p.getProofId());
+                            msg.removeProof(p.getProofId());
                         for (ProofInfo p : add)
-                            client.sendMessage(NetUtil.ADD_PROOF + "|" + classId + "|" + id + "|" + p.getProofId());
-                        client.sendMessage(NetUtil.DONE);
-                        String res = client.readMessage();
-                        if (!NetUtil.OK.equals(Client.checkError(res)))
-                            throw new IOException(res);
+                            msg.addProof(p.getProofId());
+                        msg = (AssignmentEditMsg) msg.sendAndGet(client);
+                        if(msg == null)
+                            return;
                         Platform.runLater(() -> {
                             if (newName != null)
                                 name.set(newName);
-                            if (newDate != null)
-                                dueDate.set(newDate.getTime());
+                            if (newDueDate != null)
+                                dueDate.set(newDueDate.toInstant().toEpochMilli());
                             load(true);
                         });
                     } catch (IOException e) {
@@ -229,7 +221,7 @@ public class Assignment {
     }
 
     private void loadStudent(Client client) throws IOException {
-        StudentSubmissionMsg reply = (StudentSubmissionMsg) new StudentSubmissionMsg(id, classId).sendAndGet(client);
+        SubmissionGetStudentMsg reply = (SubmissionGetStudentMsg) new SubmissionGetStudentMsg(id, classId).sendAndGet(client);
         if (reply == null)
             return;
         for (MsgUtil.ProofInfo info : reply.getAssignedProofs()) {
@@ -244,7 +236,7 @@ public class Assignment {
     }
 
     private void loadInstructor(Client client) throws IOException {
-        InstructorSubmissionMsg reply = (InstructorSubmissionMsg) new InstructorSubmissionMsg(id, classId).sendAndGet(client);
+        SubmissionGetInstructorMsg reply = (SubmissionGetInstructorMsg) new SubmissionGetInstructorMsg(id, classId).sendAndGet(client);
         if (reply == null)
             return;
         boolean doneProofs = false;
@@ -252,6 +244,8 @@ public class Assignment {
             UserInfo user = new UserInfo(u.getKey(), u.getValue());
             rootNodes.add(user);
             for (MsgUtil.ProofInfo pInfo : reply.getAssignedProofs()) {
+                if(!pInfo.checkValid())
+                    continue;
                 if (!doneProofs)
                     proofs.add(new ProofInfo(pInfo, true));
                 ProofInfo proof = new ProofInfo(pInfo, true);

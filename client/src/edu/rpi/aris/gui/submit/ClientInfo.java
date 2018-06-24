@@ -2,11 +2,9 @@ package edu.rpi.aris.gui.submit;
 
 import edu.rpi.aris.Main;
 import edu.rpi.aris.gui.GuiConfig;
-import edu.rpi.aris.net.MessageParseException;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
-import edu.rpi.aris.net.message.Message;
-import edu.rpi.aris.net.message.UserInfoMsg;
+import edu.rpi.aris.net.message.UserGetMsg;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.collections.FXCollections;
@@ -30,12 +28,9 @@ public class ClientInfo {
             Client client = Main.getClient();
             try {
                 client.connect();
-                UserInfoMsg msg = new UserInfoMsg();
-                msg.send(client);
-                Message replyMsg = Message.parse(client);
-                if (!(replyMsg instanceof UserInfoMsg))
-                    throw new MessageParseException("Unexpected message type received");
-                UserInfoMsg reply = (UserInfoMsg) replyMsg;
+                UserGetMsg reply = (UserGetMsg) new UserGetMsg().sendAndGet(client);
+                if (reply == null)
+                    return;
                 userId = reply.getUserId();
                 Platform.runLater(() -> {
                     isInstructor.set(reply.getUserType().equals(NetUtil.USER_INSTRUCTOR));
@@ -44,7 +39,7 @@ public class ClientInfo {
                 });
                 if (runnable != null)
                     runnable.run();
-            } catch (IOException | MessageParseException e) {
+            } catch (IOException e) {
                 userId = -1;
                 Platform.runLater(() -> {
                     isInstructor.set(false);

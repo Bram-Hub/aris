@@ -6,6 +6,7 @@ import edu.rpi.aris.gui.GuiConfig;
 import edu.rpi.aris.net.MessageCommunication;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.message.ErrorMsg;
+import edu.rpi.aris.net.message.Message;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleObjectProperty;
@@ -427,6 +428,27 @@ public class Client implements MessageCommunication {
         }
     }
 
+    public <T extends Message> void processMessage(T message, ResponseHandler<T> responseHandler) {
+        new Thread(() -> {
+            try {
+                connect();
+                //noinspection unchecked
+                T reply = (T) message.sendAndGet(this);
+                if (responseHandler == null)
+                    return;
+                if (reply == null) {
+                    responseHandler.onError();
+                    return;
+                }
+                responseHandler.response(reply);
+            } catch (IOException e) {
+                logger.error("Error sending message", e);
+            } finally {
+                disconnect();
+            }
+        }).start();
+    }
+
     private Pair<String, Integer> getServerAddress(String lastAddress) throws IOException {
         String address = lastAddress;
         switch (Main.getMode()) {
@@ -633,7 +655,7 @@ public class Client implements MessageCommunication {
     @Override
     public void handleErrorMsg(ErrorMsg msg) {
         // TODO: implement
-        throw new RuntimeException("Not implemented");
+        throw new RuntimeException("Not implemented: \n" + msg);
     }
 
     private boolean showCertWarning() {

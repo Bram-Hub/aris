@@ -46,4 +46,15 @@ public class ErrorMsg extends Message {
         return MessageType.ERROR;
     }
 
+    @Override
+    public boolean checkValid() {
+        return true;
+    }
+
+    @Override
+    public String toString() {
+        return "Error Message:\n" +
+                "\tError Type: " + (errorType == null ? null : errorType.name()) + "\n" +
+                "\tError Message: " + errorMsg;
+    }
 }

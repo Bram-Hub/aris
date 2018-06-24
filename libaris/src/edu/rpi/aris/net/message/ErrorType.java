@@ -11,5 +11,7 @@ public enum ErrorType {
     IO_ERROR,
     INCORRECT_MSG_TYPE,
     NOT_FOUND,
+    AUTH_FAIL,
+    INVALID_PASSWORD,
     UNAUTHORIZED
 }

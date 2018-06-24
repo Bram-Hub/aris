@@ -7,8 +7,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.Map;
 
-public class UserInfoMsg extends Message {
+public class UserGetMsg extends Message {
 
     private int userId;
     private String userType;
@@ -58,6 +59,14 @@ public class UserInfoMsg extends Message {
     @Override
     public MessageType getMessageType() {
         return MessageType.GET_USER_INFO;
+    }
+
+    @Override
+    public boolean checkValid() {
+        for (Map.Entry<Integer, String> c : classes.entrySet())
+            if (c.getKey() == null || c.getValue() == null)
+                return false;
+        return true;
     }
 
 }

@@ -27,7 +27,7 @@ public class SubmissionInfo extends AssignmentInfo implements EventHandler<Actio
     private Button btn;
 
     public SubmissionInfo(MsgUtil.SubmissionInfo info, String subName, boolean isInstructor) {
-        this(info.uid, info.sid, info.pid, info.cid, info.aid, subName, NetUtil.UTCToMilli(info.submissionTime), info.statusStr, info.status, isInstructor);
+        this(info.uid, info.sid, info.pid, info.cid, info.aid, subName, NetUtil.UTCToMilli(info.getSubmissionTime()), info.statusStr, info.status, isInstructor);
     }
 
     public SubmissionInfo(int userId, int submissionId, int proofId, int classId, int assignmentId, String name, long timestamp, String status, GradingStatus gradingStatus, boolean isInstructor) {

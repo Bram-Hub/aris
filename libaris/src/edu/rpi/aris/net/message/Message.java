@@ -28,7 +28,12 @@ public abstract class Message {
     @NotNull
     private static Message parse(@NotNull MessageCommunication com) {
         try {
-            return gson.fromJson(com.readMessage(), Message.class);
+            Message msg = gson.fromJson(com.readMessage(), Message.class);
+            if (!msg.checkValid()) {
+                logger.error("Message not formatted properly");
+                return new ErrorMsg(ErrorType.PARSE_ERR, "Improperly formatted json message");
+            }
+            return msg;
         } catch (JsonSyntaxException e) {
             logger.error("Message in incorrect format", e);
             return new ErrorMsg(ErrorType.PARSE_ERR, "Message in incorrect format");
@@ -49,7 +54,7 @@ public abstract class Message {
     }
 
     public final void send(@NotNull MessageCommunication com) throws IOException {
-        com.sendMessage(gson.toJson(this));
+        com.sendMessage(gson.toJson(this, Message.class));
     }
 
     /**
@@ -68,7 +73,7 @@ public abstract class Message {
         Message reply = parse(com);
         if (!reply.getClass().equals(this.getClass())) {
             if (!(reply instanceof ErrorMsg))
-                reply = new ErrorMsg(ErrorType.INCORRECT_MSG_TYPE, reply.getMessageType().name());
+                reply = new ErrorMsg(ErrorType.INCORRECT_MSG_TYPE, "Expected \"" + getMessageType() + "\" received \"" + reply.getMessageType().name() + "\"");
             com.handleErrorMsg((ErrorMsg) reply);
             return null;
         }
@@ -80,5 +85,7 @@ public abstract class Message {
 
     @NotNull
     public abstract MessageType getMessageType();
+
+    public abstract boolean checkValid();
 
 }

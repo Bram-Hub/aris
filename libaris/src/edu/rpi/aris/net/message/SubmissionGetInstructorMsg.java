@@ -12,24 +12,24 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Map;
 
-public class InstructorSubmissionMsg extends Message {
+public class SubmissionGetInstructorMsg extends Message {
 
     private final int aid;
     private final int cid;
 
     private final LinkedHashMap<Integer, String> users = new LinkedHashMap<>();
     private final ArrayList<MsgUtil.ProofInfo> assignedProofs = new ArrayList<>();
-    // HashMap<uid, HashMap<pid, List<sub info>>>
     private final HashMap<Integer, HashMap<Integer, ArrayList<MsgUtil.SubmissionInfo>>> submissions = new HashMap<>();
 
-    public InstructorSubmissionMsg(int aid, int cid) {
+    public SubmissionGetInstructorMsg(int aid, int cid) {
         this.aid = aid;
         this.cid = cid;
     }
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
-    private InstructorSubmissionMsg() {
+    private SubmissionGetInstructorMsg() {
         aid = 0;
         cid = 0;
     }
@@ -93,5 +93,31 @@ public class InstructorSubmissionMsg extends Message {
     @Override
     public MessageType getMessageType() {
         return MessageType.GET_SUBMISSIONS_INST;
+    }
+
+//    private final LinkedHashMap<Integer, String> users = new LinkedHashMap<>();
+//    private final ArrayList<MsgUtil.ProofInfo> assignedProofs = new ArrayList<>();
+//    private final HashMap<Integer, HashMap<Integer, ArrayList<MsgUtil.SubmissionInfo>>> submissions = new HashMap<>();
+
+    @Override
+    public boolean checkValid() {
+        for (Map.Entry<Integer, String> u : users.entrySet())
+            if (u.getKey() == null || u.getValue() == null)
+                return false;
+        for (MsgUtil.ProofInfo info : assignedProofs)
+            if (info == null || !info.checkValid())
+                return false;
+        for (Map.Entry<Integer, HashMap<Integer, ArrayList<MsgUtil.SubmissionInfo>>> sub : submissions.entrySet()) {
+            if (sub.getKey() == null || sub.getValue() == null)
+                return false;
+            for (Map.Entry<Integer, ArrayList<MsgUtil.SubmissionInfo>> s : sub.getValue().entrySet()) {
+                if (s.getKey() == null || s.getValue() == null)
+                    return false;
+                for (MsgUtil.SubmissionInfo info : s.getValue())
+                    if (info == null || !info.checkValid())
+                        return false;
+            }
+        }
+        return aid > 0 && cid > 0;
     }
 }

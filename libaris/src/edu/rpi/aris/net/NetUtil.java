@@ -1,5 +1,12 @@
 package edu.rpi.aris.net;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -29,13 +36,13 @@ public class NetUtil {
 //    public static final String CREATE_SUBMISSION = "CREATE_SUBMISSION";
 //    public static final String CREATE_ASSIGNMENT = "CREATE_ASSIGNMENT";
 //    public static final String DELETE_ASSIGNMENT = "DELETE_ASSIGNMENT";
-//    public static final String UPDATE_ASSIGNMENT = "UPDATE_ASSIGNMENT";
+//    public static final String EDIT_ASSIGNMENT = "EDIT_ASSIGNMENT";
 //    public static final String CREATE_PROOF = "CREATE_PROOF";
 //    public static final String DELETE_PROOF = "DELETE_PROOF";
 //    public static final String UPDATE_PROOF = "UPDATE_PROOF";
 //    public static final String CREATE_USER = "CREATE_USER";
 //    public static final String DELETE_USER = "DELETE_USER";
-//    public static final String UPDATE_USER = "UPDATE_USER";
+//    public static final String EDIT_USER = "EDIT_USER";
 //    public static final String CREATE_CLASS = "CREATE_CLASS";
 //    public static final String DELETE_CLASS = "DELETE_CLASS";
 //    public static final String UPDATE_CLASS = "UPDATE_CLASS";
@@ -116,6 +123,10 @@ public class NetUtil {
 
     public static LocalDateTime UTCToLocal(ZonedDateTime utcTime) {
         return utcTime.withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
+    }
+
+    public static Timestamp ZDTToTimestamp(ZonedDateTime zdt) {
+        return new Timestamp(UTCToMilli(zoneToUTC(zdt)));
     }
 
     public static ZonedDateTime zoneToLocal(ZonedDateTime dateTime) {

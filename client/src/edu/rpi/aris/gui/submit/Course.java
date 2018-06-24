@@ -3,7 +3,7 @@ package edu.rpi.aris.gui.submit;
 import edu.rpi.aris.Main;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
-import edu.rpi.aris.net.message.AssignmentsMsg;
+import edu.rpi.aris.net.message.AssignmentsGetMsg;
 import edu.rpi.aris.net.message.MsgUtil;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -30,16 +30,17 @@ public class Course {
         if (loaded.get())
             return;
         assignments.clear();
+//        Main.getClient().processMessage(new AssignmentsGetMsg(id), this);
         new Thread(() -> {
             Client client = Main.getClient();
             try {
                 client.connect();
-                AssignmentsMsg msg = new AssignmentsMsg(id);
-                AssignmentsMsg reply = (AssignmentsMsg) msg.sendAndGet(client);
+                AssignmentsGetMsg msg = new AssignmentsGetMsg(id);
+                AssignmentsGetMsg reply = (AssignmentsGetMsg) msg.sendAndGet(client);
                 if (reply == null)
                     return;
                 for (MsgUtil.AssignmentData date : reply.getAssignments()) {
-                    Assignment assignment = new Assignment(date.name, NetUtil.zoneToLocal(date.dueDateUTC).toInstant().toEpochMilli(), date.assignedBy, date.id, this.id, this);
+                    Assignment assignment = new Assignment(date.name, NetUtil.zoneToLocal(date.getDueDate()).toInstant().toEpochMilli(), date.assignedBy, date.id, this.id, this);
                     this.assignments.add(assignment);
                 }
                 Platform.runLater(() -> loaded.set(true));
@@ -74,4 +75,20 @@ public class Course {
     public ObservableList<Assignment> getAssignments() {
         return assignments;
     }
+
+//    @Override
+//    public void response(AssignmentsGetMsg message) {
+//        for (MsgUtil.AssignmentData date : mess.getAssignments()) {
+//            Assignment assignment = new Assignment(date.name, NetUtil.zoneToLocal(date.dueDateUTC).toInstant().toEpochMilli(), date.assignedBy, date.id, this.id, this);
+//            this.assignments.add(assignment);
+//        }
+//        Platform.runLater(() -> loaded.set(true));
+//        if (runnable != null)
+//            runnable.run();
+//    }
+//
+//    @Override
+//    public void onError() {
+//
+//    }
 }
