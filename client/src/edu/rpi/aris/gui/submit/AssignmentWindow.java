@@ -2,8 +2,10 @@ package edu.rpi.aris.gui.submit;
 
 import edu.rpi.aris.Main;
 import edu.rpi.aris.gui.GuiConfig;
+import edu.rpi.aris.net.MessageBuildException;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
+import edu.rpi.aris.net.message.*;
 import edu.rpi.aris.proof.Proof;
 import edu.rpi.aris.proof.SaveInfoListener;
 import edu.rpi.aris.proof.SaveManager;
@@ -24,7 +26,6 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Pair;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -32,14 +33,11 @@ import org.apache.logging.log4j.Logger;
 import javax.xml.transform.TransformerException;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.text.DateFormat;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Collection;
-import java.util.Date;
 import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.function.Consumer;
 
 public class AssignmentWindow implements SaveInfoListener {
 
@@ -158,11 +156,9 @@ public class AssignmentWindow implements SaveInfoListener {
             Client client = Main.getClient();
             try {
                 client.connect();
-                client.sendMessage(NetUtil.UPDATE_PROOF);
-                client.sendMessage(NetUtil.RENAME + "|" + event.getRowValue().getProofId() + "|" + event.getNewValue());
-                String res = client.readMessage();
-                if (!NetUtil.OK.equals(Client.checkError(res)))
-                    throw new IOException(res);
+                ProofEditMsg reply = (ProofEditMsg) new ProofEditMsg(event.getRowValue().getProofId(), event.getNewValue()).sendAndGet(client);
+                if (reply == null)
+                    return;
                 event.getRowValue().setName(event.getNewValue());
             } catch (IOException e) {
                 e.printStackTrace();
@@ -278,13 +274,8 @@ public class AssignmentWindow implements SaveInfoListener {
             Client client = Main.getClient();
             try {
                 client.connect();
-                client.sendMessage(NetUtil.UPDATE_USER);
-                String user = URLEncoder.encode(username == null ? GuiConfig.getConfigManager().username.get() : username, "UTF-8");
                 String type = clientInfo.isInstructorProperty().get() ? NetUtil.USER_INSTRUCTOR : NetUtil.USER_STUDENT;
-                client.sendMessage(user + "|" + URLEncoder.encode(newPassPair.get().getValue(), "UTF-8") + "|" + type + "|" + newPassPair.get().getKey());
-                String res = client.readMessage();
-                if (!NetUtil.OK.equals(Client.checkError(res)))
-                    throw new IOException(res);
+                new UserEditMsg(username, type, newPassPair.get().getValue(), newPassPair.get().getKey(), true).sendAndGet(client);
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
@@ -315,15 +306,10 @@ public class AssignmentWindow implements SaveInfoListener {
                 int classId = -1;
                 try {
                     client.connect();
-                    client.sendMessage(NetUtil.CREATE_CLASS);
-                    client.sendMessage(name);
-                    String res = client.readMessage();
-                    String[] split = res.split(" ");
-                    if (!split[0].equals(NetUtil.OK))
-                        throw new IOException(res);
-                    if (split.length != 2)
-                        throw new IOException("Invalid response from create class");
-                    classId = Integer.parseInt(split[1]);
+                    ClassCreateMsg reply = (ClassCreateMsg) new ClassCreateMsg(name).sendAndGet(client);
+                    if (reply == null)
+                        return;
+                    classId = reply.getClassId();
                 } catch (NumberFormatException ignored) {
                 } catch (IOException e) {
                     System.out.println("Connection failed");
@@ -369,11 +355,9 @@ public class AssignmentWindow implements SaveInfoListener {
                 Client client = Main.getClient();
                 try {
                     client.connect();
-                    client.sendMessage(NetUtil.DELETE_CLASS);
-                    client.sendMessage(String.valueOf(course.getId()));
-                    String res = client.readMessage();
-                    if (!res.equals(NetUtil.OK))
-                        throw new IOException(res);
+                    ClassDeleteMsg reply = (ClassDeleteMsg) new ClassDeleteMsg(course.getId()).sendAndGet(client);
+                    if (reply == null)
+                        return;
                 } catch (IOException e) {
                     //TODO: show error
                 } finally {
@@ -429,13 +413,9 @@ public class AssignmentWindow implements SaveInfoListener {
                 saveManager.saveProof(proof, baos, false);
                 byte[] data = baos.toByteArray();
                 client.connect();
-                client.sendMessage(NetUtil.CREATE_PROOF);
-                client.sendMessage(name + "|" + data.length);
-                String msg = client.readMessage();
-                if (!NetUtil.OK.equals(Client.checkError(msg)))
-                    throw new IOException("Failed to add proof: " + msg);
-                client.sendData(data);
-                Client.checkError(client.readMessage());
+                ProofCreateMsg reply = (ProofCreateMsg) new ProofCreateMsg(name, data).sendAndGet(client);
+                if (reply == null)
+                    return;
                 proofList.load(true);
             } catch (IOException | TransformerException e) {
                 System.out.println("Error");
@@ -451,13 +431,12 @@ public class AssignmentWindow implements SaveInfoListener {
         new Thread(() -> {
             Client client = Main.getClient();
             try {
-                String msg = classes.getSelectionModel().getSelectedItem().getId() + "|" + StringUtils.join(proofs.stream().map(ProofInfo::getProofId).collect(Collectors.toSet()), ',') + "|" + URLEncoder.encode(name, "UTF-8") + "|" + URLEncoder.encode(NetUtil.DATE_FORMAT.format(Date.from(date.atZone(ZoneId.systemDefault()).toInstant())), "UTF-8");
                 client.connect();
-                client.sendMessage(NetUtil.CREATE_ASSIGNMENT);
-                client.sendMessage(msg);
-                String res = client.readMessage();
-                if (!NetUtil.OK.equals(Client.checkError(res)))
-                    throw new IOException("Failed to add assignment: " + res);
+                AssignmentCreateMsg msg = new AssignmentCreateMsg(classes.getSelectionModel().getSelectedItem().getId(), name, NetUtil.localToUTC(date));
+                proofs.forEach(p -> msg.addProof(p.getProofId()));
+                AssignmentCreateMsg reply = (AssignmentCreateMsg) msg.sendAndGet(client);
+                if (reply == null)
+                    return;
                 loadAssignments(course, true);
             } catch (IOException e) {
                 System.out.println("Error");
@@ -485,11 +464,9 @@ public class AssignmentWindow implements SaveInfoListener {
                     Client client = Main.getClient();
                     try {
                         client.connect();
-                        client.sendMessage(NetUtil.DELETE_PROOF);
-                        client.sendMessage(String.valueOf(proof.getProofId()));
-                        String msg = client.readMessage();
-                        if (!Client.checkError(msg).equals(NetUtil.OK))
-                            throw new IOException("Failed to delete proof: " + msg);
+                        ProofDeleteMsg reply = (ProofDeleteMsg) new ProofDeleteMsg(proof.getProofId()).sendAndGet(client);
+                        if (reply == null)
+                            return;
                         Platform.runLater(() -> proofList.remove(proof));
                     } catch (IOException e) {
                         System.out.println("Connection error");
@@ -561,6 +538,33 @@ public class AssignmentWindow implements SaveInfoListener {
                 "This will show up if this file is submitted and may affect your grade.");
         alert.getDialogPane().setPrefWidth(500);
         alert.showAndWait();
+    }
+
+//    public void transmitMessage(final Message msg, final Consumer<Message> call) {
+//        new Thread(() -> {
+//            Client client = Main.getClient();
+//            Message response = null;
+//            try {
+//                client.connect();
+//                msg.send(client);
+//                response = Message.parseReply(client);
+//                if (response == null || response instanceof ErrorMsg) {
+//                    processError((ErrorMsg) response);
+//                } else if (!response.getClass().equals(msg.getClass())) {
+//                    //TODO
+//                }
+//            } catch (IOException | MessageBuildException e) {
+//                //TODO
+//                System.out.println("Network error");
+//            } finally {
+//                client.disconnect();
+//            }
+//            call.accept(response);
+//        }).start();
+//    }
+
+    public void processError(ErrorMsg error) {
+        //TODO
     }
 
     public Stage getStage() {

@@ -401,7 +401,7 @@ public class SentenceUtil {
             Matcher m = Pattern.compile(regex.toString()).matcher(expr);
             Operator opr;
             if (!m.find() || (opr = Operator.getOperator(m.group())) == null)
-                throw new ExpressionParseException("Failed to parse expression", -1, 0);
+                throw new ExpressionParseException("Failed to parseOld expression", -1, 0);
             String[] split = expr.split(String.valueOf(opr.rep));
             if (split.length != 2 || split[0].length() == 0 || split[1].length() == 0)
                 throw new ExpressionParseException("Equivalence operator must join 2 expressions", expr.indexOf(opr.rep), 1);
@@ -508,7 +508,7 @@ public class SentenceUtil {
                 }
                 if (argStart != -1) {
                     if (args == null)
-                        throw new ExpressionParseException("Failed to parse function", -1, 0);
+                        throw new ExpressionParseException("Failed to parseOld function", -1, 0);
                     exp = OP + fun + " " + join(args) + CP;
                 }
             }

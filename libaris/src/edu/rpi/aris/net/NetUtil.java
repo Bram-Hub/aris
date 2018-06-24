@@ -1,6 +1,18 @@
 package edu.rpi.aris.net;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class NetUtil {
 
@@ -8,39 +20,39 @@ public class NetUtil {
     public static final String AUTH_BAN = "AUTH BAN";
     public static final String AUTH_FAIL = "AUTH FAIL";
     public static final String AUTH_OK = "AUTH OK";
-    public static final String AUTH_ERR = "AUTH ERROR";
+    public static final String AUTH_ERR = "AUTH UNKNOWN_ERROR";
     public static final String AUTH_INVALID = "AUTH INVALID";
     public static final String AUTH = "AUTH";
     public static final String AUTH_PASS = "PASS";
     public static final String AUTH_ACCESS_TOKEN = "TOKEN";
 
-    public static final String GET_USER_INFO = "GET_USER_INFO";
-    public static final String GET_ASSIGNMENTS = "GET_ASSIGNMENTS";
-    public static final String GET_ASSIGNMENT_DETAIL = "GET_ASSIGNMENT_DETAIL";
-    public static final String GET_PROOFS = "GET_PROOFS";
-    public static final String LIST_SUBMISSIONS = "LIST_SUBMISSION";
-    public static final String GET_SUBMISSION = "GET_SUBMISSION";
-    public static final String GET_SUBMISSION_DETAIL = "GET_SUBMISSION_DETAIL";
-    public static final String CREATE_SUBMISSION = "CREATE_SUBMISSION";
-    public static final String CREATE_ASSIGNMENT = "CREATE_ASSIGNMENT";
-    public static final String DELETE_ASSIGNMENT = "DELETE_ASSIGNMENT";
-    public static final String UPDATE_ASSIGNMENT = "UPDATE_ASSIGNMENT";
-    public static final String CREATE_PROOF = "CREATE_PROOF";
-    public static final String DELETE_PROOF = "DELETE_PROOF";
-    public static final String UPDATE_PROOF = "UPDATE_PROOF";
-    public static final String CREATE_USER = "CREATE_USER";
-    public static final String DELETE_USER = "DELETE_USER";
-    public static final String UPDATE_USER = "UPDATE_USER";
-    public static final String CREATE_CLASS = "CREATE_CLASS";
-    public static final String DELETE_CLASS = "DELETE_CLASS";
-    public static final String UPDATE_CLASS = "UPDATE_CLASS";
+//    public static final String GET_USER_INFO = "GET_USER_INFO";
+//    public static final String GET_ASSIGNMENTS = "GET_ASSIGNMENTS";
+//    public static final String GET_ASSIGNMENT_DETAIL = "GET_ASSIGNMENT_DETAIL";
+//    public static final String GET_PROOFS = "GET_PROOFS";
+//    public static final String LIST_SUBMISSIONS = "LIST_SUBMISSION";
+//    public static final String GET_SUBMISSION = "GET_SUBMISSION";
+//    public static final String GET_SUBMISSION_DETAIL = "GET_SUBMISSION_DETAIL";
+//    public static final String CREATE_SUBMISSION = "CREATE_SUBMISSION";
+//    public static final String CREATE_ASSIGNMENT = "CREATE_ASSIGNMENT";
+//    public static final String DELETE_ASSIGNMENT = "DELETE_ASSIGNMENT";
+//    public static final String EDIT_ASSIGNMENT = "EDIT_ASSIGNMENT";
+//    public static final String CREATE_PROOF = "CREATE_PROOF";
+//    public static final String DELETE_PROOF = "DELETE_PROOF";
+//    public static final String UPDATE_PROOF = "UPDATE_PROOF";
+//    public static final String CREATE_USER = "CREATE_USER";
+//    public static final String DELETE_USER = "DELETE_USER";
+//    public static final String EDIT_USER = "EDIT_USER";
+//    public static final String CREATE_CLASS = "CREATE_CLASS";
+//    public static final String DELETE_CLASS = "DELETE_CLASS";
+//    public static final String UPDATE_CLASS = "UPDATE_CLASS";
 
     public static final String USER_STUDENT = "student";
     public static final String USER_INSTRUCTOR = "instructor";
 
     public static final long MAX_FILE_SIZE = 5242880; // 5MiB
     public static final String UNAUTHORIZED = "UNAUTHORIZED";
-    public static final String ERROR = "ERROR";
+    public static final String ERROR = "UNKNOWN_ERROR";
     public static final String OK = "OK";
     public static final String INVALID = "INVALID";
 
@@ -58,6 +70,7 @@ public class NetUtil {
     public static final int DEFAULT_PORT = 9001; // IT'S OVER 9000!
     public static final int SOCKET_TIMEOUT = 15000;
     public static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    public static final DateTimeFormatter ZDT_FORMAT = DateTimeFormatter.ISO_DATE_TIME;
     public static final String TOO_LARGE = "TOO_LARGE";
     public static final String NO_DATA = "NO_DATA";
     public static final String RENAME = "RENAME";
@@ -98,6 +111,30 @@ public class NetUtil {
         // the strings are equal or one string is a substring of the other
         // e.g. "1.2.3" = "1.2.3" or "1.2.3" < "1.2.3.4"
         return Integer.signum(vals1.length - vals2.length);
+    }
+
+    public static ZonedDateTime localToUTC(LocalDateTime localDateTime) {
+        return localDateTime.atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC);
+    }
+
+    public static ZonedDateTime zoneToUTC(ZonedDateTime dateTime) {
+        return dateTime.withZoneSameInstant(ZoneOffset.UTC);
+    }
+
+    public static LocalDateTime UTCToLocal(ZonedDateTime utcTime) {
+        return utcTime.withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
+    }
+
+    public static Timestamp ZDTToTimestamp(ZonedDateTime zdt) {
+        return new Timestamp(UTCToMilli(zoneToUTC(zdt)));
+    }
+
+    public static ZonedDateTime zoneToLocal(ZonedDateTime dateTime) {
+        return dateTime.withZoneSameInstant(ZoneOffset.systemDefault());
+    }
+
+    public static long UTCToMilli(ZonedDateTime utcTime) {
+        return zoneToLocal(utcTime).toInstant().toEpochMilli();
     }
 
 }

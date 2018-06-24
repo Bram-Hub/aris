@@ -3,7 +3,10 @@ package edu.rpi.aris.net.client;
 import edu.rpi.aris.LibAris;
 import edu.rpi.aris.Main;
 import edu.rpi.aris.gui.GuiConfig;
+import edu.rpi.aris.net.MessageCommunication;
 import edu.rpi.aris.net.NetUtil;
+import edu.rpi.aris.net.message.ErrorMsg;
+import edu.rpi.aris.net.message.Message;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleObjectProperty;
@@ -52,7 +55,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class Client {
+public class Client implements MessageCommunication {
 
     private static final char[] KEYSTORE_PASSWORD = "ARIS_CLIENT".toCharArray();
     private static final File KEYSTORE_FILE = new File(GuiConfig.CLIENT_CONFIG_DIR, "client.keystore");
@@ -425,6 +428,27 @@ public class Client {
         }
     }
 
+    public <T extends Message> void processMessage(T message, ResponseHandler<T> responseHandler) {
+        new Thread(() -> {
+            try {
+                connect();
+                //noinspection unchecked
+                T reply = (T) message.sendAndGet(this);
+                if (responseHandler == null)
+                    return;
+                if (reply == null) {
+                    responseHandler.onError();
+                    return;
+                }
+                responseHandler.response(reply);
+            } catch (IOException e) {
+                logger.error("Error sending message", e);
+            } finally {
+                disconnect();
+            }
+        }).start();
+    }
+
     private Pair<String, Integer> getServerAddress(String lastAddress) throws IOException {
         String address = lastAddress;
         switch (Main.getMode()) {
@@ -604,6 +628,7 @@ public class Client {
         return false;
     }
 
+    @Override
     public synchronized void sendMessage(String msg) throws IOException {
         if (connectionStatus == ConnectionStatus.CONNECTED && socket != null && out != null) {
             try {
@@ -617,6 +642,7 @@ public class Client {
             throw new IOException("Not connected to server");
     }
 
+    @Override
     public synchronized String readMessage() throws IOException {
         try {
             return in.readUTF();
@@ -626,26 +652,10 @@ public class Client {
         }
     }
 
-    public synchronized void sendData(byte[] data) throws IOException {
-        if (connectionStatus == ConnectionStatus.CONNECTED && socket != null && out != null) {
-            try {
-                out.write(data);
-                out.flush();
-            } catch (IOException e) {
-                disconnect();
-                throw e;
-            }
-        } else
-            throw new IOException("Not connected to server");
-    }
-
-    public synchronized boolean readData(byte[] data) throws IOException {
-        try {
-            return in.read(data) == data.length;
-        } catch (IOException e) {
-            disconnect();
-            throw e;
-        }
+    @Override
+    public void handleErrorMsg(ErrorMsg msg) {
+        // TODO: implement
+        throw new RuntimeException("Not implemented: \n" + msg);
     }
 
     private boolean showCertWarning() {
