@@ -30,14 +30,7 @@ add_user() {
         rm /tmp/aris*
     fi
     TMP=$(dirname $(mktemp -u))
-    LOGDIR=$(cat /etc/aris.cfg | grep log-dir)
-    if [ $? -ne 0 ]; then
-        echo log-dir not specified in /etc/aris.cfg
-        RC=1
-        return
-    fi
-    LOGDIR=$(echo ${LOGDIR#"log-dir"} | xargs)
-    java -Djava.io.tmpdir="$TMP" -Dlog4j.log-dir="$LOGDIR" -jar /usr/lib/aris/aris-server.jar --add-user "$USER" --password "$PASS"
+    java -Djava.io.tmpdir="$TMP" -jar /usr/lib/aris/aris-server.jar --add-user "$USER" --password "$PASS"
 }
 
 if [ "$USER" = "aris" ]; then

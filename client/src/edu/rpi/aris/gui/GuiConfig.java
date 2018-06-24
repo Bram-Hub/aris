@@ -130,7 +130,7 @@ public class GuiConfig {
             Path path = CLIENT_CONFIG_DIR.toPath();
             try {
                 Object hidden = Files.getAttribute(path, "dos:hidden", LinkOption.NOFOLLOW_LINKS);
-                if (hidden != null && hidden instanceof Boolean && !((Boolean) hidden))
+                if (hidden instanceof Boolean && !((Boolean) hidden))
                     Files.setAttribute(path, "dos:hidden", Boolean.TRUE, LinkOption.NOFOLLOW_LINKS);
             } catch (IOException e) {
                 e.printStackTrace();

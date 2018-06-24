@@ -54,6 +54,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
 
     public static void main(String[] args) throws IOException {
         Thread.setDefaultUncaughtExceptionHandler(instance);
+        LibAris.setLogLocation(new File(GuiConfig.CLIENT_CONFIG_DIR, "logs"));
         logger.info(LibAris.NAME + " version " + LibAris.VERSION);
         try {
             parseCommandLineArgs(args);

@@ -11,33 +11,7 @@ update_aris() {
         rm /tmp/aris*
     fi
     TMP=$(dirname $(mktemp -u))
-    CFG=$(cat /etc/aris.cfg | grep config-dir | grep -vm 1 '#')
-    if [ $? -eq 0 ]; then
-        CFG=$(echo ${CFG#"config-dir"} | xargs)
-        for f in $(ls -d -1 $CFG//**/*); do
-            LOGDIR=$(cat $f | grep log-dir | grep -vm 1 '#')
-            if [ $? -eq 0 ]; then
-                LOGDIR=$(echo ${LOGDIR#"log-dir"} | xargs)
-                break
-            else
-                unset LOGDIR
-            fi
-        done
-    fi
-    if [ -z "$LOGDIR" ]; then
-        LOGDIR=$(cat /etc/aris.cfg | grep log-dir | grep -vm 1 '#')
-        if [ $? -eq 0 ]; then
-            LOGDIR=$(echo ${LOGDIR#"log-dir"} | xargs)
-        else
-            unset LOGDIR
-        fi
-    fi
-    if [ -z "$LOGDIR" ]; then
-        echo log-dir not specified in /etc/aris.cfg or /etc/aris.d
-        RC=1
-        return
-    fi
-    java -Djava.io.tmpdir="$TMP" -Dlog4j.log-dir="$LOGDIR" -jar /usr/lib/aris/aris-server.jar -u
+    java -Djava.io.tmpdir="$TMP" -jar /usr/lib/aris/aris-server.jar -u
     RC=$?
     if [ $RC -eq 52 ]; then
         echo -n Updating aris ...
