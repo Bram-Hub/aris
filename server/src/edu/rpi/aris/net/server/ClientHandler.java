@@ -15,6 +15,7 @@ import org.apache.logging.log4j.Logger;
 
 import javax.net.ssl.SSLSocket;
 import java.io.*;
+import java.net.InetAddress;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.security.MessageDigest;
@@ -35,7 +36,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
     private static PassiveExpiringMap<String, HashSet<Long>> loginAttempts = new PassiveExpiringMap<>(10 * 60 * 1000);
     private final SSLSocket socket;
     private DatabaseManager dbManager;
-    private String clientName, clientVersion;
+    private String clientVersion;
     private DataInputStream in;
     private DataOutputStream out;
     private User user;
@@ -48,18 +49,21 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
     @Override
     public void run() {
         try {
-            clientName = socket.getInetAddress().getHostName();
-            logger.info("[" + clientName + "] Incoming connection from " + socket.getInetAddress().toString());
+            InetAddress address = socket.getInetAddress();
+            //noinspection ResultOfMethodCallIgnored
+            address.getHostName();
+            Thread.currentThread().setName("ClientHandler-" + socket.getInetAddress().toString());
+            logger.info("Incoming connection from " + socket.getInetAddress().toString());
             socket.setUseClientMode(false);
             socket.setNeedClientAuth(false);
             socket.setSoTimeout(NetUtil.SOCKET_TIMEOUT);
             socket.addHandshakeCompletedListener(handshakeCompletedEvent -> {
-                logger.info("[" + clientName + "] Handshake complete");
+                logger.info("Handshake complete");
                 synchronized (socket) {
                     socket.notify();
                 }
             });
-            logger.info("[" + clientName + "] Starting handshake");
+            logger.info("Starting handshake");
             synchronized (socket) {
                 try {
                     socket.startHandshake();
@@ -70,16 +74,16 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
             }
             in = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
             out = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
-            logger.info("[" + clientName + "] Connection successful");
+            logger.info("Connection successful");
             if (banList.containsKey(socket.getInetAddress().toString())) {
-                logger.info("[" + clientName + "] IP address is temp banned. Disconnecting");
+                logger.info("IP address is temp banned. Disconnecting");
                 out.writeUTF(NetUtil.AUTH_BAN);
                 out.flush();
                 return;
             }
-            logger.info("[" + clientName + "] Waiting for client version");
+            logger.info("Waiting for client version");
             clientVersion = in.readUTF();
-            logger.info("[" + clientName + "] Version: " + clientVersion);
+            logger.info("Version: " + clientVersion);
             if (!checkVersion()) {
                 sendMessage(NetUtil.INVALID_VERSION);
                 return;
@@ -88,15 +92,15 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
             String versionVerify = in.readUTF();
             if (!versionVerify.equals(NetUtil.VERSION_OK))
                 return;
-            logger.info("[" + clientName + "] Waiting for client auth");
+            logger.info("Waiting for client auth");
             if (!verifyAuth()) {
-                logger.info("[" + clientName + "] Auth failed");
+                logger.info("Auth failed");
                 return;
             }
-            logger.info("[" + clientName + "] Auth complete");
+            logger.info("Auth complete");
             messageWatch();
         } catch (Throwable e) {
-            logger.error("[" + clientName + "] Socket error", e);
+            logger.error("Socket error", e);
         } finally {
             disconnect();
         }
@@ -105,16 +109,16 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
     private boolean checkVersion() {
         String[] split = clientVersion.split(" ");
         if (split.length != 2) {
-            logger.error("[" + clientName + "] Invalid client version string: " + clientVersion);
+            logger.error("Invalid client version string: " + clientVersion);
             return false;
         }
         if (!split[0].equals(NetUtil.ARIS_NAME)) {
-            logger.error("[" + clientName + "] Invalid client program name: " + split[0]);
+            logger.error("Invalid client program name: " + split[0]);
             return false;
         }
         if (NetUtil.versionCompare(LibAris.VERSION, split[1]) < 0) {
-            logger.warn("[" + clientName + "] Client's version is newer than server");
-            logger.warn("[" + clientName + "] This may or may not cause problems");
+            logger.warn("Client's version is newer than server");
+            logger.warn("This may or may not cause problems");
         }
         return true;
     }
@@ -127,7 +131,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
             return false;
         }
         String username = URLDecoder.decode(auth[2], "UTF-8").toLowerCase();
-        logger.info("[" + clientName + "] Authenticating user: " + username);
+        logger.info("Authenticating user: " + username);
         String pass = URLDecoder.decode(auth[3], "UTF-8");
         try (Connection connection = dbManager.getConnection();
              PreparedStatement statement = connection.prepareStatement("SELECT salt, password_hash, access_token, id, user_type FROM users WHERE username = ?;")) {
@@ -154,7 +158,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                     } else {
                         if (auth[1].equals(NetUtil.AUTH_PASS)) {
                             if (updateBanList()) {
-                                logger.info("[" + clientName + "] Client has been banned for 60 minutes");
+                                logger.info("Client has been banned for 60 minutes");
                                 sendMessage(NetUtil.AUTH_BAN);
                             } else
                                 sendMessage(NetUtil.AUTH_FAIL);
@@ -164,7 +168,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                     }
                 } else {
                     if (updateBanList()) {
-                        logger.info("[" + clientName + "] IP address has been banned for 60 minutes due to repeated failed login attempts");
+                        logger.info("IP address has been banned for 60 minutes due to repeated failed login attempts");
                         sendMessage(NetUtil.AUTH_BAN);
                     } else
                         sendMessage(NetUtil.AUTH_FAIL);
@@ -172,7 +176,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                 }
             }
         } catch (SQLException e) {
-            logger.error("[" + clientName + "] Error while verifying auth", e);
+            logger.error("Error while verifying auth", e);
             sendMessage(NetUtil.AUTH_ERR);
             return false;
         }
@@ -213,7 +217,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                                 msg.send(this);
                             } else {
                                 connection.rollback();
-                                logger.error("[" + clientName + "] " + msg.getMessageType().name() + " processing failed with error: " + error.name());
+                                logger.error(msg.getMessageType().name() + " processing failed with error: " + error.name());
                                 if (msg instanceof ErrorMsg)
                                     msg.send(this);
                                 else
@@ -230,7 +234,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                     }
                 }
             } catch (SQLException e) {
-                logger.error("[" + clientName + "] SQL Error", e);
+                logger.error("SQL Error", e);
                 new ErrorMsg(ErrorType.SQL_ERR, e.getMessage()).send(this);
             }
         } catch (IOException ignored) {
@@ -639,22 +643,22 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                 try {
                     in.close();
                 } catch (IOException e) {
-                    logger.error("[" + clientName + "] Failed to close input stream", e);
+                    logger.error("Failed to close input stream", e);
                 }
             }
             if (out != null) {
                 try {
                     out.close();
                 } catch (IOException e) {
-                    logger.error("[" + clientName + "] Failed to close output stream", e);
+                    logger.error("Failed to close output stream", e);
                 }
             }
             try {
                 socket.close();
             } catch (IOException e) {
-                logger.error("[" + clientName + "] Failed to close socket");
+                logger.error("Failed to close socket");
             }
-            logger.info("[" + clientName + "] Disconnected");
+            logger.info("Disconnected");
         } finally {
             onDisconnect(this);
         }

@@ -45,12 +45,18 @@ public class Goal {
     }
 
     public void setGoalString(String expression) {
+        setGoalString(expression, false);
+    }
+
+    public void setGoalString(String expression, boolean buildImmediately) {
         this.goalString = expression;
         if (listener != null)
             listener.expressionString(expression);
         this.expression = null;
         startTimer();
         proof.modify();
+        if(buildImmediately)
+            buildExpression();
     }
 
     public String getStatusString() {

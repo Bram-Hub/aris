@@ -48,8 +48,7 @@ public class Expression {
         }
     }
 
-    private void init
-            (String expr) throws ExpressionParseException {
+    private void init(String expr) throws ExpressionParseException {
         polishRep = expr;
         expr = SentenceUtil.removeParen(expr);
         int parenOffset = (polishRep.length() - expr.length()) / 2;
@@ -320,6 +319,7 @@ public class Expression {
     public boolean equalswithoutDNs(Expression expr) throws ExpressionParseException {
         return this.withoutDNs().equals(expr.withoutDNs());
     }
+
     public String toLogicStringwithoutDNs() throws ExpressionParseException {
         return this.withoutDNs().toLogicString();
     }

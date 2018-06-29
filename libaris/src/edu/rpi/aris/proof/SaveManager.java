@@ -298,7 +298,7 @@ public class SaveManager {
                     }
                 }
                 Goal goal = proof.addGoal(proof.getNumGoals());
-                goal.setGoalString(raw);
+                goal.setGoalString(raw, true);
             }
         }
         proof.saved();
@@ -338,7 +338,7 @@ public class SaveManager {
                 }
             }
             Line line = indent == 0 ? proof.addPremise() : proof.addLine(lineNum, true, indent);
-            line.setExpressionString(raw);
+            line.setExpressionString(raw, true);
             ++lineNum;
         }
         ArrayList<Element> steps = getElementsByTag(element, "step");
@@ -384,7 +384,7 @@ public class SaveManager {
                     }
                 }
                 Line line = proof.addLine(lineNum, false, indent);
-                line.setExpressionString(raw);
+                line.setExpressionString(raw, true);
                 RuleList rule = null;
                 try {
                     rule = RuleList.valueOf(ruleStr);

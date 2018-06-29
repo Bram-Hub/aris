@@ -35,6 +35,7 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -66,7 +67,7 @@ public class Server implements Runnable {
     }
 
     private final int port;
-//    private final File caCertificate;
+    //    private final File caCertificate;
 //    private final File privateKey;
     private final Update update = new Update(Update.Stream.SERVER, new File(System.getProperty("java.io.tmpdir"), "aris-update"));
     private Logger logger = LogManager.getLogger(Server.class);
@@ -74,15 +75,14 @@ public class Server implements Runnable {
     private DatabaseManager dbManager;
     private Timer certExpireTimer = null;
     private ServerSocket serverSocket;
+    private ReentrantLock serverLock = new ReentrantLock(true);
     private HashSet<ClientHandler> clients = new HashSet<>();
     private Thread serverThread = null;
-    private final Thread shutdownHook = new Thread(this::shutdown);
+    private final Thread shutdownHook = new Thread(this::shutdown, "Server Shutdown Hook");
 
     public Server(int port, File caCertificate, File privateKey) throws FileNotFoundException {
         logger.info("Preparing server");
         this.port = port;
-//        this.caCertificate = caCertificate;
-//        this.privateKey = privateKey;
         stopServer = false;
         shutdown = false;
         if (caCertificate != null && privateKey != null) {
@@ -127,11 +127,30 @@ public class Server implements Runnable {
     @Override
     public void run() {
         try {
+            if (!serverLock.tryLock(10, TimeUnit.SECONDS))
+                return;
+        } catch (InterruptedException e) {
+            logger.error("An error occurred while attempting to acquire the server lock", e);
+            return;
+        }
+        try {
             serverThread = Thread.currentThread();
             Runtime.getRuntime().addShutdownHook(shutdownHook);
             logger.info("Starting Server on port " + port + (port == 9001 ? " (IT'S OVER 9000!!!)" : ""));
             serverSocket = getServerSocketFactory().createServerSocket(port);
-            ExecutorService threadPool = Executors.newCachedThreadPool();
+            ExecutorService threadPool = Executors.newCachedThreadPool(new ThreadFactory() {
+
+                private int count = 0;
+
+                @Override
+                public Thread newThread(Runnable r) {
+                    int i;
+                    synchronized (this) {
+                        i = ++count;
+                    }
+                    return new Thread(r, "ClientHandler-ThreadPool-" + i);
+                }
+            });
             logger.info("Server Started");
             logger.info("Waiting for connections");
             //noinspection InfiniteLoopStatement
@@ -159,6 +178,7 @@ public class Server implements Runnable {
                 serverThread = null;
             }
             logger.info("ServerSocket closed");
+            serverLock.unlock();
         }
     }
 
@@ -220,7 +240,7 @@ public class Server implements Runnable {
             }
             if (certExpireTimer != null)
                 certExpireTimer.cancel();
-            certExpireTimer = new Timer(true);
+            certExpireTimer = new Timer("Certificate expiration Timer", true);
             certExpireTimer.schedule(new TimerTask() {
                 @Override
                 public void run() {
@@ -229,7 +249,7 @@ public class Server implements Runnable {
                         logger.info("Server will now reload to read any new available certificates");
                         stopServer = true;
                         serverSocket.close();
-                        new Thread(this).start();
+                        new Thread(this, "ServerSocket-Listen").start();
                     } catch (IOException e) {
                         logger.error("Failed to stop server while attempting to restart on expired certificate", e);
                     }

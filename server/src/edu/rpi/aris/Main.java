@@ -38,14 +38,18 @@ public class Main implements Thread.UncaughtExceptionHandler {
             System.err.println(e.getMessage());
             System.exit(1);
         }
-        if (ipcFile.exists() || !tryLock()) {
+        if (!tryLock()) {
             logger.info("Program already running");
-            logger.info("Sending message to running program");
-            if (cmd.hasOption("add-user") && cmd.hasOption("password")) {
-                sendIpcMessage("add-user " + cmd.getOptionValue("add-user") + " " + cmd.getOptionValue("password"));
-            }
-            if (cmd.hasOption('u')) {
-                sendIpcMessage("update");
+            if (ipcFile.exists()) {
+                logger.info("Sending message to running program");
+                if (cmd.hasOption("add-user") && cmd.hasOption("password")) {
+                    sendIpcMessage("add-user " + cmd.getOptionValue("add-user") + " " + cmd.getOptionValue("password"));
+                }
+                if (cmd.hasOption('u')) {
+                    sendIpcMessage("update");
+                }
+            } else {
+                logger.warn("Inter-process communication file is missing. Cannot communicate with running process");
             }
             return;
         }
@@ -78,7 +82,7 @@ public class Main implements Thread.UncaughtExceptionHandler {
             if (!server.checkUpdate())
                 System.exit(1);
         } else
-            new Thread(server).start();
+            new Thread(server, "ServerSocket-Listen").start();
     }
 
     private static void startIpcWatch() throws IOException {
@@ -160,10 +164,9 @@ public class Main implements Thread.UncaughtExceptionHandler {
                 lockFileChannel.close();
                 return false;
             }
+            lockFile.deleteOnExit();
         } catch (Throwable e) {
             return false;
-        } finally {
-            lockFile.deleteOnExit();
         }
         return true;
     }

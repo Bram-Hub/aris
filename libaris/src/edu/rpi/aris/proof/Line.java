@@ -220,6 +220,10 @@ public class Line {
     }
 
     public void setExpressionString(String expressionString) {
+        setExpressionString(expressionString, false);
+    }
+
+    public void setExpressionString(String expressionString, boolean buildImmediately) {
         this.expressionString = expressionString;
         synchronized (Line.this) {
             expression = null;
@@ -232,6 +236,8 @@ public class Line {
             listener.expressionString(expressionString);
         for (Runnable r : expressionChangeListeners)
             r.run();
+        if (buildImmediately)
+            buildExpression();
         proof.modify();
     }
 
