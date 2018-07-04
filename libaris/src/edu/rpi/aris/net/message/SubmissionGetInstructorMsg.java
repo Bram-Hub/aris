@@ -20,7 +20,7 @@ public class SubmissionGetInstructorMsg extends Message {
     private final int cid;
 
     private final LinkedHashMap<Integer, String> users = new LinkedHashMap<>();
-    private final ArrayList<MsgUtil.ProofInfo> assignedProofs = new ArrayList<>();
+    private final ArrayList<MsgUtil.ProblemInfo> assignedProblems = new ArrayList<>();
     private final HashMap<Integer, HashMap<Integer, ArrayList<MsgUtil.SubmissionInfo>>> submissions = new HashMap<>();
 
     public SubmissionGetInstructorMsg(int aid, int cid) {
@@ -38,8 +38,8 @@ public class SubmissionGetInstructorMsg extends Message {
         return submissions;
     }
 
-    public ArrayList<MsgUtil.ProofInfo> getAssignedProofs() {
-        return assignedProofs;
+    public ArrayList<MsgUtil.ProblemInfo> getAssignedProblems() {
+        return assignedProblems;
     }
 
     public LinkedHashMap<Integer, String> getUsers() {
@@ -51,8 +51,8 @@ public class SubmissionGetInstructorMsg extends Message {
         if (!user.userType.equals(NetUtil.USER_INSTRUCTOR))
             return ErrorType.UNAUTHORIZED;
         try (PreparedStatement userStatement = connection.prepareStatement("SELECT u.id, u.username FROM users u, user_class uc WHERE uc.user_id = u.id AND u.user_type = 'student' AND uc.class_id = ? ORDER BY u.username;");
-             PreparedStatement proofs = connection.prepareStatement("SELECT p.id, p.name, p.created_by, p.created_on FROM proof p, assignment a WHERE a.proof_id = p.id AND a.class_id = ? AND a.id = ? ORDER BY p.name;");
-             PreparedStatement userSubmissions = connection.prepareStatement("SELECT u.id, s.id, s.proof_id, s.time, s.status, s.short_status FROM users u, assignment a, submission s, proof p WHERE a.class_id = ? AND a.id = ? AND u.user_type = 'student' AND s.class_id = a.class_id AND s.assignment_id = a.id AND s.user_id = u.id AND p.id = s.proof_id ORDER BY u.username, p.name, s.time DESC;")) {
+             PreparedStatement problems = connection.prepareStatement("SELECT p.id, p.name, p.created_by, p.created_on, p.module_name FROM problem p, assignment a WHERE a.problem_id = p.id AND a.class_id = ? AND a.id = ? ORDER BY p.name;");
+             PreparedStatement userSubmissions = connection.prepareStatement("SELECT u.id, s.id, s.problem_id, s.time, s.status, s.short_status FROM users u, assignment a, submission s, problem p WHERE a.class_id = ? AND a.id = ? AND u.user_type = 'student' AND s.class_id = a.class_id AND s.assignment_id = a.id AND s.user_id = u.id AND p.id = s.problem_id ORDER BY u.username, p.name, s.time DESC;")) {
             userStatement.setInt(1, cid);
             try (ResultSet rs = userStatement.executeQuery()) {
                 while (rs.next()) {
@@ -61,15 +61,16 @@ public class SubmissionGetInstructorMsg extends Message {
                     users.put(uid, username);
                 }
             }
-            proofs.setInt(1, cid);
-            proofs.setInt(2, aid);
-            try (ResultSet rs = proofs.executeQuery()) {
+            problems.setInt(1, cid);
+            problems.setInt(2, aid);
+            try (ResultSet rs = problems.executeQuery()) {
                 while (rs.next()) {
                     int pid = rs.getInt(1);
                     String pName = rs.getString(2);
                     String createdBy = rs.getString(3);
                     ZonedDateTime timestamp = NetUtil.localToUTC(rs.getTimestamp(4).toLocalDateTime());
-                    assignedProofs.add(new MsgUtil.ProofInfo(pid, pName, createdBy, timestamp));
+                    String moduleName = rs.getString(5);
+                    assignedProblems.add(new MsgUtil.ProblemInfo(pid, pName, createdBy, timestamp, moduleName));
                 }
             }
             userSubmissions.setInt(1, cid);
@@ -96,7 +97,7 @@ public class SubmissionGetInstructorMsg extends Message {
     }
 
 //    private final LinkedHashMap<Integer, String> users = new LinkedHashMap<>();
-//    private final ArrayList<MsgUtil.ProofInfo> assignedProofs = new ArrayList<>();
+//    private final ArrayList<MsgUtil.ProblemInfo> assignedProblems = new ArrayList<>();
 //    private final HashMap<Integer, HashMap<Integer, ArrayList<MsgUtil.SubmissionInfo>>> submissions = new HashMap<>();
 
     @Override
@@ -104,7 +105,7 @@ public class SubmissionGetInstructorMsg extends Message {
         for (Map.Entry<Integer, String> u : users.entrySet())
             if (u.getKey() == null || u.getValue() == null)
                 return false;
-        for (MsgUtil.ProofInfo info : assignedProofs)
+        for (MsgUtil.ProblemInfo info : assignedProblems)
             if (info == null || !info.checkValid())
                 return false;
         for (Map.Entry<Integer, HashMap<Integer, ArrayList<MsgUtil.SubmissionInfo>>> sub : submissions.entrySet()) {

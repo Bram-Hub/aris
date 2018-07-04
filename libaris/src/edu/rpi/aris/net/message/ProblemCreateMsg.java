@@ -7,30 +7,33 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-public class ProofCreateMsg extends Message {
+public class ProblemCreateMsg extends Message {
 
-    private final String name;
-    private final byte[] proofData;
+    private final String name, moduleName;
+    private final byte[] problemData;
 
-    public ProofCreateMsg(String name, byte[] proofData) {
+    public ProblemCreateMsg(String name, String moduleName, byte[] problemData) {
         this.name = name;
-        this.proofData = proofData;
+        this.moduleName = moduleName;
+        this.problemData = problemData;
     }
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
-    private ProofCreateMsg() {
+    private ProblemCreateMsg() {
         name = null;
-        proofData = null;
+        moduleName = null;
+        problemData = null;
     }
 
     @Override
     public ErrorType processMessage(Connection connection, User user) throws SQLException {
         if (!user.userType.equals(NetUtil.USER_INSTRUCTOR))
             return ErrorType.UNAUTHORIZED;
-        try (PreparedStatement statement = connection.prepareStatement("INSERT INTO proof (name, data, created_by, created_on) VALUES (?, ?, (SELECT username FROM users WHERE id = ? LIMIT 1), now())")) {
+        try (PreparedStatement statement = connection.prepareStatement("INSERT INTO problem (name, data, created_by, created_on, module_name) VALUES (?, ?, (SELECT username FROM users WHERE id = ? LIMIT 1), now(), ?)")) {
             statement.setString(1, name);
-            statement.setBytes(2, proofData);
+            statement.setBytes(2, problemData);
             statement.setInt(3, user.uid);
+            statement.setString(4, moduleName);
             statement.executeUpdate();
         }
         return null;
@@ -38,11 +41,11 @@ public class ProofCreateMsg extends Message {
 
     @Override
     public MessageType getMessageType() {
-        return MessageType.CREATE_PROOF;
+        return MessageType.CREATE_PROBLEM;
     }
 
     @Override
     public boolean checkValid() {
-        return name != null && proofData != null;
+        return name != null && problemData != null && moduleName != null;
     }
 }

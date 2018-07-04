@@ -184,9 +184,9 @@ public class Assignment {
                         msg.setName(newName);
                         msg.setNewDueDate(newDueDate);
                         for (ProofInfo p : remove)
-                            msg.removeProof(p.getProofId());
+                            msg.removeProblem(p.getProofId());
                         for (ProofInfo p : add)
-                            msg.addProof(p.getProofId());
+                            msg.addProblem(p.getProofId());
                         msg = (AssignmentEditMsg) msg.sendAndGet(client);
                         if(msg == null)
                             return;
@@ -224,7 +224,7 @@ public class Assignment {
         SubmissionGetStudentMsg reply = (SubmissionGetStudentMsg) new SubmissionGetStudentMsg(id, classId).sendAndGet(client);
         if (reply == null)
             return;
-        for (MsgUtil.ProofInfo info : reply.getAssignedProofs()) {
+        for (MsgUtil.ProblemInfo info : reply.getAssignedProblems()) {
             ProofInfo proofInfo = new ProofInfo(info, false);
             rootNodes.add(proofInfo);
             int i = 0;
@@ -243,7 +243,7 @@ public class Assignment {
         for (Map.Entry<Integer, String> u : reply.getUsers().entrySet()) {
             UserInfo user = new UserInfo(u.getKey(), u.getValue());
             rootNodes.add(user);
-            for (MsgUtil.ProofInfo pInfo : reply.getAssignedProofs()) {
+            for (MsgUtil.ProblemInfo pInfo : reply.getAssignedProblems()) {
                 if(!pInfo.checkValid())
                     continue;
                 if (!doneProofs)

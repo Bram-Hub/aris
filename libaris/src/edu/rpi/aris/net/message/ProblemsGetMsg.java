@@ -10,26 +10,27 @@ import java.sql.SQLException;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 
-public class ProofsGetMsg extends Message {
+public class ProblemsGetMsg extends Message {
 
-    private final ArrayList<MsgUtil.ProofInfo> proofs = new ArrayList<>();
+    private final ArrayList<MsgUtil.ProblemInfo> problems = new ArrayList<>();
 
-    public ArrayList<MsgUtil.ProofInfo> getProofs() {
-        return proofs;
+    public ArrayList<MsgUtil.ProblemInfo> getProblems() {
+        return problems;
     }
 
     @Override
     public ErrorType processMessage(Connection connection, User user) throws SQLException {
         if (!user.userType.equals(NetUtil.USER_INSTRUCTOR))
             return ErrorType.UNAUTHORIZED;
-        try (PreparedStatement statement = connection.prepareStatement("SELECT id, name, created_by, created_on FROM proof ORDER BY created_on DESC;")) {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT id, name, created_by, created_on, module_name FROM problem ORDER BY created_on DESC;")) {
             try (ResultSet rs = statement.executeQuery()) {
                 while (rs.next()) {
                     int id = rs.getInt(1);
                     String name = rs.getString(2);
                     String createdBy = rs.getString(3);
                     ZonedDateTime createdOn = NetUtil.localToUTC(rs.getTimestamp(4).toLocalDateTime());
-                    proofs.add(new MsgUtil.ProofInfo(id, name, createdBy, createdOn));
+                    String moduleName = rs.getString(5);
+                    problems.add(new MsgUtil.ProblemInfo(id, name, createdBy, createdOn, moduleName));
                 }
             }
         }
@@ -38,12 +39,12 @@ public class ProofsGetMsg extends Message {
 
     @Override
     public MessageType getMessageType() {
-        return MessageType.GET_PROOFS;
+        return MessageType.GET_PROBLEMS;
     }
 
     @Override
     public boolean checkValid() {
-        for(MsgUtil.ProofInfo info : proofs)
+        for(MsgUtil.ProblemInfo info : problems)
             if(info == null || !info.checkValid())
                 return false;
         return true;

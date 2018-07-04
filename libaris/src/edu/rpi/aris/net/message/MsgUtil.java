@@ -77,30 +77,33 @@ public class MsgUtil {
 
     }
 
-    public static class ProofInfo {
+    public static class ProblemInfo {
 
         public final int pid;
         public final String name;
         public final String createdBy;
+        public final String moduleName;
         public final ZonedDateTime createdDateUTC;
 
-        ProofInfo(int pid, String name, String createdBy, ZonedDateTime createdDateUTC) {
+        ProblemInfo(int pid, String name, String createdBy, ZonedDateTime createdDateUTC, String moduleName) {
             this.pid = pid;
             this.name = name;
             this.createdBy = createdBy;
             this.createdDateUTC = createdDateUTC;
+            this.moduleName = moduleName;
         }
 
         // DO NOT REMOVE!! Default constructor is required for gson deserialization
-        private ProofInfo() {
+        private ProblemInfo() {
             this.pid = 0;
             this.name = null;
             this.createdBy = null;
             this.createdDateUTC = null;
+            this.moduleName = null;
         }
 
         public boolean checkValid() {
-            return pid > 0 && name != null && createdBy != null && createdDateUTC != null;
+            return pid > 0 && name != null && createdBy != null && createdDateUTC != null && moduleName != null;
         }
 
     }

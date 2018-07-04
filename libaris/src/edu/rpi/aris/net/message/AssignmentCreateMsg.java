@@ -10,7 +10,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -19,7 +18,7 @@ public class AssignmentCreateMsg extends Message {
     private static final Logger logger = LogManager.getLogger(AssignmentCreateMsg.class);
 
     private final int cid;
-    private final ArrayList<Integer> proofs = new ArrayList<>();
+    private final ArrayList<Integer> problems = new ArrayList<>();
     private final String name;
     private final ZonedDateTime dueDate;
 
@@ -37,11 +36,11 @@ public class AssignmentCreateMsg extends Message {
     }
 
     public void addProof(int pid) {
-        proofs.add(pid);
+        problems.add(pid);
     }
 
     public void addProofs(Collection<Integer> pids) {
-        proofs.addAll(pids);
+        problems.addAll(pids);
     }
 
     @Override
@@ -55,7 +54,7 @@ public class AssignmentCreateMsg extends Message {
                 if (rs.next())
                     id = rs.getInt(1) + 1;
             }
-            for (int pid : proofs) {
+            for (int pid : problems) {
                 statement.setInt(1, id);
                 statement.setInt(2, cid);
                 statement.setInt(3, pid);
@@ -76,7 +75,7 @@ public class AssignmentCreateMsg extends Message {
 
     @Override
     public boolean checkValid() {
-        for (Integer i : proofs)
+        for (Integer i : problems)
             if (i == null)
                 return false;
         return cid > 0 && name != null && dueDate != null;

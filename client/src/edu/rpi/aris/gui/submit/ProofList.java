@@ -2,7 +2,7 @@ package edu.rpi.aris.gui.submit;
 
 import edu.rpi.aris.Main;
 import edu.rpi.aris.net.client.Client;
-import edu.rpi.aris.net.message.ProofsGetMsg;
+import edu.rpi.aris.net.message.ProblemsGetMsg;
 import edu.rpi.aris.net.message.MsgUtil;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -43,10 +43,10 @@ public class ProofList {
             Client client = Main.getClient();
             try {
                 client.connect();
-                ProofsGetMsg msg = (ProofsGetMsg) new ProofsGetMsg().sendAndGet(client);
+                ProblemsGetMsg msg = (ProblemsGetMsg) new ProblemsGetMsg().sendAndGet(client);
                 if (msg == null)
                     return;
-                for (MsgUtil.ProofInfo proof : msg.getProofs())
+                for (MsgUtil.ProblemInfo proof : msg.getProblems())
                     Platform.runLater(() -> proofs.add(new ProofInfo(proof, true)));
                 Platform.runLater(() -> loaded.set(true));
             } catch (IOException e) {

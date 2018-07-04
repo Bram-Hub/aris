@@ -16,7 +16,7 @@ import java.util.Map;
 public class SubmissionGetStudentMsg extends Message {
 
     private final int aid, cid;
-    private final ArrayList<MsgUtil.ProofInfo> assignedProofs = new ArrayList<>();
+    private final ArrayList<MsgUtil.ProblemInfo> assignedProblems = new ArrayList<>();
     private final HashMap<Integer, ArrayList<MsgUtil.SubmissionInfo>> submissions = new HashMap<>();
 
     public SubmissionGetStudentMsg(int aid, int cid) {
@@ -30,8 +30,8 @@ public class SubmissionGetStudentMsg extends Message {
         cid = 0;
     }
 
-    public ArrayList<MsgUtil.ProofInfo> getAssignedProofs() {
-        return assignedProofs;
+    public ArrayList<MsgUtil.ProblemInfo> getAssignedProblems() {
+        return assignedProblems;
     }
 
     public HashMap<Integer, ArrayList<MsgUtil.SubmissionInfo>> getSubmissions() {
@@ -40,8 +40,8 @@ public class SubmissionGetStudentMsg extends Message {
 
     @Override
     public ErrorType processMessage(Connection connection, User user) throws SQLException {
-        try (PreparedStatement assignments = connection.prepareStatement("SELECT p.aid, p.name, p.created_by, p.created_on FROM assignment a, proof p WHERE a.class_id = ? AND a.aid = ? AND a.proof_id = p.aid;");
-             PreparedStatement submissions = connection.prepareStatement("SELECT aid, proof_id, time, status, short_status FROM submission WHERE class_id = ? AND assignment_id = ? AND user_id = ? ORDER BY proof_id, aid DESC;")) {
+        try (PreparedStatement assignments = connection.prepareStatement("SELECT p.aid, p.name, p.created_by, p.created_on, p.module_name FROM assignment a, problem p WHERE a.class_id = ? AND a.aid = ? AND a.problem_id = p.aid;");
+             PreparedStatement submissions = connection.prepareStatement("SELECT aid, problem_id, time, status, short_status FROM submission WHERE class_id = ? AND assignment_id = ? AND user_id = ? ORDER BY problem_id, aid DESC;")) {
             assignments.setInt(1, cid);
             assignments.setInt(2, aid);
             try (ResultSet rs = assignments.executeQuery()) {
@@ -50,7 +50,8 @@ public class SubmissionGetStudentMsg extends Message {
                     String pName = rs.getString(2);
                     String createdBy = rs.getString(3);
                     ZonedDateTime timestamp = NetUtil.localToUTC(rs.getTimestamp(4).toLocalDateTime());
-                    assignedProofs.add(new MsgUtil.ProofInfo(pid, pName, createdBy, timestamp));
+                    String moduleName = rs.getString(5);
+                    assignedProblems.add(new MsgUtil.ProblemInfo(pid, pName, createdBy, timestamp, moduleName));
                 }
             }
             submissions.setInt(1, cid);
@@ -77,7 +78,7 @@ public class SubmissionGetStudentMsg extends Message {
 
     @Override
     public boolean checkValid() {
-        for (MsgUtil.ProofInfo info : assignedProofs)
+        for (MsgUtil.ProblemInfo info : assignedProblems)
             if (info == null || !info.checkValid())
                 return false;
         for (Map.Entry<Integer, ArrayList<MsgUtil.SubmissionInfo>> sub : submissions.entrySet()) {

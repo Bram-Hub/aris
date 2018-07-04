@@ -7,16 +7,16 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-public class ProofDeleteMsg extends Message {
+public class ProblemDeleteMsg extends Message {
 
     private final int pid;
 
-    public ProofDeleteMsg(int pid) {
+    public ProblemDeleteMsg(int pid) {
         this.pid = pid;
     }
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
-    private ProofDeleteMsg() {
+    private ProblemDeleteMsg() {
         pid = 0;
     }
 
@@ -24,16 +24,16 @@ public class ProofDeleteMsg extends Message {
     public ErrorType processMessage(Connection connection, User user) throws SQLException {
         if (!user.userType.equals(NetUtil.USER_INSTRUCTOR))
             return ErrorType.UNAUTHORIZED;
-        try (PreparedStatement deleteProof = connection.prepareStatement("DELETE FROM proof WHERE id = ?;")) {
-            deleteProof.setInt(1, pid);
-            deleteProof.executeUpdate();
+        try (PreparedStatement deleteProblem = connection.prepareStatement("DELETE FROM problem WHERE id = ?;")) {
+            deleteProblem.setInt(1, pid);
+            deleteProblem.executeUpdate();
         }
         return null;
     }
 
     @Override
     public MessageType getMessageType() {
-        return MessageType.DELETE_PROOF;
+        return MessageType.DELETE_PROBLEM;
     }
 
     @Override

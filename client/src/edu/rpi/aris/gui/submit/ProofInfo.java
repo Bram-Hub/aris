@@ -23,7 +23,7 @@ public class ProofInfo extends AssignmentInfo {
     private Button btn;
     private long timestamp;
 
-    public ProofInfo(MsgUtil.ProofInfo info, boolean isInstructor) {
+    public ProofInfo(MsgUtil.ProblemInfo info, boolean isInstructor) {
         this(info.pid, info.name, info.createdBy, NetUtil.UTCToMilli(info.createdDateUTC), isInstructor);
     }
 

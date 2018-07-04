@@ -30,7 +30,7 @@ public class AssignmentsGetMsg extends Message {
 
     @Override
     public ErrorType processMessage(Connection connection, User user) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement("SELECT a.name, a.due_date, u2.username, a.id FROM assignment a, users u, users u2, class c, user_class uc WHERE uc.user_id = u.id AND uc.class_id = c.id AND a.class_id = uc.class_id AND a.assigned_by = u2.id AND u.username = ? AND c.id = ? GROUP BY a.id, a.name, a.due_date, u2.username ORDER BY a.due_date;")) {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT a.name, a.due_date, u2.username, a.id, FROM assignment a, users u, users u2, class c, user_class uc WHERE uc.user_id = u.id AND uc.class_id = c.id AND a.class_id = uc.class_id AND a.assigned_by = u2.id AND u.username = ? AND c.id = ? GROUP BY a.id, a.name, a.due_date, u2.username ORDER BY a.due_date;")) {
             statement.setString(1, user.username);
             statement.setInt(2, classId);
             try (ResultSet rs = statement.executeQuery()) {

@@ -1,8 +1,8 @@
 package edu.rpi.aris.gui.submit;
 
+import edu.rpi.aris.LibAris;
 import edu.rpi.aris.Main;
 import edu.rpi.aris.gui.GuiConfig;
-import edu.rpi.aris.net.MessageBuildException;
 import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.net.client.Client;
 import edu.rpi.aris.net.message.*;
@@ -37,7 +37,6 @@ import java.text.DateFormat;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Optional;
-import java.util.function.Consumer;
 
 public class AssignmentWindow implements SaveInfoListener {
 
@@ -156,7 +155,7 @@ public class AssignmentWindow implements SaveInfoListener {
             Client client = Main.getClient();
             try {
                 client.connect();
-                ProofEditMsg reply = (ProofEditMsg) new ProofEditMsg(event.getRowValue().getProofId(), event.getNewValue()).sendAndGet(client);
+                ProblemEditMsg reply = (ProblemEditMsg) new ProblemEditMsg(event.getRowValue().getProofId(), event.getNewValue()).sendAndGet(client);
                 if (reply == null)
                     return;
                 event.getRowValue().setName(event.getNewValue());
@@ -413,7 +412,7 @@ public class AssignmentWindow implements SaveInfoListener {
                 saveManager.saveProof(proof, baos, false);
                 byte[] data = baos.toByteArray();
                 client.connect();
-                ProofCreateMsg reply = (ProofCreateMsg) new ProofCreateMsg(name, data).sendAndGet(client);
+                ProblemCreateMsg reply = (ProblemCreateMsg) new ProblemCreateMsg(name, LibAris.getModuleName(), data).sendAndGet(client);
                 if (reply == null)
                     return;
                 proofList.load(true);
@@ -464,7 +463,7 @@ public class AssignmentWindow implements SaveInfoListener {
                     Client client = Main.getClient();
                     try {
                         client.connect();
-                        ProofDeleteMsg reply = (ProofDeleteMsg) new ProofDeleteMsg(proof.getProofId()).sendAndGet(client);
+                        ProblemDeleteMsg reply = (ProblemDeleteMsg) new ProblemDeleteMsg(proof.getProofId()).sendAndGet(client);
                         if (reply == null)
                             return;
                         Platform.runLater(() -> proofList.remove(proof));

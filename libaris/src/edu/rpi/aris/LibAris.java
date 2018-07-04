@@ -55,4 +55,9 @@ public class LibAris {
         rootLogger.addAppender(config.getAppender("fileLogger"), null, null);
         context.updateLoggers();
     }
+
+    public static String getModuleName() {
+        //TODO: remove after switching to modules
+        return "ArisProof";
+    }
 }

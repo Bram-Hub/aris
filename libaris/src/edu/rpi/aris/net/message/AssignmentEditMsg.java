@@ -12,8 +12,8 @@ public class AssignmentEditMsg extends Message {
     private final int cid;
     private final int aid;
     private String newName = null;
-    private ArrayList<Integer> removeProofs = new ArrayList<>();
-    private ArrayList<Integer> addProofs = new ArrayList<>();
+    private ArrayList<Integer> removeProblems = new ArrayList<>();
+    private ArrayList<Integer> addProblems = new ArrayList<>();
     private ZonedDateTime newDueDate = null;
 
     public AssignmentEditMsg(int cid, int aid) {
@@ -34,12 +34,12 @@ public class AssignmentEditMsg extends Message {
         newDueDate = utcTime;
     }
 
-    public void removeProof(int pid) {
-        removeProofs.add(pid);
+    public void removeProblem(int pid) {
+        removeProblems.add(pid);
     }
 
-    public void addProof(int pid) {
-        addProofs.add(pid);
+    public void addProblem(int pid) {
+        addProblems.add(pid);
     }
 
     private void rename(Connection connection) throws SQLException {
@@ -62,11 +62,11 @@ public class AssignmentEditMsg extends Message {
         }
     }
 
-    private void removeProofs(Connection connection) throws SQLException {
-        if (removeProofs.size() == 0)
+    private void removeProblem(Connection connection) throws SQLException {
+        if (removeProblems.size() == 0)
             return;
-        try (PreparedStatement removeAssignment = connection.prepareStatement("DELETE FROM assignment WHERE id = ? AND class_id = ? AND proof_id = ?;")) {
-            for (int pid : removeProofs) {
+        try (PreparedStatement removeAssignment = connection.prepareStatement("DELETE FROM assignment WHERE id = ? AND class_id = ? AND problem_id = ?;")) {
+            for (int pid : removeProblems) {
                 removeAssignment.setInt(1, aid);
                 removeAssignment.setInt(2, cid);
                 removeAssignment.setInt(3, pid);
@@ -76,11 +76,11 @@ public class AssignmentEditMsg extends Message {
         }
     }
 
-    private ErrorType addProofs(Connection connection) throws SQLException {
-        if (addProofs.size() == 0)
+    private ErrorType addProblem(Connection connection) throws SQLException {
+        if (addProblems.size() == 0)
             return null;
         try (PreparedStatement select = connection.prepareStatement("SELECT name, due_date, assigned_by FROM assignment WHERE id = ? AND class_id = ?;");
-             PreparedStatement addProof = connection.prepareStatement("INSERT INTO assignment VALUES(?, ?, ?, ?, ?, ?);")) {
+             PreparedStatement addProblem = connection.prepareStatement("INSERT INTO assignment VALUES(?, ?, ?, ?, ?, ?);")) {
             select.setInt(1, aid);
             select.setInt(2, cid);
             try (ResultSet rs = select.executeQuery()) {
@@ -89,16 +89,16 @@ public class AssignmentEditMsg extends Message {
                 String n = rs.getString(1);
                 Timestamp due_date = rs.getTimestamp(2);
                 String assigned = rs.getString(3);
-                for (int pid : addProofs) {
-                    addProof.setInt(1, aid);
-                    addProof.setInt(2, cid);
-                    addProof.setInt(3, pid);
-                    addProof.setString(4, n);
-                    addProof.setTimestamp(5, due_date);
-                    addProof.setString(6, assigned);
-                    addProof.addBatch();
+                for (int pid : addProblems) {
+                    addProblem.setInt(1, aid);
+                    addProblem.setInt(2, cid);
+                    addProblem.setInt(3, pid);
+                    addProblem.setString(4, n);
+                    addProblem.setTimestamp(5, due_date);
+                    addProblem.setString(6, assigned);
+                    addProblem.addBatch();
                 }
-                addProof.executeBatch();
+                addProblem.executeBatch();
             }
         }
         return null;
@@ -110,8 +110,8 @@ public class AssignmentEditMsg extends Message {
             return ErrorType.UNAUTHORIZED;
         rename(connection);
         changeDue(connection);
-        removeProofs(connection);
-        return addProofs(connection);
+        removeProblem(connection);
+        return addProblem(connection);
     }
 
     @Override
@@ -121,10 +121,10 @@ public class AssignmentEditMsg extends Message {
 
     @Override
     public boolean checkValid() {
-        for (Integer i : removeProofs)
+        for (Integer i : removeProblems)
             if (i == null)
                 return false;
-        for (Integer i : addProofs)
+        for (Integer i : addProblems)
             if (i == null)
                 return false;
         return cid > 0 && aid > 0;

@@ -1,5 +1,6 @@
 package edu.rpi.aris.net.server;
 
+import edu.rpi.aris.LibAris;
 import edu.rpi.aris.net.DBUtils;
 import edu.rpi.aris.net.GradingStatus;
 import edu.rpi.aris.net.NetUtil;
@@ -18,8 +19,8 @@ import java.sql.*;
 
 public class DatabaseManager {
 
-    private static final String[] tables = new String[]{"submission", "assignment", "proof", "user_class", "users", "class", "version"};
-    private static final int DB_SCHEMA_VERSION = 3;
+    private static final String[] tables = new String[]{"submission", "assignment", "problem", "user_class", "users", "class", "version"};
+    private static final int DB_SCHEMA_VERSION = 4;
     private static Logger logger = LogManager.getLogger(DatabaseManager.class);
 
     static {
@@ -96,38 +97,39 @@ public class DatabaseManager {
                     "class_id integer," +
                     "constraint uc_ufk foreign key (user_id) references users(id) on delete cascade," +
                     "constraint uc_cfk foreign key (class_id) references class(id) on delete cascade);");
-            statement.execute("CREATE TABLE IF NOT EXISTS proof" +
+            statement.execute("CREATE TABLE IF NOT EXISTS problem" +
                     "(id serial PRIMARY KEY," +
                     "name text," +
                     "data bytea," +
                     "created_by text," +
-                    "created_on timestamp);");
+                    "created_on timestamp," +
+                    "module_name text);");
             statement.execute("CREATE TABLE IF NOT EXISTS assignment" +
                     "(id integer," +
                     "class_id integer," +
-                    "proof_id integer," +
+                    "problem_id integer," +
                     "name text," +
                     "due_date timestamp," +
                     "assigned_by integer," +
-                    "PRIMARY KEY(id, class_id, proof_id)," +
+                    "PRIMARY KEY(id, class_id, problem_id)," +
                     "constraint a_cfk foreign key (class_id) references class(id) on delete cascade," +
-                    "constraint a_pfk foreign key (proof_id) references proof(id) on delete cascade," +
+                    "constraint a_pfk foreign key (problem_id) references problem(id) on delete cascade," +
                     "constraint a_abfk foreign key (assigned_by) references users(id) on delete set NULL);");
             statement.execute("CREATE TABLE IF NOT EXISTS submission" +
                     "(id serial PRIMARY KEY," +
                     "class_id integer," +
                     "assignment_id integer," +
                     "user_id integer," +
-                    "proof_id integer," +
+                    "problem_id integer," +
                     "data bytea," +
                     "time timestamp," +
                     "short_status text," +
                     "status text," +
                     "check (short_status in ('" + GradingStatus.CORRECT.name() + "', '" + GradingStatus.INCORRECT.name() + "', '" + GradingStatus.GRADING.name() + "', '" + GradingStatus.CORRECT_WARN.name() + "', '" + GradingStatus.INCORRECT_WARN.name() + "'))," +
                     "constraint s_cfk foreign key (class_id) references class(id) on delete cascade," +
-                    "constraint s_afk foreign key (assignment_id, class_id, proof_id) references assignment(id, class_id, proof_id) on delete cascade," +
+                    "constraint s_afk foreign key (assignment_id, class_id, problem_id) references assignment(id, class_id, problem_id) on delete cascade," +
                     "constraint s_ufk foreign key (user_id) references users(id) on delete cascade," +
-                    "constraint s_pfk foreign key (proof_id) references proof(id) on delete cascade);");
+                    "constraint s_pfk foreign key (problem_id) references problem(id) on delete cascade);");
             connection.commit();
             createUser("admin", "ArisAdmin1", NetUtil.USER_INSTRUCTOR);
         } catch (Throwable e) {
@@ -172,6 +174,29 @@ public class DatabaseManager {
             statement.execute("UPDATE proof SET created_by=temp_proof.uname FROM temp_proof WHERE proof.id = temp_proof.id;");
             statement.execute("DROP TABLE temp_proof;");
             statement.execute("UPDATE version SET version=3");
+            connection.commit();
+        } catch (Throwable e) {
+            connection.rollback();
+            logger.error("An error occurred while updating the database schema and the changes were rolled back");
+            throw e;
+        } finally {
+            connection.setAutoCommit(autoCommit);
+        }
+        updateSchema3(connection);
+    }
+
+    private void updateSchema3(Connection connection) throws SQLException {
+        logger.info("Updating database schema to version 4");
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try (Statement statement = connection.createStatement();
+             PreparedStatement updateProblem = connection.prepareStatement("UPDATE problem SET module_name = ?;")) {
+            statement.execute("ALTER TABLE proof RENAME TO problem;");
+            statement.execute("ALTER TABLE problem ADD COLUMN module_name text;");
+            updateProblem.setString(1, LibAris.getModuleName());
+            updateProblem.executeUpdate();
+            statement.execute("ALTER TABLE assignment RENAME proof_id TO problem_id;");
+            statement.execute("ALTER TABLE submission RENAME proof_id TO problem_id;");
             connection.commit();
         } catch (Throwable e) {
             connection.rollback();
