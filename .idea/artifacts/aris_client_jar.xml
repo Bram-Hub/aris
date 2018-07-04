@@ -3,7 +3,7 @@
     <output-path>$PROJECT_DIR$/out/artifacts/aris_client_jar</output-path>
     <root id="root">
       <element id="archive" name="aris-client.jar">
-        <element id="module-output" name="client" />
+        <element id="module-output" name="proof-client" />
         <element id="module-output" name="libaris" />
       </element>
       <element id="directory" name="lib">

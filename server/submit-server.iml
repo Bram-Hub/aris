@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="NewModuleRootManager" inherit-compiler-output="true">
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/../submit-server">
+      <sourceFolder url="file://$MODULE_DIR$/../submit-server/src" isTestSource="false" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="commons-cli:commons-cli:1.4" level="project" />
+    <orderEntry type="library" name="commons-io:commons-io:2.6" level="project" />
+    <orderEntry type="library" name="org.apache.commons:commons-lang3:3.7" level="project" />
+    <orderEntry type="library" name="org.apache.logging.log4j:log4j-api:2.10.0" level="project" />
+    <orderEntry type="library" name="org.apache.logging.log4j:log4j-core:2.10.0" level="project" />
+    <orderEntry type="library" name="org.bouncycastle:bcpkix-jdk15on:1.59" level="project" />
+    <orderEntry type="library" name="org.bouncycastle:bcprov-jdk15on:1.59" level="project" />
+    <orderEntry type="library" name="org.bouncycastle:bctls-jdk15on:1.59" level="project" />
+    <orderEntry type="library" name="org.postgresql:postgresql:42.2.2" level="project" />
+    <orderEntry type="module" module-name="libaris" />
+    <orderEntry type="library" name="org.apache.commons:commons-collections4:4.1" level="project" />
+  </component>
+</module>

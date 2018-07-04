@@ -3,7 +3,7 @@
     <output-path>$PROJECT_DIR$/out/artifacts/aris_server_jar</output-path>
     <root id="root">
       <element id="archive" name="aris-server.jar">
-        <element id="module-output" name="server" />
+        <element id="module-output" name="assign-server" />
         <element id="module-output" name="libaris" />
       </element>
       <element id="directory" name="lib">

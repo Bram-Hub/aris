@@ -2,10 +2,14 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/client/client.iml" filepath="$PROJECT_DIR$/client/client.iml" />
+      <module fileurl="file://$PROJECT_DIR$/assign-client/assign-client.iml" filepath="$PROJECT_DIR$/assign-client/assign-client.iml" />
+      <module fileurl="file://$PROJECT_DIR$/server/assign-server.iml" filepath="$PROJECT_DIR$/server/assign-server.iml" />
       <module fileurl="file://$PROJECT_DIR$/libaris/libaris.iml" filepath="$PROJECT_DIR$/libaris/libaris.iml" />
+      <module fileurl="file://$PROJECT_DIR$/libassign/libassign.iml" filepath="$PROJECT_DIR$/libassign/libassign.iml" />
       <module fileurl="file://$PROJECT_DIR$/packaging/packaging.iml" filepath="$PROJECT_DIR$/packaging/packaging.iml" />
-      <module fileurl="file://$PROJECT_DIR$/server/server.iml" filepath="$PROJECT_DIR$/server/server.iml" />
+      <module fileurl="file://$PROJECT_DIR$/client/client.iml" filepath="$PROJECT_DIR$/client/client.iml" />
+      <module fileurl="file://$PROJECT_DIR$/proof-server/proof-server.iml" filepath="$PROJECT_DIR$/proof-server/proof-server.iml" />
+      <module fileurl="file://$PROJECT_DIR$/aris-service/service.iml" filepath="$PROJECT_DIR$/aris-service/service.iml" />
     </modules>
   </component>
 </project>

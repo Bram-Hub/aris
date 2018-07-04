@@ -78,6 +78,19 @@ For production installation it is recommended to use the latest packages availab
  
 Note: To run the server in self signing mode skip steps 2 and 3 (not recommended)
 
+## Modules
+
+This repository contains several modules for the Aris platform which are as follows:
+
+* **assign-client** - Contains the Aris Assign client side code including an extensible framework to add new client side modules
+* **assign-server** - Contains the Aris Assign server side code including an extensible framework to add new server side modules
+* **libaris** - Contains a logic software library used by Aris Proof
+* **libassign** - Contains common code used by both assign-server and assign-client
+* **packaging** - Contains files for building distribution packages
+* **proof-client** - Contains the client side module of the Aris Proof system
+* **proof-server** - Contains the server side module of the Aris Proof system
+* **service** - Contains the ServiceLoader interfaces required to add new programs to the Aris platform
+
 ## Authors
 
 * **Ryan Cicchiello** - *Developer* - [Github](https://github.com/cicchr)
