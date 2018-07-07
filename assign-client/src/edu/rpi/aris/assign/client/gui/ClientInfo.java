@@ -1,10 +1,9 @@
 package edu.rpi.aris.assign.client.gui;
 
-import edu.rpi.aris.Main;
+import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.client.Client;
+import edu.rpi.aris.assign.client.Config;
 import edu.rpi.aris.assign.message.UserGetMsg;
-import edu.rpi.aris.gui.GuiConfig;
-import edu.rpi.aris.net.NetUtil;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.collections.FXCollections;
@@ -25,7 +24,7 @@ public class ClientInfo {
         isInstructor.set(false);
         courses.clear();
         new Thread(() -> {
-            Client client = Main.getClient();
+            Client client = Client.getInstance();
             try {
                 client.connect();
                 UserGetMsg reply = (UserGetMsg) new UserGetMsg().sendAndGet(client);
@@ -59,8 +58,8 @@ public class ClientInfo {
         isInstructor.set(false);
         courses.clear();
         userId = -1;
-        GuiConfig.getConfigManager().username.set(null);
-        GuiConfig.getConfigManager().setAccessToken(null);
+        Config.USERNAME.setValue(null);
+        Config.ACCESS_TOKEN.setValue(null);
     }
 
     public SimpleBooleanProperty isInstructorProperty() {

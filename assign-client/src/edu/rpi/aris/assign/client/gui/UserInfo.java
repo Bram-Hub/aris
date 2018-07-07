@@ -11,7 +11,7 @@ public class UserInfo extends AssignmentInfo {
 
     private final int userId;
     private final String name;
-    private ArrayList<ProofInfo> children = new ArrayList<>();
+    private ArrayList<ProblemInfo> children = new ArrayList<>();
     private GradingStatus gradingStatus = GradingStatus.NONE;
     private String status, date;
 
@@ -36,13 +36,13 @@ public class UserInfo extends AssignmentInfo {
 
     @Override
     public void addChild(AssignmentInfo info) {
-        if (!(info instanceof ProofInfo))
+        if (!(info instanceof ProblemInfo))
             return;
-        children.add((ProofInfo) info);
+        children.add((ProblemInfo) info);
         int correct = 0;
         boolean warn = false;
         long timestamp = -1;
-        for (ProofInfo p : children) {
+        for (ProblemInfo p : children) {
             if (p.getGradingStatus() == GradingStatus.CORRECT || p.getGradingStatus() == GradingStatus.CORRECT_WARN) {
                 if (correct == 0)
                     warn = false;
@@ -63,7 +63,7 @@ public class UserInfo extends AssignmentInfo {
     }
 
     @Override
-    public ArrayList<ProofInfo> getChildren() {
+    public ArrayList<ProblemInfo> getChildren() {
         return children;
     }
 

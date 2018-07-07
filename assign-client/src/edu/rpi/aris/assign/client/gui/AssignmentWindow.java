@@ -1,16 +1,11 @@
 package edu.rpi.aris.assign.client.gui;
 
-import edu.rpi.aris.LibAris;
-import edu.rpi.aris.Main;
-import edu.rpi.aris.assign.assign.message.*;
+import edu.rpi.aris.assign.LibAssign;
+import edu.rpi.aris.assign.NetUtil;
+import edu.rpi.aris.assign.Problem;
+import edu.rpi.aris.assign.client.Client;
+import edu.rpi.aris.assign.client.Config;
 import edu.rpi.aris.assign.message.*;
-import edu.rpi.aris.gui.GuiConfig;
-import edu.rpi.aris.net.NetUtil;
-import edu.rpi.aris.net.client.Client;
-import edu.rpi.aris.assign.message.*;
-import edu.rpi.aris.proof.Proof;
-import edu.rpi.aris.proof.SaveInfoListener;
-import edu.rpi.aris.proof.SaveManager;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleObjectProperty;
@@ -71,25 +66,25 @@ public class AssignmentWindow implements SaveInfoListener {
     @FXML
     private Tab proofTab;
     @FXML
-    private TableView<ProofInfo> proofTable;
+    private TableView<ProblemInfo> proofTable;
     @FXML
-    private TableColumn<ProofInfo, String> proofName;
+    private TableColumn<ProblemInfo, String> proofName;
     @FXML
-    private TableColumn<ProofInfo, String> proofBy;
+    private TableColumn<ProblemInfo, String> proofBy;
     @FXML
-    private TableColumn<ProofInfo, String> proofOn;
+    private TableColumn<ProblemInfo, String> proofOn;
     @FXML
-    private TableColumn<ProofInfo, Button> proofEdit;
+    private TableColumn<ProblemInfo, Button> proofEdit;
     @FXML
-    private TableColumn<ProofInfo, Button> proofDelete;
+    private TableColumn<ProblemInfo, Button> proofDelete;
     private Stage stage;
     private ClientInfo clientInfo;
-    private ProofList proofList;
+    private ProblemList problemList;
     private SaveManager saveManager;
 
     public AssignmentWindow() {
         clientInfo = new ClientInfo();
-        proofList = new ProofList();
+        problemList = new ProblemList();
         saveManager = new SaveManager(this);
         FXMLLoader loader = new FXMLLoader(AssignmentWindow.class.getResource("assignment_window.fxml"));
         loader.setController(this);
@@ -97,7 +92,7 @@ public class AssignmentWindow implements SaveInfoListener {
         try {
             root = loader.load();
         } catch (IOException e) {
-            Main.instance.showExceptionError(Thread.currentThread(), e, true);
+            LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, true);
             return;
         }
         VBox vbox = new VBox();
@@ -113,28 +108,28 @@ public class AssignmentWindow implements SaveInfoListener {
     @FXML
     private void initialize() {
         lblUsername.textProperty().bind(Bindings.createStringBinding(() -> {
-            String user = GuiConfig.getConfigManager().username.get();
+            String user = Config.USERNAME.getValue();
             boolean isInstructor = clientInfo.isInstructorProperty().get();
             if (user == null)
                 return "Not logged in";
             return user + " (" + (isInstructor ? NetUtil.USER_INSTRUCTOR : NetUtil.USER_STUDENT) + ")";
-        }, clientInfo.isInstructorProperty(), GuiConfig.getConfigManager().username));
+        }, clientInfo.isInstructorProperty(), Config.USERNAME.getProperty()));
         Bindings.bindContent(classes.getItems(), clientInfo.getCourses());
         classes.getSelectionModel().selectedItemProperty().addListener((observableValue, oldCourse, newCourse) -> loadAssignments(newCourse, false));
         classes.visibleProperty().bind(clientInfo.loadedProperty());
         classes.managedProperty().bind(clientInfo.loadedProperty());
         lblClass.visibleProperty().bind(clientInfo.loadedProperty());
         lblClass.managedProperty().bind(clientInfo.loadedProperty());
-        login.visibleProperty().bind(Bindings.createBooleanBinding(() -> GuiConfig.getConfigManager().username.get() == null || !clientInfo.loadedProperty().get(), GuiConfig.getConfigManager().username, clientInfo.loadedProperty()));
+        login.visibleProperty().bind(Bindings.createBooleanBinding(() -> Config.USERNAME.getValue() == null || !clientInfo.loadedProperty().get(), Config.USERNAME.getProperty(), clientInfo.loadedProperty()));
         login.managedProperty().bind(login.visibleProperty());
         login.setOnAction(actionEvent -> load(true));
         refreshButton.visibleProperty().bind(clientInfo.loadedProperty());
         refreshButton.managedProperty().bind(clientInfo.loadedProperty());
-        refreshButton.disableProperty().bind(Main.getClient().getConnectionStatusProperty().isNotEqualTo(Client.ConnectionStatus.DISCONNECTED));
+        refreshButton.disableProperty().bind(Client.getInstance().getConnectionStatusProperty().isNotEqualTo(Client.ConnectionStatus.DISCONNECTED));
         refreshButton.setPadding(new Insets(5));
         createAssignment.visibleProperty().bind(clientInfo.isInstructorProperty().and(classes.getSelectionModel().selectedItemProperty().isNotNull()));
         createAssignment.managedProperty().bind(clientInfo.isInstructorProperty().and(classes.getSelectionModel().selectedItemProperty().isNotNull()));
-        loading.visibleProperty().bind(Main.getClient().getConnectionStatusProperty().isNotEqualTo(Client.ConnectionStatus.DISCONNECTED));
+        loading.visibleProperty().bind(Client.getInstance().getConnectionStatusProperty().isNotEqualTo(Client.ConnectionStatus.DISCONNECTED));
         loading.managedProperty().bind(loading.visibleProperty());
         clientInfo.isInstructorProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue) {
@@ -150,11 +145,11 @@ public class AssignmentWindow implements SaveInfoListener {
         proofTab.disableProperty().bind(clientInfo.isInstructorProperty().not());
         tabPane.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue == proofTab)
-                proofList.load(false);
+                problemList.load(false);
         });
         proofName.setCellValueFactory(param -> param.getValue().nameProperty());
         proofName.setOnEditCommit(event -> new Thread(() -> {
-            Client client = Main.getClient();
+            Client client = Client.getInstance();
             try {
                 client.connect();
                 ProblemEditMsg reply = (ProblemEditMsg) new ProblemEditMsg(event.getRowValue().getProofId(), event.getNewValue()).sendAndGet(client);
@@ -179,17 +174,17 @@ public class AssignmentWindow implements SaveInfoListener {
         proofOn.setStyle("-fx-alignment: CENTER;");
         proofEdit.setCellValueFactory(param -> {
             Button btn = new Button("View/Edit");
-            btn.setOnAction(event -> editProof(param.getValue()));
+            btn.setOnAction(event -> editProblem(param.getValue()));
             return new SimpleObjectProperty<>(btn);
         });
         proofEdit.setStyle("-fx-alignment: CENTER;");
         proofDelete.setCellValueFactory(param -> {
             Button btn = new Button("Delete");
-            btn.setOnAction(event -> deleteProof(param.getValue()));
+            btn.setOnAction(event -> deleteProblem(param.getValue()));
             return new SimpleObjectProperty<>(btn);
         });
         proofDelete.setStyle("-fx-alignment: CENTER;");
-        Bindings.bindContent(proofTable.getItems(), proofList.getProofs());
+        Bindings.bindContent(proofTable.getItems(), problemList.getProofs());
     }
 
     public void loadAssignments(Course newCourse, boolean reload) {
@@ -197,7 +192,7 @@ public class AssignmentWindow implements SaveInfoListener {
             assignments.getPanes().clear();
             if (newCourse == null)
                 return;
-            GuiConfig.getConfigManager().selectedCourseId.set(newCourse.getId());
+            Config.SELECTED_COURSE_ID.setValue(newCourse.getId());
             newCourse.load(() -> Platform.runLater(() -> {
                 for (Assignment assignment : newCourse.getAssignments())
                     assignments.getPanes().add(assignment.getPane());
@@ -241,7 +236,7 @@ public class AssignmentWindow implements SaveInfoListener {
     private void changePassword(String username) {
         Dialog<Pair<String, String>> enterPass = new Dialog<>();
         enterPass.setTitle("Change Password");
-        enterPass.setHeaderText("Change password for user: " + (username == null ? GuiConfig.getConfigManager().username.get() : username));
+        enterPass.setHeaderText("Change password for user: " + (username == null ? Config.USERNAME.getValue() : username));
         GridPane gridPane = new GridPane();
         PasswordField oldPass = new PasswordField();
         oldPass.setPromptText("Current Password");
@@ -272,7 +267,7 @@ public class AssignmentWindow implements SaveInfoListener {
             //TODO get instructor's password
         }
         new Thread(() -> {
-            Client client = Main.getClient();
+            Client client = Client.getInstance();
             try {
                 client.connect();
                 String type = clientInfo.isInstructorProperty().get() ? NetUtil.USER_INSTRUCTOR : NetUtil.USER_STUDENT;
@@ -303,7 +298,7 @@ public class AssignmentWindow implements SaveInfoListener {
         String name;
         if (result.isPresent() && (name = result.get()).length() > 0) {
             new Thread(() -> {
-                Client client = Main.getClient();
+                Client client = Client.getInstance();
                 int classId = -1;
                 try {
                     client.connect();
@@ -353,7 +348,7 @@ public class AssignmentWindow implements SaveInfoListener {
         Optional<ButtonType> response = alert.showAndWait();
         if (response.isPresent() && response.get() == ButtonType.YES) {
             new Thread(() -> {
-                Client client = Main.getClient();
+                Client client = Client.getInstance();
                 try {
                     client.connect();
                     ClassDeleteMsg reply = (ClassDeleteMsg) new ClassDeleteMsg(course.getId()).sendAndGet(client);
@@ -372,7 +367,7 @@ public class AssignmentWindow implements SaveInfoListener {
     public void load(boolean reload) {
         Tab selected = tabPane.getSelectionModel().getSelectedItem();
         clientInfo.load(() -> Platform.runLater(() -> {
-            selectClass(GuiConfig.getConfigManager().selectedCourseId.get());
+            selectClass(Config.SELECTED_COURSE_ID.getValue());
             new Thread(() -> {
                 if (clientInfo.isInstructorProperty().get())
                     Platform.runLater(() -> tabPane.getSelectionModel().select(selected));
@@ -407,17 +402,17 @@ public class AssignmentWindow implements SaveInfoListener {
         return clientInfo;
     }
 
-    private void addProof(String name, Proof proof) {
+    private void addProblem(String name, Problem problem) {
         new Thread(() -> {
-            Client client = Main.getClient();
+            Client client = Client.getInstance();
             try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-                saveManager.saveProof(proof, baos, false);
+                saveManager.saveProof(problem, baos, false);
                 byte[] data = baos.toByteArray();
                 client.connect();
                 ProblemCreateMsg reply = (ProblemCreateMsg) new ProblemCreateMsg(name, LibAris.getModuleName(), data).sendAndGet(client);
                 if (reply == null)
                     return;
-                proofList.load(true);
+                problemList.load(true);
             } catch (IOException | TransformerException e) {
                 System.out.println("Error");
                 //TODO
@@ -427,10 +422,10 @@ public class AssignmentWindow implements SaveInfoListener {
         }).start();
     }
 
-    private void addAssignment(String name, LocalDateTime date, Collection<ProofInfo> proofs) {
+    private void addAssignment(String name, LocalDateTime date, Collection<ProblemInfo> proofs) {
         Course course = classes.getSelectionModel().getSelectedItem();
         new Thread(() -> {
-            Client client = Main.getClient();
+            Client client = Client.getInstance();
             try {
                 client.connect();
                 AssignmentCreateMsg msg = new AssignmentCreateMsg(classes.getSelectionModel().getSelectedItem().getId(), name, NetUtil.localToUTC(date));
@@ -447,7 +442,7 @@ public class AssignmentWindow implements SaveInfoListener {
         }).start();
     }
 
-    private void deleteProof(ProofInfo proof) {
+    private void deleteProblem(ProblemInfo proof) {
         Alert alert = new Alert(Alert.AlertType.WARNING);
         alert.initOwner(stage);
         alert.initModality(Modality.WINDOW_MODAL);
@@ -462,13 +457,13 @@ public class AssignmentWindow implements SaveInfoListener {
         alert.showAndWait().ifPresent(type -> {
             if (type == ButtonType.YES) {
                 new Thread(() -> {
-                    Client client = Main.getClient();
+                    Client client = Client.getInstance();
                     try {
                         client.connect();
                         ProblemDeleteMsg reply = (ProblemDeleteMsg) new ProblemDeleteMsg(proof.getProofId()).sendAndGet(client);
                         if (reply == null)
                             return;
-                        Platform.runLater(() -> proofList.remove(proof));
+                        Platform.runLater(() -> problemList.remove(proof));
                     } catch (IOException e) {
                         System.out.println("Connection error");
                         //TODO
@@ -480,19 +475,19 @@ public class AssignmentWindow implements SaveInfoListener {
         });
     }
 
-    private void editProof(ProofInfo proof) {
+    private void editProblem(ProblemInfo proof) {
         //TODO
     }
 
     @FXML
-    private void createProof() {
+    private void createProblem() {
         try {
-            AddProofDialog dialog = new AddProofDialog(stage);
-            Optional<Pair<String, Proof>> result = dialog.showAndWait();
-            result.ifPresent(r -> addProof(r.getKey(), r.getValue()));
+            AddProblemDialog dialog = new AddProblemDialog(stage);
+            Optional<Pair<String, Problem>> result = dialog.showAndWait();
+            result.ifPresent(r -> addProblem(r.getKey(), r.getValue()));
         } catch (IOException e) {
             logger.error("Failed to show add proof dialog");
-            Main.instance.showExceptionError(Thread.currentThread(), e, false);
+            LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, false);
         }
     }
 
@@ -508,11 +503,11 @@ public class AssignmentWindow implements SaveInfoListener {
 
     @FXML
     private void createAssignment() throws IOException {
-        proofList.load(false);
-        AssignmentDialog dialog = new AssignmentDialog(stage, proofList);
-        Optional<Triple<String, LocalDateTime, Collection<ProofInfo>>> result = dialog.showAndWait();
+        problemList.load(false);
+        AssignmentDialog dialog = new AssignmentDialog(stage, problemList);
+        Optional<Triple<String, LocalDateTime, Collection<ProblemInfo>>> result = dialog.showAndWait();
         if (result.isPresent()) {
-            Triple<String, LocalDateTime, Collection<ProofInfo>> r = result.get();
+            Triple<String, LocalDateTime, Collection<ProblemInfo>> r = result.get();
             addAssignment(r.getLeft(), r.getMiddle(), r.getRight());
         }
     }
@@ -572,7 +567,7 @@ public class AssignmentWindow implements SaveInfoListener {
         return stage;
     }
 
-    public ProofList getProofList() {
-        return proofList;
+    public ProblemList getProblemList() {
+        return problemList;
     }
 }

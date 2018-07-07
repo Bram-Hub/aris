@@ -1,10 +1,9 @@
 package edu.rpi.aris.assign.client.gui;
 
-import edu.rpi.aris.Main;
+import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.client.Client;
-import edu.rpi.aris.assign.message.MsgUtil;
 import edu.rpi.aris.assign.message.AssignmentsGetMsg;
-import edu.rpi.aris.net.NetUtil;
+import edu.rpi.aris.assign.message.MsgUtil;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.collections.FXCollections;
@@ -32,7 +31,7 @@ public class Course {
         assignments.clear();
 //        Main.getClient().processMessage(new AssignmentsGetMsg(id), this);
         new Thread(() -> {
-            Client client = Main.getClient();
+            Client client = Client.getInstance();
             try {
                 client.connect();
                 AssignmentsGetMsg msg = new AssignmentsGetMsg(id);

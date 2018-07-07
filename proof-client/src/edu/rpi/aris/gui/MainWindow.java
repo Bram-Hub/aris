@@ -1,12 +1,11 @@
 package edu.rpi.aris.gui;
 
 import edu.rpi.aris.Main;
-import edu.rpi.aris.proof.SaveInfoListener;
+import edu.rpi.aris.assign.EditMode;
 import edu.rpi.aris.gui.event.GoalChangedEvent;
 import edu.rpi.aris.gui.event.LineChangedEvent;
 import edu.rpi.aris.gui.event.PremiseChangeEvent;
 import edu.rpi.aris.gui.event.RuleChangeEvent;
-import edu.rpi.aris.gui.submit.AssignmentWindow;
 import edu.rpi.aris.proof.*;
 import edu.rpi.aris.rules.Rule;
 import javafx.application.Platform;
@@ -344,7 +343,8 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener {
 
         MenuItem showAssignments = new MenuItem("Show assignments window");
 
-        showAssignments.setOnAction(actionEvent -> AssignmentWindow.instance.show());
+        //TODO: this should be a service callback
+//        showAssignments.setOnAction(actionEvent -> AssignmentWindow.instance.show());
 
         submit.getItems().addAll(showAssignments);
 

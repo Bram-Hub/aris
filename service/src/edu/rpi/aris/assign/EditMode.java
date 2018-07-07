@@ -1,4 +1,4 @@
-package edu.rpi.aris.gui;
+package edu.rpi.aris.assign;
 
 public enum EditMode {
 

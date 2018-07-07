@@ -23,11 +23,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-public class AssignmentDialog extends Dialog<Triple<String, LocalDateTime, Collection<ProofInfo>>> {
+public class AssignmentDialog extends Dialog<Triple<String, LocalDateTime, Collection<ProblemInfo>>> {
 
     private static final Pattern timePattern = Pattern.compile("(?i)(?<hour>1[0-2]|0?[1-9]):(?<min>[0-5][0-9]) *?(?<ap>AM|PM)");
     private static final SimpleDateFormat timeFormat = new SimpleDateFormat("h:mm a");
-    private final ProofList availableProofs;
+    private final ProblemList availableProofs;
     @FXML
     private TextField nameField;
     @FXML
@@ -39,7 +39,7 @@ public class AssignmentDialog extends Dialog<Triple<String, LocalDateTime, Colle
     private Button okBtn;
     private boolean edit = false;
 
-    public AssignmentDialog(Window parent, ProofList availableProofs) throws IOException {
+    public AssignmentDialog(Window parent, ProblemList availableProofs) throws IOException {
         this.availableProofs = availableProofs;
         initModality(Modality.WINDOW_MODAL);
         initOwner(parent);
@@ -69,15 +69,15 @@ public class AssignmentDialog extends Dialog<Triple<String, LocalDateTime, Colle
                     hour = 0;
             }
             LocalDateTime date = dueDate.getValue().atTime(hour, min);
-            List<ProofInfo> list = proofBox.getChildren().stream().map(node -> (ProofInfo) ((ComboBox) ((HBox) node).getChildren().get(0)).getSelectionModel().getSelectedItem()).filter(Objects::nonNull).collect(Collectors.toList());
+            List<ProblemInfo> list = proofBox.getChildren().stream().map(node -> (ProblemInfo) ((ComboBox) ((HBox) node).getChildren().get(0)).getSelectionModel().getSelectedItem()).filter(Objects::nonNull).collect(Collectors.toList());
             return new ImmutableTriple<>(name, date, list);
         });
     }
 
-    public AssignmentDialog(Window parent, ProofList availableProofs, String name, Date dueDate, Set<ProofInfo> proofs) throws IOException {
+    public AssignmentDialog(Window parent, ProblemList availableProofs, String name, Date dueDate, Set<ProblemInfo> proofs) throws IOException {
         this(parent, availableProofs);
         proofBox.getChildren().clear();
-        for (ProofInfo info : proofs)
+        for (ProblemInfo info : proofs)
             addSelector().getSelectionModel().select(info);
         nameField.setText(name);
         timeInput.setText(timeFormat.format(dueDate));
@@ -85,18 +85,18 @@ public class AssignmentDialog extends Dialog<Triple<String, LocalDateTime, Colle
         edit = true;
     }
 
-    private ComboBox<ProofInfo> addSelector() {
+    private ComboBox<ProblemInfo> addSelector() {
         HBox box = new HBox(5);
-        ComboBox<ProofInfo> combo = new ComboBox<>();
+        ComboBox<ProblemInfo> combo = new ComboBox<>();
         combo.setPromptText("Select Proof");
         combo.setItems(availableProofs.getProofs());
         combo.setMaxWidth(Double.MAX_VALUE);
-        combo.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<ProofInfo>() {
+        combo.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<ProblemInfo>() {
 
             boolean added = false;
 
             @Override
-            public void changed(ObservableValue<? extends ProofInfo> observable, ProofInfo oldValue, ProofInfo newValue) {
+            public void changed(ObservableValue<? extends ProblemInfo> observable, ProblemInfo oldValue, ProblemInfo newValue) {
                 if (oldValue == null && !added) {
                     addSelector();
                     added = true;

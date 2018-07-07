@@ -1,5 +1,6 @@
 package edu.rpi.aris.gui;
 
+import edu.rpi.aris.assign.EditMode;
 import edu.rpi.aris.gui.event.SentenceChangeEvent;
 import edu.rpi.aris.proof.Goal;
 import edu.rpi.aris.proof.Line;

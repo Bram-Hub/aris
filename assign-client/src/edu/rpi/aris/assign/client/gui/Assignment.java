@@ -1,10 +1,7 @@
 package edu.rpi.aris.assign.client.gui;
 
-import edu.rpi.aris.Main;
+import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.client.Client;
-import edu.rpi.aris.assign.assign.message.*;
-import edu.rpi.aris.assign.message.*;
-import edu.rpi.aris.net.NetUtil;
 import edu.rpi.aris.assign.message.*;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -38,7 +35,7 @@ public class Assignment {
     private VBox tableBox = new VBox(5);
     private SimpleBooleanProperty loaded = new SimpleBooleanProperty(false);
     private ArrayList<AssignmentInfo> rootNodes = new ArrayList<>();
-    private HashSet<ProofInfo> proofs = new HashSet<>();
+    private HashSet<ProblemInfo> proofs = new HashSet<>();
 
     public Assignment(String name, long dueDate, String assignedBy, int id, int classId, Course course) {
         this.course = course;
@@ -65,7 +62,7 @@ public class Assignment {
         rootNodes.clear();
         tableBox.getChildren().clear();
         new Thread(() -> {
-            Client client = Main.getClient();
+            Client client = Client.getInstance();
             try {
                 client.connect();
                 if (AssignmentWindow.instance.getClientInfo().isInstructorProperty().get())
@@ -141,7 +138,7 @@ public class Assignment {
             if (type != ButtonType.YES)
                 return;
             new Thread(() -> {
-                Client client = Main.getClient();
+                Client client = Client.getInstance();
                 try {
                     client.connect();
                     AssignmentDeleteMsg msg = (AssignmentDeleteMsg) new AssignmentDeleteMsg(classId, id).sendAndGet(client);
@@ -158,36 +155,36 @@ public class Assignment {
     }
 
     private void editAssignment() {
-        ProofList proofList = AssignmentWindow.instance.getProofList();
-        proofList.load(false);
+        ProblemList problemList = AssignmentWindow.instance.getProblemList();
+        problemList.load(false);
         try {
-            AssignmentDialog dialog = new AssignmentDialog(AssignmentWindow.instance.getStage(), proofList, name.get(), new Date(dueDate.get()), proofs);
-            Optional<Triple<String, LocalDateTime, Collection<ProofInfo>>> result = dialog.showAndWait();
+            AssignmentDialog dialog = new AssignmentDialog(AssignmentWindow.instance.getStage(), problemList, name.get(), new Date(dueDate.get()), proofs);
+            Optional<Triple<String, LocalDateTime, Collection<ProblemInfo>>> result = dialog.showAndWait();
             if (!result.isPresent())
                 return;
-            Triple<String, LocalDateTime, Collection<ProofInfo>> info = result.get();
+            Triple<String, LocalDateTime, Collection<ProblemInfo>> info = result.get();
             String newName = info.getLeft().equals(name.get()) ? null : info.getLeft();
             ZonedDateTime newDueDate = info.getMiddle().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() == dueDate.get() ? null : NetUtil.localToUTC(info.getMiddle());
-            Collection<ProofInfo> newProofs = info.getRight();
-            Set<ProofInfo> remove = new HashSet<>();
-            Set<ProofInfo> add = new HashSet<>();
-            for (ProofInfo p : newProofs)
+            Collection<ProblemInfo> newProofs = info.getRight();
+            Set<ProblemInfo> remove = new HashSet<>();
+            Set<ProblemInfo> add = new HashSet<>();
+            for (ProblemInfo p : newProofs)
                 if (!proofs.contains(p))
                     add.add(p);
-            for (ProofInfo p : proofs)
+            for (ProblemInfo p : proofs)
                 if (!newProofs.contains(p))
                     remove.add(p);
             if (newName != null || newDueDate != null || remove.size() > 0 || add.size() > 0) {
                 new Thread(() -> {
-                    Client client = Main.getClient();
+                    Client client = Client.getInstance();
                     try {
                         client.connect();
                         AssignmentEditMsg msg = new AssignmentEditMsg(classId, id);
                         msg.setName(newName);
                         msg.setNewDueDate(newDueDate);
-                        for (ProofInfo p : remove)
+                        for (ProblemInfo p : remove)
                             msg.removeProblem(p.getProofId());
-                        for (ProofInfo p : add)
+                        for (ProblemInfo p : add)
                             msg.addProblem(p.getProofId());
                         msg = (AssignmentEditMsg) msg.sendAndGet(client);
                         if(msg == null)
@@ -227,12 +224,12 @@ public class Assignment {
         if (reply == null)
             return;
         for (MsgUtil.ProblemInfo info : reply.getAssignedProblems()) {
-            ProofInfo proofInfo = new ProofInfo(info, false);
-            rootNodes.add(proofInfo);
+            ProblemInfo problemInfo = new ProblemInfo(info, false);
+            rootNodes.add(problemInfo);
             int i = 0;
             for (MsgUtil.SubmissionInfo sInfo : reply.getSubmissions().get(info.pid)) {
                 ++i;
-                proofInfo.addChild(new SubmissionInfo(sInfo, "Submission " + i, false));
+                problemInfo.addChild(new SubmissionInfo(sInfo, "Submission " + i, false));
             }
         }
     }
@@ -249,8 +246,8 @@ public class Assignment {
                 if(!pInfo.checkValid())
                     continue;
                 if (!doneProofs)
-                    proofs.add(new ProofInfo(pInfo, true));
-                ProofInfo proof = new ProofInfo(pInfo, true);
+                    proofs.add(new ProblemInfo(pInfo, true));
+                ProblemInfo proof = new ProblemInfo(pInfo, true);
                 user.addChild(proof);
                 int i = 0;
                 for (MsgUtil.SubmissionInfo sInfo : reply.getSubmissions().get(user.getUserId()).get(pInfo.pid)) {

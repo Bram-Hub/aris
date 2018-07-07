@@ -1,6 +1,5 @@
 package edu.rpi.aris.assign.client.gui;
 
-import edu.rpi.aris.Main;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.message.MsgUtil;
 import edu.rpi.aris.assign.message.ProblemsGetMsg;
@@ -13,11 +12,11 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 
-public class ProofList {
+public class ProblemList {
 
-    private static final Logger logger = LogManager.getLogger(ProofList.class);
+    private static final Logger logger = LogManager.getLogger(ProblemList.class);
     private SimpleBooleanProperty loaded = new SimpleBooleanProperty(false);
-    private ObservableList<ProofInfo> proofs = FXCollections.observableArrayList();
+    private ObservableList<ProblemInfo> proofs = FXCollections.observableArrayList();
     private boolean listenerAdded = false;
 
     private synchronized void addListener() {
@@ -40,14 +39,14 @@ public class ProofList {
             return;
         proofs.clear();
         new Thread(() -> {
-            Client client = Main.getClient();
+            Client client = Client.getInstance();
             try {
                 client.connect();
                 ProblemsGetMsg msg = (ProblemsGetMsg) new ProblemsGetMsg().sendAndGet(client);
                 if (msg == null)
                     return;
                 for (MsgUtil.ProblemInfo proof : msg.getProblems())
-                    Platform.runLater(() -> proofs.add(new ProofInfo(proof, true)));
+                    Platform.runLater(() -> proofs.add(new ProblemInfo(proof, true)));
                 Platform.runLater(() -> loaded.set(true));
             } catch (IOException e) {
                 Platform.runLater(() -> {
@@ -62,11 +61,11 @@ public class ProofList {
         }).start();
     }
 
-    public ObservableList<ProofInfo> getProofs() {
+    public ObservableList<ProblemInfo> getProofs() {
         return proofs;
     }
 
-    public void remove(ProofInfo proof) {
+    public void remove(ProblemInfo proof) {
         proofs.remove(proof);
     }
 }

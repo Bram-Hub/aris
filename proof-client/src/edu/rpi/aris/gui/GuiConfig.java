@@ -1,7 +1,5 @@
 package edu.rpi.aris.gui;
 
-import edu.rpi.aris.assign.ArisAssign;
-import edu.rpi.aris.Main;
 import edu.rpi.aris.rules.RuleList;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -20,35 +18,19 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Pair;
 import org.apache.commons.collections4.BidiMap;
 import org.apache.commons.collections4.bidimap.DualHashBidiMap;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.bouncycastle.asn1.x500.RDN;
-import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.asn1.x500.style.BCStyle;
-import org.bouncycastle.asn1.x500.style.IETFUtils;
-import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
 
-import javax.xml.bind.DatatypeConverter;
 import java.io.File;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.cert.CertificateEncodingException;
-import java.security.cert.X509Certificate;
-import java.text.DateFormat;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.prefs.Preferences;
@@ -92,10 +74,12 @@ public class GuiConfig {
     private static final String LAST_SAVE_DIR = "LAST_SAVE_DIR";
     private static final String ACCESS_TOKEN = "ACCESS_TOKEN";
     private static final String AND_KEY = "AND_KEY";
-    private static final String SERVER_ADDRESS = "SERVER_ADDRESS";
-    public static final SimpleStringProperty serverAddress = new SimpleStringProperty(preferences.get(SERVER_ADDRESS, null));
-    private static final String SERVER_PORT = "SERVER_PORT";
-    public static final SimpleIntegerProperty serverPort = new SimpleIntegerProperty(preferences.getInt(SERVER_PORT, ArisAssign.DEFAULT_PORT));
+
+//    private static final String SERVER_ADDRESS = "SERVER_ADDRESS";
+//    public static final SimpleStringProperty serverAddress = new SimpleStringProperty(preferences.get(SERVER_ADDRESS, null));
+//    private static final String SERVER_PORT = "SERVER_PORT";
+//    public static final SimpleIntegerProperty serverPort = new SimpleIntegerProperty(preferences.getInt(SERVER_PORT, ArisAssign.DEFAULT_PORT));
+
     private static final String[][] defaultKeyMap = new String[][]{{preferences.get(AND_KEY, "&"), "∧"},
             {preferences.get(OR_KEY, "|"), "∨"},
             {preferences.get(NOT_KEY, "~"), "¬"},
@@ -170,28 +154,28 @@ public class GuiConfig {
     private CheckBox oprCheckBox;
     @FXML
     private CheckBox ruleCheckBox;
-    @FXML
-    private TextField serverAddressText;
-    @FXML
-    private TableView<X509Certificate> certificateTable;
-    @FXML
-    private TableColumn<X509Certificate, String> addressColumn;
-    @FXML
-    private TableColumn<X509Certificate, Label> fingerprintColumn;
-    @FXML
-    private TableColumn<X509Certificate, String> expirationColumn;
-    @FXML
-    private TableColumn<X509Certificate, Button> removeColumn;
-    @FXML
-    private Button importButton;
+//    @FXML
+//    private TextField serverAddressText;
+//    @FXML
+//    private TableView<X509Certificate> certificateTable;
+//    @FXML
+//    private TableColumn<X509Certificate, String> addressColumn;
+//    @FXML
+//    private TableColumn<X509Certificate, Label> fingerprintColumn;
+//    @FXML
+//    private TableColumn<X509Certificate, String> expirationColumn;
+//    @FXML
+//    private TableColumn<X509Certificate, Button> removeColumn;
+//    @FXML
+//    private Button importButton;
 
     private BidiMap<String, String> aliasKeyMap = new DualHashBidiMap<>();
     private HashMap<String, TextField> aliasMap = new HashMap<>();
     private HashMap<SimpleObjectProperty<KeyCombination>, Pair<KeyCombination, Button>> shortcutMap = new HashMap<>();
-    private HashSet<String> removeCerts = new HashSet<>();
+//    private HashSet<String> removeCerts = new HashSet<>();
     private Stage stage;
     private File saveDirectory = new File(preferences.get(LAST_SAVE_DIR, System.getProperty("user.home")));
-    private String accessToken = preferences.get(ACCESS_TOKEN, null);
+//    private String accessToken = preferences.get(ACCESS_TOKEN, null);
     @SuppressWarnings("unchecked")
     private SimpleObjectProperty<KeyCombination>[] accelerators = new SimpleObjectProperty[]{newProofLineKey, deleteProofLineKey,
             startSubProofKey, endSubProofKey, addGoalKey, newPremiseKey, verifyLineKey, verifyProofKey, newProofKey,
@@ -315,89 +299,89 @@ public class GuiConfig {
             box.getChildren().addAll(lbl, separator, btn);
             shortcutBox.getChildren().add(box);
         }
-        serverAddress.addListener((observable, oldValue, newValue) -> {
-            serverAddressText.setText(serverAddress.get() + (serverPort.get() == ArisAssign.DEFAULT_PORT ? "" : ":" + serverPort.get()));
-            preferences.put(SERVER_ADDRESS, newValue);
-        });
-        serverPort.addListener((observable, oldValue, newValue) -> {
-            serverAddressText.setText(serverAddress.get() + (serverPort.get() == ArisAssign.DEFAULT_PORT ? "" : ":" + serverPort.get()));
-            preferences.putInt(SERVER_PORT, newValue.intValue());
-        });
-        addressColumn.setCellValueFactory(param -> {
-            try {
-                JcaX509CertificateHolder holder = new JcaX509CertificateHolder(param.getValue());
-                X500Name name = holder.getSubject();
-                RDN cn = name.getRDNs(BCStyle.CN)[0];
-                String dn = IETFUtils.valueToString(cn.getFirst().getValue());
-                return new SimpleStringProperty(dn);
-            } catch (CertificateEncodingException e) {
-                logger.error("Failed to get certificate dn", e);
-            }
-            return new SimpleStringProperty("Error");
-        });
-        addressColumn.setStyle("-fx-alignment: CENTER;");
-        fingerprintColumn.setCellValueFactory(param -> {
-            X509Certificate cert = param.getValue();
-            try {
-                String fingerprint = DatatypeConverter.printHexBinary(MessageDigest.getInstance("SHA-1", "BC").digest(cert.getEncoded())).toUpperCase();
-                fingerprint = fingerprint.replaceAll("(.{2})", ":$1").substring(1);
-                Label lbl = new Label(fingerprint);
-                lbl.setTooltip(new Tooltip(fingerprint));
-                return new SimpleObjectProperty<>(lbl);
-            } catch (NoSuchAlgorithmException | NoSuchProviderException | CertificateEncodingException e) {
-                logger.error("Failed to generate certificate fingerprint", e);
-            }
-            return new SimpleObjectProperty<>(new Label("Error"));
-        });
-        fingerprintColumn.setStyle("-fx-alignment: CENTER;");
-        expirationColumn.setCellValueFactory(param -> {
-            X509Certificate cert = param.getValue();
-            Date expiration = cert.getNotAfter();
-            if (expiration.before(new Date()))
-                return new SimpleStringProperty("Expired");
-            return new SimpleStringProperty(DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(expiration));
-        });
-        expirationColumn.setStyle("-fx-alignment: CENTER;");
-        removeColumn.setCellValueFactory(param -> {
-            try {
-                JcaX509CertificateHolder holder = new JcaX509CertificateHolder(param.getValue());
-                X500Name name = holder.getSubject();
-                RDN cn = name.getRDNs(BCStyle.CN)[0];
-                String dn = IETFUtils.valueToString(cn.getFirst().getValue());
-                Button btn = new Button("Remove");
-                btn.setOnAction(actionEvent -> {
-                    removeCerts.add(dn);
-                    certificateTable.getItems().remove(param.getValue());
-                });
-                return new SimpleObjectProperty<>(btn);
-            } catch (CertificateEncodingException e) {
-                logger.error("Failed to get certificate dn", e);
-            }
-            return new SimpleObjectProperty<>(null);
-        });
-        removeColumn.setStyle("-fx-alignment: CENTER;");
-        importButton.setOnAction(actionEvent -> {
-            FileChooser chooser = new FileChooser();
-            FileChooser.ExtensionFilter pemFilter = new FileChooser.ExtensionFilter("PEM File", "*.pem");
-            FileChooser.ExtensionFilter allFilter = new FileChooser.ExtensionFilter("All Files", "*");
-            chooser.getExtensionFilters().setAll(pemFilter, allFilter);
-            chooser.setSelectedExtensionFilter(pemFilter);
-            chooser.setTitle("Import server certificate");
-            chooser.setInitialDirectory(saveDirectory);
-            File file = chooser.showOpenDialog(stage);
-            if (file != null && file.exists()) {
-                saveDirectory = file.getParentFile();
-                if (!Main.getClient().importSelfSignedCertificate(file)) {
-                    Alert alert = new Alert(Alert.AlertType.WARNING);
-                    alert.initOwner(stage);
-                    alert.initModality(Modality.WINDOW_MODAL);
-                    alert.setTitle("Import Failed");
-                    alert.setHeaderText("Failed to import given certificate");
-                    alert.showAndWait();
-                }
-                certificateTable.getItems().setAll(Main.getClient().getSelfSignedCertificates());
-            }
-        });
+//        serverAddress.addListener((observable, oldValue, newValue) -> {
+//            serverAddressText.setText(serverAddress.get() + (serverPort.get() == ArisAssign.DEFAULT_PORT ? "" : ":" + serverPort.get()));
+//            preferences.put(SERVER_ADDRESS, newValue);
+//        });
+//        serverPort.addListener((observable, oldValue, newValue) -> {
+//            serverAddressText.setText(serverAddress.get() + (serverPort.get() == ArisAssign.DEFAULT_PORT ? "" : ":" + serverPort.get()));
+//            preferences.putInt(SERVER_PORT, newValue.intValue());
+//        });
+//        addressColumn.setCellValueFactory(param -> {
+//            try {
+//                JcaX509CertificateHolder holder = new JcaX509CertificateHolder(param.getValue());
+//                X500Name name = holder.getSubject();
+//                RDN cn = name.getRDNs(BCStyle.CN)[0];
+//                String dn = IETFUtils.valueToString(cn.getFirst().getValue());
+//                return new SimpleStringProperty(dn);
+//            } catch (CertificateEncodingException e) {
+//                logger.error("Failed to get certificate dn", e);
+//            }
+//            return new SimpleStringProperty("Error");
+//        });
+//        addressColumn.setStyle("-fx-alignment: CENTER;");
+//        fingerprintColumn.setCellValueFactory(param -> {
+//            X509Certificate cert = param.getValue();
+//            try {
+//                String fingerprint = DatatypeConverter.printHexBinary(MessageDigest.getInstance("SHA-1", "BC").digest(cert.getEncoded())).toUpperCase();
+//                fingerprint = fingerprint.replaceAll("(.{2})", ":$1").substring(1);
+//                Label lbl = new Label(fingerprint);
+//                lbl.setTooltip(new Tooltip(fingerprint));
+//                return new SimpleObjectProperty<>(lbl);
+//            } catch (NoSuchAlgorithmException | NoSuchProviderException | CertificateEncodingException e) {
+//                logger.error("Failed to generate certificate fingerprint", e);
+//            }
+//            return new SimpleObjectProperty<>(new Label("Error"));
+//        });
+//        fingerprintColumn.setStyle("-fx-alignment: CENTER;");
+//        expirationColumn.setCellValueFactory(param -> {
+//            X509Certificate cert = param.getValue();
+//            Date expiration = cert.getNotAfter();
+//            if (expiration.before(new Date()))
+//                return new SimpleStringProperty("Expired");
+//            return new SimpleStringProperty(DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(expiration));
+//        });
+//        expirationColumn.setStyle("-fx-alignment: CENTER;");
+//        removeColumn.setCellValueFactory(param -> {
+//            try {
+//                JcaX509CertificateHolder holder = new JcaX509CertificateHolder(param.getValue());
+//                X500Name name = holder.getSubject();
+//                RDN cn = name.getRDNs(BCStyle.CN)[0];
+//                String dn = IETFUtils.valueToString(cn.getFirst().getValue());
+//                Button btn = new Button("Remove");
+//                btn.setOnAction(actionEvent -> {
+//                    removeCerts.add(dn);
+//                    certificateTable.getItems().remove(param.getValue());
+//                });
+//                return new SimpleObjectProperty<>(btn);
+//            } catch (CertificateEncodingException e) {
+//                logger.error("Failed to get certificate dn", e);
+//            }
+//            return new SimpleObjectProperty<>(null);
+//        });
+//        removeColumn.setStyle("-fx-alignment: CENTER;");
+//        importButton.setOnAction(actionEvent -> {
+//            FileChooser chooser = new FileChooser();
+//            FileChooser.ExtensionFilter pemFilter = new FileChooser.ExtensionFilter("PEM File", "*.pem");
+//            FileChooser.ExtensionFilter allFilter = new FileChooser.ExtensionFilter("All Files", "*");
+//            chooser.getExtensionFilters().setAll(pemFilter, allFilter);
+//            chooser.setSelectedExtensionFilter(pemFilter);
+//            chooser.setTitle("Import server certificate");
+//            chooser.setInitialDirectory(saveDirectory);
+//            File file = chooser.showOpenDialog(stage);
+//            if (file != null && file.exists()) {
+//                saveDirectory = file.getParentFile();
+//                if (!Main.getClient().importSelfSignedCertificate(file)) {
+//                    Alert alert = new Alert(Alert.AlertType.WARNING);
+//                    alert.initOwner(stage);
+//                    alert.initModality(Modality.WINDOW_MODAL);
+//                    alert.setTitle("Import Failed");
+//                    alert.setHeaderText("Failed to import given certificate");
+//                    alert.showAndWait();
+//                }
+//                certificateTable.getItems().setAll(Main.getClient().getSelfSignedCertificates());
+//            }
+//        });
         populateConfig();
         applyConfig();
     }
@@ -469,34 +453,34 @@ public class GuiConfig {
             else
                 preferences.remove(prefMap.getValue());
         }
-        String serverInfo = serverAddressText.getText();
-        String address = serverInfo;
-        int port = ArisAssign.DEFAULT_PORT;
-        if (serverInfo.contains(":")) {
-            if (StringUtils.countMatches(serverInfo, ':') != 1) {
-                configAlert("Invalid server address: " + serverInfo);
-                return;
-            }
-            String[] split = serverInfo.split(":");
-            address = split[0];
-            try {
-                port = Integer.parseInt(split[1]);
-            } catch (NumberFormatException e) {
-                configAlert("Invalid server port: " + split[1]);
-                return;
-            }
-        }
-        try {
-            //noinspection ResultOfMethodCallIgnored
-            InetAddress.getByName(address);
-        } catch (UnknownHostException e) {
-            configAlert("Invalid server address: " + address);
-            return;
-        }
-        serverAddress.set(address);
-        preferences.put(SERVER_ADDRESS, address);
-        serverPort.set(port);
-        preferences.putInt(SERVER_PORT, port);
+//        String serverInfo = serverAddressText.getText();
+//        String address = serverInfo;
+//        int port = ArisAssign.DEFAULT_PORT;
+//        if (serverInfo.contains(":")) {
+//            if (StringUtils.countMatches(serverInfo, ':') != 1) {
+//                configAlert("Invalid server address: " + serverInfo);
+//                return;
+//            }
+//            String[] split = serverInfo.split(":");
+//            address = split[0];
+//            try {
+//                port = Integer.parseInt(split[1]);
+//            } catch (NumberFormatException e) {
+//                configAlert("Invalid server port: " + split[1]);
+//                return;
+//            }
+//        }
+//        try {
+//            //noinspection ResultOfMethodCallIgnored
+//            InetAddress.getByName(address);
+//        } catch (UnknownHostException e) {
+//            configAlert("Invalid server address: " + address);
+//            return;
+//        }
+//        serverAddress.set(address);
+//        preferences.put(SERVER_ADDRESS, address);
+//        serverPort.set(port);
+//        preferences.putInt(SERVER_PORT, port);
         for (SimpleObjectProperty<KeyCombination> prop : accelerators) {
             KeyCombination newKey = shortcutMap.get(prop).getKey();
             prop.set(newKey);
@@ -509,8 +493,8 @@ public class GuiConfig {
         preferences.putBoolean(HIDE_OPERATOR_PANEL, oprCheckBox.isSelected());
         hideRulesPanel.set(ruleCheckBox.isSelected());
         preferences.putBoolean(HIDE_RULES_PANEL, ruleCheckBox.isSelected());
-        for (String dn : removeCerts)
-            Main.getClient().removeSelfSignedCertificate(dn);
+//        for (String dn : removeCerts)
+//            Main.getClient().removeSelfSignedCertificate(dn);
         aliasKeyMap = newAliases;
         if (stage != null)
             stage.hide();
@@ -532,9 +516,9 @@ public class GuiConfig {
         }
         oprCheckBox.setSelected(hideOperatorsPanel.get());
         ruleCheckBox.setSelected(hideRulesPanel.get());
-        String serverText = serverAddress.get() == null ? "" : (serverAddress.get() + (serverPort.get() == ArisAssign.DEFAULT_PORT ? "" : ":" + serverPort.get()));
-        serverAddressText.setText(serverText);
-        certificateTable.getItems().setAll(Main.getClient().getSelfSignedCertificates());
+//        String serverText = serverAddress.get() == null ? "" : (serverAddress.get() + (serverPort.get() == ArisAssign.DEFAULT_PORT ? "" : ":" + serverPort.get()));
+//        serverAddressText.setText(serverText);
+//        certificateTable.getItems().setAll(Main.getClient().getSelfSignedCertificates());
     }
 
     private void configAlert(String message) {
@@ -581,16 +565,16 @@ public class GuiConfig {
         preferences.put(LAST_SAVE_DIR, saveDirectory.getAbsolutePath());
     }
 
-    public synchronized String getAccessToken() {
-        return accessToken;
-    }
+//    public synchronized String getAccessToken() {
+//        return accessToken;
+//    }
 
-    public synchronized void setAccessToken(String token) {
-        accessToken = token;
-        if (token == null)
-            preferences.remove(ACCESS_TOKEN);
-        else
-            preferences.put(ACCESS_TOKEN, token);
-    }
+//    public synchronized void setAccessToken(String token) {
+//        accessToken = token;
+//        if (token == null)
+//            preferences.remove(ACCESS_TOKEN);
+//        else
+//            preferences.put(ACCESS_TOKEN, token);
+//    }
 
 }

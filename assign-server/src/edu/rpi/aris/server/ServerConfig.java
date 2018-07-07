@@ -1,6 +1,6 @@
 package edu.rpi.aris.server;
 
-import edu.rpi.aris.LibAris;
+import edu.rpi.aris.assign.LibAssign;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.logging.log4j.LogManager;
@@ -68,7 +68,7 @@ public class ServerConfig {
     private void load() throws IOException {
         configOptions.clear();
         if (!configFile.exists()) {
-            logger.fatal("Server configuration file does not exist: " + configFile.getCanonicalPath());
+            logger.fatal("AssignServer configuration file does not exist: " + configFile.getCanonicalPath());
             System.exit(1);
         }
         readFile(configFile);
@@ -93,7 +93,7 @@ public class ServerConfig {
         dbPass = getConfigOption(DATABASE_PASS_CONFIG, null, false);
         storageDir = new File(getConfigOption(STORAGE_CONFIG, null, false));
         logDir = new File(getConfigOption(LOG_CONFIG, null, false));
-        LibAris.setLogLocation(logDir);
+        LibAssign.setLogLocation(logDir);
         // optional configs
         String caStr = getConfigOption(CA_CONFIG, null, true);
         if (caStr != null)

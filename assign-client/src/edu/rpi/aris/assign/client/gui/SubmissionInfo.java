@@ -1,8 +1,8 @@
 package edu.rpi.aris.assign.client.gui;
 
 import edu.rpi.aris.assign.GradingStatus;
+import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.message.MsgUtil;
-import edu.rpi.aris.net.NetUtil;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Pos;

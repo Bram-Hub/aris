@@ -1,13 +1,10 @@
 package edu.rpi.aris.assign.client;
 
-import edu.rpi.aris.LibAris;
-import edu.rpi.aris.Main;
+import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.MessageCommunication;
 import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.message.ErrorMsg;
 import edu.rpi.aris.assign.message.Message;
-import edu.rpi.aris.gui.GuiConfig;
-import edu.rpi.aris.net.NetUtil;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleObjectProperty;
@@ -59,9 +56,10 @@ import java.util.concurrent.locks.ReentrantLock;
 public class Client implements MessageCommunication {
 
     private static final char[] KEYSTORE_PASSWORD = "ARIS_CLIENT".toCharArray();
-    private static final File KEYSTORE_FILE = new File(GuiConfig.CLIENT_CONFIG_DIR, "client.keystore");
-    private static final File SERVER_KEYSTORE_FILE = new File(GuiConfig.CLIENT_CONFIG_DIR, "imported.keystore");
+    private static final File KEYSTORE_FILE = new File(Config.CLIENT_CONFIG_DIR, "client.keystore");
+    private static final File SERVER_KEYSTORE_FILE = new File(Config.CLIENT_CONFIG_DIR, "imported.keystore");
     private static Logger logger = LogManager.getLogger(Client.class);
+    private static Client instance = new Client();
 
     static {
         Security.addProvider(new BouncyCastleProvider());
@@ -78,6 +76,9 @@ public class Client implements MessageCommunication {
     private ConnectionStatus connectionStatus = ConnectionStatus.DISCONNECTED;
     private SimpleObjectProperty<ConnectionStatus> connectionStatusProperty = new SimpleObjectProperty<>(connectionStatus);
     private boolean allowInsecure = false;
+
+    private Client() {
+    }
 
     private static KeyStore getKeyStore() {
         KeyStore ks = null;
@@ -155,6 +156,10 @@ public class Client implements MessageCommunication {
             return newSplit;
         }
         return split;
+    }
+
+    public static Client getInstance() {
+        return instance;
     }
 
     public synchronized boolean importSelfSignedCertificate(File certFile) {
@@ -287,10 +292,10 @@ public class Client implements MessageCommunication {
     }
 
     private synchronized void setupConnection(String user, String pass, boolean isAccessToken) throws IOException {
-        String serverAddress = GuiConfig.serverAddress.get();
+        String serverAddress = Config.SERVER_ADDRESS.getValue();
         if (serverAddress == null)
             throw new IOException("Server address not specified");
-        int port = GuiConfig.serverPort.get();
+        int port = Config.PORT.getValue();
         if (port <= 0 || port > 65535)
             throw new IOException("Invalid port specified");
         setConnectionStatus(ConnectionStatus.CONNECTING);
@@ -366,7 +371,7 @@ public class Client implements MessageCommunication {
     }
 
     private synchronized void doAuth(String user, String pass, boolean isAccessToken) throws IOException {
-        sendMessage(NetUtil.ARIS_NAME + " " + LibAris.VERSION);
+        sendMessage(NetUtil.ARIS_NAME + " " + LibAssign.VERSION);
         String version = in.readUTF();
         if (version.equals(NetUtil.INVALID_VERSION))
             throw new IOException("Invalid client version");
@@ -389,8 +394,8 @@ public class Client implements MessageCommunication {
             default:
                 if (res.startsWith(NetUtil.AUTH_OK)) {
                     String accessToken = res.replaceFirst(NetUtil.AUTH_OK + " ", "");
-                    GuiConfig.getConfigManager().setAccessToken(URLDecoder.decode(accessToken, "UTF-8"));
-                    Platform.runLater(() -> GuiConfig.getConfigManager().username.set(user));
+                    Config.ACCESS_TOKEN.setValue(URLDecoder.decode(accessToken, "UTF-8"));
+                    Platform.runLater(() -> Config.USERNAME.setValue(user));
                 } else
                     throw new IOException(res);
         }
@@ -401,13 +406,13 @@ public class Client implements MessageCommunication {
         try {
             if (!ping()) {
                 disconnect(false);
-                String server = GuiConfig.serverAddress.get();
+                String server = Config.SERVER_ADDRESS.getValue();
                 if (server == null || server.length() == 0) {
                     Pair<String, Integer> info = getServerAddress(null);
                     if (info == null)
                         return;
-                    GuiConfig.serverAddress.set(info.getKey());
-                    GuiConfig.serverPort.set(info.getValue());
+                    Config.SERVER_ADDRESS.setValue(info.getKey());
+                    Config.PORT.setValue(info.getValue());
                 }
                 Triple<String, String, Boolean> credentials = getCredentials();
                 boolean isAccessToken = credentials.getRight();
@@ -415,7 +420,7 @@ public class Client implements MessageCommunication {
                     setupConnection(credentials.getLeft(), credentials.getMiddle(), credentials.getRight());
                 } catch (IOException e) {
                     if (isAccessToken && e.getMessage().equals(NetUtil.AUTH_FAIL)) {
-                        GuiConfig.getConfigManager().setAccessToken(null);
+                        Config.ACCESS_TOKEN.setValue(null);
                         connect();
                         if (connectionLock.isHeldByCurrentThread())
                             connectionLock.unlock();
@@ -452,51 +457,41 @@ public class Client implements MessageCommunication {
 
     private Pair<String, Integer> getServerAddress(String lastAddress) throws IOException {
         String address = lastAddress;
-        switch (Main.getMode()) {
-            case GUI:
-                final AtomicReference<String> atomicAddress = new AtomicReference<>(address);
-                Platform.runLater(() -> {
-                    Dialog<String> dialog = new Dialog<>();
-                    dialog.setTitle("Set server");
-                    dialog.setHeaderText((atomicAddress.get() == null ? "" : "Invalid address!\n") + "Please enter the address of the submission server");
-                    HBox box = new HBox();
-                    box.setAlignment(Pos.CENTER_LEFT);
-                    TextField textField = new TextField(atomicAddress.get() == null ? "" : atomicAddress.get());
-                    HBox.setHgrow(textField, Priority.ALWAYS);
-                    box.getChildren().addAll(new Label("Server Address: "), textField);
-                    dialog.getDialogPane().setContent(box);
-                    dialog.getDialogPane().getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
-                    dialog.setResultConverter(param -> param == ButtonType.OK ? textField.getText() : null);
-                    textField.requestFocus();
-                    Optional<String> result = dialog.showAndWait();
-                    if (result.isPresent())
-                        atomicAddress.set(result.get());
-                    else
-                        atomicAddress.set(null);
-                    synchronized (atomicAddress) {
-                        atomicAddress.notify();
-                    }
-                });
-                synchronized (atomicAddress) {
-                    try {
-                        atomicAddress.wait();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-                address = atomicAddress.get();
-                break;
-            case CMD:
-                if (address != null)
-                    System.out.println("Invalid address!");
-                System.out.print("Enter the server to connect to: ");
-                address = Main.readLine();
-                break;
+        AtomicReference<String> atomicAddress = new AtomicReference<>(address);
+        Platform.runLater(() -> {
+            Dialog<String> dialog = new Dialog<>();
+            dialog.setTitle("Set server");
+            dialog.setHeaderText((atomicAddress.get() == null ? "" : "Invalid address!\n") + "Please enter the address of the submission server");
+            HBox box = new HBox();
+            box.setAlignment(Pos.CENTER_LEFT);
+            TextField textField = new TextField(atomicAddress.get() == null ? "" : atomicAddress.get());
+            HBox.setHgrow(textField, Priority.ALWAYS);
+            box.getChildren().addAll(new Label("Server Address: "), textField);
+            dialog.getDialogPane().setContent(box);
+            dialog.getDialogPane().getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
+            dialog.setResultConverter(param -> param == ButtonType.OK ? textField.getText() : null);
+            textField.requestFocus();
+            Optional<String> result = dialog.showAndWait();
+            if (result.isPresent())
+                atomicAddress.set(result.get());
+            else
+                atomicAddress.set(null);
+            synchronized (atomicAddress) {
+                atomicAddress.notify();
+            }
+        });
+        synchronized (atomicAddress) {
+            try {
+                atomicAddress.wait();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
+        address = atomicAddress.get();
         if (address == null)
             return null;
         String fullAddress = address;
-        int port = NetUtil.DEFAULT_PORT;
+        int port = LibAssign.DEFAULT_PORT;
         boolean valid = true;
         if (address.contains(":")) {
             if (StringUtils.countMatches(address, ':') != 1)
@@ -524,63 +519,52 @@ public class Client implements MessageCommunication {
     }
 
     private Triple<String, String, Boolean> getCredentials() throws IOException {
-        String user = GuiConfig.getConfigManager().username.get();
-        String pass = GuiConfig.getConfigManager().getAccessToken();
+        String user = Config.USERNAME.getValue();
+        String pass = Config.ACCESS_TOKEN.getValue();
         boolean isAccessToken = user != null && pass != null;
         if (!isAccessToken) {
-            Platform.runLater(() -> GuiConfig.getConfigManager().username.set(null));
-            switch (Main.getMode()) {
-                case GUI:
-                    final AtomicReference<Optional<Pair<String, String>>> result = new AtomicReference<>(null);
-                    Platform.runLater(() -> {
-                        Dialog<Pair<String, String>> dialog = new Dialog<>();
-                        dialog.setTitle("Login");
-                        dialog.setHeaderText("Login to " + GuiConfig.serverAddress.get());
-                        ButtonType loginButtonType = new ButtonType("Login", ButtonBar.ButtonData.OK_DONE);
-                        dialog.getDialogPane().getButtonTypes().addAll(loginButtonType, ButtonType.CANCEL);
-                        GridPane grid = new GridPane();
-                        grid.setVgap(10);
-                        grid.setHgap(10);
-                        grid.setPadding(new Insets(20));
-                        TextField username = new TextField();
-                        username.setPromptText("Username");
-                        PasswordField password = new PasswordField();
-                        password.setPromptText("Password");
-                        grid.add(new Label("Username:"), 0, 0);
-                        grid.add(username, 1, 0);
-                        grid.add(new Label("Password:"), 0, 1);
-                        grid.add(password, 1, 1);
-                        Node loginButton = dialog.getDialogPane().lookupButton(loginButtonType);
-                        loginButton.disableProperty().bind(Bindings.or(Bindings.length(username.textProperty()).isEqualTo(0), Bindings.length(password.textProperty()).isEqualTo(0)));
-                        dialog.getDialogPane().setContent(grid);
-                        dialog.setResultConverter(buttonType -> new Pair<>(username.getText(), password.getText()));
-                        username.requestFocus();
-                        result.set(dialog.showAndWait());
-                        synchronized (result) {
-                            result.notify();
-                        }
-                    });
-                    synchronized (result) {
-                        try {
-                            result.wait();
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                    if (result.get() != null && result.get().isPresent()) {
-                        user = result.get().get().getKey();
-                        pass = result.get().get().getValue();
-                    } else
-                        throw new IOException("CANCEL");
-                    break;
-                case CMD:
-                    System.out.print("Please enter username: ");
-                    user = Main.readLine();
-                    System.out.print("Please enter password: ");
-                    char[] passChar = Main.readPassword();
-                    pass = new String(passChar);
-                    break;
+            Platform.runLater(() -> Config.USERNAME.setValue(null));
+            AtomicReference<Optional<Pair<String, String>>> result = new AtomicReference<>(null);
+            Platform.runLater(() -> {
+                Dialog<Pair<String, String>> dialog = new Dialog<>();
+                dialog.setTitle("Login");
+                dialog.setHeaderText("Login to " + Config.SERVER_ADDRESS.getValue());
+                ButtonType loginButtonType = new ButtonType("Login", ButtonBar.ButtonData.OK_DONE);
+                dialog.getDialogPane().getButtonTypes().addAll(loginButtonType, ButtonType.CANCEL);
+                GridPane grid = new GridPane();
+                grid.setVgap(10);
+                grid.setHgap(10);
+                grid.setPadding(new Insets(20));
+                TextField username = new TextField();
+                username.setPromptText("Username");
+                PasswordField password = new PasswordField();
+                password.setPromptText("Password");
+                grid.add(new Label("Username:"), 0, 0);
+                grid.add(username, 1, 0);
+                grid.add(new Label("Password:"), 0, 1);
+                grid.add(password, 1, 1);
+                Node loginButton = dialog.getDialogPane().lookupButton(loginButtonType);
+                loginButton.disableProperty().bind(Bindings.or(Bindings.length(username.textProperty()).isEqualTo(0), Bindings.length(password.textProperty()).isEqualTo(0)));
+                dialog.getDialogPane().setContent(grid);
+                dialog.setResultConverter(buttonType -> new Pair<>(username.getText(), password.getText()));
+                username.requestFocus();
+                result.set(dialog.showAndWait());
+                synchronized (result) {
+                    result.notify();
+                }
+            });
+            synchronized (result) {
+                try {
+                    result.wait();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
+            if (result.get() != null && result.get().isPresent()) {
+                user = result.get().get().getKey();
+                pass = result.get().get().getValue();
+            } else
+                throw new IOException("CANCEL");
         }
         return new ImmutableTriple<>(user, pass, isAccessToken);
     }
@@ -660,44 +644,35 @@ public class Client implements MessageCommunication {
     }
 
     private boolean showCertWarning() {
-        switch (Main.getMode()) {
-            case CMD:
-                System.out.println("Aris was unable to verify the server's identity");
-                System.out.println("This could be due to the server using a self signed certificate or due to a third party attempting to intercept this connection");
-                System.out.println("If you would like to connect to this server anyway either import the server's certificate with the --add-cert flag or run aris with the --allow-insecure flag");
-                break;
-            case GUI:
-                final AtomicBoolean allowInsecure = new AtomicBoolean(false);
-                Platform.runLater(() -> {
-                    Alert alert = new Alert(Alert.AlertType.WARNING);
-                    alert.setTitle("Insecure Connection Warning");
-                    alert.setHeaderText("Aris was unable to verify the authenticity of the server.");
-                    alert.setContentText("If you would like to securely connect to the server please press \"Cancel\" then import " +
-                            "the server's certificate file. If you would like to continue with an insecure connection anyway click \"Connect Anyway\"");
-                    ButtonType cont = new ButtonType("Connect Anyway (INSECURE)");
-                    alert.getButtonTypes().setAll(ButtonType.CANCEL, cont);
-                    ((Button) alert.getDialogPane().lookupButton(ButtonType.CANCEL)).setDefaultButton(true);
-                    alert.getDialogPane().getScene().getWindow().sizeToScene();
-                    alert.getDialogPane().setPrefHeight(200);
-                    Optional<ButtonType> result = alert.showAndWait();
-                    if (result.isPresent() && result.get() == cont)
-                        allowInsecure.set(true);
-                    synchronized (allowInsecure) {
-                        allowInsecure.notify();
-                    }
-                });
-                synchronized (allowInsecure) {
-                    try {
-                        allowInsecure.wait();
-                    } catch (InterruptedException e) {
-                        logger.error("Error while waiting for user response", e);
-                    }
-                }
-                if (allowInsecure.get()) {
-                    setAllowInsecure(true);
-                    return true;
-                }
-                break;
+        final AtomicBoolean allowInsecure = new AtomicBoolean(false);
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("Insecure Connection Warning");
+            alert.setHeaderText("Aris was unable to verify the authenticity of the server.");
+            alert.setContentText("If you would like to securely connect to the server please press \"Cancel\" then import " +
+                    "the server's certificate file. If you would like to continue with an insecure connection anyway click \"Connect Anyway\"");
+            ButtonType cont = new ButtonType("Connect Anyway (INSECURE)");
+            alert.getButtonTypes().setAll(ButtonType.CANCEL, cont);
+            ((Button) alert.getDialogPane().lookupButton(ButtonType.CANCEL)).setDefaultButton(true);
+            alert.getDialogPane().getScene().getWindow().sizeToScene();
+            alert.getDialogPane().setPrefHeight(200);
+            Optional<ButtonType> result = alert.showAndWait();
+            if (result.isPresent() && result.get() == cont)
+                allowInsecure.set(true);
+            synchronized (allowInsecure) {
+                allowInsecure.notify();
+            }
+        });
+        synchronized (allowInsecure) {
+            try {
+                allowInsecure.wait();
+            } catch (InterruptedException e) {
+                logger.error("Error while waiting for user response", e);
+            }
+        }
+        if (allowInsecure.get()) {
+            setAllowInsecure(true);
+            return true;
         }
         return false;
     }

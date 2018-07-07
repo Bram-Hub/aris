@@ -12,4 +12,6 @@ for i in "${!VER[@]}"; do
     fi
 done
 echo $VERSION > libaris/res/edu/rpi/aris/VERSION
+echo $VERSION > libassign/res/edu/rpi/aris/assign/VERSION
 git add libaris/res/edu/rpi/aris/VERSION
+git add libassign/res/edu/rpi/aris/assign/VERSION

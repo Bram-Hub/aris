@@ -1,15 +1,15 @@
 package edu.rpi.aris.assign.client.gui;
 
 import edu.rpi.aris.assign.GradingStatus;
+import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.message.MsgUtil;
-import edu.rpi.aris.net.NetUtil;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.control.Button;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 
-public class ProofInfo extends AssignmentInfo {
+public class ProblemInfo extends AssignmentInfo {
 
     private final int proofId;
     private final String createdBy;
@@ -23,11 +23,11 @@ public class ProofInfo extends AssignmentInfo {
     private Button btn;
     private long timestamp;
 
-    public ProofInfo(MsgUtil.ProblemInfo info, boolean isInstructor) {
+    public ProblemInfo(MsgUtil.ProblemInfo info, boolean isInstructor) {
         this(info.pid, info.name, info.createdBy, NetUtil.UTCToMilli(info.createdDateUTC), isInstructor);
     }
 
-    public ProofInfo(int proofId, String name, String createdBy, long createdOn, boolean isInstructor) {
+    public ProblemInfo(int proofId, String name, String createdBy, long createdOn, boolean isInstructor) {
         this.proofId = proofId;
         this.name = new SimpleStringProperty(name);
         this.createdBy = createdBy;
@@ -71,8 +71,8 @@ public class ProofInfo extends AssignmentInfo {
 
     @Override
     public int compareTo(AssignmentInfo o) {
-        if (o instanceof ProofInfo) {
-            ProofInfo p = (ProofInfo) o;
+        if (o instanceof ProblemInfo) {
+            ProblemInfo p = (ProblemInfo) o;
             return name.get().compareTo(p.name.get());
         } else
             return -1;
@@ -85,9 +85,9 @@ public class ProofInfo extends AssignmentInfo {
 
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof ProofInfo))
+        if (!(obj instanceof ProblemInfo))
             return false;
-        ProofInfo info = (ProofInfo) obj;
+        ProblemInfo info = (ProblemInfo) obj;
         return info.proofId == proofId;
     }
 

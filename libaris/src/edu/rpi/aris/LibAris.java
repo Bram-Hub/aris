@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 
 public class LibAris {
+
     public static final String NAME = "Aris";
     public static final String VERSION;
     private static final Logger logger = LogManager.getLogger(LibAris.class);
@@ -32,32 +33,4 @@ public class LibAris {
         VERSION = version;
     }
 
-    public static void setLogLocation(File logDir) throws IOException {
-        String logPath = logDir.getCanonicalPath();
-        logPath += logPath.endsWith(File.separator) ? "" : File.separator;
-        LoggerContext context = (LoggerContext) LogManager.getContext(false);
-        Configuration config = context.getConfiguration();
-        ConsoleAppender consoleAppender = config.getAppender("console");
-        PatternLayout consolePattern = (PatternLayout) consoleAppender.getLayout();
-        TimeBasedTriggeringPolicy triggeringPolicy = TimeBasedTriggeringPolicy.newBuilder().withInterval(1).withModulate(true).build();
-        PatternLayout patternLayout = PatternLayout.newBuilder().withPattern(consolePattern.getConversionPattern()).build();
-        RollingFileAppender rollingFileAppender = RollingFileAppender.newBuilder()
-                .withName("fileLogger")
-                .withFileName(logPath + "aris.log")
-                .withFilePattern(logPath + "aris-%d{yyyy-MM-dd}.log.gz")
-                .withPolicy(triggeringPolicy)
-                .withLayout(patternLayout)
-                .setConfiguration(config)
-                .build();
-        rollingFileAppender.start();
-        config.addAppender(rollingFileAppender);
-        LoggerConfig rootLogger = config.getRootLogger();
-        rootLogger.addAppender(config.getAppender("fileLogger"), null, null);
-        context.updateLoggers();
-    }
-
-    public static String getModuleName() {
-        //TODO: remove after switching to modules
-        return "ArisProof";
-    }
 }

@@ -1,6 +1,6 @@
 package edu.rpi.aris.server;
 
-import edu.rpi.aris.Main;
+import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.Update;
 import org.apache.logging.log4j.LogManager;
@@ -39,18 +39,20 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class Server implements Runnable {
+public class AssignServer implements Runnable {
 
     private static final ServerConfig config;
     private static final char[] KEYSTORE_PASSWORD = "ARIS_SERVER".toCharArray();
     private static final String KEYSTORE_FILENAME = "server.keystore";
+
+    private static final Logger logger = LogManager.getLogger(AssignServer.class);
 
     static {
         ServerConfig cfg = null;
         try {
             cfg = ServerConfig.getInstance();
         } catch (IOException e) {
-            Main.instance.showExceptionError(Thread.currentThread(), e, true);
+            LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, true);
         }
         config = cfg;
     }
@@ -70,7 +72,6 @@ public class Server implements Runnable {
     //    private final File caCertificate;
 //    private final File privateKey;
     private final Update update = new Update(Update.Stream.SERVER, new File(System.getProperty("java.io.tmpdir"), "aris-update"));
-    private Logger logger = LogManager.getLogger(Server.class);
     private boolean selfSign, stopServer, shutdown;
     private DatabaseManager dbManager;
     private Timer certExpireTimer = null;
@@ -78,9 +79,9 @@ public class Server implements Runnable {
     private ReentrantLock serverLock = new ReentrantLock(true);
     private HashSet<ClientHandler> clients = new HashSet<>();
     private Thread serverThread = null;
-    private final Thread shutdownHook = new Thread(this::shutdown, "Server Shutdown Hook");
+    private final Thread shutdownHook = new Thread(this::shutdown, "AssignServer Shutdown Hook");
 
-    public Server(int port, File caCertificate, File privateKey) throws FileNotFoundException {
+    public AssignServer(int port, File caCertificate, File privateKey) throws FileNotFoundException {
         logger.info("Preparing server");
         this.port = port;
         stopServer = false;
@@ -105,7 +106,7 @@ public class Server implements Runnable {
             dbManager = new DatabaseManager(config.getDbHost(), config.getDbPort(), config.getDbName(), config.getDbUser(), config.getDbPass());
         } catch (IOException | SQLException e) {
             RuntimeException e1 = new RuntimeException("Failed to open sql database", e);
-            Main.instance.showExceptionError(Thread.currentThread(), e1, true);
+            LibAssign.getInstance().showExceptionError(Thread.currentThread(), e1, true);
         }
         Timer updateTimer = new Timer();
         Calendar calendar = Calendar.getInstance();
@@ -121,7 +122,7 @@ public class Server implements Runnable {
             }
         }, calendar.getTime(), 1000 * 60 * 60 * 24); // run every 24 hours
         logger.info("Update check scheduled for " + NetUtil.DATE_FORMAT.format(calendar.getTime()));
-        logger.info("Server preparation complete");
+        logger.info("AssignServer preparation complete");
     }
 
     @Override
@@ -136,7 +137,7 @@ public class Server implements Runnable {
         try {
             serverThread = Thread.currentThread();
             Runtime.getRuntime().addShutdownHook(shutdownHook);
-            logger.info("Starting Server on port " + port + (port == 9001 ? " (IT'S OVER 9000!!!)" : ""));
+            logger.info("Starting AssignServer on port " + port + (port == 9001 ? " (IT'S OVER 9000!!!)" : ""));
             serverSocket = getServerSocketFactory().createServerSocket(port);
             ExecutorService threadPool = Executors.newCachedThreadPool(new ThreadFactory() {
 
@@ -151,7 +152,7 @@ public class Server implements Runnable {
                     return new Thread(r, "ClientHandler-ThreadPool-" + i);
                 }
             });
-            logger.info("Server Started");
+            logger.info("AssignServer Started");
             logger.info("Waiting for connections");
             //noinspection InfiniteLoopStatement
             while (true) {
@@ -196,7 +197,7 @@ public class Server implements Runnable {
         logger.info("Disconnecting clients");
         for (ClientHandler client : clients)
             client.disconnect();
-        logger.info("Server shutdown");
+        logger.info("AssignServer shutdown");
         LogManager.shutdown();
     }
 
@@ -235,7 +236,7 @@ public class Server implements Runnable {
                     logger.error(SELF_SIGNED_CERT.getCanonicalPath());
                     throw new CertificateException("Failed to automatically regenerate self-signed certificate");
                 } else {
-                    throw new CertificateException("Server's provided certificate is expired");
+                    throw new CertificateException("AssignServer's provided certificate is expired");
                 }
             }
             if (certExpireTimer != null)
@@ -245,8 +246,8 @@ public class Server implements Runnable {
                 @Override
                 public void run() {
                     try {
-                        logger.info("Server's certificate has expired.");
-                        logger.info("Server will now reload to read any new available certificates");
+                        logger.info("AssignServer's certificate has expired.");
+                        logger.info("AssignServer will now reload to read any new available certificates");
                         stopServer = true;
                         serverSocket.close();
                         new Thread(this, "ServerSocket-Listen").start();

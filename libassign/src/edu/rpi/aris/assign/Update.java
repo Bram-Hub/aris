@@ -64,9 +64,9 @@ public class Update {
                 if (tagElement == null)
                     return false;
                 updateVersion = tagElement.getAsString();
-                logger.info("Current version: " + LibAris.VERSION);
+                logger.info("Current version: " + LibAssign.VERSION);
                 logger.info("Latest version:  " + updateVersion);
-                if (Util.versionCompare(LibAris.VERSION, updateVersion) < 0) {
+                if (NetUtil.versionCompare(LibAssign.VERSION, updateVersion) < 0) {
                     logger.info("Update available");
                     return true;
                 } else
