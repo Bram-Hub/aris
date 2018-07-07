@@ -1,9 +1,11 @@
 package edu.rpi.aris.assign.client.gui;
 
+import edu.rpi.aris.assign.ArisModuleException;
 import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.Problem;
 import edu.rpi.aris.assign.client.Client;
+import edu.rpi.aris.assign.client.ClientModuleService;
 import edu.rpi.aris.assign.client.Config;
 import edu.rpi.aris.assign.message.*;
 import javafx.application.Platform;
@@ -27,7 +29,6 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.xml.transform.TransformerException;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.text.DateFormat;
@@ -35,7 +36,7 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Optional;
 
-public class AssignmentWindow implements SaveInfoListener {
+public class AssignmentWindow {
 
     public static final AssignmentWindow instance = new AssignmentWindow();
 
@@ -80,12 +81,10 @@ public class AssignmentWindow implements SaveInfoListener {
     private Stage stage;
     private ClientInfo clientInfo;
     private ProblemList problemList;
-    private SaveManager saveManager;
 
     public AssignmentWindow() {
         clientInfo = new ClientInfo();
         problemList = new ProblemList();
-        saveManager = new SaveManager(this);
         FXMLLoader loader = new FXMLLoader(AssignmentWindow.class.getResource("assignment_window.fxml"));
         loader.setController(this);
         Parent root;
@@ -152,7 +151,7 @@ public class AssignmentWindow implements SaveInfoListener {
             Client client = Client.getInstance();
             try {
                 client.connect();
-                ProblemEditMsg reply = (ProblemEditMsg) new ProblemEditMsg(event.getRowValue().getProofId(), event.getNewValue()).sendAndGet(client);
+                ProblemEditMsg reply = (ProblemEditMsg) new ProblemEditMsg(event.getRowValue().getProblemId(), event.getNewValue()).sendAndGet(client);
                 if (reply == null)
                     return;
                 event.getRowValue().setName(event.getNewValue());
@@ -402,20 +401,21 @@ public class AssignmentWindow implements SaveInfoListener {
         return clientInfo;
     }
 
-    private void addProblem(String name, Problem problem) {
+    private void addProblem(String name, String moduleName, Problem problem) {
         new Thread(() -> {
             Client client = Client.getInstance();
             try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-                saveManager.saveProof(problem, baos, false);
+                ClientModuleService.getService().getModule(moduleName).getProblemConverter().convertProblem(problem, baos, false);
                 byte[] data = baos.toByteArray();
                 client.connect();
-                ProblemCreateMsg reply = (ProblemCreateMsg) new ProblemCreateMsg(name, LibAris.getModuleName(), data).sendAndGet(client);
+                ProblemCreateMsg reply = (ProblemCreateMsg) new ProblemCreateMsg(name, moduleName, data).sendAndGet(client);
                 if (reply == null)
                     return;
                 problemList.load(true);
-            } catch (IOException | TransformerException e) {
+            } catch (IOException | ArisModuleException e) {
                 System.out.println("Error");
                 //TODO
+                e.printStackTrace();
             } finally {
                 client.disconnect();
             }
@@ -429,7 +429,7 @@ public class AssignmentWindow implements SaveInfoListener {
             try {
                 client.connect();
                 AssignmentCreateMsg msg = new AssignmentCreateMsg(classes.getSelectionModel().getSelectedItem().getId(), name, NetUtil.localToUTC(date));
-                proofs.forEach(p -> msg.addProof(p.getProofId()));
+                proofs.forEach(p -> msg.addProof(p.getProblemId()));
                 AssignmentCreateMsg reply = (AssignmentCreateMsg) msg.sendAndGet(client);
                 if (reply == null)
                     return;
@@ -460,7 +460,7 @@ public class AssignmentWindow implements SaveInfoListener {
                     Client client = Client.getInstance();
                     try {
                         client.connect();
-                        ProblemDeleteMsg reply = (ProblemDeleteMsg) new ProblemDeleteMsg(proof.getProofId()).sendAndGet(client);
+                        ProblemDeleteMsg reply = (ProblemDeleteMsg) new ProblemDeleteMsg(proof.getProblemId()).sendAndGet(client);
                         if (reply == null)
                             return;
                         Platform.runLater(() -> problemList.remove(proof));
@@ -475,7 +475,7 @@ public class AssignmentWindow implements SaveInfoListener {
         });
     }
 
-    private void editProblem(ProblemInfo proof) {
+    private void editProblem(ProblemInfo problem) {
         //TODO
     }
 
@@ -483,8 +483,8 @@ public class AssignmentWindow implements SaveInfoListener {
     private void createProblem() {
         try {
             AddProblemDialog dialog = new AddProblemDialog(stage);
-            Optional<Pair<String, Problem>> result = dialog.showAndWait();
-            result.ifPresent(r -> addProblem(r.getKey(), r.getValue()));
+            Optional<Triple<String, String, Problem>> result = dialog.showAndWait();
+            result.ifPresent(r -> addProblem(r.getLeft(), r.getMiddle(), r.getRight()));
         } catch (IOException e) {
             logger.error("Failed to show add proof dialog");
             LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, false);
@@ -492,7 +492,7 @@ public class AssignmentWindow implements SaveInfoListener {
     }
 
     @FXML
-    private void importProof() {
+    private void importProblem() {
         //TODO
     }
 
@@ -510,30 +510,6 @@ public class AssignmentWindow implements SaveInfoListener {
             Triple<String, LocalDateTime, Collection<ProblemInfo>> r = result.get();
             addAssignment(r.getLeft(), r.getMiddle(), r.getRight());
         }
-    }
-
-    @Override
-    public boolean notArisFile(String filename, String programName, String programVersion) {
-        Alert noAris = new Alert(Alert.AlertType.CONFIRMATION);
-        noAris.setTitle("Not Aris File");
-        noAris.setHeaderText("Not Aris File");
-        noAris.setContentText("The given file \"" + filename + "\" was written by " + programName + " version " + programVersion + "\n" +
-                "Aris may still be able to read this file with varying success\n" +
-                "Would you like to attempt to load this file?");
-        Optional<ButtonType> option = noAris.showAndWait();
-        return option.isPresent() && option.get() == ButtonType.YES;
-    }
-
-    @Override
-    public void integrityCheckFailed(String filename) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("File integrity check failed");
-        alert.setHeaderText("File integrity check failed");
-        alert.setContentText("This file may be corrupted or may have been tampered with.\n" +
-                "If this file successfully loads the author will be marked as UNKNOWN.\n" +
-                "This will show up if this file is submitted and may affect your grade.");
-        alert.getDialogPane().setPrefWidth(500);
-        alert.showAndWait();
     }
 
 //    public void transmitMessage(final Message msg, final Consumer<Message> call) {

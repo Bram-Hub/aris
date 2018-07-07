@@ -82,21 +82,21 @@
                 <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0" />
               </content>
             </Tab>
-            <Tab fx:id="proofTab" closable="false" text="Proofs">
+            <Tab fx:id="proofTab" closable="false" text="Problems">
               <content>
                   <VBox spacing="5.0">
                      <children>
                         <HBox spacing="5.0">
                            <children>
-                              <Button mnemonicParsing="false" onAction="#createProof" text="Create Proof" />
-                              <Button mnemonicParsing="false" onAction="#importProof" text="Import Proof" />
+                              <Button mnemonicParsing="false" onAction="#createProblem" text="Create Problem" />
+                              <Button mnemonicParsing="false" onAction="#importProblem" text="Import Problem" />
                            </children>
                         </HBox>
                         <TableView fx:id="proofTable" editable="true" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
                           <columns>
                             <TableColumn fx:id="proofName" prefWidth="75.0" text="Name" />
-                            <TableColumn fx:id="proofBy" editable="false" prefWidth="75.0" text="Created By" />
-                              <TableColumn fx:id="proofOn" editable="false" prefWidth="75.0" text="Created On" />
+                            <TableColumn fx:id="proofBy" editable="false" prefWidth="77.0" text="Created By" />
+                              <TableColumn fx:id="proofOn" editable="false" minWidth="0.0" prefWidth="60.0" text="Created On" />
                               <TableColumn fx:id="proofEdit" editable="false" prefWidth="75.0" text="Edit/View" />
                               <TableColumn fx:id="proofDelete" prefWidth="75.0" text="Delete" />
                           </columns>

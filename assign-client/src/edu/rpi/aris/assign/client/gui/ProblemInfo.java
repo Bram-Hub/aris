@@ -11,7 +11,7 @@ import java.util.Comparator;
 
 public class ProblemInfo extends AssignmentInfo {
 
-    private final int proofId;
+    private final int problemId;
     private final String createdBy;
     private final long createdOn;
     private final boolean isInstructor;
@@ -27,8 +27,8 @@ public class ProblemInfo extends AssignmentInfo {
         this(info.pid, info.name, info.createdBy, NetUtil.UTCToMilli(info.createdDateUTC), isInstructor);
     }
 
-    public ProblemInfo(int proofId, String name, String createdBy, long createdOn, boolean isInstructor) {
-        this.proofId = proofId;
+    public ProblemInfo(int problemId, String name, String createdBy, long createdOn, boolean isInstructor) {
+        this.problemId = problemId;
         this.name = new SimpleStringProperty(name);
         this.createdBy = createdBy;
         this.createdOn = createdOn;
@@ -88,12 +88,12 @@ public class ProblemInfo extends AssignmentInfo {
         if (!(obj instanceof ProblemInfo))
             return false;
         ProblemInfo info = (ProblemInfo) obj;
-        return info.proofId == proofId;
+        return info.problemId == problemId;
     }
 
     @Override
     public int hashCode() {
-        return proofId;
+        return problemId;
     }
 
     public GradingStatus getGradingStatus() {
@@ -124,7 +124,7 @@ public class ProblemInfo extends AssignmentInfo {
         return createdOn;
     }
 
-    public int getProofId() {
-        return proofId;
+    public int getProblemId() {
+        return problemId;
     }
 }

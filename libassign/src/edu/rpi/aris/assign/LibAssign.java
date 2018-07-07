@@ -61,7 +61,7 @@ public class LibAssign implements Thread.UncaughtExceptionHandler {
         VERSION = version;
     }
 
-    private Thread.UncaughtExceptionHandler exceptionHandler;
+    private ArisExceptionHandler exceptionHandler;
 
     private LibAssign() {
     }
@@ -94,7 +94,7 @@ public class LibAssign implements Thread.UncaughtExceptionHandler {
         context.updateLoggers();
     }
 
-    public void setUncaughtExceptionHandler(Thread.UncaughtExceptionHandler exceptionHandler) {
+    public void setArisExceptionHandler(ArisExceptionHandler exceptionHandler) {
         this.exceptionHandler = exceptionHandler;
     }
 
@@ -297,7 +297,7 @@ public class LibAssign implements Thread.UncaughtExceptionHandler {
         bugReportThread.start();
         if (exceptionHandler != null) {
             try {
-                exceptionHandler.uncaughtException(t, e);
+                exceptionHandler.uncaughtException(t, e, fatal);
             } catch (Throwable e1) {
                 logger.fatal("An error has occurred while attempting to show the error dialog");
                 logger.catching(Level.FATAL, e1);

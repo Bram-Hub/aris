@@ -1,9 +1,6 @@
 package edu.rpi.aris.server;
 
-import edu.rpi.aris.assign.DBUtils;
-import edu.rpi.aris.assign.MessageCommunication;
-import edu.rpi.aris.assign.NetUtil;
-import edu.rpi.aris.assign.User;
+import edu.rpi.aris.assign.*;
 import edu.rpi.aris.assign.message.ErrorMsg;
 import edu.rpi.aris.assign.message.ErrorType;
 import edu.rpi.aris.assign.message.Message;
@@ -87,7 +84,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                 sendMessage(NetUtil.INVALID_VERSION);
                 return;
             } else
-                sendMessage(NetUtil.ARIS_NAME + " " + LibAris.VERSION);
+                sendMessage(NetUtil.ARIS_NAME + " " + LibAssign.VERSION);
             String versionVerify = in.readUTF();
             if (!versionVerify.equals(NetUtil.VERSION_OK))
                 return;
@@ -115,7 +112,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
             logger.error("Invalid client program name: " + split[0]);
             return false;
         }
-        if (NetUtil.versionCompare(LibAris.VERSION, split[1]) < 0) {
+        if (NetUtil.versionCompare(LibAssign.VERSION, split[1]) < 0) {
             logger.warn("Client's version is newer than server");
             logger.warn("This may or may not cause problems");
         }

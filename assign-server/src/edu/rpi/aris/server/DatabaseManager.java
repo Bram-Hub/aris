@@ -192,7 +192,7 @@ public class DatabaseManager {
              PreparedStatement updateProblem = connection.prepareStatement("UPDATE problem SET module_name = ?;")) {
             statement.execute("ALTER TABLE proof RENAME TO problem;");
             statement.execute("ALTER TABLE problem ADD COLUMN module_name text;");
-            updateProblem.setString(1, LibAris.getModuleName());
+            updateProblem.setString(1, "Aris");
             updateProblem.executeUpdate();
             statement.execute("ALTER TABLE assignment RENAME proof_id TO problem_id;");
             statement.execute("ALTER TABLE submission RENAME proof_id TO problem_id;");

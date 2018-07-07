@@ -22,8 +22,12 @@ public class ConfigProp<T> {
 
     public void setValue(T value) {
         property.set(value);
-        if (preferences != null && prefKey != null)
-            preferences.put(prefKey, value.toString());
+        if (preferences != null && prefKey != null) {
+            if (value == null)
+                preferences.remove(prefKey);
+            else
+                preferences.put(prefKey, value.toString());
+        }
     }
 
     public SimpleObjectProperty<T> getProperty() {

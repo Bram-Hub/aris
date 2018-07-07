@@ -183,9 +183,9 @@ public class Assignment {
                         msg.setName(newName);
                         msg.setNewDueDate(newDueDate);
                         for (ProblemInfo p : remove)
-                            msg.removeProblem(p.getProofId());
+                            msg.removeProblem(p.getProblemId());
                         for (ProblemInfo p : add)
-                            msg.addProblem(p.getProofId());
+                            msg.addProblem(p.getProblemId());
                         msg = (AssignmentEditMsg) msg.sendAndGet(client);
                         if(msg == null)
                             return;

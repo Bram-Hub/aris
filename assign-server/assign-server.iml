@@ -17,5 +17,7 @@
     <orderEntry type="library" name="org.postgresql:postgresql:42.2.2" level="project" />
     <orderEntry type="library" name="org.apache.commons:commons-lang3:3.7" level="project" />
     <orderEntry type="library" name="commons-cli:commons-cli:1.4" level="project" />
+    <orderEntry type="library" name="org.apache.commons:commons-collections4:4.1" level="project" />
+    <orderEntry type="module" module-name="proof-server" scope="RUNTIME" />
   </component>
 </module>

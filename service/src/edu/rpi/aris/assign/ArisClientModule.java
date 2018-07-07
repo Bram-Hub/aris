@@ -1,4 +1,4 @@
-package edu.rpi.aris.assign.spi.client;
+package edu.rpi.aris.assign;
 
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;

@@ -27,16 +27,18 @@ import java.io.StringWriter;
 import java.net.URISyntaxException;
 import java.util.Optional;
 
-public class AssignClient extends Application implements ArisExceptionHandler, StartListener {
+public class AssignClient extends Application implements ArisExceptionHandler {
 
     private static final Logger logger = LogManager.getLogger(AssignClient.class);
-    private static final AssignClient instance = new AssignClient();
+    private static AssignClient instance;
+    private static boolean doUpdate = false;
 
     private Update update;
-    private boolean doUpdate = false;
     private AssignmentWindow mainWindow;
 
-    private AssignClient() {
+    public AssignClient() {
+        instance = this;
+        LibAssign.getInstance().setArisExceptionHandler(this);
         try {
             File jarPath = new File(AssignClient.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath()).getParentFile();
             update = new Update(Update.Stream.CLIENT, jarPath);
@@ -47,7 +49,58 @@ public class AssignClient extends Application implements ArisExceptionHandler, S
 
     public static void main(String[] args) throws IOException {
         LibAssign.setLogLocation(new File(Config.CLIENT_CONFIG_DIR, "logs"));
-        LibAssign.getInstance().init(false, args, instance);
+        LibAssign.getInstance().init(false, args, new StartListener() {
+            @Override
+            public void processAlreadyRunning(CommandLine cmd) {
+                AssignClient.processAlreadyRunning(cmd);
+            }
+
+            @Override
+            public void finishInit(CommandLine cmd) {
+                AssignClient.finishInit(cmd);
+            }
+        });
+    }
+
+    private static void processAlreadyRunning(CommandLine cmd) {
+        //TODO
+    }
+
+    private static void finishInit(CommandLine cmd) {
+        String[] split = SystemUtils.JAVA_VERSION.split("_");
+        int update = split.length < 2 ? 0 : Integer.parseInt(split[1]);
+        if (!SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_1_8) || (SystemUtils.JAVA_SPECIFICATION_VERSION.equals(JavaVersion.JAVA_1_8.toString()) && update < 40)) {
+            String msg = LibAssign.NAME + " has a minimum requirement of java 1.8.0_40\nYou are running java " + SystemUtils.JAVA_VERSION + "\nPlease update java before using " + LibAssign.NAME;
+            logger.log(Level.FATAL, msg);
+            JOptionPane.showMessageDialog(null, msg);
+            System.exit(1);
+        }
+        int port = -1;
+        if (cmd.hasOption('p')) {
+            String portStr = cmd.getOptionValue('p');
+            boolean error = false;
+            try {
+                port = Integer.parseInt(portStr);
+            } catch (NumberFormatException e) {
+                error = true;
+            }
+            if (error || port <= 0 || port > 65535) {
+                logger.error("Invalid port specified: " + portStr);
+                System.exit(1);
+            }
+        }
+        if (cmd.hasOption('a'))
+            Config.SERVER_ADDRESS.setValue(cmd.getOptionValue('a'));
+        if (port > 0)
+            Config.PORT.setValue(port);
+        Config.ALLOW_INSECURE.setValue(cmd.hasOption("allow-insecure"));
+        if (cmd.hasOption("add-cert")) {
+            String filename = cmd.getOptionValue("add-cert");
+            File file = new File(filename);
+            Config.ADD_CERT.setValue(file);
+        }
+        doUpdate = cmd.hasOption('u');
+        launch(AssignClient.class, cmd.getArgs());
     }
 
     @Override
@@ -224,48 +277,5 @@ public class AssignClient extends Application implements ArisExceptionHandler, S
                 System.exit(1);
             }
         });
-    }
-
-    @Override
-    public void processAlreadyRunning(CommandLine cmd) {
-        //TODO
-    }
-
-    @Override
-    public void finishInit(CommandLine cmd) {
-        String[] split = SystemUtils.JAVA_VERSION.split("_");
-        int update = split.length < 2 ? 0 : Integer.parseInt(split[1]);
-        if (!SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_1_8) || (SystemUtils.JAVA_SPECIFICATION_VERSION.equals(JavaVersion.JAVA_1_8.toString()) && update < 40)) {
-            String msg = LibAssign.NAME + " has a minimum requirement of java 1.8.0_40\nYou are running java " + SystemUtils.JAVA_VERSION + "\nPlease update java before using " + LibAssign.NAME;
-            logger.log(Level.FATAL, msg);
-            JOptionPane.showMessageDialog(null, msg);
-            System.exit(1);
-        }
-        int port = -1;
-        if (cmd.hasOption('p')) {
-            String portStr = cmd.getOptionValue('p');
-            boolean error = false;
-            try {
-                port = Integer.parseInt(portStr);
-            } catch (NumberFormatException e) {
-                error = true;
-            }
-            if (error || port <= 0 || port > 65535) {
-                logger.error("Invalid port specified: " + portStr);
-                System.exit(1);
-            }
-        }
-        if (cmd.hasOption('a'))
-            Config.SERVER_ADDRESS.setValue(cmd.getOptionValue('a'));
-        if (port > 0)
-            Config.PORT.setValue(port);
-        Config.ALLOW_INSECURE.setValue(cmd.hasOption("allow-insecure"));
-        if (cmd.hasOption("add-cert")) {
-            String filename = cmd.getOptionValue("add-cert");
-            File file = new File(filename);
-            Config.ADD_CERT.setValue(file);
-        }
-        doUpdate = cmd.hasOption('u');
-        launch(AssignClient.class, cmd.getArgs());
     }
 }

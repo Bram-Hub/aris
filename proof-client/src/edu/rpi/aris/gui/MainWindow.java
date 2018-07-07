@@ -1,7 +1,9 @@
 package edu.rpi.aris.gui;
 
-import edu.rpi.aris.Main;
+import edu.rpi.aris.proof.ArisProofProblem;
 import edu.rpi.aris.assign.EditMode;
+import edu.rpi.aris.assign.ModuleUI;
+import edu.rpi.aris.assign.Problem;
 import edu.rpi.aris.gui.event.GoalChangedEvent;
 import edu.rpi.aris.gui.event.LineChangedEvent;
 import edu.rpi.aris.gui.event.PremiseChangeEvent;
@@ -42,7 +44,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class MainWindow implements StatusChangeListener, SaveInfoListener {
+public class MainWindow implements StatusChangeListener, SaveInfoListener, ModuleUI {
 
     public static final HashMap<Proof.Status, Image> STATUS_ICONS = new HashMap<>();
     private static FileChooser.ExtensionFilter extensionFilter = new FileChooser.ExtensionFilter("Bram Proof File (." + SaveManager.FILE_EXTENSION + ")", "*." + SaveManager.FILE_EXTENSION);
@@ -74,9 +76,14 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener {
     private TitledPane oprTitlePane;
     @FXML
     private BorderPane proofBorderPane;
+    @FXML
+    private HBox descriptionBox;
+    @FXML
+    private Label descriptionText;
     private ObjectProperty<Font> fontObjectProperty;
     private ArrayList<ProofLine> proofLines = new ArrayList<>();
     private ArrayList<GoalLine> goalLines = new ArrayList<>();
+    private HashSet<Runnable> closeListeners = new HashSet<>();
     private SimpleIntegerProperty selectedLine = new SimpleIntegerProperty(-1);
     private Proof proof;
     private Stage primaryStage;
@@ -109,7 +116,13 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener {
         this.editMode = editMode;
         this.headerNode = headerNode;
         primaryStage.setTitle("ARIS");
-        primaryStage.setOnHidden(windowEvent -> System.gc());
+        primaryStage.setOnHidden(windowEvent -> new Thread(() -> {
+            for (Runnable r : closeListeners) {
+                if (r != null)
+                    r.run();
+            }
+            System.gc();
+        }).start());
         saveManager = new SaveManager(this);
         fontObjectProperty = new SimpleObjectProperty<>(new Font(14));
         rulesManager = new RulesManager();
@@ -169,11 +182,6 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener {
                 f = new File(f.getParent(), f.getName() + "." + SaveManager.FILE_EXTENSION);
         }
         return f;
-    }
-
-    public void setModal(Window window) {
-        primaryStage.initModality(Modality.WINDOW_MODAL);
-        primaryStage.initOwner(window);
     }
 
     private void setupScene() throws IOException {
@@ -485,6 +493,37 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener {
         primaryStage.hide();
     }
 
+    @Override
+    public void setModal(Modality modality, Window owner) {
+        primaryStage.initModality(modality);
+        primaryStage.initOwner(owner);
+    }
+
+    @Override
+    public void setDescription(String description) {
+        boolean visible = description != null && description.length() > 0;
+        Platform.runLater(() -> {
+            descriptionBox.setVisible(visible);
+            descriptionBox.setManaged(visible);
+            descriptionText.setText(description);
+        });
+    }
+
+    @Override
+    public void addCloseListener(Runnable runnable) {
+        closeListeners.add(runnable);
+    }
+
+    @Override
+    public void removeCloseListener(Runnable runnable) {
+        closeListeners.remove(runnable);
+    }
+
+    @Override
+    public Problem getProblem() {
+        return new ArisProofProblem(proof);
+    }
+
     private synchronized void autoScroll(Bounds contentBounds) {
         HBox root = null;
         ScrollPane scroll = null;
@@ -523,6 +562,8 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener {
 
     @FXML
     private void initialize() {
+        descriptionBox.setVisible(false);
+        descriptionBox.setManaged(false);
         scrollPane.getContent().boundsInLocalProperty().addListener((observableValue, oldBounds, newBounds) -> {
             if (oldBounds.getHeight() != newBounds.getHeight() && selectedLine.get() >= 0)
                 autoScroll(newBounds);
@@ -862,52 +903,28 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener {
 
     @Override
     public boolean notArisFile(String filename, String programName, String programVersion) {
-        switch (Main.getMode()) {
-            case GUI:
-                Alert noAris = new Alert(Alert.AlertType.CONFIRMATION);
-                noAris.setTitle("Not Aris File");
-                noAris.setHeaderText("Not Aris File");
-                noAris.setContentText("The given file \"" + filename + "\" was written by " + programName + " version " + programVersion + "\n" +
-                        "Aris may still be able to read this file with varying success\n" +
-                        "Would you like to attempt to load this file?");
-                Optional<ButtonType> option = noAris.showAndWait();
-                if (!option.isPresent() || option.get() != ButtonType.YES)
-                    return false;
-                break;
-            case CMD:
-                System.out.println("The given file \"" + filename + "\" was written by " + programName + " version " + programVersion);
-                System.out.println("Aris may still be able to read this file with varying success");
-                System.out.println("Would you like to attempt to load this file? (Y/n)");
-                String response = Main.readLine();
-                if (response.equalsIgnoreCase("n") || response.equalsIgnoreCase("no"))
-                    return false;
-                break;
-        }
+        Alert noAris = new Alert(Alert.AlertType.CONFIRMATION);
+        noAris.setTitle("Not Aris File");
+        noAris.setHeaderText("Not Aris File");
+        noAris.setContentText("The given file \"" + filename + "\" was written by " + programName + " version " + programVersion + "\n" +
+                "Aris may still be able to read this file with varying success\n" +
+                "Would you like to attempt to load this file?");
+        Optional<ButtonType> option = noAris.showAndWait();
+        if (!option.isPresent() || option.get() != ButtonType.YES)
+            return false;
         return true;
     }
 
     @Override
     public void integrityCheckFailed(String filename) {
-        switch (Main.getMode()) {
-            case GUI:
-                Alert alert = new Alert(Alert.AlertType.ERROR);
-                alert.setTitle("File integrity check failed");
-                alert.setHeaderText("File integrity check failed");
-                alert.setContentText("This file may be corrupted or may have been tampered with.\n" +
-                        "If this file successfully loads the author will be marked as UNKNOWN.\n" +
-                        "This will show up if this file is submitted and may affect your grade.");
-                alert.getDialogPane().setPrefWidth(500);
-                alert.showAndWait();
-                break;
-            case CMD:
-                System.out.println("File integrity check failed for " + filename);
-                System.out.println("This file may be corrupted or may have been tampered with.");
-                System.out.println("If this file successfully loads the author will be marked as UNKNOWN");
-                System.out.println("This will show up if this file is submitted and may affect your grade");
-                System.out.println("Press enter to confirm");
-                Main.readLine();
-                break;
-        }
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("File integrity check failed");
+        alert.setHeaderText("File integrity check failed");
+        alert.setContentText("This file may be corrupted or may have been tampered with.\n" +
+                "If this file successfully loads the author will be marked as UNKNOWN.\n" +
+                "This will show up if this file is submitted and may affect your grade.");
+        alert.getDialogPane().setPrefWidth(500);
+        alert.showAndWait();
     }
 
 }
