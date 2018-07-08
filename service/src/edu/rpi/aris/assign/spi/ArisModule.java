@@ -7,6 +7,7 @@ import edu.rpi.aris.assign.ArisModuleException;
 import edu.rpi.aris.assign.ArisServerModule;
 import edu.rpi.aris.assign.ProblemConverter;
 
+import java.io.InputStream;
 import java.util.HashMap;
 
 public interface ArisModule {
@@ -23,6 +24,8 @@ public interface ArisModule {
     @NotNull
     ProblemConverter getProblemConverter() throws ArisModuleException;
 
-    void setArisProperties(HashMap<String, String> properties);
+    void setArisProperties(@NotNull HashMap<String, String> properties);
+
+    InputStream getModuleIcon() throws ArisModuleException;
 
 }

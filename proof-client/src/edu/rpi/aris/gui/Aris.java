@@ -23,7 +23,11 @@ public class Aris extends Application implements ArisClientModule, SaveInfoListe
 
     private MainWindow mainWindow = null;
 
-    private Aris() {
+    public Aris() {
+    }
+
+    public static void main(String[] args) {
+        launch(args);
     }
 
     public static MainWindow showProofWindow(Stage stage, Proof p) throws IOException {
@@ -33,6 +37,8 @@ public class Aris extends Application implements ArisClientModule, SaveInfoListe
     }
 
     public static Aris getInstance() {
+        if (instance == null)
+            instance = new Aris();
         return instance;
     }
 
@@ -50,7 +56,7 @@ public class Aris extends Application implements ArisClientModule, SaveInfoListe
     @NotNull
     public ModuleUI createModuleGui(@NotNull EditMode editMode, @Nullable String description) throws ArisModuleException {
         try {
-            return new MainWindow(new Stage(), null, editMode);
+            return new MainWindow(new Stage(), editMode);
         } catch (IOException e) {
             throw new ArisModuleException("Failed to create " + LibAris.NAME + " window", e);
         }

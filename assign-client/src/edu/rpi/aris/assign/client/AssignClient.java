@@ -1,7 +1,7 @@
 package edu.rpi.aris.assign.client;
 
 import edu.rpi.aris.assign.*;
-import edu.rpi.aris.assign.client.gui.AssignmentWindow;
+import edu.rpi.aris.assign.client.gui.ModuleSelect;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.event.Event;
@@ -34,7 +34,7 @@ public class AssignClient extends Application implements ArisExceptionHandler {
     private static boolean doUpdate = false;
 
     private Update update;
-    private AssignmentWindow mainWindow;
+    private ModuleSelect mainWindow;
 
     public AssignClient() {
         instance = this;
@@ -108,7 +108,7 @@ public class AssignClient extends Application implements ArisExceptionHandler {
         if (doUpdate) {
             selfUpdate();
         } else {
-            mainWindow = new AssignmentWindow();
+            mainWindow = new ModuleSelect(primaryStage);
             mainWindow.show();
             checkUpdate();
         }

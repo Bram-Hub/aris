@@ -1,5 +1,6 @@
 package edu.rpi.aris.gui;
 
+import edu.rpi.aris.LibAris;
 import edu.rpi.aris.proof.ArisProofProblem;
 import edu.rpi.aris.assign.EditMode;
 import edu.rpi.aris.assign.ModuleUI;
@@ -100,7 +101,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     }
 
     public MainWindow(Stage primaryStage, EditMode editMode, Node headerNode) throws IOException {
-        this(primaryStage, new Proof(GuiConfig.getConfigManager().username.get() == null ? "UNKNOWN" : GuiConfig.getConfigManager().username.get()), editMode, headerNode);
+        this(primaryStage, new Proof(LibAris.getInstance().getProperties().get("username") == null ? "UNKNOWN" : LibAris.getInstance().getProperties().get("username")), editMode, headerNode);
     }
 
     public MainWindow(Stage primaryStage, Proof proof, EditMode editMode) throws IOException {
@@ -376,7 +377,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
             if (f != null && !f.exists()) {
                 error = "The selected file does not exist";
             } else if (f != null) {
-                Proof p = saveManager.loadProof(f, GuiConfig.getConfigManager().username.get());
+                Proof p = saveManager.loadProof(f, LibAris.getInstance().getProperties().get("username"));
                 if (p == null) {
                     error = "Invalid file format";
                 } else {
@@ -562,6 +563,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
 
     @FXML
     private void initialize() {
+        primaryStage.getIcons().add(new Image(LibAris.getInstance().getModuleIcon()));
         descriptionBox.setVisible(false);
         descriptionBox.setManaged(false);
         scrollPane.getContent().boundsInLocalProperty().addListener((observableValue, oldBounds, newBounds) -> {

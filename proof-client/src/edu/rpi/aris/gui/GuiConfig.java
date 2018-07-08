@@ -124,8 +124,6 @@ public class GuiConfig {
 
     public final SimpleBooleanProperty hideRulesPanel = new SimpleBooleanProperty(preferences.getBoolean(HIDE_RULES_PANEL, false));
     public final SimpleBooleanProperty hideOperatorsPanel = new SimpleBooleanProperty(preferences.getBoolean(HIDE_OPERATOR_PANEL, false));
-    public final SimpleStringProperty username = new SimpleStringProperty(preferences.get(USERNAME_KEY, null));
-    public final SimpleIntegerProperty selectedCourseId = new SimpleIntegerProperty(preferences.getInt(SELECTED_COURSE_ID, 0));
     public final SimpleObjectProperty<KeyCombination> newProofLineKey = new SimpleObjectProperty<>(KeyCombination.keyCombination(preferences.get(NEW_LINE_KEY, "Ctrl+A")));
     public final SimpleObjectProperty<KeyCombination> deleteProofLineKey = new SimpleObjectProperty<>(KeyCombination.keyCombination(preferences.get(DELETE_LINE_KEY, "Ctrl+D")));
     public final SimpleObjectProperty<KeyCombination> newPremiseKey = new SimpleObjectProperty<>(KeyCombination.keyCombination(preferences.get(NEW_PREMISE_KEY, "Ctrl+R")));
@@ -186,13 +184,6 @@ public class GuiConfig {
             aliasKeyMap.put(s[0], s[1]);
         if (!saveDirectory.exists())
             saveDirectory = new File(System.getProperty("user.home"));
-        username.addListener((observable, oldValue, newValue) -> {
-            if (newValue == null)
-                preferences.remove(USERNAME_KEY);
-            else
-                preferences.put(USERNAME_KEY, newValue);
-        });
-        selectedCourseId.addListener((observable, oldValue, newValue) -> preferences.putInt(SELECTED_COURSE_ID, newValue.intValue()));
 
         keyComboDescriptions.put(newProofLineKey, new Pair<>("Add proof line", NEW_PROOF_KEY));
         keyComboDescriptions.put(deleteProofLineKey, new Pair<>("Delete proof line", DELETE_LINE_KEY));

@@ -1,7 +1,6 @@
 package edu.rpi.aris;
 
 import edu.rpi.aris.assign.ArisClientModule;
-import edu.rpi.aris.assign.ArisModuleException;
 import edu.rpi.aris.assign.ArisServerModule;
 import edu.rpi.aris.assign.ProblemConverter;
 import edu.rpi.aris.assign.spi.ArisModule;
@@ -12,6 +11,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
@@ -46,6 +46,8 @@ public class LibAris implements ArisModule {
     }
 
     public static LibAris getInstance() {
+        if (instance == null)
+            new LibAris();
         return instance;
     }
 
@@ -79,12 +81,17 @@ public class LibAris implements ArisModule {
     }
 
     @Override
-    public ProblemConverter getProblemConverter() throws ArisModuleException {
+    public ProblemConverter getProblemConverter() {
         return new SaveManager((SaveInfoListener) clientModule);
     }
 
     @Override
     public void setArisProperties(HashMap<String, String> properties) {
         this.assignProperties = properties;
+    }
+
+    @Override
+    public InputStream getModuleIcon() {
+        return LibAris.class.getResourceAsStream("aris.png");
     }
 }
