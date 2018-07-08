@@ -1,3 +1,4 @@
 #!/bin/bash
 
 git checkout HEAD libaris/res/edu/rpi/aris/VERSION
+git checkout HEAD libassign/res/edu/rpi/aris/assign/VERSION

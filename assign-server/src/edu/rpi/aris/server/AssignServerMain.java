@@ -1,7 +1,7 @@
 package edu.rpi.aris.server;
 
 import edu.rpi.aris.assign.LibAssign;
-import edu.rpi.aris.assign.StartListener;
+import edu.rpi.aris.assign.MainCallbackListener;
 import org.apache.commons.cli.CommandLine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 
-public class AssignServerMain implements StartListener {
+public class AssignServerMain implements MainCallbackListener {
 
     public static final AssignServerMain instance = new AssignServerMain();
     private static AssignServer server;
@@ -65,5 +65,10 @@ public class AssignServerMain implements StartListener {
                 System.exit(1);
         } else
             new Thread(server, "ServerSocket-Listen").start();
+    }
+
+    @Override
+    public void processIpcMessage(String msg) {
+        //TODO
     }
 }

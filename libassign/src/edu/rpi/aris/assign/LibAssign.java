@@ -62,6 +62,7 @@ public class LibAssign implements Thread.UncaughtExceptionHandler {
     }
 
     private ArisExceptionHandler exceptionHandler;
+    private MainCallbackListener callbacks;
 
     private LibAssign() {
     }
@@ -116,8 +117,9 @@ public class LibAssign implements Thread.UncaughtExceptionHandler {
                         ipcLock = channel.lock();
                         String line;
                         while ((line = raf.readLine()) != null) {
-                            //TODO
-                            System.out.println(line);
+                            logger.info("Received ipc message: " + line);
+                            if (callbacks != null)
+                                callbacks.processIpcMessage(line);
                         }
                         raf.setLength(0);
                         ipcLock.release();
@@ -133,7 +135,7 @@ public class LibAssign implements Thread.UncaughtExceptionHandler {
         observer.addListener(listener);
         monitor.addObserver(observer);
         monitor.setThreadFactory(runnable -> {
-            Thread t = new Thread(runnable);
+            Thread t = new Thread(runnable, "IPC Parse Thread");
             t.setDaemon(true);
             return t;
         });
@@ -149,14 +151,17 @@ public class LibAssign implements Thread.UncaughtExceptionHandler {
             logger.error("Failed to send ipc message since ipc file does not exist");
             return;
         }
-        FileOutputStream fos = new FileOutputStream(ipcFile, true);
+        PrintWriter writer = null;
+        //noinspection TryFinallyCanBeTryWithResources
         try {
+            FileOutputStream fos = new FileOutputStream(ipcFile, true);
             ipcLock = fos.getChannel().lock();
-            try (PrintWriter writer = new PrintWriter(fos, true)) {
-                writer.println(msg);
-            }
+            writer = new PrintWriter(fos, true);
+            writer.println(msg);
         } finally {
             ipcLock.release();
+            if (writer != null)
+                writer.close();
         }
     }
 
@@ -245,8 +250,9 @@ public class LibAssign implements Thread.UncaughtExceptionHandler {
         return update;
     }
 
-    public void init(boolean isServer, String[] args, StartListener callbacks) throws IOException {
+    public void init(boolean isServer, String[] args, MainCallbackListener callbacks) throws IOException {
         Thread.setDefaultUncaughtExceptionHandler(instance);
+        this.callbacks = callbacks;
         logger.info(NAME + " " + (isServer ? "Server" : "Client") + " version " + VERSION);
         lockFile = isServer ? lockFileServer : lockFileClient;
         ipcFile = isServer ? ipcFileServer : ipcFileClient;

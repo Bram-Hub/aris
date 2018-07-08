@@ -30,8 +30,8 @@ import java.util.Optional;
 public class AssignClient extends Application implements ArisExceptionHandler {
 
     private static final Logger logger = LogManager.getLogger(AssignClient.class);
-    private static AssignClient instance;
     private static boolean doUpdate = false;
+    private static AssignClient instance;
 
     private Update update;
     private ModuleSelect mainWindow;
@@ -49,7 +49,7 @@ public class AssignClient extends Application implements ArisExceptionHandler {
 
     public static void main(String[] args) throws IOException {
         LibAssign.setLogLocation(new File(Config.CLIENT_CONFIG_DIR, "logs"));
-        LibAssign.getInstance().init(false, args, new StartListener() {
+        LibAssign.getInstance().init(false, args, new MainCallbackListener() {
             @Override
             public void processAlreadyRunning(CommandLine cmd) {
                 AssignClient.processAlreadyRunning(cmd);
@@ -59,11 +59,32 @@ public class AssignClient extends Application implements ArisExceptionHandler {
             public void finishInit(CommandLine cmd) {
                 AssignClient.finishInit(cmd);
             }
+
+            @Override
+            public void processIpcMessage(String msg) {
+                AssignClient.processIpcMessage(msg);
+            }
         });
     }
 
+    private static void processIpcMessage(String msg) {
+        switch (msg) {
+            case "show-module-ui":
+                if (instance != null)
+                    Platform.runLater(() -> {
+                        instance.mainWindow.show();
+                        instance.mainWindow.getStage().requestFocus();
+                    });
+                break;
+        }
+    }
+
     private static void processAlreadyRunning(CommandLine cmd) {
-        //TODO
+        try {
+            LibAssign.getInstance().sendIpcMessage("show-module-ui");
+        } catch (IOException e) {
+            logger.error("Failed to send ipc message", e);
+        }
     }
 
     private static void finishInit(CommandLine cmd) {
@@ -136,7 +157,7 @@ public class AssignClient extends Application implements ArisExceptionHandler {
                     });
                 });
             }
-        }).start();
+        }, "Check Update Thread").start();
     }
 
     public void startUpdate() throws IOException, InterruptedException {

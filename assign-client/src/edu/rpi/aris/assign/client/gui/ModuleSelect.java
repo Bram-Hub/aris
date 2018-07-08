@@ -21,6 +21,7 @@ public class ModuleSelect {
     private ImageView arisAssignBanner;
     @FXML
     private VBox moduleBox;
+    private AssignmentWindow assignmentWindow;
 
     public ModuleSelect(Stage stage) {
         this.stage = stage;
@@ -39,6 +40,7 @@ public class ModuleSelect {
 
     @FXML
     public void initialize() {
+        stage.setTitle("Aris Assign - Module Select");
         stage.getIcons().add(new Image(LibAssign.class.getResourceAsStream("aris-assign.png")));
         arisAssignBanner.setImage(new Image(ModuleSelect.class.getResourceAsStream("aris-assign-banner.png")));
         for (String moduleName : ClientModuleService.getService().moduleNames())
@@ -52,7 +54,9 @@ public class ModuleSelect {
 
     @FXML
     public void showAssignments() {
-
+        if (assignmentWindow == null)
+            assignmentWindow = new AssignmentWindow();
+        assignmentWindow.show();
     }
 
     public Stage getStage() {
