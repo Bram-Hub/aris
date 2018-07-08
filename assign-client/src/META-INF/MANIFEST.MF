@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Class-Path: commons-cli-1.4.jar commons-lang3-3.7.jar gson-2.8.2.jar b
+ cpkix-jdk15on-1.59.jar bcprov-jdk15on-1.59.jar log4j-core-2.10.0.jar 
+ log4j-api-2.10.0.jar bcprov-jdk15on-1.59.jar bctls-jdk15on-1.59.jar b
+ cprov-jdk15on-1.59.jar commons-io-2.6.jar libassign.jar service.jar
+Main-Class: edu.rpi.aris.assign.client.AssignClient
+

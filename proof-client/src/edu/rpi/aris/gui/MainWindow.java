@@ -1,7 +1,6 @@
 package edu.rpi.aris.gui;
 
 import edu.rpi.aris.LibAris;
-import edu.rpi.aris.proof.ArisProofProblem;
 import edu.rpi.aris.assign.EditMode;
 import edu.rpi.aris.assign.ModuleUI;
 import edu.rpi.aris.assign.Problem;
@@ -116,7 +115,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
         this.proof = proof;
         this.editMode = editMode;
         this.headerNode = headerNode;
-        primaryStage.setTitle("ARIS");
+        primaryStage.setTitle(LibAris.NAME);
         primaryStage.setOnHidden(windowEvent -> new Thread(() -> {
             for (Runnable r : closeListeners) {
                 if (r != null)
