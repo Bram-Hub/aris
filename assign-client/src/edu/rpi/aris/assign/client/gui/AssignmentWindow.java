@@ -6,7 +6,6 @@ import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.Problem;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ClientModuleService;
-import edu.rpi.aris.assign.client.Config;
 import edu.rpi.aris.assign.message.*;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;

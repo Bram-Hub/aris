@@ -3,6 +3,7 @@ package edu.rpi.aris.assign.client;
 import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.MessageCommunication;
 import edu.rpi.aris.assign.NetUtil;
+import edu.rpi.aris.assign.client.gui.Config;
 import edu.rpi.aris.assign.message.ErrorMsg;
 import edu.rpi.aris.assign.message.Message;
 import javafx.application.Platform;

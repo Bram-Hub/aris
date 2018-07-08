@@ -1,6 +1,7 @@
 package edu.rpi.aris.assign.client;
 
 import edu.rpi.aris.assign.*;
+import edu.rpi.aris.assign.client.gui.Config;
 import edu.rpi.aris.assign.client.gui.ModuleSelect;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -49,6 +50,7 @@ public class AssignClient extends Application implements ArisExceptionHandler {
 
     public static void main(String[] args) throws IOException {
         LibAssign.setLogLocation(new File(Config.CLIENT_CONFIG_DIR, "logs"));
+        logger.info("Loaded client modules: " + ClientModuleService.getService().moduleNames());
         LibAssign.getInstance().init(false, args, new MainCallbackListener() {
             @Override
             public void processAlreadyRunning(CommandLine cmd) {
@@ -124,8 +126,17 @@ public class AssignClient extends Application implements ArisExceptionHandler {
         launch(AssignClient.class, cmd.getArgs());
     }
 
+    public static AssignClient getInstance() {
+        return instance;
+    }
+
+    public ModuleSelect getMainWindow() {
+        return mainWindow;
+    }
+
     @Override
     public void start(Stage primaryStage) {
+        primaryStage.setTitle("Aris Assign");
         if (doUpdate) {
             selfUpdate();
         } else {

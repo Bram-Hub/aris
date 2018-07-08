@@ -3,29 +3,74 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
 <VBox alignment="TOP_CENTER" prefHeight="400.0" prefWidth="300.0" spacing="5.0" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1">
     <children>
-        <ImageView fx:id="arisAssignBanner" fitHeight="80.0" fitWidth="300.0" pickOnBounds="true" preserveRatio="true" />
+        <ImageView fitHeight="80.0" fitWidth="300.0" pickOnBounds="true" preserveRatio="true">
+         <image>
+            <Image url="@aris-assign-banner.png" />
+         </image></ImageView>
       <AnchorPane>
          <children>
-                <Button mnemonicParsing="false" onAction="#showAssignments" text="Assignments" AnchorPane.leftAnchor="0.0" />
-                <Button layoutX="102.0" mnemonicParsing="false" onAction="#showSettings" AnchorPane.rightAnchor="0.0">
-               <graphic>
-                  <ImageView fitHeight="20.0" fitWidth="20.0" pickOnBounds="true" preserveRatio="true">
-                     <image>
-                        <Image url="@settings.png" />
-                     </image>
-                  </ImageView>
-               </graphic>
+                <Button mnemonicParsing="false" onAction="#showAssignments" text="Assignments" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.topAnchor="0.0">
                <padding>
-                  <Insets bottom="3.0" left="3.0" right="3.0" top="3.0" />
-               </padding>
-            </Button>
+                  <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+               </padding></Button>
+            <HBox layoutX="274.0" spacing="5.0" AnchorPane.rightAnchor="0.0">
+               <children>
+                  <Button layoutX="10.0" layoutY="10.0" mnemonicParsing="false" onAction="#addModule">
+                     <graphic>
+                        <ImageView fitHeight="20.0" fitWidth="20.0" pickOnBounds="true" preserveRatio="true">
+                           <image>
+                              <Image url="@add.png" />
+                           </image>
+                        </ImageView>
+                     </graphic>
+                     <padding>
+                        <Insets bottom="3.0" left="3.0" right="3.0" top="3.0" />
+                     </padding>
+                     <tooltip>
+                        <Tooltip text="Add Module" />
+                     </tooltip>
+                  </Button>
+                  <Button mnemonicParsing="false" onAction="#refreshModules">
+                     <graphic>
+                        <ImageView fitHeight="20.0" fitWidth="20.0" pickOnBounds="true" preserveRatio="true">
+                           <image>
+                              <Image url="@refresh.png" />
+                           </image>
+                        </ImageView>
+                     </graphic>
+                     <padding>
+                        <Insets bottom="3.0" left="3.0" right="3.0" top="3.0" />
+                     </padding>
+                     <tooltip>
+                        <Tooltip text="Refresh Modules" />
+                     </tooltip>
+                  </Button>
+                      <Button mnemonicParsing="false" onAction="#showSettings">
+                     <graphic>
+                        <ImageView fitHeight="20.0" fitWidth="20.0" pickOnBounds="true" preserveRatio="true">
+                           <image>
+                              <Image url="@settings.png" />
+                           </image>
+                        </ImageView>
+                     </graphic>
+                     <padding>
+                        <Insets bottom="3.0" left="3.0" right="3.0" top="3.0" />
+                     </padding>
+                     <tooltip>
+                        <Tooltip text="Settings" />
+                     </tooltip>
+                  </Button>
+               </children>
+            </HBox>
          </children>
       </AnchorPane>
       <ScrollPane fitToWidth="true" hbarPolicy="NEVER" VBox.vgrow="ALWAYS">

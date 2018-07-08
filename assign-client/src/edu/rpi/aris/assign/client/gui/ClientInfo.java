@@ -2,7 +2,6 @@ package edu.rpi.aris.assign.client.gui;
 
 import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.client.Client;
-import edu.rpi.aris.assign.client.Config;
 import edu.rpi.aris.assign.message.UserGetMsg;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
