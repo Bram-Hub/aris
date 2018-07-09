@@ -2,7 +2,7 @@
 
 #put this file in .git/hooks to auto update the version number on commit
 
-CVERSION=$(cat libaris/res/edu/rpi/aris/VERSION)
+CVERSION=$(cat libaris/src/main/resources/edu/rpi/aris/VERSION)
 IFS='.' read -ra VER <<< "$CVERSION"
 for i in "${!VER[@]}"; do
     if [ $i -eq $(expr ${#VER[@]} - 1) ]; then
