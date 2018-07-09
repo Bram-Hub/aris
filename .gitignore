@@ -47,6 +47,7 @@ hs_err_pid*
 
 # Gradle:
 .idea/**/gradle.xml
+.gradle
 
 # CMake
 cmake-build-debug/
@@ -62,6 +63,8 @@ cmake-build-release/
 
 # IntelliJ
 out/
+*.iml
+*.ipr
 
 # mpeltonen/sbt-idea plugin
 .idea_modules/

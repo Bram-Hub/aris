@@ -1,0 +1,28 @@
+allprojects {
+    group = 'edu.rpi.aris'
+    version = new File('libaris/src/main/resources/edu/rpi/aris/VERSION').text.trim()
+
+    apply plugin: 'idea'
+}
+
+subprojects {
+
+    apply plugin: 'java'
+
+    sourceCompatibility = 1.8
+
+    jar {
+        doFirst {
+            manifest {
+                attributes("Implementation-Title": "Gradle",
+                        "Implementation-Version": version,
+                        'Class-Path': configurations.runtime.collect { it.name }.join(' '))
+            }
+        }
+    }
+
+    repositories {
+        mavenCentral()
+    }
+
+}

@@ -1,8 +1,0 @@
-Manifest-Version: 1.0
-Class-Path: commons-collections4-4.1.jar commons-cli-1.4.jar commons-l
- ang3-3.7.jar gson-2.8.2.jar bcpkix-jdk15on-1.59.jar bcprov-jdk15on-1.
- 59.jar log4j-core-2.10.0.jar log4j-api-2.10.0.jar postgresql-42.2.2.j
- ar bcprov-jdk15on-1.59.jar bctls-jdk15on-1.59.jar bcprov-jdk15on-1.59
- .jar commons-io-2.6.jar libassign.jar service.jar
-Main-Class: edu.rpi.aris.server.AssignServerMain
-

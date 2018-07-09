@@ -1,0 +1,8 @@
+rootProject.name = 'aris'
+include ':assign-client'
+include ':assign-server'
+include ':libaris'
+include ':libassign'
+include ':proof-client'
+include ':proof-server'
+include ':service'

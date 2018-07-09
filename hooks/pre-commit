@@ -11,7 +11,7 @@ for i in "${!VER[@]}"; do
         VERSION=$VERSION${VER[$i]}.
     fi
 done
-echo $VERSION > libaris/res/edu/rpi/aris/VERSION
-echo $VERSION > libassign/res/edu/rpi/aris/assign/VERSION
-git add libaris/res/edu/rpi/aris/VERSION
-git add libassign/res/edu/rpi/aris/assign/VERSION
+echo $VERSION > libaris/src/main/resources/edu/rpi/aris/VERSION
+echo $VERSION > libassign/src/main/resources/edu/rpi/aris/assign/VERSION
+git add libaris/src/main/resources/edu/rpi/aris/VERSION
+git add libassign/src/main/resources/edu/rpi/aris/assign/VERSION

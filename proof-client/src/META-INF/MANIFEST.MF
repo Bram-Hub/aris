@@ -1,5 +1,0 @@
-Manifest-Version: 1.0
-Class-Path: log4j-core-2.10.0.jar log4j-api-2.10.0.jar commons-lang3-3
- .7.jar commons-collections4-4.1.jar libaris.jar service.jar
-Main-Class: edu.rpi.aris.gui.Aris
-
