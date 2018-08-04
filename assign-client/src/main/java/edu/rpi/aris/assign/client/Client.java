@@ -3,7 +3,10 @@ package edu.rpi.aris.assign.client;
 import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.MessageCommunication;
 import edu.rpi.aris.assign.NetUtil;
-import edu.rpi.aris.assign.client.gui.Config;
+import edu.rpi.aris.assign.client.exceptions.AuthBanException;
+import edu.rpi.aris.assign.client.exceptions.InvalidAccessTokenException;
+import edu.rpi.aris.assign.client.exceptions.InvalidCredentialsException;
+import edu.rpi.aris.assign.client.model.Config;
 import edu.rpi.aris.assign.message.ErrorMsg;
 import edu.rpi.aris.assign.message.Message;
 import javafx.application.Platform;
@@ -50,6 +53,10 @@ import java.security.cert.CertPathBuilderException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.*;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
@@ -68,12 +75,25 @@ public class Client implements MessageCommunication {
         System.setProperty("jdk.tls.ephemeralDHKeySize", "2048");
     }
 
+    private final ThreadPoolExecutor processPool = (ThreadPoolExecutor) Executors.newCachedThreadPool(new ThreadFactory() {
+
+        private int i;
+
+        @Override
+        public Thread newThread(Runnable r) {
+            synchronized (this) {
+                Thread t = new Thread(r, "ClientMsgProcess - Thread " + i++);
+                t.setDaemon(true);
+                return t;
+            }
+        }
+    });
     private ReentrantLock connectionLock = new ReentrantLock(true);
     private SSLSocketFactory socketFactory = null;
     private SSLSocket socket;
     private DataInputStream in;
     private DataOutputStream out;
-    private String errorString = null;
+    private Exception connectionException;
     private ConnectionStatus connectionStatus = ConnectionStatus.DISCONNECTED;
     private SimpleObjectProperty<ConnectionStatus> connectionStatusProperty = new SimpleObjectProperty<>(connectionStatus);
     private boolean allowInsecure = false;
@@ -292,7 +312,7 @@ public class Client implements MessageCommunication {
         }
     }
 
-    private synchronized void setupConnection(String user, String pass, boolean isAccessToken) throws IOException {
+    private synchronized void setupConnection(String user, String pass, boolean isAccessToken) throws Exception {
         String serverAddress = Config.SERVER_ADDRESS.getValue();
         if (serverAddress == null)
             throw new IOException("Server address not specified");
@@ -303,6 +323,7 @@ public class Client implements MessageCommunication {
         socket = (SSLSocket) getSocketFactory().createSocket(serverAddress, port);
         socket.setSoTimeout(NetUtil.SOCKET_TIMEOUT);
         final Object sync = new Object();
+        connectionException = null;
         socket.addHandshakeCompletedListener(listener -> {
             try {
                 X509Certificate cert = (X509Certificate) listener.getPeerCertificates()[0];
@@ -311,10 +332,10 @@ public class Client implements MessageCommunication {
                 RDN cn = name.getRDNs(BCStyle.CN)[0];
                 if (!IETFUtils.valueToString(cn.getFirst().getValue()).equalsIgnoreCase(serverAddress))
                     throw new CertificateException("Server's certificate common name does not match server address");
-                errorString = null;
+                connectionException = null;
             } catch (SSLPeerUnverifiedException | CertificateException e) {
                 logger.error("An error occurred while attempting to validate server's certificate", e);
-                errorString = e.getMessage();
+                connectionException = e;
                 setConnectionStatus(ConnectionStatus.ERROR);
             }
             synchronized (sync) {
@@ -338,7 +359,7 @@ public class Client implements MessageCommunication {
                 setConnectionStatus(ConnectionStatus.CERTIFICATE_WARNING);
             } else {
                 setConnectionStatus(ConnectionStatus.ERROR);
-                errorString = e.getMessage();
+                connectionException = e;
             }
         }
         switch (connectionStatus) {
@@ -346,7 +367,7 @@ public class Client implements MessageCommunication {
                 socket.close();
                 socket = null;
                 setConnectionStatus(ConnectionStatus.DISCONNECTED);
-                throw new IOException(errorString);
+                throw connectionException;
             case CERTIFICATE_WARNING:
                 socket.close();
                 socket = null;
@@ -371,7 +392,7 @@ public class Client implements MessageCommunication {
         }
     }
 
-    private synchronized void doAuth(String user, String pass, boolean isAccessToken) throws IOException {
+    private synchronized void doAuth(String user, String pass, boolean isAccessToken) throws Exception {
         sendMessage(NetUtil.ARIS_NAME + " " + LibAssign.VERSION);
         String version = in.readUTF();
         if (version.equals(NetUtil.INVALID_VERSION))
@@ -384,12 +405,12 @@ public class Client implements MessageCommunication {
         String res = in.readUTF();
         switch (res) {
             case NetUtil.AUTH_BAN:
-                throw new IOException("Authentication failed. Your ip address has been temporarily banned");
+                throw new AuthBanException();
             case NetUtil.AUTH_FAIL:
-                if (isAccessToken)
-                    throw new IOException(NetUtil.AUTH_FAIL);
-                else
-                    throw new IOException("Invalid credentials");
+                if (isAccessToken) {
+                    throw new InvalidAccessTokenException();
+                } else
+                    throw new InvalidCredentialsException();
             case NetUtil.AUTH_ERR:
                 throw new IOException("The server encountered an error while attempting to authenticate this connection");
             default:
@@ -402,7 +423,7 @@ public class Client implements MessageCommunication {
         }
     }
 
-    public void connect() throws IOException {
+    public void connect() throws Exception {
         connectionLock.lock();
         try {
             if (!ping()) {
@@ -416,17 +437,13 @@ public class Client implements MessageCommunication {
                     Config.PORT.setValue(info.getValue());
                 }
                 Triple<String, String, Boolean> credentials = getCredentials();
-                boolean isAccessToken = credentials.getRight();
                 try {
                     setupConnection(credentials.getLeft(), credentials.getMiddle(), credentials.getRight());
-                } catch (IOException e) {
-                    if (isAccessToken && e.getMessage().equals(NetUtil.AUTH_FAIL)) {
-                        Config.ACCESS_TOKEN.setValue(null);
-                        connect();
-                        if (connectionLock.isHeldByCurrentThread())
-                            connectionLock.unlock();
-                    } else
-                        throw e;
+                } catch (InvalidAccessTokenException e) {
+                    Config.ACCESS_TOKEN.setValue(null);
+                    connect();
+                    if (connectionLock.isHeldByCurrentThread())
+                        connectionLock.unlock();
                 }
             }
         } catch (IOException e) {
@@ -436,23 +453,46 @@ public class Client implements MessageCommunication {
     }
 
     public <T extends Message> void processMessage(T message, ResponseHandler<T> responseHandler) {
-        new Thread(() -> {
+        processPool.submit(() -> {
             try {
                 connect();
                 @SuppressWarnings("unchecked") T reply = (T) message.sendAndGet(this);
                 if (responseHandler == null)
                     return;
                 if (reply == null) {
-                    responseHandler.onError();
+                    try {
+                        responseHandler.onError(true);
+                    } catch (Throwable e) {
+                        logger.error("ResponseHandler threw an error when handling an error", e);
+                    }
                     return;
                 }
-                responseHandler.response(reply);
+                try {
+                    responseHandler.response(reply);
+                } catch (Throwable e) {
+                    logger.error("ResponseHandler threw an error", e);
+                }
+            } catch (CertificateException e) {
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Invalid Certificate", "Server provided an invalid certificate. The connection cannot continue", true);
+                responseHandler.onError(false);
             } catch (IOException e) {
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", e.getMessage(), true);
+                responseHandler.onError(false);
+            } catch (CancellationException e) {
+                responseHandler.onError(false);
+            } catch (InvalidCredentialsException e) {
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Invalid Credentials", "Your username or password was incorrect", true);
+                responseHandler.onError(true);
+            } catch (AuthBanException e) {
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Temporary Ban", e.getMessage());
+                responseHandler.onError(false);
+            } catch (Throwable e) {
                 logger.error("Error sending message", e);
+                responseHandler.onError(false);
             } finally {
                 disconnect();
             }
-        }).start();
+        });
     }
 
     private Pair<String, Integer> getServerAddress(String lastAddress) throws IOException {
@@ -518,7 +558,7 @@ public class Client implements MessageCommunication {
         return new Pair<>(address, port);
     }
 
-    private Triple<String, String, Boolean> getCredentials() throws IOException {
+    private Triple<String, String, Boolean> getCredentials() {
         String user = Config.USERNAME.getValue();
         String pass = Config.ACCESS_TOKEN.getValue();
         boolean isAccessToken = user != null && pass != null;
@@ -546,7 +586,7 @@ public class Client implements MessageCommunication {
                 Node loginButton = dialog.getDialogPane().lookupButton(loginButtonType);
                 loginButton.disableProperty().bind(Bindings.or(Bindings.length(username.textProperty()).isEqualTo(0), Bindings.length(password.textProperty()).isEqualTo(0)));
                 dialog.getDialogPane().setContent(grid);
-                dialog.setResultConverter(buttonType -> new Pair<>(username.getText(), password.getText()));
+                dialog.setResultConverter(buttonType -> buttonType == ButtonType.CANCEL ? null : new Pair<>(username.getText(), password.getText()));
                 username.requestFocus();
                 result.set(dialog.showAndWait());
                 synchronized (result) {
@@ -564,7 +604,7 @@ public class Client implements MessageCommunication {
                 user = result.get().get().getKey();
                 pass = result.get().get().getValue();
             } else
-                throw new IOException("CANCEL");
+                throw new CancellationException();
         }
         return new ImmutableTriple<>(user, pass, isAccessToken);
     }

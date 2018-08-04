@@ -1,7 +1,7 @@
 package edu.rpi.aris.assign.message;
 
-import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.User;
+import edu.rpi.aris.assign.UserType;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -36,7 +36,7 @@ public class ProblemEditMsg extends Message {
 
     @Override
     public ErrorType processMessage(Connection connection, User user) throws SQLException {
-        if (!user.userType.equals(NetUtil.USER_INSTRUCTOR))
+        if (!UserType.hasPermission(user, UserType.TA))
             return ErrorType.UNAUTHORIZED;
         if (name != null) {
             try (PreparedStatement updateName = connection.prepareStatement("UPDATE problem SET name = ? WHERE id = ?")) {

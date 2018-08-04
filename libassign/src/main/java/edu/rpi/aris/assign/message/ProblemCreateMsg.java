@@ -2,6 +2,7 @@ package edu.rpi.aris.assign.message;
 
 import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.User;
+import edu.rpi.aris.assign.UserType;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -27,7 +28,7 @@ public class ProblemCreateMsg extends Message {
 
     @Override
     public ErrorType processMessage(Connection connection, User user) throws SQLException {
-        if (!user.userType.equals(NetUtil.USER_INSTRUCTOR))
+        if (!UserType.hasPermission(user, UserType.TA))
             return ErrorType.UNAUTHORIZED;
         try (PreparedStatement statement = connection.prepareStatement("INSERT INTO problem (name, data, created_by, created_on, module_name) VALUES (?, ?, (SELECT username FROM users WHERE id = ? LIMIT 1), now(), ?)")) {
             statement.setString(1, name);

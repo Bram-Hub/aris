@@ -1,4 +1,4 @@
-package edu.rpi.aris.assign.client.gui;
+package edu.rpi.aris.assign.client.guiold;
 
 import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.client.Client;
@@ -73,7 +73,7 @@ public class Assignment {
                     loaded.set(true);
                     buildUI();
                 });
-            } catch (IOException e) {
+            } catch (Exception e) {
                 Platform.runLater(() -> {
                     rootNodes.clear();
                     tableBox.getChildren().clear();
@@ -145,7 +145,7 @@ public class Assignment {
                     if (msg == null)
                         return;
                     AssignmentWindow.instance.loadAssignments(course, true);
-                } catch (IOException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 } finally {
                     client.disconnect();
@@ -196,7 +196,7 @@ public class Assignment {
                                 dueDate.set(newDueDate.toInstant().toEpochMilli());
                             load(true);
                         });
-                    } catch (IOException e) {
+                    } catch (Exception e) {
                         e.printStackTrace();
                     } finally {
                         client.disconnect();

@@ -1,4 +1,4 @@
-package edu.rpi.aris.assign.client.gui;
+package edu.rpi.aris.assign.client.controller;
 
 import edu.rpi.aris.assign.ArisModuleException;
 import edu.rpi.aris.assign.EditMode;
@@ -26,7 +26,7 @@ public class ModuleRow {
 
     public ModuleRow(String moduleName) {
         module = ClientModuleService.getService().getModule(moduleName);
-        FXMLLoader loader = new FXMLLoader(ModuleRow.class.getResource("module_row.fxml"));
+        FXMLLoader loader = new FXMLLoader(ModuleRow.class.getResource("../view/module_row.fxml"));
         loader.setController(this);
         try {
             root = loader.load();

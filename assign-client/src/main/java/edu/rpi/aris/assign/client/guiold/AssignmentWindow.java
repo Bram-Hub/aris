@@ -1,4 +1,4 @@
-package edu.rpi.aris.assign.client.gui;
+package edu.rpi.aris.assign.client.guiold;
 
 import edu.rpi.aris.assign.ArisModuleException;
 import edu.rpi.aris.assign.LibAssign;
@@ -6,6 +6,7 @@ import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.Problem;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ClientModuleService;
+import edu.rpi.aris.assign.client.model.Config;
 import edu.rpi.aris.assign.message.*;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -110,7 +111,7 @@ public class AssignmentWindow {
             boolean isInstructor = clientInfo.isInstructorProperty().get();
             if (user == null)
                 return "Not logged in";
-            return user + " (" + (isInstructor ? NetUtil.USER_INSTRUCTOR : NetUtil.USER_STUDENT) + ")";
+            return user;// + " (" + (isInstructor ? NetUtil.USER_INSTRUCTOR : NetUtil.USER_STUDENT) + ")";
         }, clientInfo.isInstructorProperty(), Config.USERNAME.getProperty()));
         Bindings.bindContent(classes.getItems(), clientInfo.getCourses());
         classes.getSelectionModel().selectedItemProperty().addListener((observableValue, oldCourse, newCourse) -> loadAssignments(newCourse, false));
@@ -154,7 +155,7 @@ public class AssignmentWindow {
                 if (reply == null)
                     return;
                 event.getRowValue().setName(event.getNewValue());
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
                 //TODO
                 int index = proofTable.getItems().indexOf(event.getRowValue());
@@ -268,9 +269,9 @@ public class AssignmentWindow {
             Client client = Client.getInstance();
             try {
                 client.connect();
-                String type = clientInfo.isInstructorProperty().get() ? NetUtil.USER_INSTRUCTOR : NetUtil.USER_STUDENT;
-                new UserEditMsg(username, type, newPassPair.get().getValue(), newPassPair.get().getKey(), true).sendAndGet(client);
-            } catch (IOException e) {
+//                String type = clientInfo.isInstructorProperty().get() ? NetUtil.USER_INSTRUCTOR : NetUtil.USER_STUDENT;
+                new UserEditMsg(username, null, newPassPair.get().getValue(), newPassPair.get().getKey(), true).sendAndGet(client);
+            } catch (Exception e) {
                 e.printStackTrace();
             } finally {
                 client.disconnect();
@@ -305,7 +306,7 @@ public class AssignmentWindow {
                         return;
                     classId = reply.getClassId();
                 } catch (NumberFormatException ignored) {
-                } catch (IOException e) {
+                } catch (Exception e) {
                     System.out.println("Connection failed");
                     e.printStackTrace();
                     //TODO: show error to client
@@ -352,7 +353,7 @@ public class AssignmentWindow {
                     ClassDeleteMsg reply = (ClassDeleteMsg) new ClassDeleteMsg(course.getId()).sendAndGet(client);
                     if (reply == null)
                         return;
-                } catch (IOException e) {
+                } catch (Exception e) {
                     //TODO: show error
                 } finally {
                     client.disconnect();
@@ -411,7 +412,7 @@ public class AssignmentWindow {
                 if (reply == null)
                     return;
                 problemList.load(true);
-            } catch (IOException | ArisModuleException e) {
+            } catch (Exception e) {
                 System.out.println("Error");
                 //TODO
                 e.printStackTrace();
@@ -433,7 +434,7 @@ public class AssignmentWindow {
                 if (reply == null)
                     return;
                 loadAssignments(course, true);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 System.out.println("Error");
             } finally {
                 client.disconnect();
@@ -463,7 +464,7 @@ public class AssignmentWindow {
                         if (reply == null)
                             return;
                         Platform.runLater(() -> problemList.remove(proof));
-                    } catch (IOException e) {
+                    } catch (Exception e) {
                         System.out.println("Connection error");
                         //TODO
                     } finally {

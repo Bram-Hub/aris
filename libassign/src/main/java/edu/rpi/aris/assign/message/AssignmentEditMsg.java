@@ -2,6 +2,7 @@ package edu.rpi.aris.assign.message;
 
 import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.User;
+import edu.rpi.aris.assign.UserType;
 
 import java.sql.*;
 import java.time.ZonedDateTime;
@@ -106,7 +107,7 @@ public class AssignmentEditMsg extends Message {
 
     @Override
     public ErrorType processMessage(Connection connection, User user) throws SQLException {
-        if (!user.userType.equals(NetUtil.USER_INSTRUCTOR))
+        if (!UserType.hasPermission(user, UserType.TA))
             return ErrorType.UNAUTHORIZED;
         rename(connection);
         changeDue(connection);

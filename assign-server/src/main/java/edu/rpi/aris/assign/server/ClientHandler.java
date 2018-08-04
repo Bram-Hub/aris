@@ -137,7 +137,18 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                     String salt = set.getString(1);
                     String savedHash = set.getString(auth[1].equals(NetUtil.AUTH_PASS) ? 2 : 3);
                     int userId = set.getInt(4);
-                    String userType = set.getString(5);
+                    UserType userType;
+                    try {
+                        userType = UserType.valueOf(set.getString(5));
+                    } catch (IllegalArgumentException e) {
+                        logger.error("Failed to parse UserType", e);
+                        userType = UserType.STUDENT;
+                        try (PreparedStatement updateUserType = connection.prepareStatement("UPDATE users SET user_type = ? WHERE username = ?;")) {
+                            updateUserType.setString(1, userType.name());
+                            updateUserType.setString(2, username);
+                            updateUserType.executeUpdate();
+                        }
+                    }
                     if (DBUtils.checkPass(pass, salt, savedHash)) {
                         String access_token = generateAccessToken();
                         MessageDigest digest = DBUtils.getDigest();
@@ -241,10 +252,10 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
     }
 
     private void getProofs() throws SQLException, IOException {
-        if (!user.userType.equals(NetUtil.USER_INSTRUCTOR)) {
-            sendMessage(NetUtil.UNAUTHORIZED);
-            return;
-        }
+//        if (!user.userType.equals(NetUtil.USER_INSTRUCTOR)) {
+//            sendMessage(NetUtil.UNAUTHORIZED);
+//            return;
+//        }
         try (Connection connection = dbManager.getConnection();
              PreparedStatement statement = connection.prepareStatement("SELECT id, name, created_by, created_on FROM proof ORDER BY created_on DESC;")) {
             try (ResultSet rs = statement.executeQuery()) {
@@ -262,15 +273,15 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
 
     private void getSubmissions() throws IOException, SQLException {
         String[] assignmentData = in.readUTF().split("\\|");
-        if ((assignmentData.length != 3 && user.userType.equals(NetUtil.USER_STUDENT)) || (assignmentData.length != 4 && user.userType.equals(NetUtil.USER_INSTRUCTOR)))
-            return;
+//        if ((assignmentData.length != 3 && user.userType.equals(NetUtil.USER_STUDENT)) || (assignmentData.length != 4 && user.userType.equals(NetUtil.USER_INSTRUCTOR)))
+//            return;
         int cid, aid, pid, uid = user.uid;
         try {
             cid = Integer.parseInt(assignmentData[0]);
             aid = Integer.parseInt(assignmentData[1]);
             pid = Integer.parseInt(assignmentData[2]);
-            if (user.userType.equals(NetUtil.USER_INSTRUCTOR))
-                uid = Integer.parseInt(assignmentData[3]);
+//            if (user.userType.equals(NetUtil.USER_INSTRUCTOR))
+//                uid = Integer.parseInt(assignmentData[3]);
         } catch (NumberFormatException e) {
             return;
         }
@@ -348,10 +359,10 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
     }
 
     private void updateAssignment() throws IOException, SQLException {
-        if (!user.userType.equals(NetUtil.USER_INSTRUCTOR)) {
-            sendMessage(NetUtil.UNAUTHORIZED);
-            return;
-        }
+//        if (!user.userType.equals(NetUtil.USER_INSTRUCTOR)) {
+//            sendMessage(NetUtil.UNAUTHORIZED);
+//            return;
+//        }
         boolean done = false;
         while (!done) {
             String[] str = in.readUTF().split("\\|");
@@ -455,10 +466,10 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
 
     private void updateProof() throws IOException, SQLException {
         String[] proofData = in.readUTF().split("\\|");
-        if (!user.userType.equals(NetUtil.USER_INSTRUCTOR)) {
-            sendMessage(NetUtil.UNAUTHORIZED);
-            return;
-        }
+//        if (!user.userType.equals(NetUtil.USER_INSTRUCTOR)) {
+//            sendMessage(NetUtil.UNAUTHORIZED);
+//            return;
+//        }
         if (proofData.length != 3) {
             sendMessage(NetUtil.INVALID);
             return;
@@ -516,10 +527,10 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
 
     private void createUser() throws IOException, SQLException {
         String[] userData = in.readUTF().split("\\|");
-        if (!user.userType.equals(NetUtil.USER_INSTRUCTOR)) {
-            sendMessage(NetUtil.UNAUTHORIZED);
-            return;
-        }
+//        if (!user.userType.equals(NetUtil.USER_INSTRUCTOR)) {
+//            sendMessage(NetUtil.UNAUTHORIZED);
+//            return;
+//        }
         if (userData.length != 3) {
             sendMessage(NetUtil.INVALID);
             return;
@@ -549,10 +560,10 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
 
     private void deleteUser() throws IOException, SQLException {
         String strId = in.readUTF();
-        if (!user.userType.equals(NetUtil.USER_INSTRUCTOR)) {
-            sendMessage(NetUtil.UNAUTHORIZED);
-            return;
-        }
+//        if (!user.userType.equals(NetUtil.USER_INSTRUCTOR)) {
+//            sendMessage(NetUtil.UNAUTHORIZED);
+//            return;
+//        }
         int id;
         try {
             id = Integer.parseInt(strId);
@@ -570,10 +581,10 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
 
     private void deleteClass() throws IOException, SQLException {
         String idStr = in.readUTF();
-        if (!user.userType.equals(NetUtil.USER_INSTRUCTOR)) {
-            sendMessage(NetUtil.UNAUTHORIZED);
-            return;
-        }
+//        if (!user.userType.equals(NetUtil.USER_INSTRUCTOR)) {
+//            sendMessage(NetUtil.UNAUTHORIZED);
+//            return;
+//        }
         int id;
         try {
             id = Integer.parseInt(idStr);
@@ -591,10 +602,10 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
 
     private void updateClass() throws IOException, SQLException {
         String[] classData = in.readUTF().split("\\|");
-        if (!user.userType.equals(NetUtil.USER_INSTRUCTOR)) {
-            sendMessage(NetUtil.UNAUTHORIZED);
-            return;
-        }
+//        if (!user.userType.equals(NetUtil.USER_INSTRUCTOR)) {
+//            sendMessage(NetUtil.UNAUTHORIZED);
+//            return;
+//        }
         if (classData.length != 2) {
             sendMessage(NetUtil.ERROR);
             return;

@@ -3,6 +3,7 @@ package edu.rpi.aris.assign.server;
 import edu.rpi.aris.assign.DBUtils;
 import edu.rpi.aris.assign.GradingStatus;
 import edu.rpi.aris.assign.NetUtil;
+import edu.rpi.aris.assign.UserType;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -79,6 +80,7 @@ public class DatabaseManager {
         connection.setAutoCommit(false);
         try (Statement statement = connection.createStatement()) {
             statement.execute("CREATE TABLE IF NOT EXISTS version (version integer);");
+            statement.execute("DELETE FROM version;");
             statement.execute("INSERT INTO version (version) VALUES (" + DB_SCHEMA_VERSION + ");");
             statement.execute("CREATE TABLE IF NOT EXISTS users" +
                     "(id serial PRIMARY KEY," +
@@ -86,8 +88,7 @@ public class DatabaseManager {
                     "user_type text," +
                     "salt text," +
                     "password_hash text," +
-                    "access_token text," +
-                    "check (user_type in ('instructor', 'student')));");
+                    "access_token text);");
             statement.execute("CREATE TABLE IF NOT EXISTS class" +
                     "(id serial PRIMARY KEY," +
                     "name text);");
@@ -130,7 +131,7 @@ public class DatabaseManager {
                     "constraint s_ufk foreign key (user_id) references users(id) on delete cascade," +
                     "constraint s_pfk foreign key (problem_id) references problem(id) on delete cascade);");
             connection.commit();
-            createUser("admin", "ArisAdmin1", NetUtil.USER_INSTRUCTOR);
+            createUser("admin", "ArisAdmin1", UserType.ADMIN);
         } catch (Throwable e) {
             connection.rollback();
             logger.error("An error occurred while creating the tables and the changes were rolled back");
@@ -148,7 +149,7 @@ public class DatabaseManager {
         try (Statement statement = connection.createStatement()) {
             statement.execute("ALTER TABLE proof ADD COLUMN created_on timestamp;");
             statement.execute("UPDATE proof SET created_on=now();");
-            statement.execute("UPDATE version SET version=2");
+            statement.execute("UPDATE version SET version=2;");
             connection.commit();
         } catch (Throwable e) {
             connection.rollback();
@@ -172,7 +173,7 @@ public class DatabaseManager {
             statement.execute("ALTER TABLE proof ADD COLUMN created_by text;");
             statement.execute("UPDATE proof SET created_by=temp_proof.uname FROM temp_proof WHERE proof.id = temp_proof.id;");
             statement.execute("DROP TABLE temp_proof;");
-            statement.execute("UPDATE version SET version=3");
+            statement.execute("UPDATE version SET version=3;");
             connection.commit();
         } catch (Throwable e) {
             connection.rollback();
@@ -196,6 +197,7 @@ public class DatabaseManager {
             updateProblem.executeUpdate();
             statement.execute("ALTER TABLE assignment RENAME proof_id TO problem_id;");
             statement.execute("ALTER TABLE submission RENAME proof_id TO problem_id;");
+            statement.execute("UPDATE version SET version=4;");
             connection.commit();
         } catch (Throwable e) {
             connection.rollback();
@@ -206,8 +208,8 @@ public class DatabaseManager {
         }
     }
 
-    public Pair<String, String> createUser(String username, String password, String userType) throws SQLException {
-        if (username == null || username.length() == 0 || userType == null || !(userType.equals(NetUtil.USER_STUDENT) || userType.equals(NetUtil.USER_INSTRUCTOR)))
+    public Pair<String, String> createUser(String username, String password, UserType userType) throws SQLException {
+        if (username == null || username.length() == 0 || userType == null)
             return new ImmutablePair<>(null, NetUtil.INVALID);
         if (password == null)
             password = RandomStringUtils.randomAlphabetic(16);
@@ -221,7 +223,7 @@ public class DatabaseManager {
             }
             Pair<String, String> sh = DBUtils.getSaltAndHash(password);
             statement.setString(1, username);
-            statement.setString(2, userType);
+            statement.setString(2, userType.name());
             statement.setString(3, sh.getKey());
             statement.setString(4, sh.getValue());
             statement.executeUpdate();

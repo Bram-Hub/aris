@@ -1,6 +1,7 @@
 package edu.rpi.aris.assign.message;
 
 import edu.rpi.aris.assign.User;
+import edu.rpi.aris.assign.UserType;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -12,14 +13,14 @@ import java.util.Map;
 public class UserGetMsg extends Message {
 
     private int userId;
-    private String userType;
+    private UserType userType;
     private HashMap<Integer, String> classes = new HashMap<>();
 
-    public String getUserType() {
+    public UserType getUserType() {
         return userType;
     }
 
-    public void setUserType(String userType) {
+    public void setUserType(UserType userType) {
         this.userType = userType;
     }
 
@@ -38,16 +39,10 @@ public class UserGetMsg extends Message {
     @Override
     public ErrorType processMessage(Connection connection, User user) throws SQLException {
         userId = user.uid;
-        try (PreparedStatement getUserType = connection.prepareStatement("SELECT user_type FROM users WHERE username = ?;");
-             PreparedStatement getInfo = connection.prepareStatement("SELECT c.id, c.name FROM class c, users u, user_class uc WHERE u.id = uc.user_id AND c.id = uc.class_id AND u.id = ?")) {
-            getUserType.setString(1, user.username);
-            try (ResultSet userTypeRs = getUserType.executeQuery()) {
-                if (userTypeRs.next())
-                    userType = userTypeRs.getString(1);
-                else
-                    return ErrorType.NOT_FOUND;
-            }
-            getInfo.setInt(1, userId);
+        try (PreparedStatement getInfo = connection.prepareStatement(user.userType == UserType.ADMIN ? "SELECT id, name FROM class;" : "SELECT c.id, c.name FROM class c, users u, user_class uc WHERE u.id = uc.user_id AND c.id = uc.class_id AND u.id = ?")) {
+            userType = user.userType;
+            if (userType != UserType.ADMIN)
+                getInfo.setInt(1, userId);
             try (ResultSet infoRs = getInfo.executeQuery()) {
                 while (infoRs.next())
                     classes.put(infoRs.getInt(1), infoRs.getString(2));

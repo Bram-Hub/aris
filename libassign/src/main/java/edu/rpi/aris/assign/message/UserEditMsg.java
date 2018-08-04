@@ -1,8 +1,8 @@
 package edu.rpi.aris.assign.message;
 
 import edu.rpi.aris.assign.DBUtils;
-import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.User;
+import edu.rpi.aris.assign.UserType;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.sql.Connection;
@@ -13,12 +13,12 @@ import java.sql.SQLException;
 public class UserEditMsg extends Message {
 
     private final String username;
-    private final String newType;
+    private final UserType newType;
     private final boolean changePass;
     private String newPass;
     private String oldPass;
 
-    public UserEditMsg(String username, String newType, String newPass, String oldPass, boolean changePass) {
+    public UserEditMsg(String username, UserType newType, String newPass, String oldPass, boolean changePass) {
         this.username = username;
         this.newType = newType;
         this.newPass = newPass;
@@ -39,10 +39,12 @@ public class UserEditMsg extends Message {
     public ErrorType processMessage(Connection connection, User user) throws SQLException {
         boolean resetPass = newPass != null;
         try {
-            if (!user.username.equals(username) && !user.userType.equals(NetUtil.USER_INSTRUCTOR))
+            if (!user.username.equals(username) && !UserType.hasPermission(user, UserType.INSTRUCTOR))
                 return ErrorType.UNAUTHORIZED;
-            if (!user.userType.equals(NetUtil.USER_INSTRUCTOR) && newType != null && !newType.equals(user.userType))
-                return ErrorType.UNAUTHORIZED;
+            if (newType != null && newType != user.userType) {
+                if (newType.permissionLevel >= user.userType.permissionLevel && !UserType.hasPermission(user, UserType.ADMIN))
+                    return ErrorType.UNAUTHORIZED;
+            }
             if (oldPass == null)
                 return ErrorType.AUTH_FAIL;
             try (PreparedStatement getHash = connection.prepareStatement("SELECT salt, password_hash FROM users WHERE username = ?;")) {
@@ -54,7 +56,7 @@ public class UserEditMsg extends Message {
             }
             if (newType != null && !newType.equals(user.userType))
                 try (PreparedStatement update = connection.prepareStatement("UPDATE users SET user_type = ? WHERE username = ?;")) {
-                    update.setString(1, newType);
+                    update.setString(1, newType.name());
                     update.setString(2, username);
                     update.executeUpdate();
                 }

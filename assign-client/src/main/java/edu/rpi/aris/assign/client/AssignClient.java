@@ -1,8 +1,8 @@
 package edu.rpi.aris.assign.client;
 
 import edu.rpi.aris.assign.*;
-import edu.rpi.aris.assign.client.gui.Config;
-import edu.rpi.aris.assign.client.gui.ModuleSelect;
+import edu.rpi.aris.assign.client.controller.ModuleSelect;
+import edu.rpi.aris.assign.client.model.Config;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.event.Event;

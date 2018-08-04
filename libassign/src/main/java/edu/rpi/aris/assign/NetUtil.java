@@ -20,8 +20,8 @@ public class NetUtil {
     public static final String AUTH_PASS = "PASS";
     public static final String AUTH_ACCESS_TOKEN = "TOKEN";
 
-    public static final String USER_STUDENT = "student";
-    public static final String USER_INSTRUCTOR = "instructor";
+//    public static final String USER_STUDENT = "student";
+//    public static final String USER_INSTRUCTOR = "instructor";
 
     public static final long MAX_FILE_SIZE = 5242880; // 5MiB
     public static final String UNAUTHORIZED = "UNAUTHORIZED";

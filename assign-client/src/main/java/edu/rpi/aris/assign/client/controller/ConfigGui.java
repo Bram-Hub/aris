@@ -1,9 +1,10 @@
-package edu.rpi.aris.assign.client.gui;
+package edu.rpi.aris.assign.client.controller;
 
 import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ConfigProp;
+import edu.rpi.aris.assign.client.model.Config;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
@@ -38,29 +39,12 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.prefs.Preferences;
 
-public class Config {
+public class ConfigGui {
 
-    public static final ConfigProp<Boolean> ALLOW_INSECURE = new ConfigProp<>(null, null, false);
-    public static final ConfigProp<File> ADD_CERT = new ConfigProp<>(null, null, null);
 
-    public static final File CLIENT_CONFIG_DIR = new File(System.getProperty("user.home"), ".aris-java");
-    public static final File CLIENT_MODULES_DIR = new File(CLIENT_CONFIG_DIR, "modules");
-    public static final File CLIENT_MODULE_LIBS_DIR = new File(CLIENT_MODULES_DIR, "libs");
-    private static final String SERVER_ADDRESS_KEY = "server_address";
-    private static final String PORT_KEY = "port";
-    private static final String USERNAME_KEY = "username";
-    private static final String SELECTED_COURSE_ID_KEY = "selected_course";
-    private static final String ACCESS_TOKEN_KEY = "access_token";
-    private static final Preferences preferences = Preferences.userNodeForPackage(Config.class);
 
-    public static final ConfigProp<String> SERVER_ADDRESS = new ConfigProp<>(preferences, SERVER_ADDRESS_KEY, preferences.get(SERVER_ADDRESS_KEY, null));
-    public static final ConfigProp<String> USERNAME = new ConfigProp<>(preferences, USERNAME_KEY, preferences.get(USERNAME_KEY, null));
-    public static final ConfigProp<String> ACCESS_TOKEN = new ConfigProp<>(preferences, ACCESS_TOKEN_KEY, preferences.get(ACCESS_TOKEN_KEY, null));
-    public static final ConfigProp<Integer> SELECTED_COURSE_ID = new ConfigProp<>(preferences, SELECTED_COURSE_ID_KEY, preferences.getInt(SELECTED_COURSE_ID_KEY, 0));
-    public static final ConfigProp<Integer> PORT = new ConfigProp<>(preferences, PORT_KEY, preferences.getInt(PORT_KEY, LibAssign.DEFAULT_PORT));
-
-    private static final Logger logger = LogManager.getLogger(Config.class);
-    private static Config instance;
+    private static final Logger logger = LogManager.getLogger(ConfigGui.class);
+    private static ConfigGui instance;
 
     @FXML
     private TextField serverAddressText;
@@ -78,9 +62,9 @@ public class Config {
     private Stage stage;
     private HashSet<String> removeCerts = new HashSet<>();
 
-    private Config() {
+    private ConfigGui() {
         stage = new Stage();
-        FXMLLoader loader = new FXMLLoader(ModuleRow.class.getResource("config.fxml"));
+        FXMLLoader loader = new FXMLLoader(ModuleRow.class.getResource("../view/config.fxml"));
         loader.setController(this);
         Parent root;
         try {
@@ -95,9 +79,9 @@ public class Config {
         stage.initOwner(AssignClient.getInstance().getMainWindow().getStage());
     }
 
-    public static Config getInstance() {
+    public static ConfigGui getInstance() {
         if (instance == null)
-            instance = new Config();
+            instance = new ConfigGui();
         return instance;
     }
 
@@ -107,7 +91,7 @@ public class Config {
 
     public void populateConfig() {
         removeCerts.clear();
-        serverAddressText.setText(SERVER_ADDRESS.getValue() == null ? "" : SERVER_ADDRESS.getValue() + (PORT.getValue() == LibAssign.DEFAULT_PORT ? "" : ":" + PORT.getValue()));
+        serverAddressText.setText(Config.SERVER_ADDRESS.getValue() == null ? "" : Config.SERVER_ADDRESS.getValue() + (Config.PORT.getValue() == LibAssign.DEFAULT_PORT ? "" : ":" + Config.PORT.getValue()));
         certificateTable.getItems().setAll(Client.getInstance().getSelfSignedCertificates());
     }
 
@@ -123,8 +107,8 @@ public class Config {
 
     @FXML
     public void initialize() {
-        SERVER_ADDRESS.getProperty().addListener((observable, oldValue, newValue) -> serverAddressText.setText(newValue == null ? "" : newValue + (PORT.getValue() == LibAssign.DEFAULT_PORT ? "" : ":" + PORT.getValue())));
-        PORT.getProperty().addListener((observable, oldValue, newValue) -> serverAddressText.setText(SERVER_ADDRESS.getValue() == null ? "" : SERVER_ADDRESS.getValue() + (newValue == LibAssign.DEFAULT_PORT ? "" : ":" + newValue)));
+        Config.SERVER_ADDRESS.getProperty().addListener((observable, oldValue, newValue) -> serverAddressText.setText(newValue == null ? "" : newValue + (Config.PORT.getValue() == LibAssign.DEFAULT_PORT ? "" : ":" + Config.PORT.getValue())));
+        Config.PORT.getProperty().addListener((observable, oldValue, newValue) -> serverAddressText.setText(Config.SERVER_ADDRESS.getValue() == null ? "" : Config.SERVER_ADDRESS.getValue() + (newValue == LibAssign.DEFAULT_PORT ? "" : ":" + newValue)));
         addressColumn.setCellValueFactory(param -> {
             try {
                 JcaX509CertificateHolder holder = new JcaX509CertificateHolder(param.getValue());
@@ -243,8 +227,8 @@ public class Config {
             configAlert("Invalid server address: " + address);
             return;
         }
-        SERVER_ADDRESS.setValue(address);
-        PORT.setValue(port);
+        Config.SERVER_ADDRESS.setValue(address);
+        Config.PORT.setValue(port);
         stage.hide();
     }
 

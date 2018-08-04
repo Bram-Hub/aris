@@ -1,4 +1,4 @@
-package edu.rpi.aris.assign.client.gui;
+package edu.rpi.aris.assign.client.guiold;
 
 import edu.rpi.aris.assign.GradingStatus;
 import edu.rpi.aris.assign.NetUtil;

@@ -1,4 +1,4 @@
-package edu.rpi.aris.assign.client.gui;
+package edu.rpi.aris.assign.client.guiold;
 
 import edu.rpi.aris.assign.*;
 import edu.rpi.aris.assign.client.ClientModuleService;

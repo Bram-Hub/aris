@@ -3,7 +3,7 @@ package edu.rpi.aris.assign.client;
 import edu.rpi.aris.assign.ArisClientModule;
 import edu.rpi.aris.assign.ArisModuleException;
 import edu.rpi.aris.assign.LibAssign;
-import edu.rpi.aris.assign.client.gui.Config;
+import edu.rpi.aris.assign.client.model.Config;
 import edu.rpi.aris.assign.spi.ArisModule;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

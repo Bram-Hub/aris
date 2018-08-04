@@ -1,7 +1,7 @@
-package edu.rpi.aris.assign.client.gui;
+package edu.rpi.aris.assign.client.guiold;
 
-import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.client.Client;
+import edu.rpi.aris.assign.client.model.Config;
 import edu.rpi.aris.assign.message.UserGetMsg;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -31,13 +31,13 @@ public class ClientInfo {
                     return;
                 userId = reply.getUserId();
                 Platform.runLater(() -> {
-                    isInstructor.set(reply.getUserType().equals(NetUtil.USER_INSTRUCTOR));
+//                    isInstructor.set(reply.getUserType().equals(NetUtil.USER_INSTRUCTOR));
                     reply.getClasses().forEach((id, name) -> courses.add(new Course(id, name)));
                     loaded.set(true);
                 });
                 if (runnable != null)
                     runnable.run();
-            } catch (IOException e) {
+            } catch (Exception e) {
                 userId = -1;
                 Platform.runLater(() -> {
                     isInstructor.set(false);

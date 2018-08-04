@@ -1,4 +1,4 @@
-package edu.rpi.aris.assign.client.gui;
+package edu.rpi.aris.assign.client.guiold;
 
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.message.MsgUtil;
@@ -48,7 +48,7 @@ public class ProblemList {
                 for (MsgUtil.ProblemInfo proof : msg.getProblems())
                     Platform.runLater(() -> proofs.add(new ProblemInfo(proof, true)));
                 Platform.runLater(() -> loaded.set(true));
-            } catch (IOException e) {
+            } catch (Exception e) {
                 Platform.runLater(() -> {
                     loaded.set(false);
                     proofs.clear();

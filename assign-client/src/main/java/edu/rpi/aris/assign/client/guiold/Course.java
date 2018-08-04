@@ -1,4 +1,4 @@
-package edu.rpi.aris.assign.client.gui;
+package edu.rpi.aris.assign.client.guiold;
 
 import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.client.Client;
@@ -45,7 +45,7 @@ public class Course {
                 Platform.runLater(() -> loaded.set(true));
                 if (runnable != null)
                     runnable.run();
-            } catch (IOException e) {
+            } catch (Exception e) {
                 Platform.runLater(() -> {
                     assignments.clear();
                     loaded.set(false);

@@ -1,14 +1,19 @@
-package edu.rpi.aris.assign.client.gui;
+package edu.rpi.aris.assign.client.controller;
 
 import edu.rpi.aris.assign.ArisModuleException;
 import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.client.ClientModuleService;
+import edu.rpi.aris.assign.client.guiold.AssignmentWindow;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.image.Image;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -23,7 +28,7 @@ public class ModuleSelect {
 
     public ModuleSelect(Stage stage) {
         this.stage = stage;
-        FXMLLoader loader = new FXMLLoader(ModuleRow.class.getResource("module_select.fxml"));
+        FXMLLoader loader = new FXMLLoader(ModuleRow.class.getResource("../view/module_select.fxml"));
         loader.setController(this);
         Parent root;
         try {
@@ -41,6 +46,37 @@ public class ModuleSelect {
             moduleBox.getChildren().add(new ModuleRow(moduleName).getRoot());
     }
 
+    public void displayErrorMsg(String title, String msg) {
+        displayErrorMsg(title, msg, false);
+    }
+
+    public void displayErrorMsg(String title, String msg, boolean wait) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Error");
+            alert.setHeaderText(title);
+            alert.setContentText(msg);
+            alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+            alert.initOwner(stage);
+            alert.initModality(Modality.APPLICATION_MODAL);
+            if (wait) {
+                alert.showAndWait();
+                synchronized (title) {
+                    title.notify();
+                }
+            } else
+                alert.show();
+        });
+        if (wait)
+            synchronized (title) {
+                try {
+                    title.wait();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+    }
+
     @FXML
     public void initialize() {
         stage.setTitle("Aris Assign - Module Select");
@@ -50,14 +86,12 @@ public class ModuleSelect {
 
     @FXML
     public void showSettings() {
-        Config.getInstance().show();
+        ConfigGui.getInstance().show();
     }
 
     @FXML
     public void showAssignments() {
-        if (assignmentWindow == null)
-            assignmentWindow = new AssignmentWindow();
-        assignmentWindow.show();
+        AssignGui.getInstance().show();
     }
 
     @FXML

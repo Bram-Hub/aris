@@ -3,6 +3,7 @@ package edu.rpi.aris.assign.server;
 import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.Update;
+import edu.rpi.aris.assign.UserType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
@@ -381,7 +382,7 @@ public class AssignServer implements Runnable {
         return null;
     }
 
-    public synchronized void addUser(String username, String pass, String userType) throws SQLException, IOException {
+    public synchronized void addUser(String username, String pass, UserType userType) throws SQLException, IOException {
         dbManager.createUser(username, pass, userType);
     }
 
