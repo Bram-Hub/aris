@@ -145,8 +145,8 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
                 ClassInfo info = new ClassInfo(message.getClassId(), message.getClassName());
                 classMap.put(message.getClassId(), info);
                 classes.add(info);
-                classes.a
                 Collections.sort(classes);
+                selectedClass.set(info);
             });
         }
 
