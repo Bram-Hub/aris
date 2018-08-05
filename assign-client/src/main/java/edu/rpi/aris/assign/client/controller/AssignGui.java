@@ -2,6 +2,7 @@ package edu.rpi.aris.assign.client.controller;
 
 import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.client.AssignClient;
+import edu.rpi.aris.assign.client.model.ClassInfo;
 import edu.rpi.aris.assign.client.model.Config;
 import edu.rpi.aris.assign.client.model.UserInfo;
 import javafx.beans.binding.Bindings;
@@ -12,7 +13,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import javafx.util.Pair;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -21,7 +21,7 @@ public class AssignGui {
 
     private static AssignGui instance;
     @FXML
-    private ChoiceBox<Pair<String, Integer>> classes;
+    private ChoiceBox<ClassInfo> classes;
     @FXML
     private ProgressIndicator loading;
     @FXML
@@ -96,6 +96,8 @@ public class AssignGui {
     public void initialize() {
         classes.setConverter(new UserInfo.ClassStringConverter());
         classes.itemsProperty().set(userInfo.classesProperty());
+        classes.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> userInfo.selectedClassProperty().set(newValue));
+        userInfo.selectedClassProperty().addListener((observable, oldValue, newValue) -> classes.getSelectionModel().select(newValue));
 
         loading.visibleProperty().bind(userInfo.loadingProperty());
         loading.managedProperty().bind(userInfo.loadingProperty());
@@ -126,7 +128,30 @@ public class AssignGui {
 
     @FXML
     public void deleteClass() {
-//        TextInputDialog dialog = new TextInputDialog();
+        ClassInfo info = userInfo.selectedClassProperty().get();
+        if (info == null)
+            return;
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Delete Class");
+        dialog.setContentText("Class Name:");
+        dialog.setHeaderText("To delete the class, type the class name below exactly as follows: \"" + info.getClassName() + "\"");
+        dialog.initModality(Modality.WINDOW_MODAL);
+        dialog.initOwner(stage);
+        ButtonType delete = new ButtonType("Delete");
+        dialog.getDialogPane().getButtonTypes().setAll(delete, ButtonType.CANCEL);
+        dialog.setOnShowing(event -> {
+            Button deleteBtn = (Button) dialog.getDialogPane().lookupButton(delete);
+            deleteBtn.disableProperty().bind(dialog.getEditor().textProperty().isNotEqualTo(info.getClassName()));
+            deleteBtn.setDefaultButton(true);
+        });
+        dialog.setResultConverter(buttonType -> {
+            if (buttonType == delete)
+                return dialog.getEditor().getText();
+            return null;
+        });
+        Optional<String> result = dialog.showAndWait();
+        if (result.isPresent() && result.get().equals(info.getClassName()))
+            userInfo.deleteClass(info.getClassId());
     }
 
 }

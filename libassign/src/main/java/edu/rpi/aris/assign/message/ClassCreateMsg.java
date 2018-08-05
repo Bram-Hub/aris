@@ -26,6 +26,10 @@ public class ClassCreateMsg extends Message {
         return cid;
     }
 
+    public String getClassName() {
+        return name;
+    }
+
     @Override
     public ErrorType processMessage(Connection connection, User user) throws SQLException {
         if (!UserType.hasPermission(user, UserType.INSTRUCTOR))

@@ -330,8 +330,9 @@ public class Client implements MessageCommunication {
                 cert.checkValidity();
                 X500Name name = new JcaX509CertificateHolder(cert).getSubject();
                 RDN cn = name.getRDNs(BCStyle.CN)[0];
-                if (!IETFUtils.valueToString(cn.getFirst().getValue()).equalsIgnoreCase(serverAddress))
-                    throw new CertificateException("Server's certificate common name does not match server address");
+                String certCommonName = IETFUtils.valueToString(cn.getFirst().getValue());
+                if (!certCommonName.equalsIgnoreCase(serverAddress))
+                    throw new CertificateException("Server's certificate common name (" + certCommonName + ") does not match server address (" + serverAddress + ")");
                 connectionException = null;
             } catch (SSLPeerUnverifiedException | CertificateException e) {
                 logger.error("An error occurred while attempting to validate server's certificate", e);
@@ -459,36 +460,31 @@ public class Client implements MessageCommunication {
                 @SuppressWarnings("unchecked") T reply = (T) message.sendAndGet(this);
                 if (responseHandler == null)
                     return;
-                if (reply == null) {
-                    try {
-                        responseHandler.onError(true);
-                    } catch (Throwable e) {
-                        logger.error("ResponseHandler threw an error when handling an error", e);
-                    }
-                    return;
-                }
                 try {
-                    responseHandler.response(reply);
+                    if (reply == null)
+                        responseHandler.onError(true, message);
+                    else
+                        responseHandler.response(reply);
                 } catch (Throwable e) {
                     logger.error("ResponseHandler threw an error", e);
                 }
             } catch (CertificateException e) {
                 AssignClient.getInstance().getMainWindow().displayErrorMsg("Invalid Certificate", "Server provided an invalid certificate. The connection cannot continue", true);
-                responseHandler.onError(false);
+                responseHandler.onError(false, message);
             } catch (IOException e) {
                 AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", e.getMessage(), true);
-                responseHandler.onError(false);
+                responseHandler.onError(false, message);
             } catch (CancellationException e) {
-                responseHandler.onError(false);
+                responseHandler.onError(false, message);
             } catch (InvalidCredentialsException e) {
                 AssignClient.getInstance().getMainWindow().displayErrorMsg("Invalid Credentials", "Your username or password was incorrect", true);
-                responseHandler.onError(true);
+                responseHandler.onError(true, message);
             } catch (AuthBanException e) {
                 AssignClient.getInstance().getMainWindow().displayErrorMsg("Temporary Ban", e.getMessage());
-                responseHandler.onError(false);
+                responseHandler.onError(false, message);
             } catch (Throwable e) {
                 logger.error("Error sending message", e);
-                responseHandler.onError(false);
+                responseHandler.onError(false, message);
             } finally {
                 disconnect();
             }

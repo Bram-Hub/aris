@@ -1,6 +1,5 @@
 package edu.rpi.aris.assign.message;
 
-import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.User;
 import edu.rpi.aris.assign.UserType;
 
@@ -30,6 +29,10 @@ public class ClassDeleteMsg extends Message {
             deleteClass.executeUpdate();
         }
         return null;
+    }
+
+    public int getClassId() {
+        return cid;
     }
 
     @Override

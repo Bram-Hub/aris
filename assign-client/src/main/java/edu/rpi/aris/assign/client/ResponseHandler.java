@@ -6,6 +6,6 @@ public interface ResponseHandler<T extends Message> {
 
     void response(T message);
 
-    void onError(boolean suggestRetry);
+    void onError(boolean suggestRetry, T msg);
 
 }

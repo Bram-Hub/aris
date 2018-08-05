@@ -1,6 +1,7 @@
 package edu.rpi.aris.assign.client.model;
 
 import edu.rpi.aris.assign.UserType;
+import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
 import edu.rpi.aris.assign.message.ClassCreateMsg;
@@ -11,20 +12,25 @@ import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.util.Pair;
 import javafx.util.StringConverter;
+
+import java.util.Collections;
+import java.util.HashMap;
 
 public class UserInfo implements ResponseHandler<UserGetMsg> {
 
     private SimpleObjectProperty<UserType> userType = new SimpleObjectProperty<>();
-    private ObservableList<Pair<String, Integer>> classes = FXCollections.observableArrayList();
+    private ObservableList<ClassInfo> classes = FXCollections.observableArrayList();
     private SimpleBooleanProperty loggedIn = new SimpleBooleanProperty();
     private SimpleBooleanProperty loading = new SimpleBooleanProperty();
+    private SimpleObjectProperty<ClassInfo> selectedClass = new SimpleObjectProperty<>();
 
     private ClassCreateResponseHandler createHandler = new ClassCreateResponseHandler();
     private ClassDeleteResponseHandler deleteHandler = new ClassDeleteResponseHandler();
 
-    public ObservableList<Pair<String, Integer>> classesProperty() {
+    private HashMap<Integer, ClassInfo> classMap = new HashMap<>();
+
+    public ObservableList<ClassInfo> classesProperty() {
         return classes;
     }
 
@@ -38,6 +44,10 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
 
     public SimpleObjectProperty<UserType> userTypeProperty() {
         return userType;
+    }
+
+    public SimpleObjectProperty<ClassInfo> selectedClassProperty() {
+        return selectedClass;
     }
 
     public boolean isLoggedIn() {
@@ -72,14 +82,20 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         Platform.runLater(() -> {
             userType.set(message.getUserType());
             classes.clear();
-            message.getClasses().forEach((k, v) -> classes.add(new Pair<>(v, k)));
+            classMap.clear();
+            message.getClasses().forEach((k, v) -> {
+                ClassInfo info = new ClassInfo(k, v);
+                classes.add(info);
+                classMap.put(k, info);
+            });
+            Collections.sort(classes);
             loggedIn.set(true);
             loading.set(false);
         });
     }
 
     @Override
-    public void onError(boolean suggestRetry) {
+    public void onError(boolean suggestRetry, UserGetMsg msg) {
         Platform.runLater(() -> {
             loggedIn.set(false);
             loading.set(false);
@@ -88,41 +104,58 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
             getUserInfo(false);
     }
 
-    public static class ClassStringConverter extends StringConverter<Pair<String, Integer>> {
+    public static class ClassStringConverter extends StringConverter<ClassInfo> {
         @Override
-        public String toString(Pair<String, Integer> object) {
-            return object.getKey();
+        public String toString(ClassInfo object) {
+            return object.getClassName();
         }
 
         @Override
-        public Pair<String, Integer> fromString(String string) {
+        public ClassInfo fromString(String string) {
             return null;
         }
     }
 
-    private static class ClassCreateResponseHandler implements ResponseHandler<ClassCreateMsg> {
-
-        @Override
-        public void response(ClassCreateMsg message) {
-
-        }
-
-        @Override
-        public void onError(boolean suggestRetry) {
-
-        }
-    }
-
-    private static class ClassDeleteResponseHandler implements ResponseHandler<ClassDeleteMsg> {
+    private class ClassDeleteResponseHandler implements ResponseHandler<ClassDeleteMsg> {
 
         @Override
         public void response(ClassDeleteMsg message) {
-
+            Platform.runLater(() -> {
+                ClassInfo info = classMap.get(message.getClassId());
+                classes.remove(info);
+                if (classes.size() > 0)
+                    selectedClass.set(classes.get(0));
+            });
         }
 
         @Override
-        public void onError(boolean suggestRetry) {
+        public void onError(boolean suggestRetry, ClassDeleteMsg msg) {
+            if (suggestRetry)
+                Client.getInstance().processMessage(msg, this);
+            else
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error Deleting Class", "An error occured while attempting to delete the class");
+        }
+    }
 
+    private class ClassCreateResponseHandler implements ResponseHandler<ClassCreateMsg> {
+
+        @Override
+        public void response(ClassCreateMsg message) {
+            Platform.runLater(() -> {
+                ClassInfo info = new ClassInfo(message.getClassId(), message.getClassName());
+                classMap.put(message.getClassId(), info);
+                classes.add(info);
+                classes.a
+                Collections.sort(classes);
+            });
+        }
+
+        @Override
+        public void onError(boolean suggestRetry, ClassCreateMsg msg) {
+            if (suggestRetry)
+                Client.getInstance().processMessage(msg, this);
+            else
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error Creating Class", "An error occurred while attempting to create the class");
         }
     }
 

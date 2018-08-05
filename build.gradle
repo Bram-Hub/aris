@@ -25,4 +25,10 @@ subprojects {
         mavenCentral()
     }
 
+    task copyRuntimeLibs(type: Copy) {
+        into 'jars'
+
+        from configurations.runtime, jar
+    }
+
 }
