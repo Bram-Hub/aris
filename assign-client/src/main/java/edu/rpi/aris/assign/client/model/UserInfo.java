@@ -30,6 +30,13 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
 
     private HashMap<Integer, ClassInfo> classMap = new HashMap<>();
 
+    public UserInfo() {
+        selectedClass.addListener((observable, oldValue, newValue) -> {
+            if (newValue != null)
+                Config.SELECTED_COURSE_ID.setValue(newValue.getClassId());
+        });
+    }
+
     public ObservableList<ClassInfo> classesProperty() {
         return classes;
     }
@@ -89,6 +96,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
                 classMap.put(k, info);
             });
             Collections.sort(classes);
+            selectedClass.set(classMap.get(Config.SELECTED_COURSE_ID.getValue()));
             loggedIn.set(true);
             loading.set(false);
         });
@@ -99,9 +107,11 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         Platform.runLater(() -> {
             loggedIn.set(false);
             loading.set(false);
+            classes.clear();
+            classMap.clear();
+            if (suggestRetry)
+                getUserInfo(false);
         });
-        if (suggestRetry)
-            getUserInfo(false);
     }
 
     public static class ClassStringConverter extends StringConverter<ClassInfo> {

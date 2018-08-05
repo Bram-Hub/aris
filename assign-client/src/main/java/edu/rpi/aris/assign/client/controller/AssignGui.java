@@ -111,7 +111,7 @@ public class AssignGui {
 
     @FXML
     public void refresh() {
-
+        userInfo.getUserInfo(true);
     }
 
     @FXML
