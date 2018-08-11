@@ -8,16 +8,12 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
 
 public class AssignServerMain implements MainCallbackListener {
 
     public static final AssignServerMain instance = new AssignServerMain();
     private static AssignServer server;
     private static Logger logger = LogManager.getLogger(AssignServerMain.class);
-    private static FileLock lock, ipcLock;
-    private static FileChannel lockFileChannel;
 
     public static void main(String[] args) throws IOException {
         ServerConfig.getInstance();
@@ -63,8 +59,10 @@ public class AssignServerMain implements MainCallbackListener {
         if (cmd.hasOption('u')) {
             if (!server.checkUpdate())
                 System.exit(1);
-        } else
+        } else {
             new Thread(server, "ServerSocket-Listen").start();
+            ServerCLI.startCliThread();
+        }
     }
 
     @Override

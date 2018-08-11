@@ -2,6 +2,10 @@ apply plugin: 'application'
 
 mainClassName = 'edu.rpi.aris.assign.server.AssignServerMain'
 
+run {
+    standardInput = System.in
+}
+
 dependencies {
 
     compile project(':libassign')

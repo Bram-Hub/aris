@@ -11,13 +11,11 @@ subprojects {
 
     sourceCompatibility = 1.8
 
-    jar {
-        doFirst {
-            manifest {
-                attributes("Implementation-Title": "Aris",
-                        "Implementation-Version": version,
-                        'Class-Path': configurations.runtime.collect { it.name }.join(' '))
-            }
+    jar.doFirst {
+        manifest {
+            attributes("Implementation-Title": "Aris",
+                    "Implementation-Version": version,
+                    'Class-Path': configurations.runtime.collect { it.name }.join(' '))
         }
     }
 
@@ -25,10 +23,16 @@ subprojects {
         mavenCentral()
     }
 
-    task copyRuntimeLibs(type: Copy) {
-        into 'jars'
+    jar.doLast {
+        copy {
+            into 'jars'
 
-        from configurations.runtime, jar
+            from configurations.runtime, jar
+        }
+    }
+
+    clean.doLast {
+        delete 'jars'
     }
 
 }
