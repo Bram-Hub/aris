@@ -76,6 +76,15 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         }
     }
 
+    public void logout() {
+        loggedIn.set(false);
+        classes.clear();
+        classMap.clear();
+        userType.set(null);
+        Config.USERNAME.setValue(null);
+        Config.ACCESS_TOKEN.setValue(null);
+    }
+
     public void createClass(String name) {
         Client.getInstance().processMessage(new ClassCreateMsg(name), createHandler);
     }
@@ -97,6 +106,8 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
             });
             Collections.sort(classes);
             selectedClass.set(classMap.get(Config.SELECTED_COURSE_ID.getValue()));
+            if (selectedClass.get() == null && classes.size() > 0)
+                selectedClass.set(classes.get(0));
             loggedIn.set(true);
             loading.set(false);
         });

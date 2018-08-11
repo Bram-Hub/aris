@@ -27,13 +27,19 @@ public class AssignGui {
     @FXML
     private Label lblUsername;
     @FXML
+    private Label lblClass;
+    @FXML
     private Button login;
+    @FXML
+    private Button refreshButton;
     @FXML
     private Tab assignmentTab;
     @FXML
     private Tab studentTab;
     @FXML
     private Tab problemTab;
+    @FXML
+    private MenuItem loginMenu;
 
     private UserInfo userInfo = new UserInfo();
     private Stage stage;
@@ -104,9 +110,29 @@ public class AssignGui {
 
         login.visibleProperty().bind(userInfo.loginProperty().not());
         login.managedProperty().bind(userInfo.loginProperty().not());
+        login.disableProperty().bind(userInfo.loadingProperty());
+
+        classes.visibleProperty().bind(userInfo.loginProperty());
+        classes.managedProperty().bind(userInfo.loginProperty());
+
+        lblClass.visibleProperty().bind(userInfo.loginProperty());
+        lblClass.managedProperty().bind(userInfo.loginProperty());
+
+        refreshButton.visibleProperty().bind(userInfo.loginProperty());
+        refreshButton.managedProperty().bind(userInfo.loginProperty());
 
         lblUsername.textProperty().bind(Bindings.createStringBinding(() -> userInfo.isLoggedIn() ? Config.USERNAME.getValue() + " (" + userInfo.getUserType().readableName + ")" : "Not Logged In", Config.USERNAME.getProperty(), userInfo.userTypeProperty(), userInfo.loginProperty()));
 
+        loginMenu.textProperty().bind(Bindings.createStringBinding(() -> userInfo.loginProperty().get() ? "Logout" : "Login", userInfo.loginProperty()));
+        loginMenu.disableProperty().bind(userInfo.loadingProperty());
+    }
+
+    @FXML
+    public void loginOut() {
+        if (userInfo.loginProperty().get()) {
+            userInfo.logout();
+        } else
+            refresh();
     }
 
     @FXML
