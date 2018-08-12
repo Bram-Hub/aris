@@ -21,7 +21,7 @@ public class ProblemsGetMsg extends Message {
 
     @Override
     public ErrorType processMessage(Connection connection, User user) throws SQLException {
-        if (!UserType.hasPermission(user, UserType.TA))
+        if (!UserType.hasPermission(user, UserType.INSTRUCTOR))
             return ErrorType.UNAUTHORIZED;
         try (PreparedStatement statement = connection.prepareStatement("SELECT id, name, created_by, created_on, module_name FROM problem ORDER BY created_on DESC;")) {
             try (ResultSet rs = statement.executeQuery()) {

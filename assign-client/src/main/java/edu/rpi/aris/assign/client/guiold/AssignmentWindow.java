@@ -85,7 +85,7 @@ public class AssignmentWindow {
     public AssignmentWindow() {
         clientInfo = new ClientInfo();
         problemList = new ProblemList();
-        FXMLLoader loader = new FXMLLoader(AssignmentWindow.class.getResource("assignment_window.fxml"));
+        FXMLLoader loader = new FXMLLoader(AssignmentWindow.class.getResource("assign_window.fxml"));
         loader.setController(this);
         Parent root;
         try {

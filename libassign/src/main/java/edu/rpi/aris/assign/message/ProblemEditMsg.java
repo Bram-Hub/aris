@@ -36,7 +36,7 @@ public class ProblemEditMsg extends Message {
 
     @Override
     public ErrorType processMessage(Connection connection, User user) throws SQLException {
-        if (!UserType.hasPermission(user, UserType.TA))
+        if (!UserType.hasPermission(user, UserType.INSTRUCTOR))
             return ErrorType.UNAUTHORIZED;
         if (name != null) {
             try (PreparedStatement updateName = connection.prepareStatement("UPDATE problem SET name = ? WHERE id = ?")) {

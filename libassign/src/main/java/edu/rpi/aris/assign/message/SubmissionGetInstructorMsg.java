@@ -49,7 +49,7 @@ public class SubmissionGetInstructorMsg extends Message {
 
     @Override
     public ErrorType processMessage(Connection connection, User user) throws SQLException {
-        if (!UserType.hasPermission(user, UserType.TA))
+        if (!UserType.hasPermission(user, UserType.INSTRUCTOR))
             return ErrorType.UNAUTHORIZED;
         try (PreparedStatement userStatement = connection.prepareStatement("SELECT u.id, u.username FROM users u, user_class uc WHERE uc.user_id = u.id AND u.user_type = 'student' AND uc.class_id = ? ORDER BY u.username;");
              PreparedStatement problems = connection.prepareStatement("SELECT p.id, p.name, p.created_by, p.created_on, p.module_name FROM problem p, assignment a WHERE a.problem_id = p.id AND a.class_id = ? AND a.id = ? ORDER BY p.name;");

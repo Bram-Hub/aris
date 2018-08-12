@@ -18,6 +18,12 @@ import java.util.Base64;
 
 public class DBUtils {
 
+    public static final String COMPLEXITY_RULES = "Password Complexity Requirements:\n" +
+            "\tat least 8 characters\n" +
+            "\t1 upper case letter (A-Z)\n" +
+            "\t1 lower case letter (a-z)\n" +
+            "\t1 number(0-9)\n" +
+            "\tCannot be your old password";
     private static final Logger logger = LogManager.getLogger(DBUtils.class);
     private static final SecureRandom random = new SecureRandom();
 
@@ -49,6 +55,12 @@ public class DBUtils {
             statement.executeUpdate();
             return new ImmutablePair<>(password, null);
         }
+    }
+
+    public static boolean checkPasswordComplexity(String username, String password) {
+        if (password.length() < 8 || password.toLowerCase().contains(username.toLowerCase()))
+            return false;
+        return password.matches(".*[a-z].*") && password.matches(".*[A-Z].*") && password.matches(".*[0-9].*");
     }
 
     public static Pair<String, String> getSaltAndHash(String password) {

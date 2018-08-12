@@ -20,7 +20,7 @@ import java.sql.*;
 public class DatabaseManager {
 
     private static final String[] tables = new String[]{"submission", "assignment", "problem", "user_class", "users", "class", "version"};
-    private static final int DB_SCHEMA_VERSION = 4;
+    private static final int DB_SCHEMA_VERSION = 6;
     private static Logger logger = LogManager.getLogger(DatabaseManager.class);
 
     static {
@@ -88,13 +88,15 @@ public class DatabaseManager {
                     "user_type text," +
                     "salt text," +
                     "password_hash text," +
-                    "access_token text);");
+                    "access_token text," +
+                    "force_reset boolean);");
             statement.execute("CREATE TABLE IF NOT EXISTS class" +
                     "(id serial PRIMARY KEY," +
                     "name text);");
             statement.execute("CREATE TABLE IF NOT EXISTS user_class" +
                     "(user_id integer," +
                     "class_id integer," +
+                    "is_ta boolean" +
                     "constraint uc_ufk foreign key (user_id) references users(id) on delete cascade," +
                     "constraint uc_cfk foreign key (class_id) references class(id) on delete cascade);");
             statement.execute("CREATE TABLE IF NOT EXISTS problem" +
@@ -198,6 +200,44 @@ public class DatabaseManager {
             statement.execute("ALTER TABLE assignment RENAME proof_id TO problem_id;");
             statement.execute("ALTER TABLE submission RENAME proof_id TO problem_id;");
             statement.execute("UPDATE version SET version=4;");
+            connection.commit();
+        } catch (Throwable e) {
+            connection.rollback();
+            logger.error("An error occurred while updating the database schema and the changes were rolled back");
+            throw e;
+        } finally {
+            connection.setAutoCommit(autoCommit);
+        }
+        updateSchema4(connection);
+    }
+
+    private void updateSchema4(Connection connection) throws SQLException {
+        logger.info("Updating database schema to version 5");
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE user_class ADD COLUMN is_ta boolean;");
+            statement.execute("UPDATE user_class SET is_ta=false;");
+            statement.execute("UPDATE version SET version=5;");
+            connection.commit();
+        } catch (Throwable e) {
+            connection.rollback();
+            logger.error("An error occurred while updating the database schema and the changes were rolled back");
+            throw e;
+        } finally {
+            connection.setAutoCommit(autoCommit);
+        }
+        updateSchema5(connection);
+    }
+
+    private void updateSchema5(Connection connection) throws SQLException {
+        logger.info("Updating database schema to version 6");
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE users ADD COLUMN force_reset boolean;");
+            statement.execute("UPDATE users SET force_reset=false;");
+            statement.execute("UPDATE version SET version=6;");
             connection.commit();
         } catch (Throwable e) {
             connection.rollback();

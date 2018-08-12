@@ -61,8 +61,17 @@ public class UserEditMsg extends Message {
                     update.executeUpdate();
                 }
             if (changePass) {
+                if (newPass.equals(oldPass) || !DBUtils.checkPasswordComplexity(username, newPass))
+                    return ErrorType.AUTH_WEAK_PASS;
                 Pair<String, ErrorType> pair = DBUtils.setPassword(connection, username, newPass);
                 newPass = pair.getLeft();
+                if (pair.getRight() == null) {
+                    user.resetPass();
+                    try (PreparedStatement forceOff = connection.prepareStatement("UPDATE users SET force_reset = false WHERE username = ?;")) {
+                        forceOff.setString(1, username);
+                        forceOff.executeUpdate();
+                    }
+                }
                 return pair.getRight();
             }
             return null;
@@ -73,6 +82,10 @@ public class UserEditMsg extends Message {
         }
     }
 
+    public boolean isChangePass() {
+        return changePass;
+    }
+
     @Override
     public MessageType getMessageType() {
         return MessageType.EDIT_USER;
@@ -81,5 +94,9 @@ public class UserEditMsg extends Message {
     @Override
     public boolean checkValid() {
         return username != null;
+    }
+
+    public String getUsername() {
+        return username;
     }
 }

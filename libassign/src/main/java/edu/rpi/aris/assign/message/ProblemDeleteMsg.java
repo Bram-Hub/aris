@@ -22,7 +22,7 @@ public class ProblemDeleteMsg extends Message {
 
     @Override
     public ErrorType processMessage(Connection connection, User user) throws SQLException {
-        if (!UserType.hasPermission(user, UserType.TA))
+        if (!UserType.hasPermission(user, UserType.INSTRUCTOR))
             return ErrorType.UNAUTHORIZED;
         try (PreparedStatement deleteProblem = connection.prepareStatement("DELETE FROM problem WHERE id = ?;")) {
             deleteProblem.setInt(1, pid);

@@ -1,24 +1,26 @@
 package edu.rpi.aris.assign.client;
 
+import edu.rpi.aris.assign.DBUtils;
 import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.MessageCommunication;
 import edu.rpi.aris.assign.NetUtil;
-import edu.rpi.aris.assign.client.exceptions.AuthBanException;
-import edu.rpi.aris.assign.client.exceptions.InvalidAccessTokenException;
-import edu.rpi.aris.assign.client.exceptions.InvalidCredentialsException;
+import edu.rpi.aris.assign.client.exceptions.*;
 import edu.rpi.aris.assign.client.model.Config;
 import edu.rpi.aris.assign.message.ErrorMsg;
 import edu.rpi.aris.assign.message.Message;
+import edu.rpi.aris.assign.message.UserEditMsg;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import javafx.util.Pair;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
@@ -415,10 +417,12 @@ public class Client implements MessageCommunication {
             case NetUtil.AUTH_ERR:
                 throw new IOException("The server encountered an error while attempting to authenticate this connection");
             default:
-                if (res.startsWith(NetUtil.AUTH_OK)) {
-                    String accessToken = res.replaceFirst(NetUtil.AUTH_OK + " ", "");
+                if (res.startsWith(NetUtil.AUTH_OK) || res.startsWith(NetUtil.AUTH_RESET)) {
+                    String accessToken = res.replaceFirst(res.startsWith(NetUtil.AUTH_OK) ? NetUtil.AUTH_OK : NetUtil.AUTH_RESET, "").trim();
                     Config.ACCESS_TOKEN.setValue(URLDecoder.decode(accessToken, "UTF-8"));
                     Platform.runLater(() -> Config.USERNAME.setValue(user));
+                    if (res.startsWith(NetUtil.AUTH_RESET))
+                        throw new PasswordResetRequiredException();
                 } else
                     throw new IOException(res);
         }
@@ -482,6 +486,28 @@ public class Client implements MessageCommunication {
             } catch (AuthBanException e) {
                 AssignClient.getInstance().getMainWindow().displayErrorMsg("Temporary Ban", e.getMessage());
                 responseHandler.onError(false, message);
+            } catch (PasswordResetRequiredException e) {
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Password Reset", e.getMessage(), true);
+                disconnect();
+                boolean retry = false;
+                do {
+                    try {
+                        retry = false;
+                        resetPassword();
+                        responseHandler.onError(true, message);
+                    } catch (CancellationException e1) {
+                        responseHandler.onError(false, message);
+                    } catch (InvalidCredentialsException e1) {
+                        AssignClient.getInstance().getMainWindow().displayErrorMsg("Incorrect Password", "Your current password is incorrect", true);
+                        retry = true;
+                    } catch (WeakPasswordException e1) {
+                        AssignClient.getInstance().getMainWindow().displayErrorMsg("Weak Password", "Your new password does not meet the complexity requirements", true);
+                        retry = true;
+                    } catch (Throwable e1) {
+                        AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", e1.getMessage());
+                        responseHandler.onError(false, message);
+                    }
+                } while (retry);
             } catch (Throwable e) {
                 logger.error("Error sending message", e);
                 responseHandler.onError(false, message);
@@ -605,6 +631,74 @@ public class Client implements MessageCommunication {
         return new ImmutableTriple<>(user, pass, isAccessToken);
     }
 
+    private void resetPassword() throws Exception {
+        AtomicReference<Optional<Pair<String, String>>> result = new AtomicReference<>(null);
+        Platform.runLater(() -> {
+            Dialog<Pair<String, String>> dialog = new Dialog<>();
+            dialog.setTitle("Reset Password");
+            dialog.setHeaderText("Your password has expired.\n" +
+                    "Please reset your password\n\n" +
+                    DBUtils.COMPLEXITY_RULES);
+            ButtonType loginButtonType = new ButtonType("Reset Password", ButtonBar.ButtonData.OK_DONE);
+            dialog.getDialogPane().getButtonTypes().addAll(loginButtonType, ButtonType.CANCEL);
+            GridPane grid = new GridPane();
+            grid.setVgap(10);
+            grid.setHgap(10);
+            grid.setPadding(new Insets(20));
+            PasswordField currentPass = new PasswordField();
+            currentPass.setPromptText("Current Password");
+            PasswordField newPassword = new PasswordField();
+            newPassword.setPromptText("New Password");
+            PasswordField retypePassword = new PasswordField();
+            retypePassword.setPromptText("Retype Password");
+            grid.add(new Label("Current Password:"), 0, 0);
+            grid.add(currentPass, 1, 0);
+            grid.add(new Label("New Password:"), 0, 1);
+            grid.add(newPassword, 1, 1);
+            grid.add(new Label("Retype Password:"), 0, 2);
+            grid.add(retypePassword, 1, 2);
+            Node loginButton = dialog.getDialogPane().lookupButton(loginButtonType);
+            loginButton.disableProperty().bind(currentPass.textProperty().isEmpty().or
+                    (newPassword.textProperty().isEmpty()).or
+                    (retypePassword.textProperty().isEmpty()).or
+                    (newPassword.textProperty().isNotEqualTo(retypePassword.textProperty())).or
+                    (Bindings.createBooleanBinding(() -> !DBUtils.checkPasswordComplexity(Config.USERNAME.getValue(), newPassword.getText()), newPassword.textProperty())).or
+                    (currentPass.textProperty().isEqualTo(newPassword.textProperty())));
+            dialog.getDialogPane().setContent(grid);
+            dialog.setResultConverter(buttonType -> buttonType == ButtonType.CANCEL ? null : new Pair<>(currentPass.getText(), newPassword.getText()));
+            currentPass.requestFocus();
+            result.set(dialog.showAndWait());
+            synchronized (result) {
+                result.notify();
+            }
+        });
+        synchronized (result) {
+            try {
+                result.wait();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        if (result.get() != null && result.get().isPresent()) {
+            String oldPass = result.get().get().getKey();
+            String newPass = result.get().get().getValue();
+            UserEditMsg editMsg = new UserEditMsg(Config.USERNAME.getValue(), null, newPass, oldPass, true);
+            try {
+                connect();
+            } catch (PasswordResetRequiredException ignored) {
+            }
+            Message res;
+            try {
+                res = editMsg.sendAndGet(this);
+            } finally {
+                disconnect();
+            }
+            if (!(res instanceof UserEditMsg))
+                resetPassword();
+        } else
+            throw new CancellationException();
+    }
+
     public synchronized void disconnect() {
         disconnect(true);
     }
@@ -675,8 +769,14 @@ public class Client implements MessageCommunication {
 
     @Override
     public void handleErrorMsg(ErrorMsg msg) {
-        // TODO: implement
-        throw new RuntimeException("Not implemented: \n" + msg);
+        switch (msg.getErrorType()) {
+            case AUTH_FAIL:
+                throw new InvalidCredentialsException();
+            case AUTH_WEAK_PASS:
+                throw new WeakPasswordException();
+            default:
+                throw new RuntimeException("Error: " + msg.getErrorType());
+        }
     }
 
     private boolean showCertWarning() {

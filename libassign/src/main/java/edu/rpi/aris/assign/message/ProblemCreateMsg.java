@@ -28,7 +28,7 @@ public class ProblemCreateMsg extends Message {
 
     @Override
     public ErrorType processMessage(Connection connection, User user) throws SQLException {
-        if (!UserType.hasPermission(user, UserType.TA))
+        if (!UserType.hasPermission(user, UserType.INSTRUCTOR))
             return ErrorType.UNAUTHORIZED;
         try (PreparedStatement statement = connection.prepareStatement("INSERT INTO problem (name, data, created_by, created_on, module_name) VALUES (?, ?, (SELECT username FROM users WHERE id = ? LIMIT 1), now(), ?)")) {
             statement.setString(1, name);

@@ -14,6 +14,7 @@ public class NetUtil {
     public static final String AUTH_BAN = "AUTH BAN";
     public static final String AUTH_FAIL = "AUTH FAIL";
     public static final String AUTH_OK = "AUTH OK";
+    public static final String AUTH_RESET = "AUTH RESET";
     public static final String AUTH_ERR = "AUTH UNKNOWN_ERROR";
     public static final String AUTH_INVALID = "AUTH INVALID";
     public static final String AUTH = "AUTH";

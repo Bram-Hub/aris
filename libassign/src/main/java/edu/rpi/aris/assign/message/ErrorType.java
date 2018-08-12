@@ -13,5 +13,7 @@ public enum ErrorType {
     NOT_FOUND,
     AUTH_FAIL,
     INVALID_PASSWORD,
+    RESET_PASS,
+    AUTH_WEAK_PASS,
     UNAUTHORIZED
 }

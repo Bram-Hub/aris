@@ -46,7 +46,7 @@ public class AssignGui {
 
     private AssignGui() {
         stage = new Stage();
-        FXMLLoader loader = new FXMLLoader(ModuleRow.class.getResource("../view/assignment_window.fxml"));
+        FXMLLoader loader = new FXMLLoader(ModuleRow.class.getResource("../view/assign_window.fxml"));
         loader.setController(this);
         Parent root;
         try {

@@ -6,8 +6,7 @@ public enum UserType {
 
     ADMIN(0, "admin"),
     INSTRUCTOR(1, "instructor"),
-    TA(2, "ta"),
-    STUDENT(3, "student");
+    STUDENT(2, "student");
 
     private static final HashMap<String, UserType> readableNameMap = new HashMap<>();
 

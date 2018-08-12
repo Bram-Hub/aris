@@ -4,6 +4,7 @@ import edu.rpi.aris.assign.*;
 import edu.rpi.aris.assign.message.ErrorMsg;
 import edu.rpi.aris.assign.message.ErrorType;
 import edu.rpi.aris.assign.message.Message;
+import edu.rpi.aris.assign.message.UserEditMsg;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -130,7 +131,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
         logger.info("Authenticating user: " + username);
         String pass = URLDecoder.decode(auth[3], "UTF-8");
         try (Connection connection = dbManager.getConnection();
-             PreparedStatement statement = connection.prepareStatement("SELECT salt, password_hash, access_token, id, user_type FROM users WHERE username = ?;")) {
+             PreparedStatement statement = connection.prepareStatement("SELECT salt, password_hash, access_token, id, user_type, force_reset FROM users WHERE username = ?;")) {
             statement.setString(1, username);
             try (ResultSet set = statement.executeQuery()) {
                 if (set.next()) {
@@ -149,6 +150,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                             updateUserType.executeUpdate();
                         }
                     }
+                    boolean forceReset = set.getBoolean(6);
                     if (DBUtils.checkPass(pass, salt, savedHash)) {
                         String access_token = generateAccessToken();
                         MessageDigest digest = DBUtils.getDigest();
@@ -159,8 +161,8 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                             updateAccessToken.setString(2, username);
                             updateAccessToken.executeUpdate();
                         }
-                        sendMessage(NetUtil.AUTH_OK + " " + URLEncoder.encode(access_token, "UTF-8"));
-                        user = new User(userId, username, userType);
+                        sendMessage((forceReset ? NetUtil.AUTH_RESET : NetUtil.AUTH_OK) + " " + URLEncoder.encode(access_token, "UTF-8"));
+                        user = new User(userId, username, userType, forceReset);
                         return true;
                     } else {
                         if (auth[1].equals(NetUtil.AUTH_PASS)) {
@@ -218,7 +220,15 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                     try (Connection connection = dbManager.getConnection()) {
                         try {
                             connection.setAutoCommit(false);
-                            ErrorType error = msg.processMessage(connection, user);
+                            ErrorType error;
+                            if (user.requireReset()) {
+                                if (msg instanceof UserEditMsg && ((UserEditMsg) msg).isChangePass() && user.username.equals(((UserEditMsg) msg).getUsername()))
+                                    error = msg.processMessage(connection, user);
+                                else
+                                    error = ErrorType.RESET_PASS;
+                            } else {
+                                error = msg.processMessage(connection, user);
+                            }
                             if (error == null) {
                                 connection.commit();
                                 msg.send(this);

@@ -34,7 +34,7 @@
             </Menu>
          </menus>
       </MenuBar>
-      <BorderPane stylesheets="@assignment_window.css">
+      <BorderPane stylesheets="@assign_window.css">
           <top>
               <HBox alignment="CENTER_LEFT" spacing="5.0" BorderPane.alignment="CENTER">
                   <Label fx:id="lblClass" alignment="CENTER" contentDisplay="CENTER" text="Class:">
