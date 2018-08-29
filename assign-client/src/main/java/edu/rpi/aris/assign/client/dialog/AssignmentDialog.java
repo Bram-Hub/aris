@@ -1,5 +1,7 @@
-package edu.rpi.aris.assign.client.guiold;
+package edu.rpi.aris.assign.client.dialog;
 
+import edu.rpi.aris.assign.client.guiold.ProblemInfo;
+import edu.rpi.aris.assign.client.guiold.ProblemList;
 import javafx.beans.binding.Bindings;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
@@ -43,7 +45,7 @@ public class AssignmentDialog extends Dialog<Triple<String, LocalDateTime, Colle
         this.availableProofs = availableProofs;
         initModality(Modality.WINDOW_MODAL);
         initOwner(parent);
-        FXMLLoader loader = new FXMLLoader(AssignmentDialog.class.getResource("assignment_dialog.fxml"));
+        FXMLLoader loader = new FXMLLoader(AssignmentDialog.class.getResource("../view/assignment_dialog.fxml"));
         loader.setController(this);
         getDialogPane().getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
         setTitle("Create Assignment");

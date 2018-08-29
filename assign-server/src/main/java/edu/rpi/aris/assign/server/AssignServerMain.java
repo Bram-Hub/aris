@@ -20,6 +20,10 @@ public class AssignServerMain implements MainCallbackListener {
         LibAssign.getInstance().init(true, args, instance);
     }
 
+    public static AssignServer getServer() {
+        return server;
+    }
+
     @Override
     public void processAlreadyRunning(CommandLine cmd) throws IOException {
         logger.info("Sending message to running program");
@@ -69,4 +73,5 @@ public class AssignServerMain implements MainCallbackListener {
     public void processIpcMessage(String msg) {
         //TODO
     }
+
 }

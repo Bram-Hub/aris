@@ -1,11 +1,13 @@
 package edu.rpi.aris.assign.client.controller;
 
 import edu.rpi.aris.assign.LibAssign;
+import edu.rpi.aris.assign.UserType;
 import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.model.ClassInfo;
 import edu.rpi.aris.assign.client.model.Config;
 import edu.rpi.aris.assign.client.model.UserInfo;
 import javafx.beans.binding.Bindings;
+import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -15,6 +17,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Optional;
 
 public class AssignGui {
@@ -33,20 +36,28 @@ public class AssignGui {
     @FXML
     private Button refreshButton;
     @FXML
+    private TabPane tabPane;
+    @FXML
     private Tab assignmentTab;
     @FXML
-    private Tab studentTab;
+    private Tab userTab;
     @FXML
     private Tab problemTab;
     @FXML
     private MenuItem loginMenu;
+    @FXML
+    private Menu classMenu;
 
-    private UserInfo userInfo = new UserInfo();
+    private AssignmentsGui assignmentsGui;
+    private UsersGui usersGui;
+    private ProblemsGui problemsGui;
     private Stage stage;
+    private UserInfo userInfo = UserInfo.getInstance();
+    private HashMap<Tab, TabGui> tabGuis = new HashMap<>();
 
     private AssignGui() {
         stage = new Stage();
-        FXMLLoader loader = new FXMLLoader(ModuleRow.class.getResource("../view/assign_window.fxml"));
+        FXMLLoader loader = new FXMLLoader(AssignGui.class.getResource("../view/assign_window.fxml"));
         loader.setController(this);
         Parent root;
         try {
@@ -64,10 +75,6 @@ public class AssignGui {
         if (instance == null)
             instance = new AssignGui();
         return instance;
-    }
-
-    public UserInfo getUserInfo() {
-        return userInfo;
     }
 
     public void show() {
@@ -95,22 +102,57 @@ public class AssignGui {
                 stage.hide();
             }
         }
-        userInfo.getUserInfo(false);
+        userInfo.getUserInfo(false, () -> {
+            TabGui gui = tabGuis.get(tabPane.getSelectionModel().getSelectedItem());
+            if (gui != null)
+                gui.load(false);
+        });
     }
 
     @FXML
     public void initialize() {
+
+        assignmentsGui = new AssignmentsGui();
+        usersGui = new UsersGui();
+        problemsGui = new ProblemsGui();
+        tabGuis.put(assignmentTab, assignmentsGui);
+        tabGuis.put(userTab, usersGui);
+        tabGuis.put(problemTab, problemsGui);
+
+        tabPane.getTabs().addListener((ListChangeListener<Tab>) c -> {
+            while (c.next()) {
+                if (c.wasRemoved()) {
+                    for (Tab t : c.getRemoved()) {
+                        TabGui gui = tabGuis.get(t);
+                        if (gui != null && !gui.isPermanentTab())
+                            tabGuis.remove(t);
+                    }
+                }
+            }
+        });
+
+        tabPane.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+            TabGui gui = tabGuis.get(newValue);
+            if (gui != null)
+                gui.load(false);
+        });
+
         classes.setConverter(new UserInfo.ClassStringConverter());
         classes.itemsProperty().set(userInfo.classesProperty());
         classes.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> userInfo.selectedClassProperty().set(newValue));
-        userInfo.selectedClassProperty().addListener((observable, oldValue, newValue) -> classes.getSelectionModel().select(newValue));
+        userInfo.selectedClassProperty().addListener((observable, oldValue, newValue) -> {
+            classes.getSelectionModel().select(newValue);
+            TabGui gui = tabGuis.get(tabPane.getSelectionModel().getSelectedItem());
+            if (gui == assignmentsGui)
+                gui.load(false);
+        });
 
-        loading.visibleProperty().bind(userInfo.loadingProperty());
-        loading.managedProperty().bind(userInfo.loadingProperty());
+        loading.visibleProperty().bind(userInfo.loadingBinding());
+        loading.managedProperty().bind(userInfo.loadingBinding());
 
         login.visibleProperty().bind(userInfo.loginProperty().not());
         login.managedProperty().bind(userInfo.loginProperty().not());
-        login.disableProperty().bind(userInfo.loadingProperty());
+        login.disableProperty().bind(userInfo.loadingBinding());
 
         classes.visibleProperty().bind(userInfo.loginProperty());
         classes.managedProperty().bind(userInfo.loginProperty());
@@ -124,7 +166,27 @@ public class AssignGui {
         lblUsername.textProperty().bind(Bindings.createStringBinding(() -> userInfo.isLoggedIn() ? Config.USERNAME.getValue() + " (" + userInfo.getUserType().readableName + ")" : "Not Logged In", Config.USERNAME.getProperty(), userInfo.userTypeProperty(), userInfo.loginProperty()));
 
         loginMenu.textProperty().bind(Bindings.createStringBinding(() -> userInfo.loginProperty().get() ? "Logout" : "Login", userInfo.loginProperty()));
-        loginMenu.disableProperty().bind(userInfo.loadingProperty());
+        loginMenu.disableProperty().bind(userInfo.loadingBinding());
+
+        assignmentTab.setContent(assignmentsGui.getRoot());
+        userTab.setContent(usersGui.getRoot());
+        problemTab.setContent(problemsGui.getRoot());
+
+        userInfo.userTypeProperty().addListener((observable, oldValue, newValue) -> setTabs(newValue));
+        setTabs(null);
+
+        classMenu.visibleProperty().bind(Bindings.createBooleanBinding(() -> UserType.hasPermission(userInfo.getUserType(), UserType.INSTRUCTOR), userInfo.userTypeProperty()));
+
+    }
+
+    private void setTabs(UserType type) {
+        if (UserType.hasPermission(type, UserType.INSTRUCTOR)) {
+            if (!tabPane.getTabs().contains(userTab))
+                tabPane.getTabs().add(1, userTab);
+            if (!tabPane.getTabs().contains(problemTab))
+                tabPane.getTabs().add(2, problemTab);
+        } else
+            tabPane.getTabs().removeAll(userTab, problemTab);
     }
 
     @FXML
@@ -137,7 +199,13 @@ public class AssignGui {
 
     @FXML
     public void refresh() {
-        userInfo.getUserInfo(true);
+        userInfo.getUserInfo(true, () -> {
+            for (TabGui gui : tabGuis.values())
+                gui.unload();
+            TabGui gui = tabGuis.get(tabPane.getSelectionModel().getSelectedItem());
+            if (gui != null)
+                gui.load(true);
+        });
     }
 
     @FXML
@@ -154,7 +222,7 @@ public class AssignGui {
 
     @FXML
     public void deleteClass() {
-        ClassInfo info = userInfo.selectedClassProperty().get();
+        ClassInfo info = userInfo.getSelectedClass();
         if (info == null)
             return;
         TextInputDialog dialog = new TextInputDialog();

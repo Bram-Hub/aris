@@ -16,6 +16,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.security.Security;
 import java.sql.*;
+import java.util.ArrayList;
 
 public class DatabaseManager {
 
@@ -269,6 +270,18 @@ public class DatabaseManager {
             statement.executeUpdate();
             return new ImmutablePair<>(password, NetUtil.OK);
         }
+    }
+
+    public ArrayList<Pair<String, UserType>> getUsers() throws SQLException {
+        ArrayList<Pair<String, UserType>> users = new ArrayList<>();
+        try (Connection connection = getConnection();
+             PreparedStatement getUsers = connection.prepareStatement("SELECT username, user_type FROM users;");
+             ResultSet rs = getUsers.executeQuery()) {
+            while (rs.next()) {
+                users.add(new ImmutablePair<>(rs.getString(1), UserType.valueOf(rs.getString(2))));
+            }
+        }
+        return users;
     }
 
     public Connection getConnection() throws SQLException {

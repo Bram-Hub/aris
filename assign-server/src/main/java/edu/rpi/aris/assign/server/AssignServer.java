@@ -4,6 +4,7 @@ import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.Update;
 import edu.rpi.aris.assign.UserType;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
@@ -382,8 +383,9 @@ public class AssignServer implements Runnable {
         return null;
     }
 
-    public synchronized void addUser(String username, String pass, UserType userType) throws SQLException, IOException {
-        dbManager.createUser(username, pass, userType);
+    public synchronized boolean addUser(String username, String pass, UserType userType) throws SQLException {
+        Pair<String, String> result = dbManager.createUser(username, pass, userType);
+        return result != null && result.getRight().equals(NetUtil.OK);
     }
 
     public synchronized boolean checkUpdate() {
@@ -394,6 +396,10 @@ public class AssignServer implements Runnable {
             return true;
         }
         return false;
+    }
+
+    public DatabaseManager getDbManager() {
+        return dbManager;
     }
 
 }

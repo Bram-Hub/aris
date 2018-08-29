@@ -26,7 +26,7 @@
                   <MenuItem fx:id="loginMenu" mnemonicParsing="false" onAction="#loginOut" text="Login" />
                </items>
             </Menu>
-            <Menu mnemonicParsing="false" text="Class">
+            <Menu fx:id="classMenu" mnemonicParsing="false" text="Class">
               <items>
                 <MenuItem mnemonicParsing="false" onAction="#createClass" text="Create Class" />
                   <MenuItem mnemonicParsing="false" onAction="#deleteClass" text="Delete Class" />
@@ -76,7 +76,7 @@
                       <Insets />
                   </BorderPane.margin>
                   <Tab fx:id="assignmentTab" closable="false" text="Assignments" />
-                  <Tab fx:id="studentTab" closable="false" text="Users" />
+                  <Tab fx:id="userTab" closable="false" text="Users" />
                   <Tab fx:id="problemTab" closable="false" text="Problems" />
               </TabPane>
           </center>

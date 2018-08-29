@@ -1,14 +1,17 @@
 package edu.rpi.aris.assign.server;
 
+import edu.rpi.aris.assign.LibAssign;
+import edu.rpi.aris.assign.UserType;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintStream;
+import java.sql.SQLException;
 import java.util.ArrayList;
 
 public class ServerCLI {
@@ -25,10 +28,11 @@ public class ServerCLI {
     }
 
     private static void cli() {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-        String line;
         try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+            String line;
             while ((line = reader.readLine()) != null) {
+                log.info("Command: " + line);
                 Pair<String, ArrayList<String>> split = splitArgs(line);
                 String cmd = split.getKey().toLowerCase();
                 ArrayList<String> args = split.getValue();
@@ -39,16 +43,47 @@ public class ServerCLI {
                     case "exit":
                     case "stop":
                     case "kill":
-                        System.out.println("Server shutdown requested");
+                        log.info("Server shutdown requested");
                         System.exit(0);
                         break;
+                    case "useradd":
+                        if (args.size() != 1)
+                            log.error("Usage: useradd <username>");
+                        else {
+                            log.info("Enter Password: ");
+                            String pass = reader.readLine();
+                            try {
+                                if (AssignServerMain.getServer().addUser(args.get(0), pass, UserType.ADMIN))
+                                    log.info("User Added");
+                                else
+                                    log.error("Failed to add user");
+                            } catch (SQLException e) {
+                                LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, false);
+                            }
+                        }
+                        break;
+                    case "userlist":
+                        try {
+                            log.info("Users:");
+                            for (Pair<String, UserType> p : AssignServerMain.getServer().getDbManager().getUsers()) {
+                                log.info(p.getKey() + " - " + p.getRight());
+                            }
+                        } catch (SQLException e) {
+                            LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, false);
+                        }
+                        break;
+                    case "rmuser":
+                        log.error("rmuser not implemented");
+                        break;
                     default:
-                        System.err.println("Unrecognized command: " + cmd);
+                        log.error("Unrecognized command: " + cmd);
                         help(true, null);
                 }
             }
         } catch (IOException e) {
-            log.error("An error occurred on the CLI Thread", e);
+            log.error("Error reading from CLI", e);
+        } finally {
+            log.error("CLI Thread has stopped");
         }
     }
 
@@ -75,17 +110,20 @@ public class ServerCLI {
     }
 
     private static void help(boolean error, ArrayList<String> args) {
-        PrintStream out = error ? System.err : System.out;
+        Level lvl = error ? Level.ERROR : Level.INFO;
         if (args != null && args.size() >= 1) {
             String cmd = args.get(0).toLowerCase();
             switch (cmd) {
                 default:
-                    out.println("There is no extended help available for the command: " + cmd);
+                    log.log(lvl, "There is no extended help available for the command: " + cmd);
             }
         } else {
-            out.println("Aris Assign Server CLI Help:");
-            out.println("\thelp - displays this dialog");
-            out.println("\tstop - stops the server (aliases: exit, kill)");
+            log.log(lvl, "Aris Assign Server CLI Help:");
+            log.log(lvl, "\thelp               - displays this dialog");
+            log.log(lvl, "\tstop               - stops the server (aliases: exit, kill)");
+            log.log(lvl, "\tuseradd <username> - adds the specified user");
+            log.log(lvl, "\tuserlist           - lists the users for this server");
+            log.log(lvl, "\trmuser <username>  - deletes the given user from the server");
         }
     }
 

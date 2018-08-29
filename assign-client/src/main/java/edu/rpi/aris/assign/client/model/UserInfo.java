@@ -1,5 +1,6 @@
 package edu.rpi.aris.assign.client.model;
 
+import edu.rpi.aris.assign.User;
 import edu.rpi.aris.assign.UserType;
 import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.Client;
@@ -8,40 +9,57 @@ import edu.rpi.aris.assign.message.ClassCreateMsg;
 import edu.rpi.aris.assign.message.ClassDeleteMsg;
 import edu.rpi.aris.assign.message.UserGetMsg;
 import javafx.application.Platform;
+import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.value.ObservableIntegerValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.util.StringConverter;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class UserInfo implements ResponseHandler<UserGetMsg> {
+
+    private static final UserInfo instance = new UserInfo();
 
     private SimpleObjectProperty<UserType> userType = new SimpleObjectProperty<>();
     private ObservableList<ClassInfo> classes = FXCollections.observableArrayList();
     private SimpleBooleanProperty loggedIn = new SimpleBooleanProperty();
-    private SimpleBooleanProperty loading = new SimpleBooleanProperty();
+    private SimpleIntegerProperty loading = new SimpleIntegerProperty();
     private SimpleObjectProperty<ClassInfo> selectedClass = new SimpleObjectProperty<>();
 
     private ClassCreateResponseHandler createHandler = new ClassCreateResponseHandler();
     private ClassDeleteResponseHandler deleteHandler = new ClassDeleteResponseHandler();
 
     private HashMap<Integer, ClassInfo> classMap = new HashMap<>();
+    private User user;
+    private ReentrantLock lock = new ReentrantLock(true);
+    private Runnable onLoad;
 
-    public UserInfo() {
+    private UserInfo() {
         selectedClass.addListener((observable, oldValue, newValue) -> {
             if (newValue != null)
                 Config.SELECTED_COURSE_ID.setValue(newValue.getClassId());
         });
     }
 
+    public static UserInfo getInstance() {
+        return instance;
+    }
+
     public ObservableList<ClassInfo> classesProperty() {
         return classes;
     }
 
-    public SimpleBooleanProperty loadingProperty() {
+    public BooleanBinding loadingBinding() {
+        return loading.greaterThan(0);
+    }
+
+    public ObservableIntegerValue loadingProperty() {
         return loading;
     }
 
@@ -62,16 +80,27 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
     }
 
     public boolean isLoading() {
-        return loading.get();
+        return loading.get() > 0;
+    }
+
+    public void startLoading() {
+        loading.set(loading.get() + 1);
+    }
+
+    public void finishLoading() {
+        loading.set(loading.get() - 1);
     }
 
     public UserType getUserType() {
         return userType.get();
     }
 
-    public void getUserInfo(boolean refresh) {
+    public void getUserInfo(boolean refresh, Runnable onLoad) {
         if (refresh || !loggedIn.get()) {
-            loading.set(true);
+            if (!lock.tryLock())
+                return;
+            this.onLoad = onLoad;
+            startLoading();
             Client.getInstance().processMessage(new UserGetMsg(), this);
         }
     }
@@ -93,9 +122,14 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         Client.getInstance().processMessage(new ClassDeleteMsg(classId), deleteHandler);
     }
 
+    public User getUser() {
+        return loggedIn.get() ? user : null;
+    }
+
     @Override
     public void response(UserGetMsg message) {
         Platform.runLater(() -> {
+            user = new User(message.getUserId(), Config.USERNAME.getValue(), message.getUserType(), false);
             userType.set(message.getUserType());
             classes.clear();
             classMap.clear();
@@ -109,7 +143,13 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
             if (selectedClass.get() == null && classes.size() > 0)
                 selectedClass.set(classes.get(0));
             loggedIn.set(true);
-            loading.set(false);
+            finishLoading();
+            try {
+                if (onLoad != null)
+                    onLoad.run();
+            } finally {
+                lock.unlock();
+            }
         });
     }
 
@@ -117,12 +157,17 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
     public void onError(boolean suggestRetry, UserGetMsg msg) {
         Platform.runLater(() -> {
             loggedIn.set(false);
-            loading.set(false);
+            finishLoading();
             classes.clear();
             classMap.clear();
             if (suggestRetry)
-                getUserInfo(false);
+                getUserInfo(false, onLoad);
+            lock.unlock();
         });
+    }
+
+    public ClassInfo getSelectedClass() {
+        return selectedClass.get();
     }
 
     public static class ClassStringConverter extends StringConverter<ClassInfo> {

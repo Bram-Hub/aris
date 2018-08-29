@@ -1,11 +1,11 @@
 package edu.rpi.aris.assign.client.guiold;
 
-import edu.rpi.aris.assign.ArisModuleException;
 import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.Problem;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ClientModuleService;
+import edu.rpi.aris.assign.client.dialog.AssignmentDialog;
 import edu.rpi.aris.assign.client.model.Config;
 import edu.rpi.aris.assign.message.*;
 import javafx.application.Platform;

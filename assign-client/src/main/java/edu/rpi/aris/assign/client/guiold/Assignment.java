@@ -2,6 +2,7 @@ package edu.rpi.aris.assign.client.guiold;
 
 import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.client.Client;
+import edu.rpi.aris.assign.client.dialog.AssignmentDialog;
 import edu.rpi.aris.assign.message.*;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;

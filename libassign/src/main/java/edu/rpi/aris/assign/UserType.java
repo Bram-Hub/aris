@@ -24,8 +24,12 @@ public enum UserType {
         this.readableName = readableName;
     }
 
+    public static boolean hasPermission(UserType requestingType, UserType minLevel) {
+        return requestingType != null && minLevel != null && requestingType.permissionLevel <= minLevel.permissionLevel;
+    }
+
     public static boolean hasPermission(User requester, UserType minLevel) {
-        return requester.userType.permissionLevel <= minLevel.permissionLevel;
+        return requester != null && hasPermission(requester.userType, minLevel);
     }
 
     public static UserType getFromReadableName(String readableName) {
