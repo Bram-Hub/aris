@@ -164,7 +164,7 @@ public class ProofLine implements LineChangeListener {
 
     private boolean isEditable() {
         if (proofLine.isAssumption() && proofLine.getSubProofLevel() == 0)
-            return window.editMode == EditMode.UNRESTRICTED;
+            return window.editMode == EditMode.UNRESTRICTED_EDIT;
         else
             return window.editMode != EditMode.READ_ONLY;
     }

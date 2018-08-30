@@ -16,7 +16,7 @@ import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 
-public class LibAris implements ArisModule {
+public class LibAris implements ArisModule<LibAris> {
 
     public static final String NAME = "Aris";
     public static final String VERSION;
@@ -35,8 +35,8 @@ public class LibAris implements ArisModule {
         VERSION = version;
     }
 
-    private ArisClientModule clientModule = null;
-    private ArisServerModule serverModule = null;
+    private ArisClientModule<LibAris> clientModule = null;
+    private ArisServerModule<LibAris> serverModule = null;
     private boolean loadedClient = false;
     private boolean loadedServer = false;
     private HashMap<String, String> assignProperties = new HashMap<>();
@@ -61,12 +61,13 @@ public class LibAris implements ArisModule {
     }
 
     @Override
-    public synchronized ArisClientModule getClientModule() {
+    public synchronized ArisClientModule<LibAris> getClientModule() {
         if (!loadedClient) {
             loadedClient = true;
             try {
                 Class<?> clazz = Class.forName("edu.rpi.aris.gui.Aris");
-                clientModule = (ArisClientModule) clazz.getMethod("getInstance").invoke(null);
+                //noinspection unchecked
+                clientModule = (ArisClientModule<LibAris>) clazz.getMethod("getInstance").invoke(null);
             } catch (ClassNotFoundException | NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
                 logger.fatal("Failed get Aris client class", e);
                 return clientModule;
@@ -76,12 +77,12 @@ public class LibAris implements ArisModule {
     }
 
     @Override
-    public synchronized ArisServerModule getServerModule() {
+    public synchronized ArisServerModule<LibAris> getServerModule() {
         return serverModule;
     }
 
     @Override
-    public ProblemConverter getProblemConverter() {
+    public ProblemConverter<LibAris> getProblemConverter() {
         return new SaveManager((SaveInfoListener) clientModule);
     }
 

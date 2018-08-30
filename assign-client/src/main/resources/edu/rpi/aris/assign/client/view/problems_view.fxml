@@ -6,19 +6,19 @@
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.layout.VBox?>
 
-
 <VBox spacing="5.0" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1">
    <padding>
       <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
    </padding>
    <children>
-      <Button mnemonicParsing="false" text="Create Problem" />
-      <TableView prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
+      <Button mnemonicParsing="false" onAction="#createProblem" text="Create Problem" />
+      <TableView fx:id="problemTbl" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
         <columns>
-          <TableColumn prefWidth="75.0" text="Problem" />
-          <TableColumn prefWidth="75.0" text="Module" />
-            <TableColumn prefWidth="75.0" text="Created By" />
-            <TableColumn prefWidth="75.0" text="Modify" />
+          <TableColumn fx:id="name" prefWidth="75.0" text="Problem" />
+          <TableColumn fx:id="module" prefWidth="75.0" text="Module" />
+            <TableColumn fx:id="createdBy" prefWidth="75.0" text="Created By" />
+            <TableColumn fx:id="createdOn" prefWidth="75.0" text="Created On" />
+            <TableColumn fx:id="delete" prefWidth="75.0" text="Delete Problem" />
         </columns>
          <columnResizePolicy>
             <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />

@@ -27,7 +27,7 @@ public class AssignmentsGui implements TabGui {
     private Button btnCreate;
 
     private Parent root;
-    private Assignments assignments = new Assignments();
+    private Assignments assignments = new Assignments(this);
 
     public AssignmentsGui() {
         FXMLLoader loader = new FXMLLoader(AssignmentsGui.class.getResource("../view/assignments_view.fxml"));
@@ -48,6 +48,7 @@ public class AssignmentsGui implements TabGui {
         return true;
     }
 
+    @Override
     public void load(boolean reload) {
         assignments.loadAssignments(reload);
     }
@@ -72,7 +73,7 @@ public class AssignmentsGui implements TabGui {
                 return "Error Loading Assignments";
             else
                 return "No Assignments!";
-        }, userInfo.loginProperty(), userInfo.selectedClassProperty(), userInfo.loadingProperty()));
+        }, userInfo.loginProperty(), userInfo.selectedClassProperty(), userInfo.loadingProperty(), assignments.loadErrorProperty()));
         userInfo.userTypeProperty().addListener((observable, oldValue, newValue) -> deleteColumn.setVisible(UserType.hasPermission(userInfo.getUserType(), UserType.INSTRUCTOR)));
 
         tblAssignments.itemsProperty().set(assignments.getAssignments());
@@ -88,7 +89,7 @@ public class AssignmentsGui implements TabGui {
 
     @FXML
     public void create() {
-
+        AssignGui.getInstance().notImplemented("Assignment creation");
     }
 
 }

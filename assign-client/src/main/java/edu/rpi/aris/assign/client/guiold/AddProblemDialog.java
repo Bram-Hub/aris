@@ -66,7 +66,7 @@ public class AddProblemDialog extends Dialog<Triple<String, String, Problem>> {
             }
             String description = "Creating problem " + (textField.getText().length() == 0 ? "" : "\"" + textField.getText() + "\" ");
             if (moduleUI == null) {
-                moduleUI = module.createModuleGui(EditMode.UNRESTRICTED, description);
+                moduleUI = module.createModuleGui(EditMode.UNRESTRICTED_EDIT, description);
                 moduleUI.setModal(Modality.WINDOW_MODAL, getDialogPane().getScene().getWindow());
                 moduleUI.addCloseListener(() -> {
                     try {
@@ -74,7 +74,7 @@ public class AddProblemDialog extends Dialog<Triple<String, String, Problem>> {
                             moduleUiOpen = false;
                         }
                         problem.set(moduleUI.getProblem());
-                    } catch (ArisModuleException e) {
+                    } catch (Exception e) {
                         logger.error("Failed to retrieve problem from module ui");
                         LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, false);
                     }
@@ -86,7 +86,7 @@ public class AddProblemDialog extends Dialog<Triple<String, String, Problem>> {
                 moduleUI.show();
                 moduleUiOpen = true;
             }
-        } catch (ArisModuleException e) {
+        } catch (Exception e) {
             logger.error("Failed to show/hide problem window");
             LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, false);
         }

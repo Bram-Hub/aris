@@ -1,7 +1,6 @@
 package edu.rpi.aris.proof;
 
 import edu.rpi.aris.LibAris;
-import edu.rpi.aris.assign.ArisModuleException;
 import edu.rpi.aris.assign.Problem;
 import edu.rpi.aris.assign.ProblemConverter;
 import edu.rpi.aris.rules.RuleList;
@@ -27,7 +26,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class SaveManager implements ProblemConverter {
+public class SaveManager implements ProblemConverter<LibAris> {
 
     @SuppressWarnings("SpellCheckingInspection")
     public static final String FILE_EXTENSION = "bram";
@@ -425,19 +424,16 @@ public class SaveManager implements ProblemConverter {
     }
 
     @Override
-    public boolean convertProblem(Problem problem, OutputStream out, boolean isProblemSolution) throws ArisModuleException, IOException {
-        if (!(problem instanceof ArisProofProblem))
-            throw new ArisModuleException(problem.getClass().getCanonicalName() + " is not an instance of " + ArisProofProblem.class.getCanonicalName());
-        ArisProofProblem p = (ArisProofProblem) problem;
+    public boolean convertProblem(Problem<LibAris> problem, OutputStream out, boolean isProblemSolution) throws IOException {
         try {
-            return saveProof(p.getProof(), out, isProblemSolution);
+            return saveProof(((ArisProofProblem) problem).getProof(), out, isProblemSolution);
         } catch (TransformerException e) {
             throw new IOException("Failed to save aris proof", e);
         }
     }
 
     @Override
-    public Problem loadProblem(InputStream in) throws IOException {
+    public ArisProofProblem loadProblem(InputStream in) throws IOException {
         try {
             return new ArisProofProblem(loadProof(in, "Aris Assign", LibAris.getInstance().getProperties().get("username")));
         } catch (TransformerException e) {

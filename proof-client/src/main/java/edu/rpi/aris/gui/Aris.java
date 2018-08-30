@@ -4,7 +4,8 @@ import edu.rpi.aris.LibAris;
 import edu.rpi.aris.assign.ArisClientModule;
 import edu.rpi.aris.assign.ArisModuleException;
 import edu.rpi.aris.assign.EditMode;
-import edu.rpi.aris.assign.ModuleUI;
+import edu.rpi.aris.assign.Problem;
+import edu.rpi.aris.proof.ArisProofProblem;
 import edu.rpi.aris.proof.Proof;
 import edu.rpi.aris.proof.SaveInfoListener;
 import javafx.application.Application;
@@ -15,11 +16,11 @@ import javafx.stage.Stage;
 import java.io.IOException;
 import java.util.Optional;
 
-public class Aris extends Application implements ArisClientModule, SaveInfoListener {
+public class Aris extends Application implements ArisClientModule<LibAris>, SaveInfoListener {
 
     private static Aris instance = null;
 
-    private MainWindow mainWindow = null;
+//    private MainWindow mainWindow = null;
 
     public Aris() {
     }
@@ -29,7 +30,7 @@ public class Aris extends Application implements ArisClientModule, SaveInfoListe
     }
 
     public static MainWindow showProofWindow(Stage stage, Proof p) throws IOException {
-        MainWindow window = p == null ? new MainWindow(stage, EditMode.UNRESTRICTED) : new MainWindow(stage, p, EditMode.UNRESTRICTED);
+        MainWindow window = p == null ? new MainWindow(stage, EditMode.UNRESTRICTED_EDIT) : new MainWindow(stage, p, EditMode.UNRESTRICTED_EDIT);
         window.show();
         return window;
     }
@@ -43,17 +44,28 @@ public class Aris extends Application implements ArisClientModule, SaveInfoListe
     @Override
     public void start(Stage stage) throws IOException {
         instance = this;
-        mainWindow = showProofWindow(stage, null);
+        /*mainWindow = */
+        showProofWindow(stage, null);
     }
 
-    public MainWindow getMainWindow() {
-        return mainWindow;
+//    public MainWindow getMainWindow() {
+//        return mainWindow;
+//    }
+
+    @Override
+    public MainWindow createModuleGui(EditMode editMode, String description) throws Exception {
+        return createModuleGui(editMode, description, null);
     }
 
     @Override
-    public ModuleUI createModuleGui(EditMode editMode, String description) throws ArisModuleException {
+    public MainWindow createModuleGui(EditMode editMode, String description, Problem<LibAris> problem) throws Exception {
         try {
-            return new MainWindow(new Stage(), editMode);
+            if (editMode == EditMode.CREATE_EDIT_PROBLEM)
+                editMode = EditMode.UNRESTRICTED_EDIT;
+            if (problem instanceof ArisProofProblem)
+                return new MainWindow(new Stage(), ((ArisProofProblem) problem).getProof(), editMode);
+            else
+                return new MainWindow(new Stage(), editMode);
         } catch (IOException e) {
             throw new ArisModuleException("Failed to create " + LibAris.NAME + " window", e);
         }

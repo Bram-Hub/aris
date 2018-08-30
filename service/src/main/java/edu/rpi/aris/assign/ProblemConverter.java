@@ -1,13 +1,15 @@
 package edu.rpi.aris.assign;
 
+import edu.rpi.aris.assign.spi.ArisModule;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-public interface ProblemConverter {
+public interface ProblemConverter<T extends ArisModule> {
 
-    boolean convertProblem(Problem problem, OutputStream out, boolean isProblemSolution) throws IOException, ArisModuleException;
+    boolean convertProblem(Problem<T> problem, OutputStream out, boolean isProblemSolution) throws Exception;
 
-    Problem loadProblem(InputStream in) throws IOException, ArisModuleException;
+    Problem<T> loadProblem(InputStream in) throws Exception;
 
 }

@@ -95,6 +95,10 @@ public class LibAssign implements Thread.UncaughtExceptionHandler {
         context.updateLoggers();
     }
 
+    public static void showExceptionError(Throwable e) {
+        instance.showExceptionError(Thread.currentThread(), e, false);
+    }
+
     public void setArisExceptionHandler(ArisExceptionHandler exceptionHandler) {
         this.exceptionHandler = exceptionHandler;
     }

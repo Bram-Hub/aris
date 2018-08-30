@@ -1,7 +1,11 @@
 package edu.rpi.aris.assign;
 
-public interface ArisClientModule {
+import edu.rpi.aris.assign.spi.ArisModule;
 
-    ModuleUI createModuleGui(EditMode editMode, String description) throws ArisModuleException;
+public interface ArisClientModule<T extends ArisModule> {
+
+    ModuleUI<T> createModuleGui(EditMode editMode, String description) throws Exception;
+
+    ModuleUI<T> createModuleGui(EditMode editMode, String description, Problem<T> problem) throws Exception;
 
 }

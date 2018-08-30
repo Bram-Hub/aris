@@ -1,6 +1,8 @@
 package edu.rpi.aris.assign;
 
-public interface ArisServerModule {
+import edu.rpi.aris.assign.spi.ArisModule;
+
+public interface ArisServerModule<T extends ArisModule> {
 
 
 }

@@ -26,7 +26,7 @@ public class ClientModuleService {
     private ClientModuleService() {
         try {
             init();
-        } catch (ArisModuleException e) {
+        } catch (Exception e) {
             LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, true);
         }
     }
@@ -46,7 +46,7 @@ public class ClientModuleService {
         return service;
     }
 
-    private synchronized void init() throws ArisModuleException {
+    private synchronized void init() throws Exception {
         logger.info("Initializing ServiceLoader");
         HashSet<URL> jars = new HashSet<>();
         try {
@@ -79,20 +79,24 @@ public class ClientModuleService {
         Collections.sort(moduleNames);
     }
 
-    public synchronized void reloadModules() throws ArisModuleException {
+    public synchronized void reloadModules() throws Exception {
         logger.info("Client module reload requested");
         loader.reload();
         init();
     }
 
-    public synchronized ArisModule getModule(String moduleName) {
+    public synchronized <T extends ArisModule> ArisModule<T> getModule(String moduleName) {
+        //noinspection unchecked
         return services.get(moduleName);
     }
 
-    public synchronized ArisClientModule getClientModule(String moduleName) {
+    public synchronized <T extends ArisModule> ArisClientModule<T> getClientModule(String moduleName) {
         try {
-            return getModule(moduleName).getClientModule();
-        } catch (ArisModuleException e) {
+            ArisModule<T> module = getModule(moduleName);
+            if (module == null)
+                return null;
+            return module.getClientModule();
+        } catch (Exception e) {
             LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, false);
             return null;
         }

@@ -40,7 +40,7 @@ public class ModuleRow {
         try {
             moduleImage.setImage(new Image(module.getModuleIcon()));
             moduleBtn.setText("Launch " + module.getModuleName());
-        } catch (ArisModuleException e) {
+        } catch (Exception e) {
             LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, true);
         }
     }
@@ -48,8 +48,8 @@ public class ModuleRow {
     @FXML
     public void launchModule() {
         try {
-            module.getClientModule().createModuleGui(EditMode.UNRESTRICTED, null).show();
-        } catch (ArisModuleException e) {
+            module.getClientModule().createModuleGui(EditMode.UNRESTRICTED_EDIT, null).show();
+        } catch (Exception e) {
             LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, true);
         }
     }

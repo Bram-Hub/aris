@@ -1,22 +1,23 @@
 package edu.rpi.aris.assign;
 
+import edu.rpi.aris.assign.spi.ArisModule;
 import javafx.stage.Modality;
 import javafx.stage.Window;
 
-public interface ModuleUI {
+public interface ModuleUI<T extends ArisModule> {
 
-    void show() throws ArisModuleException;
+    void show() throws Exception;
 
-    void hide() throws ArisModuleException;
+    void hide() throws Exception;
 
-    void setModal(Modality modality, Window owner) throws ArisModuleException;
+    void setModal(Modality modality, Window owner) throws Exception;
 
-    void setDescription(String description) throws ArisModuleException;
+    void setDescription(String description) throws Exception;
 
-    void addCloseListener(Runnable runnable) throws ArisModuleException;
+    void addCloseListener(Runnable runnable) throws Exception;
 
-    void removeCloseListener(Runnable runnable) throws ArisModuleException;
+    void removeCloseListener(Runnable runnable) throws Exception;
 
-    Problem getProblem() throws ArisModuleException;
+    Problem<T> getProblem() throws Exception;
 
 }

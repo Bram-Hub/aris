@@ -99,7 +99,7 @@ public class ModuleSelect {
         moduleBox.getChildren().clear();
         try {
             ClientModuleService.getService().reloadModules();
-        } catch (ArisModuleException e) {
+        } catch (Exception e) {
             LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, false);
         }
         loadModules();

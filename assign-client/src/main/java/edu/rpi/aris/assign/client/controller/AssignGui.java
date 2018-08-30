@@ -15,6 +15,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -246,6 +247,19 @@ public class AssignGui {
         Optional<String> result = dialog.showAndWait();
         if (result.isPresent() && result.get().equals(info.getClassName()))
             userInfo.deleteClass(info.getClassId());
+    }
+
+    public Window getStage() {
+        return stage;
+    }
+
+    public void notImplemented(String functionName) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("Not Implemented");
+        alert.setHeaderText(functionName + " has not been implemented");
+        alert.initModality(Modality.WINDOW_MODAL);
+        alert.initOwner(stage);
+        alert.show();
     }
 
 }

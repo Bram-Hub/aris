@@ -44,7 +44,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class MainWindow implements StatusChangeListener, SaveInfoListener, ModuleUI {
+public class MainWindow implements StatusChangeListener, SaveInfoListener, ModuleUI<LibAris> {
 
     public static final HashMap<Proof.Status, Image> STATUS_ICONS = new HashMap<>();
     private static FileChooser.ExtensionFilter extensionFilter = new FileChooser.ExtensionFilter("Bram Proof File (." + SaveManager.FILE_EXTENSION + ")", "*." + SaveManager.FILE_EXTENSION);
@@ -520,7 +520,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     }
 
     @Override
-    public Problem getProblem() {
+    public ArisProofProblem getProblem() {
         return new ArisProofProblem(proof);
     }
 
