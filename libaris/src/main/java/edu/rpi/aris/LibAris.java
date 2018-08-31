@@ -95,4 +95,9 @@ public class LibAris implements ArisModule<LibAris> {
     public InputStream getModuleIcon() {
         return LibAris.class.getResourceAsStream("aris.png");
     }
+
+    @Override
+    public String getProblemFileExtension() throws Exception {
+        return SaveManager.FILE_EXTENSION;
+    }
 }

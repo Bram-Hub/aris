@@ -6,7 +6,7 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox spacing="5.0" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1">
+<VBox fx:id="box" spacing="5.0" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1">
    <children>
       <TextField fx:id="name" promptText="Problem Name" />
       <ComboBox fx:id="module" maxWidth="1.7976931348623157E308" promptText="Problem Module" />

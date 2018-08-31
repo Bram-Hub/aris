@@ -7,7 +7,9 @@ import edu.rpi.aris.assign.spi.ArisModule;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Insets;
 import javafx.scene.control.*;
+import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Window;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
@@ -24,6 +26,8 @@ public class ProblemDialog<T extends ArisModule> extends Dialog<Triple<String, S
     private ComboBox<String> module;
     @FXML
     private Button btnEditor;
+    @FXML
+    private VBox box;
 
     private Button okBtn;
     private SimpleObjectProperty<Problem<T>> problem = new SimpleObjectProperty<>();
@@ -41,6 +45,14 @@ public class ProblemDialog<T extends ArisModule> extends Dialog<Triple<String, S
         okBtn.setDisable(true);
         getDialogPane().setContent(loader.load());
         setResultConverter(param -> new ImmutableTriple<>(name.getText(), module.getSelectionModel().getSelectedItem(), problem.get()));
+    }
+
+    public ProblemDialog(Window parent, String moduleName, String name, Problem<T> problem) throws IOException {
+        this(parent);
+        this.problem.set(problem);
+        replaceModuleChoice(moduleName);
+        this.name.setText(name);
+        module.getSelectionModel().select(moduleName);
     }
 
     @FXML
@@ -63,7 +75,7 @@ public class ProblemDialog<T extends ArisModule> extends Dialog<Triple<String, S
                     AssignClient.getInstance().getMainWindow().displayErrorMsg("Error loading module", "Failed to load client module for \"" + moduleName + "\"");
                     return;
                 }
-                module.setDisable(true);
+                replaceModuleChoice(moduleName);
                 if (problem.get() == null)
                     moduleUI = client.createModuleGui(EditMode.CREATE_EDIT_PROBLEM, "Edit Problem");
                 else
@@ -81,6 +93,15 @@ public class ProblemDialog<T extends ArisModule> extends Dialog<Triple<String, S
         } catch (Exception e) {
             LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, false);
         }
+    }
+
+    public void replaceModuleChoice(String moduleName) {
+        int index = box.getChildren().indexOf(module);
+        if (index == -1)
+            return;
+        Label lbl = new Label("Selected Module: " + moduleName);
+        lbl.setPadding(new Insets(5));
+        box.getChildren().set(index, lbl);
     }
 
 }

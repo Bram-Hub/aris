@@ -21,4 +21,6 @@ public interface ArisModule<T extends ArisModule> {
 
     InputStream getModuleIcon() throws Exception;
 
+    String getProblemFileExtension() throws Exception;
+
 }
