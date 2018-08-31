@@ -26,13 +26,12 @@ subprojects {
     jar.doLast {
         copy {
             into 'jars'
-
             from configurations.runtime, jar
         }
     }
 
     clean.doLast {
-        delete 'jars'
+        file('jars').deleteDir()
     }
 
 }
