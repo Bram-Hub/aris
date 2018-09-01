@@ -11,21 +11,24 @@ import edu.rpi.aris.assign.client.model.Problems;
 import edu.rpi.aris.assign.client.model.UserInfo;
 import edu.rpi.aris.assign.spi.ArisModule;
 import javafx.beans.binding.Bindings;
-import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.TextFieldTableCell;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
+import javafx.stage.Modality;
+import javafx.util.Pair;
+import javafx.util.converter.DefaultStringConverter;
 import org.apache.commons.lang3.tuple.Triple;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,15 +44,15 @@ public class ProblemsGui implements TabGui {
     @FXML
     private TableColumn<Problems.Problem, String> createdBy;
     @FXML
-    private TableColumn<Problems.Problem, Date> createdOn;
+    private TableColumn<Problems.Problem, String> createdOn;
     @FXML
-    private TableColumn<Problems.Problem, Button> delete;
+    private TableColumn<Problems.Problem, Node> modify;
     private UserInfo userInfo = UserInfo.getInstance();
     private Problems problems = new Problems(this);
     private Parent root;
 
     public ProblemsGui() {
-        FXMLLoader loader = new FXMLLoader(ProblemsGui.class.getResource("../view/problems_view.fxml"));
+        FXMLLoader loader = new FXMLLoader(ProblemsGui.class.getResource("/edu/rpi/aris/assign/client/view/problems_view.fxml"));
         loader.setController(this);
         try {
             root = loader.load();
@@ -96,10 +99,21 @@ public class ProblemsGui implements TabGui {
             if (!newValue)
                 problems.clear();
         });
-        name.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getName()));
-        module.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getModule()));
-        createdBy.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getCreatedBy()));
-        createdOn.setCellValueFactory(param -> new SimpleObjectProperty<>(param.getValue().getCreatedOn()));
+        name.setCellValueFactory(param -> param.getValue().nameProperty());
+        module.setCellValueFactory(param -> param.getValue().moduleProperty());
+        createdBy.setCellValueFactory(param -> param.getValue().createdByProperty());
+        createdOn.setCellValueFactory(param -> param.getValue().createdOnProperty());
+        modify.setCellValueFactory(param -> param.getValue().modifyButtonProperty());
+        name.setOnEditCommit(event -> {
+            event.getRowValue().nameProperty().set(event.getNewValue());
+            problems.renamed(event.getRowValue());
+        });
+        name.setCellFactory(param -> new TextFieldTableCell<>(new DefaultStringConverter()));
+        name.setStyle("-fx-alignment: CENTER-LEFT;");
+        module.setStyle("-fx-alignment: CENTER;");
+        createdBy.setStyle("-fx-alignment: CENTER;");
+        createdOn.setStyle("-fx-alignment: CENTER;");
+        modify.setStyle("-fx-alignment: CENTER;");
     }
 
     @FXML
@@ -134,6 +148,19 @@ public class ProblemsGui implements TabGui {
         dialog.setResultConverter(param -> param == ButtonType.OK ? modules.getSelectionModel().getSelectedItem() : null);
         Optional<String> result = dialog.showAndWait();
         result.ifPresent(this::importModuleProblems);
+    }
+
+    public boolean confirmDelete(String name) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("Delete Problem");
+        alert.setHeaderText("Are you sure you want to delete \"" + name + "\"?");
+        alert.setContentText("The problem and any associated submissions will be removed from any assignments. THIS CANNOT BE UNDONE!");
+        alert.getDialogPane().getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
+        alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+        alert.initOwner(AssignGui.getInstance().getStage());
+        alert.initModality(Modality.APPLICATION_MODAL);
+        Optional<ButtonType> result = alert.showAndWait();
+        return result.isPresent() && result.get() == ButtonType.OK;
     }
 
     private <T extends ArisModule> void importModuleProblems(String moduleName) {
@@ -173,10 +200,12 @@ public class ProblemsGui implements TabGui {
                     name = name.substring(0, name.lastIndexOf('.'));
                 Problem<T> problem = problemConverter.loadProblem(new FileInputStream(file));
                 ProblemDialog<T> dialog = new ProblemDialog<>(AssignGui.getInstance().getStage(), module.getModuleName(), name, problem);
-                dialog.showAndWait();
+                Optional<Triple<String, String, Problem<T>>> result = dialog.showAndWait();
+                result.ifPresent(triple -> problems.createProblem(triple.getLeft(), triple.getMiddle(), triple.getRight()));
             } else {
                 ImportProblemsDialog<T> dialog = new ImportProblemsDialog<>(AssignGui.getInstance().getStage(), module.getModuleName(), files, problemConverter);
-                dialog.showAndWait();
+                Optional<List<Pair<String, Problem<T>>>> result = dialog.showAndWait();
+                result.ifPresent(list -> list.forEach(pair -> problems.createProblem(pair.getKey(), module.getModuleName(), pair.getValue())));
             }
         } catch (Exception e) {
             LibAssign.showExceptionError(e);

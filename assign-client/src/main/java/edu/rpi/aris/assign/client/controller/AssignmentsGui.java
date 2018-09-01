@@ -30,7 +30,7 @@ public class AssignmentsGui implements TabGui {
     private Assignments assignments = new Assignments(this);
 
     public AssignmentsGui() {
-        FXMLLoader loader = new FXMLLoader(AssignmentsGui.class.getResource("../view/assignments_view.fxml"));
+        FXMLLoader loader = new FXMLLoader(AssignmentsGui.class.getResource("/edu/rpi/aris/assign/client/view/assignments_view.fxml"));
         loader.setController(this);
         try {
             root = loader.load();

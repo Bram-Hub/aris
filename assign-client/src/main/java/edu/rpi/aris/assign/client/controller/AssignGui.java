@@ -18,10 +18,13 @@ import javafx.stage.Stage;
 import javafx.stage.Window;
 
 import java.io.IOException;
+import java.text.DateFormat;
 import java.util.HashMap;
 import java.util.Optional;
 
 public class AssignGui {
+
+    public static final DateFormat DATE_FORMAT = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
 
     private static AssignGui instance;
     @FXML
@@ -58,7 +61,7 @@ public class AssignGui {
 
     private AssignGui() {
         stage = new Stage();
-        FXMLLoader loader = new FXMLLoader(AssignGui.class.getResource("../view/assign_window.fxml"));
+        FXMLLoader loader = new FXMLLoader(AssignGui.class.getResource("/edu/rpi/aris/assign/client/view/assign_window.fxml"));
         loader.setController(this);
         Parent root;
         try {
@@ -67,7 +70,7 @@ public class AssignGui {
             LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, true);
             return;
         }
-        Scene scene = new Scene(root, 600, 400);
+        Scene scene = new Scene(root, 1000, 800);
         stage.setScene(scene);
         stage.initOwner(AssignClient.getInstance().getMainWindow().getStage());
     }
@@ -101,6 +104,7 @@ public class AssignGui {
                 Config.SERVER_ADDRESS.setValue(result.get());
             } else {
                 stage.hide();
+                return;
             }
         }
         userInfo.getUserInfo(false, () -> {

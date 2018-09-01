@@ -3,7 +3,6 @@ package edu.rpi.aris.assign.client.controller;
 import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.Client;
-import edu.rpi.aris.assign.client.ConfigProp;
 import edu.rpi.aris.assign.client.model.Config;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -37,7 +36,6 @@ import java.security.cert.X509Certificate;
 import java.text.DateFormat;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.prefs.Preferences;
 
 public class ConfigGui {
 
@@ -64,7 +62,7 @@ public class ConfigGui {
 
     private ConfigGui() {
         stage = new Stage();
-        FXMLLoader loader = new FXMLLoader(ModuleRow.class.getResource("../view/config.fxml"));
+        FXMLLoader loader = new FXMLLoader(ModuleRow.class.getResource("/edu/rpi/aris/assign/client/view/config.fxml"));
         loader.setController(this);
         Parent root;
         try {

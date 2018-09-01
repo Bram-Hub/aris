@@ -40,4 +40,9 @@ public class ProblemDeleteMsg extends Message {
     public boolean checkValid() {
         return pid > 0;
     }
+
+    public int getPid() {
+        return pid;
+    }
+
 }

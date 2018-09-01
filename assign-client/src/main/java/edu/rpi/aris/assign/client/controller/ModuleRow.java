@@ -25,7 +25,7 @@ public class ModuleRow {
 
     public ModuleRow(String moduleName) {
         module = ModuleService.getService().getModule(moduleName);
-        FXMLLoader loader = new FXMLLoader(ModuleRow.class.getResource("../view/module_row.fxml"));
+        FXMLLoader loader = new FXMLLoader(ModuleRow.class.getResource("/edu/rpi/aris/assign/client/view/module_row.fxml"));
         loader.setController(this);
         try {
             root = loader.load();

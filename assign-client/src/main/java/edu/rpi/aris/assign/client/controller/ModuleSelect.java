@@ -27,7 +27,7 @@ public class ModuleSelect {
 
     public ModuleSelect(Stage stage) {
         this.stage = stage;
-        FXMLLoader loader = new FXMLLoader(ModuleRow.class.getResource("../view/module_select.fxml"));
+        FXMLLoader loader = new FXMLLoader(ModuleRow.class.getResource("/edu/rpi/aris/assign/client/view/module_select.fxml"));
         loader.setController(this);
         Parent root;
         try {

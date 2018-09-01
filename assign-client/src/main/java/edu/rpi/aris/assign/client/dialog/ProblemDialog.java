@@ -35,7 +35,7 @@ public class ProblemDialog<T extends ArisModule> extends Dialog<Triple<String, S
     public ProblemDialog(Window parent) throws IOException {
         initModality(Modality.WINDOW_MODAL);
         initOwner(parent);
-        FXMLLoader loader = new FXMLLoader(ProblemDialog.class.getResource("../view/problem_dialog.fxml"));
+        FXMLLoader loader = new FXMLLoader(ProblemDialog.class.getResource("/edu/rpi/aris/assign/client/view/problem_dialog.fxml"));
         loader.setController(this);
         getDialogPane().getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
         setTitle("Create Problem");

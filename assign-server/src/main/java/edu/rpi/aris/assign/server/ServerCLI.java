@@ -50,11 +50,9 @@ public class ServerCLI {
                         if (args.size() != 1)
                             log.error("Usage: useradd <username>");
                         else {
-                            log.info("Enter Password: ");
-                            String pass = reader.readLine();
                             try {
-                                if (AssignServerMain.getServer().addUser(args.get(0), pass, UserType.ADMIN))
-                                    log.info("User Added");
+                                if (AssignServerMain.getServer().addUser(args.get(0), DatabaseManager.DEFAULT_ADMIN_PASS, UserType.ADMIN, true))
+                                    log.info("User Added with password \"" + DatabaseManager.DEFAULT_ADMIN_PASS + "\"");
                                 else
                                     log.error("Failed to add user");
                             } catch (SQLException e) {

@@ -6,26 +6,32 @@ import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
 import edu.rpi.aris.assign.client.controller.AssignGui;
 import edu.rpi.aris.assign.client.controller.ProblemsGui;
-import edu.rpi.aris.assign.message.MsgUtil;
-import edu.rpi.aris.assign.message.ProblemCreateMsg;
-import edu.rpi.aris.assign.message.ProblemsGetMsg;
+import edu.rpi.aris.assign.message.*;
 import edu.rpi.aris.assign.spi.ArisModule;
 import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.layout.HBox;
 
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 
 public class Problems implements ResponseHandler<ProblemsGetMsg> {
 
     private final SimpleBooleanProperty loadError = new SimpleBooleanProperty(false);
     private final ObservableList<Problem> problems = FXCollections.observableArrayList();
+    private final HashMap<Integer, Problem> problemMap = new HashMap<>();
     private final ProblemsGui gui;
+    private final ProblemRenameResponseHandler renameHandler = new ProblemRenameResponseHandler();
+    private final ProblemDeleteResponseHandler deleteHandler = new ProblemDeleteResponseHandler();
     private UserInfo userInfo = UserInfo.getInstance();
     private boolean loaded = false;
 
@@ -36,6 +42,7 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
     public void loadProblems(boolean reload) {
         if (reload || !loaded) {
             userInfo.startLoading();
+            clear();
             Client.getInstance().processMessage(new ProblemsGetMsg(), this);
         }
     }
@@ -44,8 +51,11 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
     public void response(ProblemsGetMsg message) {
         Platform.runLater(() -> {
             loadError.set(false);
-            for (MsgUtil.ProblemInfo data : message.getProblems())
-                problems.add(new Problem(data));
+            for (MsgUtil.ProblemInfo data : message.getProblems()) {
+                Problem prob = new Problem(data);
+                problems.add(prob);
+                problemMap.put(prob.getPid(), prob);
+            }
             Collections.sort(problems);
             loaded = true;
             userInfo.finishLoading();
@@ -65,6 +75,7 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
 
     public void clear() {
         problems.clear();
+        problemMap.clear();
         loaded = false;
     }
 
@@ -85,12 +96,23 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         Client.getInstance().processMessage(new ProblemCreateMsg<>(name, moduleName, problem), new ProblemCreateResponseHandler<>());
     }
 
+    public void renamed(Problem problem) {
+        userInfo.startLoading();
+        Client.getInstance().processMessage(new ProblemEditMsg(problem.getPid(), problem.getName()), renameHandler);
+    }
+
+    public void delete(Problem problem) {
+        userInfo.startLoading();
+        Client.getInstance().processMessage(new ProblemDeleteMsg(problem.getPid()), deleteHandler);
+    }
+
     private class ProblemCreateResponseHandler<T extends ArisModule> implements ResponseHandler<ProblemCreateMsg<T>> {
         @Override
         public void response(ProblemCreateMsg<T> message) {
             Platform.runLater(() -> {
                 Problem problem = new Problem(message.getPid(), message.getName(), message.getModuleName(), Config.USERNAME.getValue(), new Date());
                 problems.add(problem);
+                problemMap.put(problem.getPid(), problem);
                 userInfo.finishLoading();
             });
         }
@@ -105,14 +127,55 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         }
     }
 
+    private class ProblemRenameResponseHandler implements ResponseHandler<ProblemEditMsg> {
+
+        @Override
+        public void response(ProblemEditMsg message) {
+            Platform.runLater(() -> userInfo.finishLoading());
+        }
+
+        @Override
+        public void onError(boolean suggestRetry, ProblemEditMsg msg) {
+            if (suggestRetry)
+                renamed(problemMap.get(msg.getPid()));
+            else {
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred while renaming the problem");
+                loadProblems(true);
+            }
+            Platform.runLater(() -> userInfo.finishLoading());
+        }
+    }
+
+    private class ProblemDeleteResponseHandler implements ResponseHandler<ProblemDeleteMsg> {
+
+        @Override
+        public void response(ProblemDeleteMsg message) {
+            Platform.runLater(() -> {
+                Problem prob = problemMap.remove(message.getPid());
+                problems.remove(prob);
+                userInfo.finishLoading();
+            });
+        }
+
+        @Override
+        public void onError(boolean suggestRetry, ProblemDeleteMsg msg) {
+            if (suggestRetry)
+                renamed(problemMap.get(msg.getPid()));
+            else
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred while deleting the problem");
+            Platform.runLater(() -> userInfo.finishLoading());
+        }
+    }
+
     public class Problem implements Comparable<Problem> {
 
         private final int pid;
         private final SimpleStringProperty name = new SimpleStringProperty();
         private final SimpleStringProperty module = new SimpleStringProperty();
         private final SimpleStringProperty createdBy = new SimpleStringProperty();
-        private final SimpleObjectProperty<Date> createdOn = new SimpleObjectProperty<>();
-        private final SimpleObjectProperty<Button> modifyColumn = new SimpleObjectProperty<>();
+        private final SimpleStringProperty createdOn = new SimpleStringProperty();
+        private final SimpleObjectProperty<Date> createdOnDate = new SimpleObjectProperty<>();
+        private final SimpleObjectProperty<Node> modifyColumn = new SimpleObjectProperty<>();
 
         public Problem(MsgUtil.ProblemInfo data) {
             this(data.pid, data.name, data.moduleName, data.createdBy, new Date(NetUtil.UTCToMilli(data.createdDateUTC)));
@@ -123,14 +186,25 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
             this.name.set(name);
             this.module.set(module);
             this.createdBy.set(createdBy);
-            this.createdOn.set(createdOn);
+            this.createdOn.bind(Bindings.createStringBinding(() -> createdOnDate.get() == null ? null : AssignGui.DATE_FORMAT.format(createdOnDate.get()), this.createdOnDate));
+            createdOnDate.set(createdOn);
+            HBox box = new HBox(5);
+            Button modify = new Button("Modify");
+            modify.setOnAction(event -> modify());
             Button delete = new Button("Delete");
             delete.setOnAction(event -> delete());
-            modifyColumn.set(delete);
+            box.getChildren().addAll(modify, delete);
+            box.setAlignment(Pos.CENTER);
+            modifyColumn.set(box);
+        }
+
+        private void modify() {
+            AssignGui.getInstance().notImplemented("Problem modification");
         }
 
         private void delete() {
-            AssignGui.getInstance().notImplemented("Problem deletion");
+            if (gui.confirmDelete(getName()))
+                Problems.this.delete(this);
         }
 
         public String getName() {
@@ -157,19 +231,19 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
             return createdBy;
         }
 
-        public Date getCreatedOn() {
+        public String getCreatedOn() {
             return createdOn.get();
         }
 
-        public SimpleObjectProperty<Date> createdOnProperty() {
+        public SimpleStringProperty createdOnProperty() {
             return createdOn;
         }
 
-        public Button getModifyButton() {
+        public Node getModifyNode() {
             return modifyColumn.get();
         }
 
-        public SimpleObjectProperty<Button> modifyButtonProperty() {
+        public SimpleObjectProperty<Node> modifyButtonProperty() {
             return modifyColumn;
         }
 

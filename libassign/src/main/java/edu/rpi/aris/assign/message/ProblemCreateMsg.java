@@ -33,11 +33,12 @@ public class ProblemCreateMsg<T extends ArisModule> extends ProblemMessage<T> {
         if (module == null)
             return ErrorType.MISSING_MODULE;
         ProblemConverter<T> converter = module.getProblemConverter();
-        try (PreparedStatement statement = connection.prepareStatement("INSERT INTO problem (name, data, created_by, created_on, module_name) VALUES (?, ?, (SELECT username FROM users WHERE id = ? LIMIT 1), now(), ?) RETURNING id")) {
+        try (PreparedStatement statement = connection.prepareStatement("INSERT INTO problem (name, data, created_by, created_on, module_name) VALUES (?, ?, (SELECT username FROM users WHERE id = ? LIMIT 1), now(), ?) RETURNING id");
+             PipedInputStream pis = new PipedInputStream();
+             PipedOutputStream pos = new PipedOutputStream(pis)) {
+
             statement.setString(1, name);
 
-            PipedInputStream pis = new PipedInputStream();
-            PipedOutputStream pos = new PipedOutputStream(pis);
             converter.convertProblem(getProblem(), pos, false);
             pos.close();
             statement.setBinaryStream(2, pis);

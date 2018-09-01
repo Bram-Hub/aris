@@ -71,6 +71,6 @@ public abstract class ProblemMessage<T extends ArisModule> extends DataMessage {
 
     @Override
     public boolean checkValid() {
-        return moduleName != null;
+        return problem == null || moduleName != null;
     }
 }

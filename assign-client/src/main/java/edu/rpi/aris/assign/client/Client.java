@@ -433,11 +433,11 @@ public class Client implements MessageCommunication {
                 disconnect(false);
                 String server = Config.SERVER_ADDRESS.getValue();
                 if (server == null || server.length() == 0) {
-                    Pair<String, Integer> info = getServerAddress(null);
-                    if (info == null)
+//                    Pair<String, Integer> info = getServerAddress(null);
+//                    if (info == null)
                         return;
-                    Config.SERVER_ADDRESS.setValue(info.getKey());
-                    Config.PORT.setValue(info.getValue());
+//                    Config.SERVER_ADDRESS.setValue(info.getKey());
+//                    Config.PORT.setValue(info.getValue());
                 }
                 Triple<String, String, Boolean> credentials = getCredentials();
                 try {
@@ -752,7 +752,7 @@ public class Client implements MessageCommunication {
                 throw e;
             }
         } else
-            throw new IOException("Not connected to server");
+            throw new IOException("Not connected to the server");
     }
 
     @Override

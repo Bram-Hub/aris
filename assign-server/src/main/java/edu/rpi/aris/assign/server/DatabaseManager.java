@@ -22,6 +22,7 @@ public class DatabaseManager {
 
     private static final String[] tables = new String[]{"submission", "assignment", "problem", "user_class", "users", "class", "version"};
     private static final int DB_SCHEMA_VERSION = 6;
+    public static final String DEFAULT_ADMIN_PASS = "ArisAdmin1";
     private static Logger logger = LogManager.getLogger(DatabaseManager.class);
 
     static {
@@ -134,7 +135,7 @@ public class DatabaseManager {
                     "constraint s_ufk foreign key (user_id) references users(id) on delete cascade," +
                     "constraint s_pfk foreign key (problem_id) references problem(id) on delete cascade);");
             connection.commit();
-            createUser("admin", "ArisAdmin1", UserType.ADMIN);
+            createUser("admin", DEFAULT_ADMIN_PASS, UserType.ADMIN, true);
         } catch (Throwable e) {
             connection.rollback();
             logger.error("An error occurred while creating the tables and the changes were rolled back");
@@ -249,14 +250,14 @@ public class DatabaseManager {
         }
     }
 
-    public Pair<String, String> createUser(String username, String password, UserType userType) throws SQLException {
+    public Pair<String, String> createUser(String username, String password, UserType userType, boolean forceReset) throws SQLException {
         if (username == null || username.length() == 0 || userType == null)
             return new ImmutablePair<>(null, NetUtil.INVALID);
         if (password == null)
             password = RandomStringUtils.randomAlphabetic(16);
         try (Connection connection = getConnection();
              PreparedStatement count = connection.prepareStatement("SELECT count(*) FROM users WHERE username = ?;");
-             PreparedStatement statement = connection.prepareStatement("INSERT INTO users (username, user_type, salt, password_hash) VALUES(?, ?, ?, ?);")) {
+             PreparedStatement statement = connection.prepareStatement("INSERT INTO users (username, user_type, salt, password_hash, force_reset) VALUES(?, ?, ?, ?, ?);")) {
             count.setString(1, username);
             try (ResultSet rs = count.executeQuery()) {
                 if (rs.next() && rs.getInt(1) > 0)
@@ -267,6 +268,7 @@ public class DatabaseManager {
             statement.setString(2, userType.name());
             statement.setString(3, sh.getKey());
             statement.setString(4, sh.getValue());
+            statement.setBoolean(5, forceReset);
             statement.executeUpdate();
             return new ImmutablePair<>(password, NetUtil.OK);
         }

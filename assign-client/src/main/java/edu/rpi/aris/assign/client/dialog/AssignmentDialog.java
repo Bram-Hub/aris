@@ -45,7 +45,7 @@ public class AssignmentDialog extends Dialog<Triple<String, LocalDateTime, Colle
         this.availableProofs = availableProofs;
         initModality(Modality.WINDOW_MODAL);
         initOwner(parent);
-        FXMLLoader loader = new FXMLLoader(AssignmentDialog.class.getResource("../view/assignment_dialog.fxml"));
+        FXMLLoader loader = new FXMLLoader(AssignmentDialog.class.getResource("/edu/rpi/aris/assign/client/view/assignment_dialog.fxml"));
         loader.setController(this);
         getDialogPane().getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
         setTitle("Create Assignment");

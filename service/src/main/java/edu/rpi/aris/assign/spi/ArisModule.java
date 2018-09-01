@@ -5,13 +5,12 @@ import edu.rpi.aris.assign.ArisServerModule;
 import edu.rpi.aris.assign.ProblemConverter;
 
 import java.io.InputStream;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
 public interface ArisModule<T extends ArisModule> {
 
-    String getModuleName() throws Exception;
+    String getModuleName();
 
     ArisClientModule<T> getClientModule() throws Exception;
 
