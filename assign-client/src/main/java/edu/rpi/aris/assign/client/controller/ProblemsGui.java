@@ -4,6 +4,7 @@ import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.Problem;
 import edu.rpi.aris.assign.ProblemConverter;
 import edu.rpi.aris.assign.client.ClientModuleService;
+import edu.rpi.aris.assign.client.dialog.ImportProblemsDialog;
 import edu.rpi.aris.assign.client.dialog.ProblemDialog;
 import edu.rpi.aris.assign.client.model.Config;
 import edu.rpi.aris.assign.client.model.Problems;
@@ -115,6 +116,8 @@ public class ProblemsGui implements TabGui {
         modules.setMaxWidth(Double.MAX_VALUE);
         modules.getItems().addAll(ClientModuleService.getService().moduleNames());
         Collections.sort(modules.getItems());
+        if (modules.getItems().size() == 1)
+            modules.getSelectionModel().select(0);
         box.getChildren().add(modules);
         dialog.getDialogPane().setContent(box);
         dialog.getDialogPane().getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
@@ -131,10 +134,17 @@ public class ProblemsGui implements TabGui {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Import " + moduleName + " files");
         try {
-            String ext = module.getProblemFileExtension();
-            FileChooser.ExtensionFilter extensionFilter = new FileChooser.ExtensionFilter(moduleName + " Problem File (." + ext + ")", "*." + ext);
-            chooser.getExtensionFilters().addAll(extensionFilter, allFiles);
-            chooser.setSelectedExtensionFilter(extensionFilter);
+            List<String> exts = module.getProblemFileExtensions();
+            boolean first = true;
+            for (String ext : exts) {
+                FileChooser.ExtensionFilter extensionFilter = new FileChooser.ExtensionFilter(moduleName + " Problem File (." + ext + ")", "*." + ext);
+                chooser.getExtensionFilters().add(extensionFilter);
+                if (first) {
+                    chooser.setSelectedExtensionFilter(extensionFilter);
+                    first = false;
+                }
+            }
+            chooser.getExtensionFilters().add(allFiles);
             chooser.setInitialDirectory(new File(Config.LAST_FILE_LOC.getValue()));
             List<File> importList = chooser.showOpenMultipleDialog(AssignGui.getInstance().getStage());
             importFiles(importList, module);
@@ -157,7 +167,8 @@ public class ProblemsGui implements TabGui {
                 ProblemDialog<T> dialog = new ProblemDialog<>(AssignGui.getInstance().getStage(), module.getModuleName(), name, problem);
                 dialog.showAndWait();
             } else {
-
+                ImportProblemsDialog<T> dialog = new ImportProblemsDialog<>(AssignGui.getInstance().getStage(), module.getModuleName(), files, problemConverter);
+                dialog.showAndWait();
             }
         } catch (Exception e) {
             LibAssign.showExceptionError(e);

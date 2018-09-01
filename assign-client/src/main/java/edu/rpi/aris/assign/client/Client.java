@@ -15,12 +15,10 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
-import javafx.scene.layout.VBox;
 import javafx.util.Pair;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
@@ -765,6 +763,16 @@ public class Client implements MessageCommunication {
             disconnect();
             throw e;
         }
+    }
+
+    @Override
+    public synchronized InputStream getInputStream() {
+        return in;
+    }
+
+    @Override
+    public synchronized OutputStream getOutputStream() {
+        return out;
     }
 
     @Override

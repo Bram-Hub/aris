@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 public class LibAris implements ArisModule<LibAris> {
@@ -97,7 +98,10 @@ public class LibAris implements ArisModule<LibAris> {
     }
 
     @Override
-    public String getProblemFileExtension() throws Exception {
-        return SaveManager.FILE_EXTENSION;
+    public ArrayList<String> getProblemFileExtensions() {
+        ArrayList<String> list = new ArrayList<>();
+        list.add(SaveManager.FILE_EXTENSION);
+        list.add(SaveManager.FITCH_FILE_EXT);
+        return list;
     }
 }

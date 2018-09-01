@@ -29,6 +29,8 @@ public abstract class Message {
     private static Message parse(MessageCommunication com) {
         try {
             Message msg = gson.fromJson(com.readMessage(), Message.class);
+            if (msg instanceof DataMessage)
+                ((DataMessage) msg).receiveData(com.getInputStream());
             if (!msg.checkValid()) {
                 logger.error("Message not formatted properly");
                 return new ErrorMsg(ErrorType.PARSE_ERR, "Improperly formatted json message");
@@ -54,6 +56,8 @@ public abstract class Message {
 
     public final void send(MessageCommunication com) throws IOException {
         com.sendMessage(gson.toJson(this, Message.class));
+        if (this instanceof DataMessage)
+            ((DataMessage) this).sendData(com.getOutputStream());
     }
 
     /**

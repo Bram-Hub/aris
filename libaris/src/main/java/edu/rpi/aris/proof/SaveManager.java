@@ -30,6 +30,7 @@ public class SaveManager implements ProblemConverter<LibAris> {
 
     @SuppressWarnings("SpellCheckingInspection")
     public static final String FILE_EXTENSION = "bram";
+    public static final String FITCH_FILE_EXT = "prf";
     private final SaveInfoListener listener;
     private DocumentBuilder documentBuilder;
     private Transformer transformer;

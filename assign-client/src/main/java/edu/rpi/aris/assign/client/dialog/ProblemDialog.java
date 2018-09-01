@@ -49,6 +49,8 @@ public class ProblemDialog<T extends ArisModule> extends Dialog<Triple<String, S
 
     public ProblemDialog(Window parent, String moduleName, String name, Problem<T> problem) throws IOException {
         this(parent);
+        setTitle("Modify Problem");
+        setHeaderText("Modify Problem");
         this.problem.set(problem);
         replaceModuleChoice(moduleName);
         this.name.setText(name);
@@ -80,7 +82,7 @@ public class ProblemDialog<T extends ArisModule> extends Dialog<Triple<String, S
                     moduleUI = client.createModuleGui(EditMode.CREATE_EDIT_PROBLEM, "Edit Problem");
                 else
                     moduleUI = client.createModuleGui(EditMode.CREATE_EDIT_PROBLEM, "Edit Problem", problem.get());
-                moduleUI.setModal(Modality.WINDOW_MODAL, getDialogPane().getScene().getWindow());
+                moduleUI.setModal(Modality.WINDOW_MODAL, getOwner());
                 moduleUI.addCloseListener(() -> {
                     try {
                         problem.set(moduleUI.getProblem());
