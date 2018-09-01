@@ -1,7 +1,7 @@
 package edu.rpi.aris.assign.client.dialog;
 
 import edu.rpi.aris.assign.*;
-import edu.rpi.aris.assign.client.ClientModuleService;
+import edu.rpi.aris.assign.ModuleService;
 import edu.rpi.aris.assign.spi.ArisModule;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -53,7 +53,7 @@ public class ImportProblemsDialog<T extends ArisModule> extends Dialog<List<Pair
         this.moduleName = moduleName;
         this.files = files;
         this.converter = converter;
-        client = ClientModuleService.getService().getClientModule(moduleName);
+        client = ModuleService.getService().getClientModule(moduleName);
         initModality(Modality.WINDOW_MODAL);
         initOwner(parent);
         FXMLLoader loader = new FXMLLoader(ProblemDialog.class.getResource("../view/import_problems_dialog.fxml"));

@@ -1,9 +1,5 @@
-package edu.rpi.aris.assign.client;
+package edu.rpi.aris.assign;
 
-import edu.rpi.aris.assign.ArisClientModule;
-import edu.rpi.aris.assign.ArisModuleException;
-import edu.rpi.aris.assign.LibAssign;
-import edu.rpi.aris.assign.client.model.Config;
 import edu.rpi.aris.assign.spi.ArisModule;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -15,20 +11,17 @@ import java.net.URLClassLoader;
 import java.util.*;
 
 
-public class ClientModuleService {
+public class ModuleService {
 
-    private static final Logger logger = LogManager.getLogger(ClientModuleService.class);
-    private static ClientModuleService service = new ClientModuleService();
+    private static final Logger logger = LogManager.getLogger(ModuleService.class);
+    private static ModuleService service = new ModuleService();
     private ServiceLoader<ArisModule> loader;
     private HashMap<String, ArisModule> services = new HashMap<>();
     private ArrayList<String> moduleNames = new ArrayList<>();
+    private File moduleDirectory;
+    private boolean isServer = false;
 
-    private ClientModuleService() {
-        try {
-            init();
-        } catch (Exception e) {
-            LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, true);
-        }
+    private ModuleService() {
     }
 
     private static void addJarsFromDir(File dir, HashSet<URL> jars) throws MalformedURLException {
@@ -42,16 +35,30 @@ public class ClientModuleService {
         }
     }
 
-    public static ClientModuleService getService() {
+    public static ModuleService getService() {
         return service;
+    }
+
+    synchronized void initializeService(File directory, boolean isServer) {
+        moduleDirectory = directory;
+        this.isServer = isServer;
+        try {
+            init();
+        } catch (Exception e) {
+            LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, true);
+        }
     }
 
     private synchronized void init() throws Exception {
         logger.info("Initializing ServiceLoader");
         HashSet<URL> jars = new HashSet<>();
         try {
-            addJarsFromDir(Config.CLIENT_MODULES_DIR, jars);
-            addJarsFromDir(Config.CLIENT_MODULE_LIBS_DIR, jars);
+            if (moduleDirectory == null) {
+                LibAssign.getInstance().showExceptionError(Thread.currentThread(), new NullPointerException("Module Directory has not been set"), true);
+                return;
+            }
+            addJarsFromDir(moduleDirectory, jars);
+            addJarsFromDir(new File(moduleDirectory, "libs"), jars);
             URL[] urls = new URL[jars.size()];
             jars.toArray(urls);
             URLClassLoader classLoader = new URLClassLoader(urls, ClassLoader.getSystemClassLoader());
@@ -61,13 +68,21 @@ public class ClientModuleService {
         }
         services.clear();
         moduleNames.clear();
-        logger.info("Loading client modules");
+        logger.info("Loading modules");
         for (ArisModule s : loader) {
             logger.info("Found module \"" + s.getModuleName() + "\"");
-            ArisClientModule m = s.getClientModule();
-            if (m == null) {
-                logger.warn("Module \"" + s.getModuleName() + "\" did not supply a client module. Skipping");
-                continue;
+            if (isServer) {
+                ArisServerModule m = s.getServerModule();
+                if (m == null) {
+                    logger.warn("Module \"" + s.getModuleName() + "\" did not supply a server module. Skipping");
+                    continue;
+                }
+            } else {
+                ArisClientModule m = s.getClientModule();
+                if (m == null) {
+                    logger.warn("Module \"" + s.getModuleName() + "\" did not supply a client module. Skipping");
+                    continue;
+                }
             }
             if (services.put(s.getModuleName(), s) != null) {
                 logger.fatal("Multiple modules have been found using the name \"" + s.getModuleName() + "\"");
@@ -80,14 +95,19 @@ public class ClientModuleService {
     }
 
     public synchronized void reloadModules() throws Exception {
-        logger.info("Client module reload requested");
+        logger.info("Module reload requested");
         loader.reload();
         init();
     }
 
     public synchronized <T extends ArisModule> ArisModule<T> getModule(String moduleName) {
-        //noinspection unchecked
-        return services.get(moduleName);
+        try {
+            @SuppressWarnings("unchecked") ArisModule<T> module = services.get(moduleName);
+            return module;
+        } catch (Throwable e) {
+            LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, false);
+            return null;
+        }
     }
 
     public synchronized <T extends ArisModule> ArisClientModule<T> getClientModule(String moduleName) {
@@ -96,6 +116,18 @@ public class ClientModuleService {
             if (module == null)
                 return null;
             return module.getClientModule();
+        } catch (Exception e) {
+            LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, false);
+            return null;
+        }
+    }
+
+    public synchronized <T extends ArisModule> ArisServerModule<T> getServerModule(String moduleName) {
+        try {
+            ArisModule<T> module = getModule(moduleName);
+            if (module == null)
+                return null;
+            return module.getServerModule();
         } catch (Exception e) {
             LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, false);
             return null;

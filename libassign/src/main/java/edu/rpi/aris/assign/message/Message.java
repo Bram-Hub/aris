@@ -3,6 +3,7 @@ package edu.rpi.aris.assign.message;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
+import edu.rpi.aris.assign.ArisModuleException;
 import edu.rpi.aris.assign.MessageCommunication;
 import edu.rpi.aris.assign.User;
 import org.apache.logging.log4j.LogManager;
@@ -10,7 +11,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.time.ZonedDateTime;
 
 public abstract class Message {
@@ -42,6 +42,12 @@ public abstract class Message {
         } catch (IOException e) {
             logger.error("Failed to read json from peer", e);
             return new ErrorMsg(ErrorType.IO_ERROR, "Failed to read json from peer");
+        } catch (ArisModuleException e) {
+            logger.error("An error occurred while interacting with an Aris Module");
+            return new ErrorMsg(ErrorType.MODULE_ERROR, e.getMessage());
+        } catch (Exception e) {
+            logger.error("An unknown exception occurred", e);
+            return new ErrorMsg(ErrorType.EXCEPTION, e.getMessage());
         }
     }
 
@@ -54,7 +60,7 @@ public abstract class Message {
         return reply;
     }
 
-    public final void send(MessageCommunication com) throws IOException {
+    public final void send(MessageCommunication com) throws Exception {
         com.sendMessage(gson.toJson(this, Message.class));
         if (this instanceof DataMessage)
             ((DataMessage) this).sendData(com.getOutputStream());
@@ -70,7 +76,7 @@ public abstract class Message {
      * type as the object this method was called on
      * @throws IOException If there is an error when communicating
      */
-    public final Message sendAndGet(MessageCommunication com) throws IOException {
+    public final Message sendAndGet(MessageCommunication com) throws Exception {
         send(com);
         Message reply = parse(com);
         if (!reply.getClass().equals(this.getClass())) {
@@ -82,7 +88,7 @@ public abstract class Message {
         return reply;
     }
 
-    public abstract ErrorType processMessage(Connection connection, User user) throws SQLException;
+    public abstract ErrorType processMessage(Connection connection, User user) throws Exception;
 
     public abstract MessageType getMessageType();
 

@@ -2,9 +2,7 @@ package edu.rpi.aris.assign;
 
 import edu.rpi.aris.assign.message.ErrorMsg;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 
 public interface MessageCommunication {
 
@@ -12,9 +10,9 @@ public interface MessageCommunication {
 
     void sendMessage(String msg) throws IOException;
 
-    InputStream getInputStream();
+    DataInputStream getInputStream();
 
-    OutputStream getOutputStream();
+    DataOutputStream getOutputStream();
 
     void handleErrorMsg(ErrorMsg msg);
 

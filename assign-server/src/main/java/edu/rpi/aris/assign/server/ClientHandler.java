@@ -648,6 +648,16 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
     }
 
     @Override
+    public DataInputStream getInputStream() {
+        return in;
+    }
+
+    @Override
+    public DataOutputStream getOutputStream() {
+        return out;
+    }
+
+    @Override
     public void handleErrorMsg(ErrorMsg msg) {
         System.out.println(msg);
         //TODO: implement

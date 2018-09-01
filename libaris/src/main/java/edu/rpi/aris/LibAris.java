@@ -79,12 +79,23 @@ public class LibAris implements ArisModule<LibAris> {
 
     @Override
     public synchronized ArisServerModule<LibAris> getServerModule() {
+        if (!loadedServer) {
+            loadedServer = true;
+            try {
+                Class<?> clazz = Class.forName("edu.rpi.aris.server.ArisServer");
+                //noinspection unchecked
+                serverModule = (ArisServerModule<LibAris>) clazz.getMethod("getInstance").invoke(null);
+            } catch (ClassNotFoundException | NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+                logger.fatal("Failed get Aris client class", e);
+                return serverModule;
+            }
+        }
         return serverModule;
     }
 
     @Override
     public ProblemConverter<LibAris> getProblemConverter() {
-        return new SaveManager((SaveInfoListener) clientModule);
+        return new SaveManager((SaveInfoListener) (clientModule == null ? serverModule : clientModule));
     }
 
     @Override

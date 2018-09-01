@@ -1,12 +1,12 @@
 package edu.rpi.aris.assign.message;
 
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 
 public abstract class DataMessage extends Message {
 
-    public abstract void sendData(OutputStream out);
+    public abstract void sendData(DataOutputStream out) throws Exception;
 
-    public abstract void receiveData(InputStream in);
+    public abstract void receiveData(DataInputStream in) throws Exception;
 
 }

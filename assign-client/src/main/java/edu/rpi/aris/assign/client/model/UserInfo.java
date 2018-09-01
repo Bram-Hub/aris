@@ -115,10 +115,12 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
     }
 
     public void createClass(String name) {
+        startLoading();
         Client.getInstance().processMessage(new ClassCreateMsg(name), createHandler);
     }
 
     public void deleteClass(int classId) {
+        startLoading();
         Client.getInstance().processMessage(new ClassDeleteMsg(classId), deleteHandler);
     }
 
@@ -191,6 +193,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
                 classes.remove(info);
                 if (classes.size() > 0)
                     selectedClass.set(classes.get(0));
+                finishLoading();
             });
         }
 
@@ -200,6 +203,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
                 Client.getInstance().processMessage(msg, this);
             else
                 AssignClient.getInstance().getMainWindow().displayErrorMsg("Error Deleting Class", "An error occured while attempting to delete the class");
+            Platform.runLater(UserInfo.this::finishLoading);
         }
     }
 
@@ -213,6 +217,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
                 classes.add(info);
                 Collections.sort(classes);
                 selectedClass.set(info);
+                finishLoading();
             });
         }
 
@@ -222,6 +227,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
                 Client.getInstance().processMessage(msg, this);
             else
                 AssignClient.getInstance().getMainWindow().displayErrorMsg("Error Creating Class", "An error occurred while attempting to create the class");
+            Platform.runLater(UserInfo.this::finishLoading);
         }
     }
 

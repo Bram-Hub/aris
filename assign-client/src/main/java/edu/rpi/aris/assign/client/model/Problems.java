@@ -1,12 +1,15 @@
 package edu.rpi.aris.assign.client.model;
 
 import edu.rpi.aris.assign.NetUtil;
+import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
 import edu.rpi.aris.assign.client.controller.AssignGui;
 import edu.rpi.aris.assign.client.controller.ProblemsGui;
 import edu.rpi.aris.assign.message.MsgUtil;
+import edu.rpi.aris.assign.message.ProblemCreateMsg;
 import edu.rpi.aris.assign.message.ProblemsGetMsg;
+import edu.rpi.aris.assign.spi.ArisModule;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -77,7 +80,32 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         return loadError;
     }
 
-    public static class Problem implements Comparable<Problem> {
+    public <T extends ArisModule> void createProblem(String name, String moduleName, edu.rpi.aris.assign.Problem<T> problem) {
+        userInfo.startLoading();
+        Client.getInstance().processMessage(new ProblemCreateMsg<>(name, moduleName, problem), new ProblemCreateResponseHandler<>());
+    }
+
+    private class ProblemCreateResponseHandler<T extends ArisModule> implements ResponseHandler<ProblemCreateMsg<T>> {
+        @Override
+        public void response(ProblemCreateMsg<T> message) {
+            Platform.runLater(() -> {
+                Problem problem = new Problem(message.getPid(), message.getName(), message.getModuleName(), Config.USERNAME.getValue(), new Date());
+                problems.add(problem);
+                userInfo.finishLoading();
+            });
+        }
+
+        @Override
+        public void onError(boolean suggestRetry, ProblemCreateMsg<T> msg) {
+            if (suggestRetry)
+                createProblem(msg.getName(), msg.getModuleName(), msg.getProblem());
+            else
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred creating the problem");
+            Platform.runLater(() -> userInfo.finishLoading());
+        }
+    }
+
+    public class Problem implements Comparable<Problem> {
 
         private final int pid;
         private final SimpleStringProperty name = new SimpleStringProperty();
@@ -87,11 +115,15 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         private final SimpleObjectProperty<Button> modifyColumn = new SimpleObjectProperty<>();
 
         public Problem(MsgUtil.ProblemInfo data) {
-            pid = data.pid;
-            name.set(data.name);
-            module.set(data.moduleName);
-            createdBy.set(data.createdBy);
-            createdOn.set(new Date(NetUtil.UTCToMilli(data.createdDateUTC)));
+            this(data.pid, data.name, data.moduleName, data.createdBy, new Date(NetUtil.UTCToMilli(data.createdDateUTC)));
+        }
+
+        public Problem(int pid, String name, String module, String createdBy, Date createdOn) {
+            this.pid = pid;
+            this.name.set(name);
+            this.module.set(module);
+            this.createdBy.set(createdBy);
+            this.createdOn.set(createdOn);
             Button delete = new Button("Delete");
             delete.setOnAction(event -> delete());
             modifyColumn.set(delete);

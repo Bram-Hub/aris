@@ -220,7 +220,7 @@ public class Assignment {
         }
     }
 
-    private void loadStudent(Client client) throws IOException {
+    private void loadStudent(Client client) throws Exception {
         SubmissionGetStudentMsg reply = (SubmissionGetStudentMsg) new SubmissionGetStudentMsg(id, classId).sendAndGet(client);
         if (reply == null)
             return;
@@ -235,7 +235,7 @@ public class Assignment {
         }
     }
 
-    private void loadInstructor(Client client) throws IOException {
+    private void loadInstructor(Client client) throws Exception {
         SubmissionGetInstructorMsg reply = (SubmissionGetInstructorMsg) new SubmissionGetInstructorMsg(id, classId).sendAndGet(client);
         if (reply == null)
             return;

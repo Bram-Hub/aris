@@ -1,9 +1,9 @@
 package edu.rpi.aris.assign.client.controller;
 
 import edu.rpi.aris.assign.LibAssign;
+import edu.rpi.aris.assign.ModuleService;
 import edu.rpi.aris.assign.Problem;
 import edu.rpi.aris.assign.ProblemConverter;
-import edu.rpi.aris.assign.client.ClientModuleService;
 import edu.rpi.aris.assign.client.dialog.ImportProblemsDialog;
 import edu.rpi.aris.assign.client.dialog.ProblemDialog;
 import edu.rpi.aris.assign.client.model.Config;
@@ -11,12 +11,15 @@ import edu.rpi.aris.assign.client.model.Problems;
 import edu.rpi.aris.assign.client.model.UserInfo;
 import edu.rpi.aris.assign.spi.ArisModule;
 import javafx.beans.binding.Bindings;
+import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
+import org.apache.commons.lang3.tuple.Triple;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -93,13 +96,18 @@ public class ProblemsGui implements TabGui {
             if (!newValue)
                 problems.clear();
         });
+        name.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getName()));
+        module.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getModule()));
+        createdBy.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getCreatedBy()));
+        createdOn.setCellValueFactory(param -> new SimpleObjectProperty<>(param.getValue().getCreatedOn()));
     }
 
     @FXML
-    public void createProblem() {
+    public <T extends ArisModule> void createProblem() {
         try {
-            ProblemDialog dialog = new ProblemDialog(AssignGui.getInstance().getStage());
-            dialog.showAndWait();
+            ProblemDialog<T> dialog = new ProblemDialog<>(AssignGui.getInstance().getStage());
+            Optional<Triple<String, String, Problem<T>>> result = dialog.showAndWait();
+            result.ifPresent(triple -> problems.createProblem(triple.getLeft(), triple.getMiddle(), triple.getRight()));
         } catch (IOException e) {
             LibAssign.showExceptionError(e);
         }
@@ -114,7 +122,7 @@ public class ProblemsGui implements TabGui {
         box.getChildren().add(new Label("Select Module:"));
         ComboBox<String> modules = new ComboBox<>();
         modules.setMaxWidth(Double.MAX_VALUE);
-        modules.getItems().addAll(ClientModuleService.getService().moduleNames());
+        modules.getItems().addAll(ModuleService.getService().moduleNames());
         Collections.sort(modules.getItems());
         if (modules.getItems().size() == 1)
             modules.getSelectionModel().select(0);
@@ -130,7 +138,7 @@ public class ProblemsGui implements TabGui {
 
     private <T extends ArisModule> void importModuleProblems(String moduleName) {
         System.out.println("Import " + moduleName);
-        ArisModule<T> module = ClientModuleService.getService().getModule(moduleName);
+        ArisModule<T> module = ModuleService.getService().getModule(moduleName);
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Import " + moduleName + " files");
         try {

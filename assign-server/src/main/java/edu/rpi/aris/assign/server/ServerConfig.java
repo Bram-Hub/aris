@@ -94,6 +94,7 @@ public class ServerConfig {
         storageDir = new File(getConfigOption(STORAGE_CONFIG, null, false));
         logDir = new File(getConfigOption(LOG_CONFIG, null, false));
         LibAssign.setLogLocation(logDir);
+        LibAssign.initModuleService(new File(storageDir, "modules"), true);
         // optional configs
         String caStr = getConfigOption(CA_CONFIG, null, true);
         if (caStr != null)

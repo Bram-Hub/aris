@@ -71,6 +71,10 @@ public class LibAssign implements Thread.UncaughtExceptionHandler {
         return instance;
     }
 
+    public static void initModuleService(File moduleDirectory, boolean isServer) {
+        ModuleService.getService().initializeService(moduleDirectory, isServer);
+    }
+
     public static void setLogLocation(File logDir) throws IOException {
         String logPath = logDir.getCanonicalPath();
         logPath += logPath.endsWith(File.separator) ? "" : File.separator;

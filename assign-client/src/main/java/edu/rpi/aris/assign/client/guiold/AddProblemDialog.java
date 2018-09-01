@@ -1,7 +1,7 @@
 package edu.rpi.aris.assign.client.guiold;
 
 import edu.rpi.aris.assign.*;
-import edu.rpi.aris.assign.client.ClientModuleService;
+import edu.rpi.aris.assign.ModuleService;
 import edu.rpi.aris.assign.ArisClientModule;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.fxml.FXML;
@@ -45,8 +45,8 @@ public class AddProblemDialog extends Dialog<Triple<String, String, Problem>> {
 
     @FXML
     private void initialize() {
-        moduleSelect.getItems().addAll(ClientModuleService.getService().moduleNames());
-        moduleSelect.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> module = newValue == null ? null : ClientModuleService.getService().getClientModule(newValue));
+        moduleSelect.getItems().addAll(ModuleService.getService().moduleNames());
+        moduleSelect.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> module = newValue == null ? null : ModuleService.getService().getClientModule(newValue));
 
         editorBtn.setDisable(true);
         editorBtn.disableProperty().bind(moduleSelect.getSelectionModel().selectedItemProperty().isNull());

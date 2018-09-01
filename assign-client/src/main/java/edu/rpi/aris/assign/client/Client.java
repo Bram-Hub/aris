@@ -766,12 +766,12 @@ public class Client implements MessageCommunication {
     }
 
     @Override
-    public synchronized InputStream getInputStream() {
+    public synchronized DataInputStream getInputStream() {
         return in;
     }
 
     @Override
-    public synchronized OutputStream getOutputStream() {
+    public synchronized DataOutputStream getOutputStream() {
         return out;
     }
 

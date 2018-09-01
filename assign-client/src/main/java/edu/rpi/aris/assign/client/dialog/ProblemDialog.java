@@ -2,7 +2,6 @@ package edu.rpi.aris.assign.client.dialog;
 
 import edu.rpi.aris.assign.*;
 import edu.rpi.aris.assign.client.AssignClient;
-import edu.rpi.aris.assign.client.ClientModuleService;
 import edu.rpi.aris.assign.spi.ArisModule;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.fxml.FXML;
@@ -44,7 +43,7 @@ public class ProblemDialog<T extends ArisModule> extends Dialog<Triple<String, S
         okBtn = (Button) getDialogPane().lookupButton(ButtonType.OK);
         okBtn.setDisable(true);
         getDialogPane().setContent(loader.load());
-        setResultConverter(param -> new ImmutableTriple<>(name.getText(), module.getSelectionModel().getSelectedItem(), problem.get()));
+        setResultConverter(param -> param == ButtonType.OK ? new ImmutableTriple<>(name.getText(), module.getSelectionModel().getSelectedItem(), problem.get()) : null);
     }
 
     public ProblemDialog(Window parent, String moduleName, String name, Problem<T> problem) throws IOException {
@@ -59,7 +58,7 @@ public class ProblemDialog<T extends ArisModule> extends Dialog<Triple<String, S
 
     @FXML
     public void initialize() {
-        module.getItems().addAll(ClientModuleService.getService().moduleNames());
+        module.getItems().addAll(ModuleService.getService().moduleNames());
         Collections.sort(module.getItems());
 
         btnEditor.disableProperty().bind(module.getSelectionModel().selectedItemProperty().isNull());
@@ -72,7 +71,7 @@ public class ProblemDialog<T extends ArisModule> extends Dialog<Triple<String, S
         try {
             if (moduleUI == null) {
                 String moduleName = module.getSelectionModel().getSelectedItem();
-                ArisClientModule<T> client = ClientModuleService.getService().getClientModule(moduleName);
+                ArisClientModule<T> client = ModuleService.getService().getClientModule(moduleName);
                 if (client == null) {
                     AssignClient.getInstance().getMainWindow().displayErrorMsg("Error loading module", "Failed to load client module for \"" + moduleName + "\"");
                     return;

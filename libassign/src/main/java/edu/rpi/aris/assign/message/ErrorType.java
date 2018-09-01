@@ -15,5 +15,7 @@ public enum ErrorType {
     INVALID_PASSWORD,
     RESET_PASS,
     AUTH_WEAK_PASS,
+    MISSING_MODULE,
+    MODULE_ERROR,
     UNAUTHORIZED
 }

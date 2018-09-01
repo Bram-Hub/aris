@@ -1,8 +1,7 @@
 package edu.rpi.aris.assign.client.controller;
 
-import edu.rpi.aris.assign.ArisModuleException;
 import edu.rpi.aris.assign.LibAssign;
-import edu.rpi.aris.assign.client.ClientModuleService;
+import edu.rpi.aris.assign.ModuleService;
 import edu.rpi.aris.assign.client.guiold.AssignmentWindow;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -42,7 +41,7 @@ public class ModuleSelect {
     }
 
     private void loadModules() {
-        for (String moduleName : ClientModuleService.getService().moduleNames())
+        for (String moduleName : ModuleService.getService().moduleNames())
             moduleBox.getChildren().add(new ModuleRow(moduleName).getRoot());
     }
 
@@ -98,7 +97,7 @@ public class ModuleSelect {
     public void refreshModules() {
         moduleBox.getChildren().clear();
         try {
-            ClientModuleService.getService().reloadModules();
+            ModuleService.getService().reloadModules();
         } catch (Exception e) {
             LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, false);
         }

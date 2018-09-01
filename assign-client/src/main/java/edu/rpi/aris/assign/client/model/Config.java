@@ -13,7 +13,6 @@ public class Config {
 
     public static final File CLIENT_CONFIG_DIR = new File(System.getProperty("user.home"), ".aris-java");
     public static final File CLIENT_MODULES_DIR = new File(CLIENT_CONFIG_DIR, "modules");
-    public static final File CLIENT_MODULE_LIBS_DIR = new File(CLIENT_MODULES_DIR, "libs");
     private static final String SERVER_ADDRESS_KEY = "server_address";
     private static final String PORT_KEY = "port";
     private static final String USERNAME_KEY = "username";

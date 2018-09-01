@@ -50,7 +50,8 @@ public class AssignClient extends Application implements ArisExceptionHandler {
 
     public static void main(String[] args) throws IOException {
         LibAssign.setLogLocation(new File(Config.CLIENT_CONFIG_DIR, "logs"));
-        logger.info("Loaded client modules: " + ClientModuleService.getService().moduleNames());
+        LibAssign.initModuleService(Config.CLIENT_MODULES_DIR, false);
+        logger.info("Loaded client modules: " + ModuleService.getService().moduleNames());
         LibAssign.getInstance().init(false, args, new MainCallbackListener() {
             @Override
             public void processAlreadyRunning(CommandLine cmd) {
