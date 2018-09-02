@@ -1,9 +1,6 @@
 package edu.rpi.aris.assign.client.controller;
 
-import edu.rpi.aris.assign.LibAssign;
-import edu.rpi.aris.assign.ModuleService;
-import edu.rpi.aris.assign.Problem;
-import edu.rpi.aris.assign.ProblemConverter;
+import edu.rpi.aris.assign.*;
 import edu.rpi.aris.assign.client.dialog.ImportProblemsDialog;
 import edu.rpi.aris.assign.client.dialog.ProblemDialog;
 import edu.rpi.aris.assign.client.model.Config;
@@ -21,6 +18,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
+import javafx.stage.Window;
 import javafx.util.Pair;
 import javafx.util.converter.DefaultStringConverter;
 import org.apache.commons.lang3.tuple.Triple;
@@ -34,6 +32,7 @@ import java.util.Optional;
 
 public class ProblemsGui implements TabGui {
 
+    private static final ModuleUIOptions MODIFY_OPTIONS = new ModuleUIOptions(EditMode.CREATE_EDIT_PROBLEM, "Modify Problem", true, true, true, true, false);
     private static final FileChooser.ExtensionFilter allFiles = new FileChooser.ExtensionFilter("All Files", "*");
     @FXML
     private TableView<Problems.Problem> problemTbl;
@@ -163,6 +162,72 @@ public class ProblemsGui implements TabGui {
         return result.isPresent() && result.get() == ButtonType.OK;
     }
 
+    public <T extends ArisModule> void modifyProblem(Problems.Problem problemInfo, Problem<T> problem, ArisModule<T> module) throws Exception {
+        ArisClientModule<T> clientModule = module.getClientModule();
+        ModuleUI<T> moduleUI = clientModule.createModuleGui(MODIFY_OPTIONS, problem);
+        moduleUI.setDescription("Modify Problem \"" + problemInfo.getName() + "\"");
+        moduleUI.setModuleUIListener(new ModuleUIListener() {
+
+            @Override
+            public boolean guiCloseRequest(boolean hasUnsavedChanges) {
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Upload Problem?");
+                alert.setHeaderText("Would you like to upload the problem to the server?");
+                alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+                alert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
+                Window window = moduleUI.getUIWindow();
+                if (window != null) {
+                    alert.initOwner(window);
+                    alert.initModality(Modality.WINDOW_MODAL);
+                } else {
+                    alert.initOwner(AssignGui.getInstance().getStage());
+                    alert.initModality(Modality.APPLICATION_MODAL);
+                }
+                Optional<ButtonType> result = alert.showAndWait();
+                if (result.isPresent() && result.get() == ButtonType.YES) {
+                    uploadProblem();
+                } else if (hasUnsavedChanges) {
+                    alert = new Alert(Alert.AlertType.WARNING);
+                    alert.setTitle("Unsaved Changes");
+                    alert.setHeaderText("You have unsaved changes that will be lost. Are you sure you want to exit?");
+                    alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+                    alert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
+                    if (window != null) {
+                        alert.initOwner(window);
+                        alert.initModality(Modality.WINDOW_MODAL);
+                    } else {
+                        alert.initOwner(AssignGui.getInstance().getStage());
+                        alert.initModality(Modality.APPLICATION_MODAL);
+                    }
+                    result = alert.showAndWait();
+                    return result.isPresent() && result.get() == ButtonType.YES;
+                }
+                return true;
+            }
+
+            @Override
+            public void guiClosed() {
+            }
+
+            @Override
+            public void saveProblemLocally() {
+                problems.saveLocalModification(problemInfo, problem, module);
+            }
+
+            @Override
+            public void uploadProblem() {
+                problems.uploadModifiedProblem(problemInfo, problem);
+                try {
+                    moduleUI.hide();
+                } catch (Exception e) {
+                    LibAssign.showExceptionError(e);
+                }
+            }
+        });
+        moduleUI.setModal(Modality.WINDOW_MODAL, AssignGui.getInstance().getStage());
+        moduleUI.show();
+    }
+
     private <T extends ArisModule> void importModuleProblems(String moduleName) {
         System.out.println("Import " + moduleName);
         ArisModule<T> module = ModuleService.getService().getModule(moduleName);
@@ -198,7 +263,7 @@ public class ProblemsGui implements TabGui {
                 String name = file.getName();
                 if (name.contains("."))
                     name = name.substring(0, name.lastIndexOf('.'));
-                Problem<T> problem = problemConverter.loadProblem(new FileInputStream(file));
+                Problem<T> problem = problemConverter.loadProblem(new FileInputStream(file), false);
                 ProblemDialog<T> dialog = new ProblemDialog<>(AssignGui.getInstance().getStage(), module.getModuleName(), name, problem);
                 Optional<Triple<String, String, Problem<T>>> result = dialog.showAndWait();
                 result.ifPresent(triple -> problems.createProblem(triple.getLeft(), triple.getMiddle(), triple.getRight()));

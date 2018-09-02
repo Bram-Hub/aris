@@ -64,8 +64,8 @@ import java.util.concurrent.locks.ReentrantLock;
 public class Client implements MessageCommunication {
 
     private static final char[] KEYSTORE_PASSWORD = "ARIS_CLIENT".toCharArray();
-    private static final File KEYSTORE_FILE = new File(Config.CLIENT_CONFIG_DIR, "client.keystore");
-    private static final File SERVER_KEYSTORE_FILE = new File(Config.CLIENT_CONFIG_DIR, "imported.keystore");
+    private static final File KEYSTORE_FILE = new File(Config.CLIENT_STORAGE_DIR, "client.keystore");
+    private static final File SERVER_KEYSTORE_FILE = new File(Config.CLIENT_STORAGE_DIR, "imported.keystore");
     private static Logger logger = LogManager.getLogger(Client.class);
     private static Client instance = new Client();
 
@@ -435,7 +435,7 @@ public class Client implements MessageCommunication {
                 if (server == null || server.length() == 0) {
 //                    Pair<String, Integer> info = getServerAddress(null);
 //                    if (info == null)
-                        return;
+                    return;
 //                    Config.SERVER_ADDRESS.setValue(info.getKey());
 //                    Config.PORT.setValue(info.getValue());
                 }

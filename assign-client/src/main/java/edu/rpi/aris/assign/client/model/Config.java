@@ -11,8 +11,8 @@ public class Config {
     public static final ConfigProp<Boolean> ALLOW_INSECURE = new ConfigProp<>(null, null, false);
     public static final ConfigProp<File> ADD_CERT = new ConfigProp<>(null, null, null);
 
-    public static final File CLIENT_CONFIG_DIR = new File(System.getProperty("user.home"), ".aris-java");
-    public static final File CLIENT_MODULES_DIR = new File(CLIENT_CONFIG_DIR, "modules");
+    public static final File CLIENT_STORAGE_DIR = new File(System.getProperty("user.home"), ".aris-java");
+    public static final File CLIENT_MODULES_DIR = new File(CLIENT_STORAGE_DIR, "modules");
     private static final String SERVER_ADDRESS_KEY = "server_address";
     private static final String PORT_KEY = "port";
     private static final String USERNAME_KEY = "username";

@@ -3,6 +3,7 @@ package edu.rpi.aris.assign.client.controller;
 import edu.rpi.aris.assign.EditMode;
 import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.ModuleService;
+import edu.rpi.aris.assign.ModuleUIOptions;
 import edu.rpi.aris.assign.spi.ArisModule;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -15,6 +16,7 @@ import java.io.IOException;
 
 public class ModuleRow {
 
+    public static final ModuleUIOptions UI_OPTIONS = new ModuleUIOptions(EditMode.UNRESTRICTED_EDIT, null, true, true, false, false, true);
     @FXML
     private ImageView moduleImage;
     @FXML
@@ -47,7 +49,7 @@ public class ModuleRow {
     @FXML
     public void launchModule() {
         try {
-            module.getClientModule().createModuleGui(EditMode.UNRESTRICTED_EDIT, null).show();
+            module.getClientModule().createModuleGui(UI_OPTIONS).show();
         } catch (Exception e) {
             LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, true);
         }

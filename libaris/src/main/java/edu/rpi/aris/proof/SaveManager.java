@@ -215,10 +215,10 @@ public class SaveManager implements ProblemConverter<LibAris> {
     public synchronized Proof loadProof(File file, String author) throws IOException, TransformerException {
         if (file == null || !file.exists())
             return null;
-        return loadProof(new FileInputStream(file), file.getName(), author);
+        return loadProof(new FileInputStream(file), file.getName(), author, true);
     }
 
-    private synchronized Proof loadProof(InputStream in, String name, String author) throws TransformerException, IOException {
+    private synchronized Proof loadProof(InputStream in, String name, String author, boolean verifyIntegrity) throws TransformerException, IOException {
         StreamSource src = new StreamSource(in);
         DOMResult result = new DOMResult();
         transformer.transform(src, result);
@@ -253,7 +253,7 @@ public class SaveManager implements ProblemConverter<LibAris> {
                 StreamResult r = new StreamResult(w);
                 transformer.transform(s, r);
                 String xml = w.toString().replaceAll("\n[\t\\s\f\r\\x0B]*\n", "\n");
-                if (!verifyHash(xml, hashElement.getTextContent(), authors)) {
+                if (verifyIntegrity && !verifyHash(xml, hashElement.getTextContent(), authors)) {
                     listener.integrityCheckFailed(name);
                     authors.clear();
                     authors.add("UNKNOWN");
@@ -261,6 +261,8 @@ public class SaveManager implements ProblemConverter<LibAris> {
             } catch (IOException ignored) {
                 authors.add("UNKNOWN");
             }
+            if (!verifyIntegrity)
+                authors.clear();
             proof = new Proof(authors, author);
             ArrayList<Element> proofElements = getElementsByTag(root, "proof");
             if (proofElements.size() == 0)
@@ -434,9 +436,9 @@ public class SaveManager implements ProblemConverter<LibAris> {
     }
 
     @Override
-    public ArisProofProblem loadProblem(InputStream in) throws IOException {
+    public ArisProofProblem loadProblem(InputStream in, boolean isProblemSolution) throws IOException {
         try {
-            return new ArisProofProblem(loadProof(in, "Aris Assign", LibAris.getInstance().getProperties().get("username")));
+            return new ArisProofProblem(loadProof(in, "Aris Assign", LibAris.getInstance().getProperties().get("username"), isProblemSolution));
         } catch (TransformerException e) {
             throw new IOException("Failed to load aris proof", e);
         }

@@ -14,9 +14,9 @@ public interface ModuleUI<T extends ArisModule> {
 
     void setDescription(String description) throws Exception;
 
-    void addCloseListener(Runnable runnable) throws Exception;
+    void setModuleUIListener(ModuleUIListener listener);
 
-    void removeCloseListener(Runnable runnable) throws Exception;
+    Window getUIWindow();
 
     Problem<T> getProblem() throws Exception;
 

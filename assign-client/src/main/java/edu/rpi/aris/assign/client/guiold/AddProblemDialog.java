@@ -1,8 +1,6 @@
 package edu.rpi.aris.assign.client.guiold;
 
 import edu.rpi.aris.assign.*;
-import edu.rpi.aris.assign.ModuleService;
-import edu.rpi.aris.assign.ArisClientModule;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -66,21 +64,21 @@ public class AddProblemDialog extends Dialog<Triple<String, String, Problem>> {
             }
             String description = "Creating problem " + (textField.getText().length() == 0 ? "" : "\"" + textField.getText() + "\" ");
             if (moduleUI == null) {
-                moduleUI = module.createModuleGui(EditMode.UNRESTRICTED_EDIT, description);
+                moduleUI = module.createModuleGui(null);
                 moduleUI.setModal(Modality.WINDOW_MODAL, getDialogPane().getScene().getWindow());
-                moduleUI.addCloseListener(() -> {
-                    try {
-                        synchronized (AddProblemDialog.this) {
-                            moduleUiOpen = false;
-                        }
-                        problem.set(moduleUI.getProblem());
-                    } catch (Exception e) {
-                        logger.error("Failed to retrieve problem from module ui");
-                        LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, false);
-                    }
-                });
+//                moduleUI.addCloseListener(() -> {
+//                    try {
+//                        synchronized (AddProblemDialog.this) {
+//                            moduleUiOpen = false;
+//                        }
+//                        problem.set(moduleUI.getProblem());
+//                    } catch (Exception e) {
+//                        logger.error("Failed to retrieve problem from module ui");
+//                        LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, false);
+//                    }
+//                });
             } else
-                moduleUI.setDescription(description);
+//                moduleUI.setDescription(description);
             problem.set(null);
             synchronized (this) {
                 moduleUI.show();

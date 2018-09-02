@@ -17,8 +17,9 @@ import org.apache.commons.lang3.tuple.Triple;
 import java.io.IOException;
 import java.util.Collections;
 
-public class ProblemDialog<T extends ArisModule> extends Dialog<Triple<String, String, Problem<T>>> {
+public class ProblemDialog<T extends ArisModule> extends Dialog<Triple<String, String, Problem<T>>> implements ModuleUIListener {
 
+    public static final ModuleUIOptions UI_OPTIONS = new ModuleUIOptions(EditMode.CREATE_EDIT_PROBLEM, "Edit problem", false, true, false, true, false);
     @FXML
     private TextField name;
     @FXML
@@ -27,7 +28,6 @@ public class ProblemDialog<T extends ArisModule> extends Dialog<Triple<String, S
     private Button btnEditor;
     @FXML
     private VBox box;
-
     private Button okBtn;
     private SimpleObjectProperty<Problem<T>> problem = new SimpleObjectProperty<>();
     private ModuleUI<T> moduleUI;
@@ -61,6 +61,9 @@ public class ProblemDialog<T extends ArisModule> extends Dialog<Triple<String, S
         module.getItems().addAll(ModuleService.getService().moduleNames());
         Collections.sort(module.getItems());
 
+        if (module.getItems().size() == 1)
+            module.getSelectionModel().select(0);
+
         btnEditor.disableProperty().bind(module.getSelectionModel().selectedItemProperty().isNull());
 
         okBtn.disableProperty().bind(problem.isNull().or(name.textProperty().isEmpty()).or(module.getSelectionModel().selectedItemProperty().isNull()));
@@ -78,17 +81,11 @@ public class ProblemDialog<T extends ArisModule> extends Dialog<Triple<String, S
                 }
                 replaceModuleChoice(moduleName);
                 if (problem.get() == null)
-                    moduleUI = client.createModuleGui(EditMode.CREATE_EDIT_PROBLEM, "Edit Problem");
+                    moduleUI = client.createModuleGui(UI_OPTIONS);
                 else
-                    moduleUI = client.createModuleGui(EditMode.CREATE_EDIT_PROBLEM, "Edit Problem", problem.get());
+                    moduleUI = client.createModuleGui(UI_OPTIONS, problem.get());
                 moduleUI.setModal(Modality.WINDOW_MODAL, getOwner());
-                moduleUI.addCloseListener(() -> {
-                    try {
-                        problem.set(moduleUI.getProblem());
-                    } catch (Exception e) {
-                        LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, false);
-                    }
-                });
+                moduleUI.setModuleUIListener(this);
             }
             moduleUI.show();
         } catch (Exception e) {
@@ -105,4 +102,30 @@ public class ProblemDialog<T extends ArisModule> extends Dialog<Triple<String, S
         box.getChildren().set(index, lbl);
     }
 
+    @Override
+    public boolean guiCloseRequest(boolean hasUnsavedChanges) {
+        return true;
+    }
+
+    @Override
+    public void guiClosed() {
+        try {
+            problem.set(moduleUI.getProblem());
+        } catch (Exception e) {
+            LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, false);
+        }
+    }
+
+    @Override
+    public void saveProblemLocally() {
+    }
+
+    @Override
+    public void uploadProblem() {
+        try {
+            moduleUI.hide();
+        } catch (Exception e) {
+            LibAssign.showExceptionError(e);
+        }
+    }
 }

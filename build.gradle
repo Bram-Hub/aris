@@ -23,7 +23,7 @@ subprojects {
         mavenCentral()
     }
 
-    jar.doLast {
+    build.doLast {
         copy {
             into 'jars'
             from configurations.runtime, jar

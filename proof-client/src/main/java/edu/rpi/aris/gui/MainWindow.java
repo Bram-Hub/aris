@@ -3,7 +3,8 @@ package edu.rpi.aris.gui;
 import edu.rpi.aris.LibAris;
 import edu.rpi.aris.assign.EditMode;
 import edu.rpi.aris.assign.ModuleUI;
-import edu.rpi.aris.assign.Problem;
+import edu.rpi.aris.assign.ModuleUIListener;
+import edu.rpi.aris.assign.ModuleUIOptions;
 import edu.rpi.aris.gui.event.GoalChangedEvent;
 import edu.rpi.aris.gui.event.LineChangedEvent;
 import edu.rpi.aris.gui.event.PremiseChangeEvent;
@@ -80,10 +81,13 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     private HBox descriptionBox;
     @FXML
     private Label descriptionText;
+    @FXML
+    private Label arisAssignLbl;
+    @FXML
+    private Button uploadBtn;
     private ObjectProperty<Font> fontObjectProperty;
     private ArrayList<ProofLine> proofLines = new ArrayList<>();
     private ArrayList<GoalLine> goalLines = new ArrayList<>();
-    private HashSet<Runnable> closeListeners = new HashSet<>();
     private SimpleIntegerProperty selectedLine = new SimpleIntegerProperty(-1);
     private Proof proof;
     private Stage primaryStage;
@@ -94,6 +98,11 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     private boolean loaded = false;
     private SaveManager saveManager;
     private Node headerNode;
+    private ArisProofProblem assignProblem;
+    private ModuleUIListener moduleUIListener;
+    private MenuItem saveProof;
+    private MenuItem saveAsProof;
+    private ModuleUIOptions moduleOptions;
 
     public MainWindow(Stage primaryStage, EditMode editMode) throws IOException {
         this(primaryStage, editMode, null);
@@ -117,12 +126,25 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
         this.headerNode = headerNode;
         primaryStage.setTitle(LibAris.NAME);
         primaryStage.setOnHidden(windowEvent -> new Thread(() -> {
-            for (Runnable r : closeListeners) {
-                if (r != null)
-                    r.run();
-            }
+            if (moduleUIListener != null)
+                moduleUIListener.guiClosed();
             System.gc();
         }).start());
+        primaryStage.setOnCloseRequest(event -> {
+            if ((moduleOptions == null || moduleOptions.warnBeforeUnsavedClose()) && proof.isModified()) {
+                Alert alert = new Alert(Alert.AlertType.WARNING);
+                alert.setTitle("Exit?");
+                alert.setHeaderText("Are you sure you want to exit?");
+                alert.setContentText("There are unsaved changes in your proof that will be lost.");
+                alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+                alert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
+                Optional<ButtonType> result = alert.showAndWait();
+                if (!result.isPresent() || result.get() != ButtonType.YES)
+                    event.consume();
+            } else if (moduleUIListener != null && !moduleUIListener.guiCloseRequest(proof.isModified())) {
+                event.consume();
+            }
+        });
         saveManager = new SaveManager(this);
         fontObjectProperty = new SimpleObjectProperty<>(new Font(14));
         rulesManager = new RulesManager();
@@ -254,8 +276,8 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
 
         MenuItem newProof = new MenuItem("New Proof");
         MenuItem openProof = new MenuItem("Open Proof");
-        MenuItem saveProof = new MenuItem("Save Proof");
-        MenuItem saveAsProof = new MenuItem("Save Proof As");
+        saveProof = new MenuItem("Save Proof");
+        saveAsProof = new MenuItem("Save Proof As");
         MenuItem quit = new MenuItem("Quit");
 
         newProof.setOnAction(actionEvent -> newProof());
@@ -397,6 +419,15 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     }
 
     private boolean saveProof(boolean saveAs) {
+        if (!saveAs && moduleOptions != null) {
+            if (moduleOptions.arisHandleDefaultSave() && moduleUIListener != null) {
+                moduleUIListener.saveProblemLocally();
+                proof.saved();
+                return true;
+            } else if (!moduleOptions.allowDefaultSave()) {
+                saveAs = true;
+            }
+        }
         boolean error;
         try {
             if (saveAs || saveFile == null) {
@@ -501,27 +532,24 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
 
     @Override
     public void setDescription(String description) {
-        boolean visible = description != null && description.length() > 0;
-        Platform.runLater(() -> {
-            descriptionBox.setVisible(visible);
-            descriptionBox.setManaged(visible);
-            descriptionText.setText(description);
-        });
+        descriptionText.setText(description);
     }
 
     @Override
-    public void addCloseListener(Runnable runnable) {
-        closeListeners.add(runnable);
+    public void setModuleUIListener(ModuleUIListener listener) {
+        moduleUIListener = listener;
     }
 
     @Override
-    public void removeCloseListener(Runnable runnable) {
-        closeListeners.remove(runnable);
+    public Window getUIWindow() {
+        return primaryStage;
     }
 
     @Override
     public ArisProofProblem getProblem() {
-        return new ArisProofProblem(proof);
+        if (assignProblem == null)
+            assignProblem = new ArisProofProblem(proof);
+        return assignProblem;
     }
 
     private synchronized void autoScroll(Bounds contentBounds) {
@@ -563,8 +591,6 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     @FXML
     private void initialize() {
         primaryStage.getIcons().add(new Image(LibAris.getInstance().getModuleIcon()));
-        descriptionBox.setVisible(false);
-        descriptionBox.setManaged(false);
         scrollPane.getContent().boundsInLocalProperty().addListener((observableValue, oldBounds, newBounds) -> {
             if (oldBounds.getHeight() != newBounds.getHeight() && selectedLine.get() >= 0)
                 autoScroll(newBounds);
@@ -599,6 +625,13 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
             proof.verifyProof();
         }
         selectedLine.set(-1);
+
+        descriptionBox.visibleProperty().bind(Bindings.createBooleanBinding(() -> (descriptionText.getText() != null && descriptionText.getText().length() > 0) || uploadBtn.isVisible(), descriptionText.textProperty(), uploadBtn.visibleProperty()));
+        descriptionBox.managedProperty().bind(descriptionBox.visibleProperty());
+        arisAssignLbl.textProperty().bind(Bindings.createStringBinding(() -> descriptionText.getText() != null && descriptionText.getText().length() > 0 ? "Aris Assign: " : "Aris Assign", descriptionText.textProperty()));
+
+        uploadBtn.setVisible(false);
+        uploadBtn.setManaged(false);
 
         // This should be the last thing in the initialize method
         loaded = true;
@@ -926,6 +959,21 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
                 "This will show up if this file is submitted and may affect your grade.");
         alert.getDialogPane().setPrefWidth(500);
         alert.showAndWait();
+    }
+
+    public void setUIOptions(ModuleUIOptions options) {
+        this.moduleOptions = options;
+        saveProof.disableProperty().set(!options.allowDefaultSave() && !options.allowSaveAs());
+        saveAsProof.disableProperty().set(!options.allowSaveAs());
+        uploadBtn.setVisible(options.showUploadButton());
+        uploadBtn.setManaged(options.showUploadButton());
+        setDescription(options.getGuiDescription());
+    }
+
+    @FXML
+    public void upload() {
+        if (moduleUIListener != null)
+            moduleUIListener.uploadProblem();
     }
 
 }

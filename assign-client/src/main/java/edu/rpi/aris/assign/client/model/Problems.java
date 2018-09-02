@@ -1,6 +1,9 @@
 package edu.rpi.aris.assign.client.model;
 
+import edu.rpi.aris.assign.LibAssign;
+import edu.rpi.aris.assign.ModuleService;
 import edu.rpi.aris.assign.NetUtil;
+import edu.rpi.aris.assign.ProblemConverter;
 import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
@@ -20,12 +23,17 @@ import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.layout.HBox;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 
 public class Problems implements ResponseHandler<ProblemsGetMsg> {
 
+    private static final File problemStorageDir = new File(Config.CLIENT_STORAGE_DIR, "problems");
     private final SimpleBooleanProperty loadError = new SimpleBooleanProperty(false);
     private final ObservableList<Problem> problems = FXCollections.observableArrayList();
     private final HashMap<Integer, Problem> problemMap = new HashMap<>();
@@ -106,6 +114,38 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         Client.getInstance().processMessage(new ProblemDeleteMsg(problem.getPid()), deleteHandler);
     }
 
+    public <T extends ArisModule> void saveLocalModification(Problem problemInfo, edu.rpi.aris.assign.Problem<T> problem, ArisModule<T> module) {
+        if (problemStorageDir.exists() && !problemStorageDir.isDirectory()) {
+            if (!problemStorageDir.delete()) {
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Failed to save", "Failed to create problem storage directory");
+                return;
+            }
+        }
+        if (!problemStorageDir.exists()) {
+            if (!problemStorageDir.mkdirs()) {
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Failed to save", "Failed to create problem storage directory");
+                return;
+            }
+        }
+        File saveFile = new File(problemStorageDir, String.valueOf(problemInfo.getPid()));
+        try (FileOutputStream fos = new FileOutputStream(saveFile)) {
+            module.getProblemConverter().convertProblem(problem, fos, false);
+        } catch (Exception e) {
+            AssignClient.getInstance().getMainWindow().displayErrorMsg("Failed to save", "An error occurred while trying to save the file locally");
+        }
+
+    }
+
+    public <T extends ArisModule> void uploadModifiedProblem(Problem problemInfo, edu.rpi.aris.assign.Problem<T> problem) {
+        userInfo.startLoading();
+        Client.getInstance().processMessage(new ProblemEditMsg<>(problemInfo.getPid(), problemInfo.getModule(), problem), new ProblemModifyResponseHandler<>(problemInfo));
+    }
+
+    private <T extends ArisModule> void fetchAndModify(int pid, ArisModule<T> module) {
+        userInfo.startLoading();
+        Client.getInstance().processMessage(new ProblemFetchMessage<>(pid, module.getModuleName()), new ProblemFetchResponseHandler<>(module));
+    }
+
     private class ProblemCreateResponseHandler<T extends ArisModule> implements ResponseHandler<ProblemCreateMsg<T>> {
         @Override
         public void response(ProblemCreateMsg<T> message) {
@@ -146,6 +186,43 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         }
     }
 
+    private class ProblemModifyResponseHandler<T extends ArisModule> implements ResponseHandler<ProblemEditMsg<T>> {
+
+        private final Problem problemInfo;
+
+        public ProblemModifyResponseHandler(Problem problemInfo) {
+            this.problemInfo = problemInfo;
+        }
+
+        @Override
+        public void response(ProblemEditMsg<T> message) {
+            Platform.runLater(() -> userInfo.finishLoading());
+            File saveFile = new File(problemStorageDir, String.valueOf(problemInfo.getPid()));
+            if (saveFile.exists())
+                if (!saveFile.delete())
+                    LibAssign.showExceptionError(new IOException("Failed to delete local problem file: " + saveFile.getAbsolutePath()));
+        }
+
+        @Override
+        public void onError(boolean suggestRetry, ProblemEditMsg<T> msg) {
+            if (suggestRetry)
+                uploadModifiedProblem(problemInfo, msg.getProblem());
+            else {
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Upload Error", "An error occurred while uploading the problem", true);
+                ArisModule<T> module = ModuleService.getService().getModule(msg.getModuleName());
+                if (module != null) {
+                    try {
+                        gui.modifyProblem(problemInfo, msg.getProblem(), module);
+                    } catch (Exception e) {
+                        LibAssign.showExceptionError(e);
+                    }
+                } else
+                    AssignClient.getInstance().getMainWindow().displayErrorMsg("Missing module", "Unable to find module \"" + msg.getModuleName() + "\"");
+            }
+            Platform.runLater(() -> userInfo.finishLoading());
+        }
+    }
+
     private class ProblemDeleteResponseHandler implements ResponseHandler<ProblemDeleteMsg> {
 
         @Override
@@ -163,6 +240,39 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
                 renamed(problemMap.get(msg.getPid()));
             else
                 AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred while deleting the problem");
+            Platform.runLater(() -> userInfo.finishLoading());
+        }
+    }
+
+    private class ProblemFetchResponseHandler<T extends ArisModule> implements ResponseHandler<ProblemFetchMessage<T>> {
+
+        private final ArisModule<T> module;
+
+        public ProblemFetchResponseHandler(ArisModule<T> module) {
+            this.module = module;
+        }
+
+        @Override
+        public void response(ProblemFetchMessage<T> message) {
+            Platform.runLater(() -> {
+                Problem problemInfo = problemMap.get(message.getPid());
+                if (problemInfo != null) {
+                    try {
+                        gui.modifyProblem(problemInfo, message.getProblem(), module);
+                    } catch (Exception e) {
+                        LibAssign.showExceptionError(e);
+                    }
+                }
+                userInfo.finishLoading();
+            });
+        }
+
+        @Override
+        public void onError(boolean suggestRetry, ProblemFetchMessage<T> msg) {
+            if (suggestRetry)
+                fetchAndModify(msg.getPid(), module);
+            else
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred fetching the problem");
             Platform.runLater(() -> userInfo.finishLoading());
         }
     }
@@ -198,8 +308,23 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
             modifyColumn.set(box);
         }
 
-        private void modify() {
-            AssignGui.getInstance().notImplemented("Problem modification");
+        private <T extends ArisModule> void modify() {
+            File localFile = new File(problemStorageDir, String.valueOf(pid));
+            ArisModule<T> module = ModuleService.getService().getModule(getModule());
+            if (module == null) {
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Missing Module", "Client is missing \"" + getModule() + "\" module");
+                return;
+            }
+            if (localFile.exists()) {
+                try (FileInputStream fis = new FileInputStream(localFile)) {
+                    ProblemConverter<T> converter = module.getProblemConverter();
+                    gui.modifyProblem(this, converter.loadProblem(fis, false), module);
+                } catch (Exception e) {
+                    LibAssign.showExceptionError(e);
+                }
+            } else {
+                fetchAndModify(pid, module);
+            }
         }
 
         private void delete() {

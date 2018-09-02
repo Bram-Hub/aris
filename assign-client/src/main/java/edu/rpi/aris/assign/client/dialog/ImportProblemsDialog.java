@@ -90,7 +90,7 @@ public class ImportProblemsDialog<T extends ArisModule> extends Dialog<List<Pair
             try {
                 String filename = f.getName();
                 String name = filename.contains(".") ? filename.substring(0, filename.lastIndexOf('.')) : filename;
-                Problem<T> problem = converter.loadProblem(new FileInputStream(f));
+                Problem<T> problem = converter.loadProblem(new FileInputStream(f), false);
                 results.put(filename, new Pair<>(name, problem));
                 table.getItems().add(new ImmutableTriple<>(filename, new SimpleStringProperty(name), problem));
             } catch (Exception e) {
@@ -102,7 +102,17 @@ public class ImportProblemsDialog<T extends ArisModule> extends Dialog<List<Pair
     private void openProblem(String filename, Problem<T> problem) {
         ModuleUI<T> gui = guis.computeIfAbsent(filename, fn -> {
             try {
-                ModuleUI<T> ui = client.createModuleGui(EditMode.CREATE_EDIT_PROBLEM, "Edit Problem", problem);
+                ModuleUI<T> ui = client.createModuleGui(ProblemDialog.UI_OPTIONS, problem);
+                ui.setModuleUIListener(new ModuleUIAdapter() {
+                    @Override
+                    public void uploadProblem() {
+                        try {
+                            ui.hide();
+                        } catch (Exception e) {
+                            LibAssign.showExceptionError(e);
+                        }
+                    }
+                });
                 ui.setModal(Modality.WINDOW_MODAL, getOwner());
                 return ui;
             } catch (Exception e) {

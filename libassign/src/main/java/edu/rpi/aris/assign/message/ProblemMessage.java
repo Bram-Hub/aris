@@ -53,7 +53,7 @@ public abstract class ProblemMessage<T extends ArisModule> extends DataMessage {
         if (size != in.read(data))
             throw new IOException("Failed to read all data from stream");
         ByteArrayInputStream bais = new ByteArrayInputStream(data);
-        problem = converter.loadProblem(bais);
+        problem = converter.loadProblem(bais, false);
         bais.close();
     }
 
