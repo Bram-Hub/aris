@@ -1,6 +1,6 @@
 apply plugin: 'application'
 
-mainClassName = 'edu.rpi.aris.view.Aris'
+mainClassName = 'edu.rpi.aris.gui.Aris'
 
 dependencies {
 
