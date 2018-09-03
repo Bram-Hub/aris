@@ -97,7 +97,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
 
     public void getUserInfo(boolean refresh, Runnable onLoad) {
         if (refresh || !loggedIn.get()) {
-            if (!lock.tryLock())
+            if (lock.isLocked())
                 return;
             this.onLoad = onLoad;
             startLoading();
@@ -146,12 +146,8 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
                 selectedClass.set(classes.get(0));
             loggedIn.set(true);
             finishLoading();
-            try {
-                if (onLoad != null)
-                    onLoad.run();
-            } finally {
-                lock.unlock();
-            }
+            if (onLoad != null)
+                onLoad.run();
         });
     }
 
@@ -164,8 +160,12 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
             classMap.clear();
             if (suggestRetry)
                 getUserInfo(false, onLoad);
-            lock.unlock();
         });
+    }
+
+    @Override
+    public ReentrantLock getLock() {
+        return lock;
     }
 
     public ClassInfo getSelectedClass() {
@@ -205,6 +205,11 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
                 AssignClient.getInstance().getMainWindow().displayErrorMsg("Error Deleting Class", "An error occured while attempting to delete the class");
             Platform.runLater(UserInfo.this::finishLoading);
         }
+
+        @Override
+        public ReentrantLock getLock() {
+            return lock;
+        }
     }
 
     private class ClassCreateResponseHandler implements ResponseHandler<ClassCreateMsg> {
@@ -228,6 +233,11 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
             else
                 AssignClient.getInstance().getMainWindow().displayErrorMsg("Error Creating Class", "An error occurred while attempting to create the class");
             Platform.runLater(UserInfo.this::finishLoading);
+        }
+
+        @Override
+        public ReentrantLock getLock() {
+            return lock;
         }
     }
 

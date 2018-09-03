@@ -17,11 +17,11 @@ import java.util.Collection;
 public class AssignmentCreateMsg extends Message {
 
     private static final Logger logger = LogManager.getLogger(AssignmentCreateMsg.class);
-
     private final int cid;
     private final ArrayList<Integer> problems = new ArrayList<>();
     private final String name;
     private final ZonedDateTime dueDate;
+    private int aid;
 
     public AssignmentCreateMsg(int cid, String name, ZonedDateTime dueDate) {
         this.cid = cid;
@@ -50,13 +50,13 @@ public class AssignmentCreateMsg extends Message {
             return ErrorType.UNAUTHORIZED;
         try (PreparedStatement select = connection.prepareStatement("SELECT id FROM assignment ORDER BY id DESC LIMIT 1;");
              PreparedStatement statement = connection.prepareStatement("INSERT INTO assignment VALUES(?, ?, ?, ?, ?, ?);")) {
-            int id = 1;
+            aid = 1;
             try (ResultSet rs = select.executeQuery()) {
                 if (rs.next())
-                    id = rs.getInt(1) + 1;
+                    aid = rs.getInt(1) + 1;
             }
             for (int pid : problems) {
-                statement.setInt(1, id);
+                statement.setInt(1, aid);
                 statement.setInt(2, cid);
                 statement.setInt(3, pid);
                 statement.setString(4, name);
@@ -80,5 +80,25 @@ public class AssignmentCreateMsg extends Message {
             if (i == null)
                 return false;
         return cid > 0 && name != null && dueDate != null;
+    }
+
+    public int getAid() {
+        return aid;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public ArrayList<Integer> getProblems() {
+        return problems;
+    }
+
+    public ZonedDateTime getDueDate() {
+        return dueDate;
+    }
+
+    public int getCid() {
+        return cid;
     }
 }

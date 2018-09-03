@@ -8,9 +8,9 @@
       <Button fx:id="btnCreate" mnemonicParsing="false" onAction="#create" text="Create Assignment" />
        <TableView fx:id="tblAssignments" VBox.vgrow="ALWAYS">
         <columns>
-          <TableColumn prefWidth="75.0" text="Assignment" />
-          <TableColumn prefWidth="75.0" text="Due Date" />
-            <TableColumn prefWidth="75.0" text="Completed" />
+            <TableColumn fx:id="name" prefWidth="75.0" text="Assignment"/>
+            <TableColumn fx:id="dueDate" prefWidth="75.0" text="Due Date"/>
+            <TableColumn fx:id="status" prefWidth="75.0" text="Completed"/>
             <TableColumn fx:id="deleteColumn" prefWidth="75.0" text="Delete Assignment" />
         </columns>
          <columnResizePolicy>

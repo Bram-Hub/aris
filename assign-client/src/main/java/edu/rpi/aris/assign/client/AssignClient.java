@@ -51,7 +51,7 @@ public class AssignClient extends Application implements ArisExceptionHandler {
     public static void main(String[] args) throws IOException {
         LibAssign.setLogLocation(new File(Config.CLIENT_STORAGE_DIR, "logs"));
         LibAssign.initModuleService(Config.CLIENT_MODULES_DIR, false);
-        logger.info("Starting Assign Client with Java " + SystemUtils.JAVA_RUNTIME_VERSION);
+        logger.info("Starting Assign Client with Java " + SystemUtils.JAVA_RUNTIME_VERSION + " " + SystemUtils.JAVA_VENDOR);
         logger.info("Loaded client modules: " + ModuleService.getService().moduleNames());
         LibAssign.getInstance().init(false, args, new MainCallbackListener() {
             @Override

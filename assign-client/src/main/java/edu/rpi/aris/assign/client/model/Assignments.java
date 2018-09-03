@@ -1,26 +1,35 @@
 package edu.rpi.aris.assign.client.model;
 
 import edu.rpi.aris.assign.NetUtil;
+import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
+import edu.rpi.aris.assign.client.controller.AssignGui;
 import edu.rpi.aris.assign.client.controller.AssignmentsGui;
+import edu.rpi.aris.assign.message.AssignmentCreateMsg;
 import edu.rpi.aris.assign.message.AssignmentsGetMsg;
 import edu.rpi.aris.assign.message.MsgUtil;
 import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
+import java.time.ZonedDateTime;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
 
+    private final AssignmentCreateResponseHandler createHandler = new AssignmentCreateResponseHandler();
     private final ObservableList<Assignment> assignments = FXCollections.observableArrayList();
     private final SimpleBooleanProperty loadError = new SimpleBooleanProperty(false);
     private final AssignmentsGui gui;
+    private final ReentrantLock lock = new ReentrantLock(true);
     private UserInfo userInfo = UserInfo.getInstance();
     private int loaded = -1;
 
@@ -50,6 +59,7 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
     public void response(AssignmentsGetMsg message) {
         Platform.runLater(() -> {
             loadError.set(false);
+            clear();
             for (MsgUtil.AssignmentData data : message.getAssignments())
                 assignments.add(new Assignment(data));
             Collections.sort(assignments);
@@ -69,6 +79,11 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
         });
     }
 
+    @Override
+    public ReentrantLock getLock() {
+        return lock;
+    }
+
     public boolean isLoadError() {
         return loadError.get();
     }
@@ -77,26 +92,39 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
         return loadError;
     }
 
+    public void createAssignment(int cid, String name, ZonedDateTime date, Collection<Integer> pids) {
+        userInfo.startLoading();
+        AssignmentCreateMsg msg = new AssignmentCreateMsg(cid, name, date);
+        msg.addProofs(pids);
+        Client.getInstance().processMessage(msg, createHandler);
+    }
+
     public static class Assignment implements Comparable<Assignment> {
 
         private final int aid;
         private final SimpleStringProperty name = new SimpleStringProperty();
         private final SimpleStringProperty status = new SimpleStringProperty();
         private final SimpleObjectProperty<Date> dueDate = new SimpleObjectProperty<>();
+        private final SimpleStringProperty dueDateStr = new SimpleStringProperty();
+
+        public Assignment(int aid, String name, String status, Date dueDate) {
+            this.aid = aid;
+            this.name.set(name);
+            this.status.set(status);
+            this.dueDate.set(dueDate);
+            dueDateStr.bind(Bindings.createStringBinding(() -> this.dueDate.get() == null ? null : AssignGui.DATE_FORMAT.format(this.dueDate.get()), this.dueDate));
+        }
 
         public Assignment(MsgUtil.AssignmentData data) {
-            aid = data.id;
-            name.set(data.name);
-            status.set("Unknown");
-            dueDate.set(new Date(NetUtil.UTCToMilli(data.dueDateUTC)));
+            this(data.id, data.name, "Unknown", new Date(NetUtil.UTCToMilli(data.dueDateUTC)));
         }
 
         public int getAid() {
             return aid;
         }
 
-        public SimpleObjectProperty<Date> dueDateProperty() {
-            return dueDate;
+        public SimpleStringProperty dueDateProperty() {
+            return dueDateStr;
         }
 
         public Date getDueDate() {
@@ -128,6 +156,34 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
             return dueDate.get().compareTo(o.dueDate.get());
         }
 
+    }
+
+    private class AssignmentCreateResponseHandler implements ResponseHandler<AssignmentCreateMsg> {
+
+        @Override
+        public void response(AssignmentCreateMsg message) {
+            Platform.runLater(() -> {
+                if (userInfo.getSelectedClass().getClassId() == message.getCid()) {
+                    Assignment assignment = new Assignment(message.getAid(), message.getName(), "Unknown", new Date(NetUtil.UTCToMilli(message.getDueDate())));
+                    assignments.add(assignment);
+                }
+                userInfo.finishLoading();
+            });
+        }
+
+        @Override
+        public void onError(boolean suggestRetry, AssignmentCreateMsg msg) {
+            if (suggestRetry)
+                createAssignment(msg.getCid(), msg.getName(), msg.getDueDate(), msg.getProblems());
+            else
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred creating the assignment");
+            Platform.runLater(() -> userInfo.finishLoading());
+        }
+
+        @Override
+        public ReentrantLock getLock() {
+            return lock;
+        }
     }
 
 }

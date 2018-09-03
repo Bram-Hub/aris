@@ -1,7 +1,6 @@
 package edu.rpi.aris.assign.client.dialog;
 
-import edu.rpi.aris.assign.client.guiold.ProblemInfo;
-import edu.rpi.aris.assign.client.guiold.ProblemList;
+import edu.rpi.aris.assign.client.model.Problems;
 import javafx.beans.binding.Bindings;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
@@ -25,24 +24,25 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-public class AssignmentDialog extends Dialog<Triple<String, LocalDateTime, Collection<ProblemInfo>>> {
+public class AssignmentDialog extends Dialog<Triple<String, LocalDateTime, Collection<Problems.Problem>>> {
 
     private static final Pattern timePattern = Pattern.compile("(?i)(?<hour>1[0-2]|0?[1-9]):(?<min>[0-5][0-9]) *?(?<ap>AM|PM)");
     private static final SimpleDateFormat timeFormat = new SimpleDateFormat("h:mm a");
-    private final ProblemList availableProofs;
+    private final ArrayList<Problems.Problem> availableProblems = new ArrayList<>();
     @FXML
     private TextField nameField;
     @FXML
     private DatePicker dueDate;
     @FXML
-    private VBox proofBox;
+    private VBox problemBox;
     @FXML
     private TextField timeInput;
     private Button okBtn;
     private boolean edit = false;
 
-    public AssignmentDialog(Window parent, ProblemList availableProofs) throws IOException {
-        this.availableProofs = availableProofs;
+    public AssignmentDialog(Window parent, Collection<Problems.Problem> availableProblems) throws IOException {
+        this.availableProblems.addAll(availableProblems);
+        Collections.sort(this.availableProblems);
         initModality(Modality.WINDOW_MODAL);
         initOwner(parent);
         FXMLLoader loader = new FXMLLoader(AssignmentDialog.class.getResource("/edu/rpi/aris/assign/client/view/assignment_dialog.fxml"));
@@ -71,15 +71,16 @@ public class AssignmentDialog extends Dialog<Triple<String, LocalDateTime, Colle
                     hour = 0;
             }
             LocalDateTime date = dueDate.getValue().atTime(hour, min);
-            List<ProblemInfo> list = proofBox.getChildren().stream().map(node -> (ProblemInfo) ((ComboBox) ((HBox) node).getChildren().get(0)).getSelectionModel().getSelectedItem()).filter(Objects::nonNull).collect(Collectors.toList());
+            List<Problems.Problem> list = problemBox.getChildren().stream().map(node -> (Problems.Problem) ((ComboBox) ((HBox) node).getChildren().get(0)).getSelectionModel().getSelectedItem()).filter(Objects::nonNull).collect(Collectors.toList());
             return new ImmutableTriple<>(name, date, list);
         });
     }
 
-    public AssignmentDialog(Window parent, ProblemList availableProofs, String name, Date dueDate, Set<ProblemInfo> proofs) throws IOException {
-        this(parent, availableProofs);
-        proofBox.getChildren().clear();
-        for (ProblemInfo info : proofs)
+    public AssignmentDialog(Window parent, Collection<Problems.Problem> availableProblems, String name, Date dueDate, Collection<Problems.Problem> problems) throws IOException {
+        this.availableProblems.addAll(availableProblems);
+        Collections.sort(this.availableProblems);
+        problemBox.getChildren().clear();
+        for (Problems.Problem info : problems)
             addSelector().getSelectionModel().select(info);
         nameField.setText(name);
         timeInput.setText(timeFormat.format(dueDate));
@@ -87,18 +88,18 @@ public class AssignmentDialog extends Dialog<Triple<String, LocalDateTime, Colle
         edit = true;
     }
 
-    private ComboBox<ProblemInfo> addSelector() {
+    private ComboBox<Problems.Problem> addSelector() {
         HBox box = new HBox(5);
-        ComboBox<ProblemInfo> combo = new ComboBox<>();
-        combo.setPromptText("Select Proof");
-        combo.setItems(availableProofs.getProofs());
+        ComboBox<Problems.Problem> combo = new ComboBox<>();
+        combo.setPromptText("Select Problem");
+        combo.getItems().setAll(availableProblems);
         combo.setMaxWidth(Double.MAX_VALUE);
-        combo.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<ProblemInfo>() {
+        combo.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<Problems.Problem>() {
 
             boolean added = false;
 
             @Override
-            public void changed(ObservableValue<? extends ProblemInfo> observable, ProblemInfo oldValue, ProblemInfo newValue) {
+            public void changed(ObservableValue<? extends Problems.Problem> observable, Problems.Problem oldValue, Problems.Problem newValue) {
                 if (oldValue == null && !added) {
                     addSelector();
                     added = true;
@@ -112,28 +113,28 @@ public class AssignmentDialog extends Dialog<Triple<String, LocalDateTime, Colle
                 Alert alert = new Alert(Alert.AlertType.WARNING);
                 alert.initModality(Modality.WINDOW_MODAL);
                 alert.initOwner(getDialogPane().getScene().getWindow());
-                alert.setTitle("Remove Proof?");
-                alert.setHeaderText("Are you sure you want to remove this proof");
-                alert.setContentText("This will also delete any student submissions\nfor this proof on this assignment");
+                alert.setTitle("Remove Problem?");
+                alert.setHeaderText("Are you sure you want to remove this problem");
+                alert.setContentText("This will also delete any student submissions\nfor this problem on this assignment");
                 alert.getButtonTypes().setAll(ButtonType.NO, ButtonType.YES);
                 alert.getDialogPane().getScene().getWindow().sizeToScene();
                 Optional<ButtonType> result = alert.showAndWait();
                 if (!result.isPresent() || result.get() != ButtonType.YES)
                     return;
             }
-            proofBox.getChildren().remove(box);
+            problemBox.getChildren().remove(box);
             getDialogPane().getScene().getWindow().sizeToScene();
         });
         HBox.setHgrow(combo, Priority.ALWAYS);
         box.getChildren().addAll(combo, delete);
-        proofBox.getChildren().add(box);
+        problemBox.getChildren().add(box);
         getDialogPane().getScene().getWindow().sizeToScene();
         return combo;
     }
 
     @FXML
     private void initialize() {
-        okBtn.disableProperty().bind(Bindings.createBooleanBinding(() -> !timePattern.matcher(timeInput.getText()).matches() || nameField.getText().length() == 0 || dueDate.getValue() == null || proofBox.getChildren().size() < 2, timeInput.textProperty(), nameField.textProperty(), dueDate.valueProperty(), proofBox.getChildren()));
+        okBtn.disableProperty().bind(Bindings.createBooleanBinding(() -> !timePattern.matcher(timeInput.getText()).matches() || nameField.getText().length() == 0 || dueDate.getValue() == null || problemBox.getChildren().size() < 2, timeInput.textProperty(), nameField.textProperty(), dueDate.valueProperty(), problemBox.getChildren()));
         addSelector();
     }
 }

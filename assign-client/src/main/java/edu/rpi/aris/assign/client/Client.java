@@ -457,11 +457,13 @@ public class Client implements MessageCommunication {
 
     public <T extends Message> void processMessage(T message, ResponseHandler<T> responseHandler) {
         processPool.submit(() -> {
+            ReentrantLock lock = null;
             try {
+                lock = responseHandler.getLock();
+                if (lock != null)
+                    lock.lock();
                 connect();
                 @SuppressWarnings("unchecked") T reply = (T) message.sendAndGet(this);
-                if (responseHandler == null)
-                    return;
                 try {
                     if (reply == null)
                         responseHandler.onError(true, message);
@@ -511,6 +513,8 @@ public class Client implements MessageCommunication {
                 responseHandler.onError(false, message);
             } finally {
                 disconnect();
+                if (lock != null)
+                    lock.unlock();
             }
         });
     }

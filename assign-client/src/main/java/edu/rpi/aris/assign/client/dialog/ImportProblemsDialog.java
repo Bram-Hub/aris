@@ -18,20 +18,18 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ImportProblemsDialog<T extends ArisModule> extends Dialog<List<Pair<String, Problem<T>>>> {
 
     private static final Logger log = LogManager.getLogger();
 
     private final String moduleName;
-    private final Collection<File> files;
-    private final ProblemConverter<T> converter;
+    private final Map<File, Problem<T>> files;
     private final HashMap<String, Pair<String, Problem<T>>> results = new HashMap<>();
     private final HashMap<String, ModuleUI<T>> guis = new HashMap<>();
     private final ArisClientModule<T> client;
@@ -48,10 +46,9 @@ public class ImportProblemsDialog<T extends ArisModule> extends Dialog<List<Pair
 
     private Button okBtn;
 
-    public ImportProblemsDialog(Window parent, String moduleName, Collection<File> files, ProblemConverter<T> converter) throws IOException {
+    public ImportProblemsDialog(Window parent, String moduleName, Map<File, Problem<T>> files) throws IOException {
         this.moduleName = moduleName;
         this.files = files;
-        this.converter = converter;
         client = ModuleService.getService().getClientModule(moduleName);
         initModality(Modality.WINDOW_MODAL);
         initOwner(parent);
@@ -86,15 +83,14 @@ public class ImportProblemsDialog<T extends ArisModule> extends Dialog<List<Pair
         filenameColumn.setStyle("-fx-alignment: CENTER-LEFT;");
         problemNameColumn.setStyle("-fx-alignment: CENTER-LEFT;");
         openColumn.setStyle("-fx-alignment: CENTER;");
-        for (File f : files) {
+        for (Map.Entry<File, Problem<T>> pair : files.entrySet()) {
             try {
-                String filename = f.getName();
+                String filename = pair.getKey().getName();
                 String name = filename.contains(".") ? filename.substring(0, filename.lastIndexOf('.')) : filename;
-                Problem<T> problem = converter.loadProblem(new FileInputStream(f), false);
-                results.put(filename, new Pair<>(name, problem));
-                table.getItems().add(new ImmutableTriple<>(filename, new SimpleStringProperty(name), problem));
+                results.put(filename, new Pair<>(name, pair.getValue()));
+                table.getItems().add(new ImmutableTriple<>(filename, new SimpleStringProperty(name), pair.getValue()));
             } catch (Exception e) {
-                log.error("Failed to load file: " + f.getAbsolutePath(), e);
+                log.error("Failed to load file: " + pair.getKey().getAbsolutePath(), e);
             }
         }
     }

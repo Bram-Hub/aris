@@ -1,11 +1,10 @@
 package edu.rpi.aris.assign.client.guiold;
 
 import edu.rpi.aris.assign.LibAssign;
+import edu.rpi.aris.assign.ModuleService;
 import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.Problem;
 import edu.rpi.aris.assign.client.Client;
-import edu.rpi.aris.assign.ModuleService;
-import edu.rpi.aris.assign.client.dialog.AssignmentDialog;
 import edu.rpi.aris.assign.client.model.Config;
 import edu.rpi.aris.assign.message.*;
 import javafx.application.Platform;
@@ -504,12 +503,12 @@ public class AssignmentWindow {
     @FXML
     private void createAssignment() throws IOException {
         problemList.load(false);
-        AssignmentDialog dialog = new AssignmentDialog(stage, problemList);
-        Optional<Triple<String, LocalDateTime, Collection<ProblemInfo>>> result = dialog.showAndWait();
-        if (result.isPresent()) {
-            Triple<String, LocalDateTime, Collection<ProblemInfo>> r = result.get();
-            addAssignment(r.getLeft(), r.getMiddle(), r.getRight());
-        }
+//        AssignmentDialog dialog = new AssignmentDialog(stage, problemList);
+//        Optional<Triple<String, LocalDateTime, Collection<ProblemInfo>>> result = dialog.showAndWait();
+//        if (result.isPresent()) {
+//            Triple<String, LocalDateTime, Collection<ProblemInfo>> r = result.get();
+//            addAssignment(r.getLeft(), r.getMiddle(), r.getRight());
+//        }
     }
 
 //    public void transmitMessage(final Message msg, final Consumer<Message> call) {

@@ -21,17 +21,20 @@ import javafx.stage.Modality;
 import javafx.stage.Window;
 import javafx.util.Pair;
 import javafx.util.converter.DefaultStringConverter;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Triple;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class ProblemsGui implements TabGui {
 
+    private static final Logger log = LogManager.getLogger();
     private static final ModuleUIOptions MODIFY_OPTIONS = new ModuleUIOptions(EditMode.CREATE_EDIT_PROBLEM, "Modify Problem", true, true, true, true, false);
     private static final FileChooser.ExtensionFilter allFiles = new FileChooser.ExtensionFilter("All Files", "*");
     @FXML
@@ -62,6 +65,10 @@ public class ProblemsGui implements TabGui {
 
     public Parent getRoot() {
         return root;
+    }
+
+    public Problems getProblems() {
+        return problems;
     }
 
     @Override
@@ -258,23 +265,42 @@ public class ProblemsGui implements TabGui {
             return;
         try {
             ProblemConverter<T> problemConverter = module.getProblemConverter();
-            if (files.size() == 1) {
-                File file = files.get(0);
+            HashMap<File, Problem<T>> problems = new HashMap<>();
+            HashSet<File> errors = new HashSet<>();
+            for (File f : files) {
+                try (FileInputStream fis = new FileInputStream(f)) {
+                    problems.put(f, problemConverter.loadProblem(fis, false));
+                } catch (Exception e) {
+                    log.error("Failed to load problem from file: " + f.getAbsolutePath(), e);
+                    errors.add(f);
+                }
+            }
+            if (errors.size() > 0) {
+                Alert alert = new Alert(Alert.AlertType.WARNING);
+                alert.setTitle("Failed to load files");
+                alert.setHeaderText("Some of the selected files failed to load");
+                alert.setContentText("Files: " + StringUtils.join(errors.stream().map(File::getName).collect(Collectors.toList()), ", "));
+                alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+                alert.initModality(Modality.WINDOW_MODAL);
+                alert.initOwner(AssignGui.getInstance().getStage());
+                alert.showAndWait();
+            }
+            if (problems.size() == 1) {
+                File file = problems.keySet().iterator().next();
+                Problem<T> problem = problems.get(file);
                 String name = file.getName();
                 if (name.contains("."))
                     name = name.substring(0, name.lastIndexOf('.'));
-                Problem<T> problem = problemConverter.loadProblem(new FileInputStream(file), false);
                 ProblemDialog<T> dialog = new ProblemDialog<>(AssignGui.getInstance().getStage(), module.getModuleName(), name, problem);
                 Optional<Triple<String, String, Problem<T>>> result = dialog.showAndWait();
-                result.ifPresent(triple -> problems.createProblem(triple.getLeft(), triple.getMiddle(), triple.getRight()));
-            } else {
-                ImportProblemsDialog<T> dialog = new ImportProblemsDialog<>(AssignGui.getInstance().getStage(), module.getModuleName(), files, problemConverter);
+                result.ifPresent(triple -> this.problems.createProblem(triple.getLeft(), triple.getMiddle(), triple.getRight()));
+            } else if (problems.size() > 0) {
+                ImportProblemsDialog<T> dialog = new ImportProblemsDialog<>(AssignGui.getInstance().getStage(), module.getModuleName(), problems);
                 Optional<List<Pair<String, Problem<T>>>> result = dialog.showAndWait();
-                result.ifPresent(list -> list.forEach(pair -> problems.createProblem(pair.getKey(), module.getModuleName(), pair.getValue())));
+                result.ifPresent(list -> list.forEach(pair -> this.problems.createProblem(pair.getKey(), module.getModuleName(), pair.getValue())));
             }
         } catch (Exception e) {
             LibAssign.showExceptionError(e);
         }
     }
-
 }

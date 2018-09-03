@@ -2,7 +2,6 @@ package edu.rpi.aris.assign.client.guiold;
 
 import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.client.Client;
-import edu.rpi.aris.assign.client.dialog.AssignmentDialog;
 import edu.rpi.aris.assign.message.*;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -18,7 +17,6 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.IOException;
 import java.text.DateFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -158,54 +156,50 @@ public class Assignment {
     private void editAssignment() {
         ProblemList problemList = AssignmentWindow.instance.getProblemList();
         problemList.load(false);
-        try {
-            AssignmentDialog dialog = new AssignmentDialog(AssignmentWindow.instance.getStage(), problemList, name.get(), new Date(dueDate.get()), proofs);
-            Optional<Triple<String, LocalDateTime, Collection<ProblemInfo>>> result = dialog.showAndWait();
-            if (!result.isPresent())
-                return;
-            Triple<String, LocalDateTime, Collection<ProblemInfo>> info = result.get();
-            String newName = info.getLeft().equals(name.get()) ? null : info.getLeft();
-            ZonedDateTime newDueDate = info.getMiddle().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() == dueDate.get() ? null : NetUtil.localToUTC(info.getMiddle());
-            Collection<ProblemInfo> newProofs = info.getRight();
-            Set<ProblemInfo> remove = new HashSet<>();
-            Set<ProblemInfo> add = new HashSet<>();
-            for (ProblemInfo p : newProofs)
-                if (!proofs.contains(p))
-                    add.add(p);
-            for (ProblemInfo p : proofs)
-                if (!newProofs.contains(p))
-                    remove.add(p);
-            if (newName != null || newDueDate != null || remove.size() > 0 || add.size() > 0) {
-                new Thread(() -> {
-                    Client client = Client.getInstance();
-                    try {
-                        client.connect();
-                        AssignmentEditMsg msg = new AssignmentEditMsg(classId, id);
-                        msg.setName(newName);
-                        msg.setNewDueDate(newDueDate);
-                        for (ProblemInfo p : remove)
-                            msg.removeProblem(p.getProblemId());
-                        for (ProblemInfo p : add)
-                            msg.addProblem(p.getProblemId());
-                        msg = (AssignmentEditMsg) msg.sendAndGet(client);
-                        if(msg == null)
-                            return;
-                        Platform.runLater(() -> {
-                            if (newName != null)
-                                name.set(newName);
-                            if (newDueDate != null)
-                                dueDate.set(newDueDate.toInstant().toEpochMilli());
-                            load(true);
-                        });
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    } finally {
-                        client.disconnect();
-                    }
-                }).start();
-            }
-        } catch (IOException e) {
-            logger.error("Failed to show assignment dialog", e);
+        //            AssignmentDialog dialog = new AssignmentDialog(AssignmentWindow.instance.getStage(), problemList, name.get(), new Date(dueDate.get()), proofs);
+//            Optional<Triple<String, LocalDateTime, Collection<ProblemInfo>>> result = dialog.showAndWait();
+//            if (!result.isPresent())
+//                return;
+        Triple<String, LocalDateTime, Collection<ProblemInfo>> info = null;//result.get();
+        String newName = info.getLeft().equals(name.get()) ? null : info.getLeft();
+        ZonedDateTime newDueDate = info.getMiddle().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() == dueDate.get() ? null : NetUtil.localToUTC(info.getMiddle());
+        Collection<ProblemInfo> newProofs = info.getRight();
+        Set<ProblemInfo> remove = new HashSet<>();
+        Set<ProblemInfo> add = new HashSet<>();
+        for (ProblemInfo p : newProofs)
+            if (!proofs.contains(p))
+                add.add(p);
+        for (ProblemInfo p : proofs)
+            if (!newProofs.contains(p))
+                remove.add(p);
+        if (newName != null || newDueDate != null || remove.size() > 0 || add.size() > 0) {
+            new Thread(() -> {
+                Client client = Client.getInstance();
+                try {
+                    client.connect();
+                    AssignmentEditMsg msg = new AssignmentEditMsg(classId, id);
+                    msg.setName(newName);
+                    msg.setNewDueDate(newDueDate);
+                    for (ProblemInfo p : remove)
+                        msg.removeProblem(p.getProblemId());
+                    for (ProblemInfo p : add)
+                        msg.addProblem(p.getProblemId());
+                    msg = (AssignmentEditMsg) msg.sendAndGet(client);
+                    if (msg == null)
+                        return;
+                    Platform.runLater(() -> {
+                        if (newName != null)
+                            name.set(newName);
+                        if (newDueDate != null)
+                            dueDate.set(newDueDate.toInstant().toEpochMilli());
+                        load(true);
+                    });
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    client.disconnect();
+                }
+            }).start();
         }
     }
 

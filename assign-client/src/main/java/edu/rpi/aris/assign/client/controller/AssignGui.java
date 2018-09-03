@@ -107,11 +107,7 @@ public class AssignGui {
                 return;
             }
         }
-        userInfo.getUserInfo(false, () -> {
-            TabGui gui = tabGuis.get(tabPane.getSelectionModel().getSelectedItem());
-            if (gui != null)
-                gui.load(false);
-        });
+        userInfo.getUserInfo(false, null);
     }
 
     @FXML
@@ -266,4 +262,9 @@ public class AssignGui {
         alert.show();
     }
 
+    public ProblemsGui getProblemsGui() {
+        if (tabPane.getTabs().contains(problemTab))
+            return problemsGui;
+        return null;
+    }
 }

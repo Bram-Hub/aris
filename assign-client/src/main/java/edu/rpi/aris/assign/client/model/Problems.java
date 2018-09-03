@@ -30,6 +30,9 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 
 public class Problems implements ResponseHandler<ProblemsGetMsg> {
 
@@ -40,8 +43,10 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
     private final ProblemsGui gui;
     private final ProblemRenameResponseHandler renameHandler = new ProblemRenameResponseHandler();
     private final ProblemDeleteResponseHandler deleteHandler = new ProblemDeleteResponseHandler();
+    private final ReentrantLock lock = new ReentrantLock(true);
     private UserInfo userInfo = UserInfo.getInstance();
     private boolean loaded = false;
+    private HashSet<Consumer<Boolean>> onLoadComplete = new HashSet<>();
 
     public Problems(ProblemsGui gui) {
         this.gui = gui;
@@ -53,6 +58,14 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
             clear();
             Client.getInstance().processMessage(new ProblemsGetMsg(), this);
         }
+    }
+
+    public void addOnLoadComplete(Consumer<Boolean> onLoad) {
+        onLoadComplete.add(onLoad);
+    }
+
+    public void removeOnLoadComplete(Consumer<Boolean> onLoad) {
+        onLoadComplete.remove(onLoad);
     }
 
     @Override
@@ -67,6 +80,7 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
             Collections.sort(problems);
             loaded = true;
             userInfo.finishLoading();
+            onLoadComplete.forEach(c -> c.accept(true));
         });
     }
 
@@ -78,7 +92,14 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
             userInfo.finishLoading();
             if (suggestRetry)
                 loadProblems(true);
+            else
+                onLoadComplete.forEach(c -> c.accept(false));
         });
+    }
+
+    @Override
+    public ReentrantLock getLock() {
+        return lock;
     }
 
     public void clear() {
@@ -146,6 +167,10 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         Client.getInstance().processMessage(new ProblemFetchMessage<>(pid, module.getModuleName()), new ProblemFetchResponseHandler<>(module));
     }
 
+    public boolean isLoaded() {
+        return loaded;
+    }
+
     private class ProblemCreateResponseHandler<T extends ArisModule> implements ResponseHandler<ProblemCreateMsg<T>> {
         @Override
         public void response(ProblemCreateMsg<T> message) {
@@ -165,6 +190,11 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
                 AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred creating the problem");
             Platform.runLater(() -> userInfo.finishLoading());
         }
+
+        @Override
+        public ReentrantLock getLock() {
+            return lock;
+        }
     }
 
     private class ProblemRenameResponseHandler implements ResponseHandler<ProblemEditMsg> {
@@ -183,6 +213,11 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
                 loadProblems(true);
             }
             Platform.runLater(() -> userInfo.finishLoading());
+        }
+
+        @Override
+        public ReentrantLock getLock() {
+            return lock;
         }
     }
 
@@ -221,6 +256,11 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
             }
             Platform.runLater(() -> userInfo.finishLoading());
         }
+
+        @Override
+        public ReentrantLock getLock() {
+            return lock;
+        }
     }
 
     private class ProblemDeleteResponseHandler implements ResponseHandler<ProblemDeleteMsg> {
@@ -241,6 +281,11 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
             else
                 AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred while deleting the problem");
             Platform.runLater(() -> userInfo.finishLoading());
+        }
+
+        @Override
+        public ReentrantLock getLock() {
+            return lock;
         }
     }
 
@@ -274,6 +319,11 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
             else
                 AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred fetching the problem");
             Platform.runLater(() -> userInfo.finishLoading());
+        }
+
+        @Override
+        public ReentrantLock getLock() {
+            return lock;
         }
     }
 
@@ -388,6 +438,10 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
             return c;
         }
 
+        @Override
+        public String toString() {
+            return getName();
+        }
     }
 
 }
