@@ -111,6 +111,8 @@ public class ProblemsGui implements TabGui {
         createdOn.setCellValueFactory(param -> param.getValue().createdOnProperty());
         modify.setCellValueFactory(param -> param.getValue().modifyButtonProperty());
         name.setOnEditCommit(event -> {
+            if (event.getNewValue().equals(event.getOldValue()))
+                return;
             event.getRowValue().nameProperty().set(event.getNewValue());
             problems.renamed(event.getRowValue());
         });

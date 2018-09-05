@@ -7,6 +7,7 @@ import edu.rpi.aris.assign.client.ResponseHandler;
 import edu.rpi.aris.assign.client.controller.AssignGui;
 import edu.rpi.aris.assign.client.controller.AssignmentsGui;
 import edu.rpi.aris.assign.message.AssignmentCreateMsg;
+import edu.rpi.aris.assign.message.AssignmentEditMsg;
 import edu.rpi.aris.assign.message.AssignmentsGetMsg;
 import edu.rpi.aris.assign.message.MsgUtil;
 import javafx.application.Platform;
@@ -26,6 +27,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
 
     private final AssignmentCreateResponseHandler createHandler = new AssignmentCreateResponseHandler();
+    private final AssignmentEditResponseHandler renamedHandler = new AssignmentEditResponseHandler();
     private final ObservableList<Assignment> assignments = FXCollections.observableArrayList();
     private final SimpleBooleanProperty loadError = new SimpleBooleanProperty(false);
     private final AssignmentsGui gui;
@@ -61,7 +63,7 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
             loadError.set(false);
             clear();
             for (MsgUtil.AssignmentData data : message.getAssignments())
-                assignments.add(new Assignment(data));
+                assignments.add(new Assignment(message.getClassId(), data));
             Collections.sort(assignments);
             loaded = message.getClassId();
             userInfo.finishLoading();
@@ -99,15 +101,24 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
         Client.getInstance().processMessage(msg, createHandler);
     }
 
+    public void renamed(Assignment assignment) {
+        userInfo.startLoading();
+        AssignmentEditMsg msg = new AssignmentEditMsg(assignment.getCid(), assignment.getAid());
+        msg.setName(assignment.getName());
+        Client.getInstance().processMessage(msg, renamedHandler);
+    }
+
     public static class Assignment implements Comparable<Assignment> {
 
         private final int aid;
+        private final int cid;
         private final SimpleStringProperty name = new SimpleStringProperty();
         private final SimpleStringProperty status = new SimpleStringProperty();
         private final SimpleObjectProperty<Date> dueDate = new SimpleObjectProperty<>();
         private final SimpleStringProperty dueDateStr = new SimpleStringProperty();
 
-        public Assignment(int aid, String name, String status, Date dueDate) {
+        public Assignment(int cid, int aid, String name, String status, Date dueDate) {
+            this.cid = cid;
             this.aid = aid;
             this.name.set(name);
             this.status.set(status);
@@ -115,8 +126,8 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
             dueDateStr.bind(Bindings.createStringBinding(() -> this.dueDate.get() == null ? null : AssignGui.DATE_FORMAT.format(this.dueDate.get()), this.dueDate));
         }
 
-        public Assignment(MsgUtil.AssignmentData data) {
-            this(data.id, data.name, "Unknown", new Date(NetUtil.UTCToMilli(data.dueDateUTC)));
+        public Assignment(int cid, MsgUtil.AssignmentData data) {
+            this(cid, data.id, data.name, "Unknown", new Date(NetUtil.UTCToMilli(data.dueDateUTC)));
         }
 
         public int getAid() {
@@ -156,6 +167,9 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
             return dueDate.get().compareTo(o.dueDate.get());
         }
 
+        public int getCid() {
+            return cid;
+        }
     }
 
     private class AssignmentCreateResponseHandler implements ResponseHandler<AssignmentCreateMsg> {
@@ -164,7 +178,7 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
         public void response(AssignmentCreateMsg message) {
             Platform.runLater(() -> {
                 if (userInfo.getSelectedClass().getClassId() == message.getCid()) {
-                    Assignment assignment = new Assignment(message.getAid(), message.getName(), "Unknown", new Date(NetUtil.UTCToMilli(message.getDueDate())));
+                    Assignment assignment = new Assignment(message.getCid(), message.getAid(), message.getName(), "Unknown", new Date(NetUtil.UTCToMilli(message.getDueDate())));
                     assignments.add(assignment);
                 }
                 userInfo.finishLoading();
@@ -177,6 +191,35 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
                 createAssignment(msg.getCid(), msg.getName(), msg.getDueDate(), msg.getProblems());
             else
                 AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred creating the assignment");
+            Platform.runLater(() -> userInfo.finishLoading());
+        }
+
+        @Override
+        public ReentrantLock getLock() {
+            return lock;
+        }
+    }
+
+    private class AssignmentEditResponseHandler implements ResponseHandler<AssignmentEditMsg> {
+
+        @Override
+        public void response(AssignmentEditMsg message) {
+            Platform.runLater(() -> userInfo.finishLoading());
+        }
+
+        @Override
+        public void onError(boolean suggestRetry, AssignmentEditMsg msg) {
+            if (suggestRetry) {
+                for (Assignment a : assignments) {
+                    if (a.getCid() == msg.getCid() && a.getAid() == msg.getAid()) {
+                        renamed(a);
+                        break;
+                    }
+                }
+            } else {
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred while renaming the problem");
+                loadAssignments(true);
+            }
             Platform.runLater(() -> userInfo.finishLoading());
         }
 

@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.HBox?>
@@ -22,7 +21,7 @@
           <TableColumn fx:id="module" prefWidth="75.0" text="Module" />
             <TableColumn fx:id="createdBy" prefWidth="75.0" text="Created By" />
             <TableColumn fx:id="createdOn" prefWidth="75.0" text="Created On" />
-            <TableColumn fx:id="modify" prefWidth="75.0" text="Modify Problem"/>
+            <TableColumn fx:id="modify" editable="false" prefWidth="75.0" sortable="false" text="Modify Problem"/>
         </columns>
          <columnResizePolicy>
             <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />

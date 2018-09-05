@@ -17,7 +17,9 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.stage.Modality;
+import javafx.util.converter.DefaultStringConverter;
 import org.apache.commons.lang3.tuple.Triple;
 
 import java.io.IOException;
@@ -106,12 +108,23 @@ public class AssignmentsGui implements TabGui {
         btnCreate.managedProperty().bind(btnCreate.visibleProperty());
 
         name.setCellValueFactory(param -> param.getValue().nameProperty());
-        dueDate.setCellValueFactory(param -> param.getValue().dueDateProperty());
-        status.setCellValueFactory(param -> param.getValue().statusProperty());
-
+        name.setCellFactory(param -> new TextFieldTableCell<>(new DefaultStringConverter()));
+        name.setOnEditCommit(event -> {
+            if (event.getNewValue().equals(event.getOldValue()))
+                return;
+            event.getRowValue().nameProperty().set(event.getNewValue());
+            assignments.renamed(event.getRowValue());
+        });
+        name.editableProperty().bind(Bindings.createBooleanBinding(() -> UserType.hasPermission(userInfo.getUserType(), UserType.INSTRUCTOR), userInfo.userTypeProperty()));
         name.setStyle("-fx-alignment: CENTER-LEFT;");
+
+        dueDate.setCellValueFactory(param -> param.getValue().dueDateProperty());
+
         dueDate.setStyle("-fx-alignment: CENTER;");
+
+        status.setCellValueFactory(param -> param.getValue().statusProperty());
         status.setStyle("-fx-alignment: CENTER;");
+
         deleteColumn.setStyle("-fx-alignment: CENTER;");
 
     }

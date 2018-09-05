@@ -55,6 +55,8 @@ public class AssignmentEditMsg extends Message {
     }
 
     private void changeDue(Connection connection) throws SQLException {
+        if (newDueDate == null)
+            return;
         try (PreparedStatement statement = connection.prepareStatement("UPDATE assignment SET due_date = ? WHERE id = ? AND class_id = ?;")) {
             statement.setTimestamp(1, NetUtil.ZDTToTimestamp(newDueDate));
             statement.setInt(2, aid);
@@ -129,6 +131,14 @@ public class AssignmentEditMsg extends Message {
             if (i == null)
                 return false;
         return cid > 0 && aid > 0;
+    }
+
+    public int getCid() {
+        return cid;
+    }
+
+    public int getAid() {
+        return aid;
     }
 
 }
