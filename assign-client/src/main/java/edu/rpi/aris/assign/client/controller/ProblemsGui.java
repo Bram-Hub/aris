@@ -162,7 +162,7 @@ public class ProblemsGui implements TabGui {
         Alert alert = new Alert(Alert.AlertType.WARNING);
         alert.setTitle("Delete Problem");
         alert.setHeaderText("Are you sure you want to delete \"" + name + "\"?");
-        alert.setContentText("The problem and any associated submissions will be removed from any assignments. THIS CANNOT BE UNDONE!");
+        alert.setContentText("The problem and ANY ASSOCIATED SUBMISSIONS will be DELETED from any assignments. THIS CANNOT BE UNDONE!");
         alert.getDialogPane().getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
         alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
         alert.initOwner(AssignGui.getInstance().getStage());

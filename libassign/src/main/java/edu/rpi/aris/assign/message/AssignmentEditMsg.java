@@ -141,4 +141,8 @@ public class AssignmentEditMsg extends Message {
         return aid;
     }
 
+    public String getNewName() {
+        return newName;
+    }
+
 }

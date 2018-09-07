@@ -171,6 +171,10 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         return loaded;
     }
 
+    public Problem getProblem(int pid) {
+        return problemMap.get(pid);
+    }
+
     private class ProblemCreateResponseHandler<T extends ArisModule> implements ResponseHandler<ProblemCreateMsg<T>> {
         @Override
         public void response(ProblemCreateMsg<T> message) {
@@ -277,7 +281,7 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         @Override
         public void onError(boolean suggestRetry, ProblemDeleteMsg msg) {
             if (suggestRetry)
-                renamed(problemMap.get(msg.getPid()));
+                delete(problemMap.get(msg.getPid()));
             else
                 AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred while deleting the problem");
             Platform.runLater(() -> userInfo.finishLoading());

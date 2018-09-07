@@ -77,8 +77,7 @@ public class AssignmentDialog extends Dialog<Triple<String, LocalDateTime, Colle
     }
 
     public AssignmentDialog(Window parent, Collection<Problems.Problem> availableProblems, String name, Date dueDate, Collection<Problems.Problem> problems) throws IOException {
-        this.availableProblems.addAll(availableProblems);
-        Collections.sort(this.availableProblems);
+        this(parent, availableProblems);
         problemBox.getChildren().clear();
         for (Problems.Problem info : problems)
             addSelector().getSelectionModel().select(info);

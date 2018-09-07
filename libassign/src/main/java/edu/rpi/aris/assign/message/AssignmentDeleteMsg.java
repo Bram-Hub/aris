@@ -1,6 +1,5 @@
 package edu.rpi.aris.assign.message;
 
-import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.User;
 import edu.rpi.aris.assign.UserType;
 
@@ -44,4 +43,13 @@ public class AssignmentDeleteMsg extends Message {
     public boolean checkValid() {
         return cid > 0 && aid > 0;
     }
+
+    public int getCid() {
+        return cid;
+    }
+
+    public int getAid() {
+        return aid;
+    }
+
 }

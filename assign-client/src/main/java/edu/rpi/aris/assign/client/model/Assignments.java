@@ -6,10 +6,7 @@ import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
 import edu.rpi.aris.assign.client.controller.AssignGui;
 import edu.rpi.aris.assign.client.controller.AssignmentsGui;
-import edu.rpi.aris.assign.message.AssignmentCreateMsg;
-import edu.rpi.aris.assign.message.AssignmentEditMsg;
-import edu.rpi.aris.assign.message.AssignmentsGetMsg;
-import edu.rpi.aris.assign.message.MsgUtil;
+import edu.rpi.aris.assign.message.*;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -17,17 +14,23 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.control.Button;
+import javafx.scene.layout.HBox;
 
 import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
 
     private final AssignmentCreateResponseHandler createHandler = new AssignmentCreateResponseHandler();
     private final AssignmentEditResponseHandler renamedHandler = new AssignmentEditResponseHandler();
+    private final AssignmentDeleteResponseHandler deleteHandler = new AssignmentDeleteResponseHandler();
     private final ObservableList<Assignment> assignments = FXCollections.observableArrayList();
     private final SimpleBooleanProperty loadError = new SimpleBooleanProperty(false);
     private final AssignmentsGui gui;
@@ -101,14 +104,19 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
         Client.getInstance().processMessage(msg, createHandler);
     }
 
-    public void renamed(Assignment assignment) {
+    public void renamed(int cid, int aid, String newName) {
         userInfo.startLoading();
-        AssignmentEditMsg msg = new AssignmentEditMsg(assignment.getCid(), assignment.getAid());
-        msg.setName(assignment.getName());
+        AssignmentEditMsg msg = new AssignmentEditMsg(cid, aid);
+        msg.setName(newName);
         Client.getInstance().processMessage(msg, renamedHandler);
     }
 
-    public static class Assignment implements Comparable<Assignment> {
+    public void delete(int cid, int aid) {
+        userInfo.startLoading();
+        Client.getInstance().processMessage(new AssignmentDeleteMsg(cid, aid), deleteHandler);
+    }
+
+    public class Assignment implements Comparable<Assignment> {
 
         private final int aid;
         private final int cid;
@@ -116,18 +124,38 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
         private final SimpleStringProperty status = new SimpleStringProperty();
         private final SimpleObjectProperty<Date> dueDate = new SimpleObjectProperty<>();
         private final SimpleStringProperty dueDateStr = new SimpleStringProperty();
+        private final SimpleObjectProperty<Node> modifyColumn = new SimpleObjectProperty<>();
+        private final HashSet<Integer> problems = new HashSet<>();
 
-        public Assignment(int cid, int aid, String name, String status, Date dueDate) {
+        public Assignment(int cid, int aid, String name, String status, Date dueDate, Collection<Integer> problems) {
             this.cid = cid;
             this.aid = aid;
             this.name.set(name);
             this.status.set(status);
             this.dueDate.set(dueDate);
+            this.problems.addAll(problems);
             dueDateStr.bind(Bindings.createStringBinding(() -> this.dueDate.get() == null ? null : AssignGui.DATE_FORMAT.format(this.dueDate.get()), this.dueDate));
+            HBox box = new HBox(5);
+            Button modify = new Button("Modify");
+            modify.setOnAction(event -> modify());
+            Button delete = new Button("Delete");
+            delete.setOnAction(event -> delete());
+            box.getChildren().addAll(modify, delete);
+            box.setAlignment(Pos.CENTER);
+            modifyColumn.set(box);
         }
 
         public Assignment(int cid, MsgUtil.AssignmentData data) {
-            this(cid, data.id, data.name, "Unknown", new Date(NetUtil.UTCToMilli(data.dueDateUTC)));
+            this(cid, data.id, data.name, "Unknown", new Date(NetUtil.UTCToMilli(data.dueDateUTC)), data.problems);
+        }
+
+        private void modify() {
+            gui.modifyAssignment(this);
+        }
+
+        private void delete() {
+            if (gui.confirmDelete(this))
+                Assignments.this.delete(cid, aid);
         }
 
         public int getAid() {
@@ -158,6 +186,18 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
             return status.get();
         }
 
+        public Node getModifyColumn() {
+            return modifyColumn.get();
+        }
+
+        public SimpleObjectProperty<Node> modifyColumnProperty() {
+            return modifyColumn;
+        }
+
+        public HashSet<Integer> getProblems() {
+            return problems;
+        }
+
         @Override
         public int compareTo(Assignment o) {
             if (o == null)
@@ -170,6 +210,7 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
         public int getCid() {
             return cid;
         }
+
     }
 
     private class AssignmentCreateResponseHandler implements ResponseHandler<AssignmentCreateMsg> {
@@ -178,7 +219,7 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
         public void response(AssignmentCreateMsg message) {
             Platform.runLater(() -> {
                 if (userInfo.getSelectedClass().getClassId() == message.getCid()) {
-                    Assignment assignment = new Assignment(message.getCid(), message.getAid(), message.getName(), "Unknown", new Date(NetUtil.UTCToMilli(message.getDueDate())));
+                    Assignment assignment = new Assignment(message.getCid(), message.getAid(), message.getName(), "Unknown", new Date(NetUtil.UTCToMilli(message.getDueDate())), message.getProblems());
                     assignments.add(assignment);
                 }
                 userInfo.finishLoading();
@@ -209,17 +250,37 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
 
         @Override
         public void onError(boolean suggestRetry, AssignmentEditMsg msg) {
-            if (suggestRetry) {
-                for (Assignment a : assignments) {
-                    if (a.getCid() == msg.getCid() && a.getAid() == msg.getAid()) {
-                        renamed(a);
-                        break;
-                    }
-                }
-            } else {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred while renaming the problem");
+            if (suggestRetry)
+                renamed(msg.getCid(), msg.getAid(), msg.getNewName());
+            else {
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred while renaming the assignment");
                 loadAssignments(true);
             }
+            Platform.runLater(() -> userInfo.finishLoading());
+        }
+
+        @Override
+        public ReentrantLock getLock() {
+            return lock;
+        }
+    }
+
+    private class AssignmentDeleteResponseHandler implements ResponseHandler<AssignmentDeleteMsg> {
+
+        @Override
+        public void response(AssignmentDeleteMsg message) {
+            Platform.runLater(() -> {
+                assignments.removeIf(assignment -> assignment.getCid() == message.getCid() && assignment.getAid() == message.getAid());
+                userInfo.finishLoading();
+            });
+        }
+
+        @Override
+        public void onError(boolean suggestRetry, AssignmentDeleteMsg msg) {
+            if (suggestRetry)
+                delete(msg.getCid(), msg.getAid());
+            else
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred while deleting the assignment");
             Platform.runLater(() -> userInfo.finishLoading());
         }
 

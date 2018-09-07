@@ -5,6 +5,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.time.ZonedDateTime;
+import java.util.Collection;
+import java.util.HashSet;
 
 public class MsgUtil {
 
@@ -14,13 +16,15 @@ public class MsgUtil {
 
         public final String name, assignedBy;
         public final int id;
+        public final HashSet<Integer> problems = new HashSet<>();
         public final ZonedDateTime dueDateUTC;
 
-        AssignmentData(String name, String assignedBy, ZonedDateTime dueDateUTC, int id) {
+        AssignmentData(String name, String assignedBy, ZonedDateTime dueDateUTC, int id, Collection<Integer> problems) {
             this.name = name;
             this.assignedBy = assignedBy;
             this.dueDateUTC = dueDateUTC;
             this.id = id;
+            this.problems.addAll(problems);
         }
 
         // DO NOT REMOVE!! Default constructor is required for gson deserialization
