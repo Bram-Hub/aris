@@ -2,7 +2,7 @@ package edu.rpi.aris.assign.client;
 
 import edu.rpi.aris.assign.*;
 import edu.rpi.aris.assign.client.controller.ModuleSelect;
-import edu.rpi.aris.assign.client.model.Config;
+import edu.rpi.aris.assign.client.model.LocalConfig;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.event.Event;
@@ -49,8 +49,8 @@ public class AssignClient extends Application implements ArisExceptionHandler {
     }
 
     public static void main(String[] args) throws IOException {
-        LibAssign.setLogLocation(new File(Config.CLIENT_STORAGE_DIR, "logs"));
-        LibAssign.initModuleService(Config.CLIENT_MODULES_DIR, false);
+        LibAssign.setLogLocation(new File(LocalConfig.CLIENT_STORAGE_DIR, "logs"));
+        LibAssign.initModuleService(LocalConfig.CLIENT_MODULES_DIR, false);
         logger.info("Starting Assign Client with Java " + SystemUtils.JAVA_RUNTIME_VERSION + " " + SystemUtils.JAVA_VENDOR);
         logger.info("Loaded client modules: " + ModuleService.getService().moduleNames());
         LibAssign.getInstance().init(false, args, new MainCallbackListener() {
@@ -115,14 +115,14 @@ public class AssignClient extends Application implements ArisExceptionHandler {
             }
         }
         if (cmd.hasOption('a'))
-            Config.SERVER_ADDRESS.setValue(cmd.getOptionValue('a'));
+            LocalConfig.SERVER_ADDRESS.setValue(cmd.getOptionValue('a'));
         if (port > 0)
-            Config.PORT.setValue(port);
-        Config.ALLOW_INSECURE.setValue(cmd.hasOption("allow-insecure"));
+            LocalConfig.PORT.setValue(port);
+        LocalConfig.ALLOW_INSECURE.setValue(cmd.hasOption("allow-insecure"));
         if (cmd.hasOption("add-cert")) {
             String filename = cmd.getOptionValue("add-cert");
             File file = new File(filename);
-            Config.ADD_CERT.setValue(file);
+            LocalConfig.ADD_CERT.setValue(file);
         }
         doUpdate = cmd.hasOption('u');
         launch(AssignClient.class, cmd.getArgs());

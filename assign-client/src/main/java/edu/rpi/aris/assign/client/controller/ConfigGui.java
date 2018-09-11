@@ -3,7 +3,7 @@ package edu.rpi.aris.assign.client.controller;
 import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.Client;
-import edu.rpi.aris.assign.client.model.Config;
+import edu.rpi.aris.assign.client.model.LocalConfig;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
@@ -89,7 +89,7 @@ public class ConfigGui {
 
     public void populateConfig() {
         removeCerts.clear();
-        serverAddressText.setText(Config.SERVER_ADDRESS.getValue() == null ? "" : Config.SERVER_ADDRESS.getValue() + (Config.PORT.getValue() == LibAssign.DEFAULT_PORT ? "" : ":" + Config.PORT.getValue()));
+        serverAddressText.setText(LocalConfig.SERVER_ADDRESS.getValue() == null ? "" : LocalConfig.SERVER_ADDRESS.getValue() + (LocalConfig.PORT.getValue() == LibAssign.DEFAULT_PORT ? "" : ":" + LocalConfig.PORT.getValue()));
         certificateTable.getItems().setAll(Client.getInstance().getSelfSignedCertificates());
     }
 
@@ -105,8 +105,8 @@ public class ConfigGui {
 
     @FXML
     public void initialize() {
-        Config.SERVER_ADDRESS.getProperty().addListener((observable, oldValue, newValue) -> serverAddressText.setText(newValue == null ? "" : newValue + (Config.PORT.getValue() == LibAssign.DEFAULT_PORT ? "" : ":" + Config.PORT.getValue())));
-        Config.PORT.getProperty().addListener((observable, oldValue, newValue) -> serverAddressText.setText(Config.SERVER_ADDRESS.getValue() == null ? "" : Config.SERVER_ADDRESS.getValue() + (newValue == LibAssign.DEFAULT_PORT ? "" : ":" + newValue)));
+        LocalConfig.SERVER_ADDRESS.getProperty().addListener((observable, oldValue, newValue) -> serverAddressText.setText(newValue == null ? "" : newValue + (LocalConfig.PORT.getValue() == LibAssign.DEFAULT_PORT ? "" : ":" + LocalConfig.PORT.getValue())));
+        LocalConfig.PORT.getProperty().addListener((observable, oldValue, newValue) -> serverAddressText.setText(LocalConfig.SERVER_ADDRESS.getValue() == null ? "" : LocalConfig.SERVER_ADDRESS.getValue() + (newValue == LibAssign.DEFAULT_PORT ? "" : ":" + newValue)));
         addressColumn.setCellValueFactory(param -> {
             try {
                 JcaX509CertificateHolder holder = new JcaX509CertificateHolder(param.getValue());
@@ -225,8 +225,8 @@ public class ConfigGui {
             configAlert("Invalid server address: " + address);
             return;
         }
-        Config.SERVER_ADDRESS.setValue(address);
-        Config.PORT.setValue(port);
+        LocalConfig.SERVER_ADDRESS.setValue(address);
+        LocalConfig.PORT.setValue(port);
         stage.hide();
     }
 

@@ -5,7 +5,7 @@ import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.MessageCommunication;
 import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.client.exceptions.*;
-import edu.rpi.aris.assign.client.model.Config;
+import edu.rpi.aris.assign.client.model.LocalConfig;
 import edu.rpi.aris.assign.message.ErrorMsg;
 import edu.rpi.aris.assign.message.Message;
 import edu.rpi.aris.assign.message.UserEditMsg;
@@ -64,8 +64,8 @@ import java.util.concurrent.locks.ReentrantLock;
 public class Client implements MessageCommunication {
 
     private static final char[] KEYSTORE_PASSWORD = "ARIS_CLIENT".toCharArray();
-    private static final File KEYSTORE_FILE = new File(Config.CLIENT_STORAGE_DIR, "client.keystore");
-    private static final File SERVER_KEYSTORE_FILE = new File(Config.CLIENT_STORAGE_DIR, "imported.keystore");
+    private static final File KEYSTORE_FILE = new File(LocalConfig.CLIENT_STORAGE_DIR, "client.keystore");
+    private static final File SERVER_KEYSTORE_FILE = new File(LocalConfig.CLIENT_STORAGE_DIR, "imported.keystore");
     private static Logger logger = LogManager.getLogger(Client.class);
     private static Client instance = new Client();
 
@@ -313,10 +313,10 @@ public class Client implements MessageCommunication {
     }
 
     private synchronized void setupConnection(String user, String pass, boolean isAccessToken) throws Exception {
-        String serverAddress = Config.SERVER_ADDRESS.getValue();
+        String serverAddress = LocalConfig.SERVER_ADDRESS.getValue();
         if (serverAddress == null)
             throw new IOException("Server address not specified");
-        int port = Config.PORT.getValue();
+        int port = LocalConfig.PORT.getValue();
         if (port <= 0 || port > 65535)
             throw new IOException("Invalid port specified");
         setConnectionStatus(ConnectionStatus.CONNECTING);
@@ -417,8 +417,8 @@ public class Client implements MessageCommunication {
             default:
                 if (res.startsWith(NetUtil.AUTH_OK) || res.startsWith(NetUtil.AUTH_RESET)) {
                     String accessToken = res.replaceFirst(res.startsWith(NetUtil.AUTH_OK) ? NetUtil.AUTH_OK : NetUtil.AUTH_RESET, "").trim();
-                    Config.ACCESS_TOKEN.setValue(URLDecoder.decode(accessToken, "UTF-8"));
-                    Platform.runLater(() -> Config.USERNAME.setValue(user));
+                    LocalConfig.ACCESS_TOKEN.setValue(URLDecoder.decode(accessToken, "UTF-8"));
+                    Platform.runLater(() -> LocalConfig.USERNAME.setValue(user));
                     if (res.startsWith(NetUtil.AUTH_RESET))
                         throw new PasswordResetRequiredException();
                 } else
@@ -431,19 +431,19 @@ public class Client implements MessageCommunication {
         try {
             if (!ping()) {
                 disconnect(false);
-                String server = Config.SERVER_ADDRESS.getValue();
+                String server = LocalConfig.SERVER_ADDRESS.getValue();
                 if (server == null || server.length() == 0) {
 //                    Pair<String, Integer> info = getServerAddress(null);
 //                    if (info == null)
                     return;
-//                    Config.SERVER_ADDRESS.setValue(info.getKey());
-//                    Config.PORT.setValue(info.getValue());
+//                    LocalConfig.SERVER_ADDRESS.setValue(info.getKey());
+//                    LocalConfig.PORT.setValue(info.getValue());
                 }
                 Triple<String, String, Boolean> credentials = getCredentials();
                 try {
                     setupConnection(credentials.getLeft(), credentials.getMiddle(), credentials.getRight());
                 } catch (InvalidAccessTokenException e) {
-                    Config.ACCESS_TOKEN.setValue(null);
+                    LocalConfig.ACCESS_TOKEN.setValue(null);
                     connect();
                     if (connectionLock.isHeldByCurrentThread())
                         connectionLock.unlock();
@@ -583,16 +583,16 @@ public class Client implements MessageCommunication {
     }
 
     private Triple<String, String, Boolean> getCredentials() {
-        String user = Config.USERNAME.getValue();
-        String pass = Config.ACCESS_TOKEN.getValue();
+        String user = LocalConfig.USERNAME.getValue();
+        String pass = LocalConfig.ACCESS_TOKEN.getValue();
         boolean isAccessToken = user != null && pass != null;
         if (!isAccessToken) {
-            Platform.runLater(() -> Config.USERNAME.setValue(null));
+            Platform.runLater(() -> LocalConfig.USERNAME.setValue(null));
             AtomicReference<Optional<Pair<String, String>>> result = new AtomicReference<>(null);
             Platform.runLater(() -> {
                 Dialog<Pair<String, String>> dialog = new Dialog<>();
                 dialog.setTitle("Login");
-                dialog.setHeaderText("Login to " + Config.SERVER_ADDRESS.getValue());
+                dialog.setHeaderText("Login to " + LocalConfig.SERVER_ADDRESS.getValue());
                 ButtonType loginButtonType = new ButtonType("Login", ButtonBar.ButtonData.OK_DONE);
                 dialog.getDialogPane().getButtonTypes().addAll(loginButtonType, ButtonType.CANCEL);
                 GridPane grid = new GridPane();
@@ -664,7 +664,7 @@ public class Client implements MessageCommunication {
                     (newPassword.textProperty().isEmpty()).or
                     (retypePassword.textProperty().isEmpty()).or
                     (newPassword.textProperty().isNotEqualTo(retypePassword.textProperty())).or
-                    (Bindings.createBooleanBinding(() -> !DBUtils.checkPasswordComplexity(Config.USERNAME.getValue(), newPassword.getText()), newPassword.textProperty())).or
+                    (Bindings.createBooleanBinding(() -> !DBUtils.checkPasswordComplexity(LocalConfig.USERNAME.getValue(), newPassword.getText()), newPassword.textProperty())).or
                     (currentPass.textProperty().isEqualTo(newPassword.textProperty())));
             dialog.getDialogPane().setContent(grid);
             dialog.setResultConverter(buttonType -> buttonType == ButtonType.CANCEL ? null : new Pair<>(currentPass.getText(), newPassword.getText()));
@@ -684,7 +684,7 @@ public class Client implements MessageCommunication {
         if (result.get() != null && result.get().isPresent()) {
             String oldPass = result.get().get().getKey();
             String newPass = result.get().get().getValue();
-            UserEditMsg editMsg = new UserEditMsg(Config.USERNAME.getValue(), null, newPass, oldPass, true);
+            UserEditMsg editMsg = new UserEditMsg(LocalConfig.USERNAME.getValue(), null, newPass, oldPass, true);
             try {
                 connect();
             } catch (PasswordResetRequiredException ignored) {

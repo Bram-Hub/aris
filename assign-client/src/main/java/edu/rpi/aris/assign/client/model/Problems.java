@@ -36,7 +36,7 @@ import java.util.function.Consumer;
 
 public class Problems implements ResponseHandler<ProblemsGetMsg> {
 
-    private static final File problemStorageDir = new File(Config.CLIENT_STORAGE_DIR, "problems");
+    private static final File problemStorageDir = new File(LocalConfig.CLIENT_STORAGE_DIR, "problems");
     private final SimpleBooleanProperty loadError = new SimpleBooleanProperty(false);
     private final ObservableList<Problem> problems = FXCollections.observableArrayList();
     private final HashMap<Integer, Problem> problemMap = new HashMap<>();
@@ -179,7 +179,7 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         @Override
         public void response(ProblemCreateMsg<T> message) {
             Platform.runLater(() -> {
-                Problem problem = new Problem(message.getPid(), message.getName(), message.getModuleName(), Config.USERNAME.getValue(), new Date());
+                Problem problem = new Problem(message.getPid(), message.getName(), message.getModuleName(), LocalConfig.USERNAME.getValue(), new Date());
                 problems.add(problem);
                 problemMap.put(problem.getPid(), problem);
                 userInfo.finishLoading();

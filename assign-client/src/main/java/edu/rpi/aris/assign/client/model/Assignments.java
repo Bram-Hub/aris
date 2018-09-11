@@ -20,16 +20,13 @@ import javafx.scene.control.Button;
 import javafx.scene.layout.HBox;
 
 import java.time.ZonedDateTime;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashSet;
+import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
 
     private final AssignmentCreateResponseHandler createHandler = new AssignmentCreateResponseHandler();
-    private final AssignmentEditResponseHandler renamedHandler = new AssignmentEditResponseHandler();
+    private final AssignmentEditResponseHandler editHandler = new AssignmentEditResponseHandler();
     private final AssignmentDeleteResponseHandler deleteHandler = new AssignmentDeleteResponseHandler();
     private final ObservableList<Assignment> assignments = FXCollections.observableArrayList();
     private final SimpleBooleanProperty loadError = new SimpleBooleanProperty(false);
@@ -104,16 +101,28 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
         Client.getInstance().processMessage(msg, createHandler);
     }
 
-    public void renamed(int cid, int aid, String newName) {
-        userInfo.startLoading();
-        AssignmentEditMsg msg = new AssignmentEditMsg(cid, aid);
-        msg.setName(newName);
-        Client.getInstance().processMessage(msg, renamedHandler);
-    }
+//    public void renamed(int cid, int aid, String newName) {
+//        userInfo.startLoading();
+//        AssignmentEditMsg msg = new AssignmentEditMsg(cid, aid);
+//        msg.setName(newName);
+//        Client.getInstance().processMessage(msg, editHandler);
+//    }
 
     public void delete(int cid, int aid) {
         userInfo.startLoading();
         Client.getInstance().processMessage(new AssignmentDeleteMsg(cid, aid), deleteHandler);
+    }
+
+    public void modifyAssignment(Assignment assignment, String name, ZonedDateTime due, Set<Integer> problems) {
+        userInfo.startLoading();
+        AssignmentEditMsg editMsg = new AssignmentEditMsg(assignment.getCid(), assignment.getAid());
+        if (!name.equals(assignment.getName()))
+            editMsg.setName(name);
+        if (!assignment.getDueDate().equals(new Date(NetUtil.UTCToMilli(due))))
+            editMsg.setNewDueDate(due);
+        problems.stream().filter(p -> !assignment.getProblems().contains(p)).forEach(editMsg::addProblem);
+        assignment.getProblems().stream().filter(p -> !problems.contains(p)).forEach(editMsg::removeProblem);
+        Client.getInstance().processMessage(editMsg, editHandler);
     }
 
     public class Assignment implements Comparable<Assignment> {
@@ -250,10 +259,11 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
 
         @Override
         public void onError(boolean suggestRetry, AssignmentEditMsg msg) {
-            if (suggestRetry)
-                renamed(msg.getCid(), msg.getAid(), msg.getNewName());
-            else {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred while renaming the assignment");
+            if (suggestRetry) {
+                userInfo.startLoading();
+                Client.getInstance().processMessage(msg, this);
+            } else {
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred while modifying the assignment");
                 loadAssignments(true);
             }
             Platform.runLater(() -> userInfo.finishLoading());

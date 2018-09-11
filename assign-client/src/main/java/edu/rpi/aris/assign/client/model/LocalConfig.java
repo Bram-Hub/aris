@@ -6,7 +6,7 @@ import edu.rpi.aris.assign.client.ConfigProp;
 import java.io.File;
 import java.util.prefs.Preferences;
 
-public class Config {
+public class LocalConfig {
 
     public static final ConfigProp<Boolean> ALLOW_INSECURE = new ConfigProp<>(null, null, false);
     public static final ConfigProp<File> ADD_CERT = new ConfigProp<>(null, null, null);
@@ -19,7 +19,7 @@ public class Config {
     private static final String SELECTED_COURSE_ID_KEY = "selected_course";
     private static final String ACCESS_TOKEN_KEY = "access_token";
     private static final String LAST_FILE_LOC_KEY = "last_file_loc";
-    private static final Preferences preferences = Preferences.userNodeForPackage(Config.class);
+    private static final Preferences preferences = Preferences.userNodeForPackage(LocalConfig.class);
 
     public static final ConfigProp<String> SERVER_ADDRESS = new ConfigProp<>(preferences, SERVER_ADDRESS_KEY, preferences.get(SERVER_ADDRESS_KEY, null));
     public static final ConfigProp<String> USERNAME = new ConfigProp<>(preferences, USERNAME_KEY, preferences.get(USERNAME_KEY, null));

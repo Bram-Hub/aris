@@ -4,7 +4,7 @@ import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.UserType;
 import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.model.ClassInfo;
-import edu.rpi.aris.assign.client.model.Config;
+import edu.rpi.aris.assign.client.model.LocalConfig;
 import edu.rpi.aris.assign.client.model.UserInfo;
 import javafx.beans.binding.Bindings;
 import javafx.collections.ListChangeListener;
@@ -90,7 +90,7 @@ public class AssignGui {
     }
 
     public void checkServer() {
-        String server = Config.SERVER_ADDRESS.getValue();
+        String server = LocalConfig.SERVER_ADDRESS.getValue();
         if (server == null || server.trim().length() == 0) {
             TextInputDialog serverDialog = new TextInputDialog();
             serverDialog.setTitle("Server Address");
@@ -101,7 +101,7 @@ public class AssignGui {
             serverDialog.initModality(Modality.APPLICATION_MODAL);
             Optional<String> result = serverDialog.showAndWait();
             if (result.isPresent()) {
-                Config.SERVER_ADDRESS.setValue(result.get());
+                LocalConfig.SERVER_ADDRESS.setValue(result.get());
             } else {
                 stage.hide();
                 return;
@@ -164,7 +164,7 @@ public class AssignGui {
         refreshButton.visibleProperty().bind(userInfo.loginProperty());
         refreshButton.managedProperty().bind(userInfo.loginProperty());
 
-        lblUsername.textProperty().bind(Bindings.createStringBinding(() -> userInfo.isLoggedIn() ? Config.USERNAME.getValue() + " (" + userInfo.getUserType().readableName + ")" : "Not Logged In", Config.USERNAME.getProperty(), userInfo.userTypeProperty(), userInfo.loginProperty()));
+        lblUsername.textProperty().bind(Bindings.createStringBinding(() -> userInfo.isLoggedIn() ? LocalConfig.USERNAME.getValue() + " (" + userInfo.getUserType().readableName + ")" : "Not Logged In", LocalConfig.USERNAME.getProperty(), userInfo.userTypeProperty(), userInfo.loginProperty()));
 
         loginMenu.textProperty().bind(Bindings.createStringBinding(() -> userInfo.loginProperty().get() ? "Logout" : "Login", userInfo.loginProperty()));
         loginMenu.disableProperty().bind(userInfo.loadingBinding());

@@ -15,10 +15,8 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.Region;
 import javafx.stage.Modality;
-import javafx.util.converter.DefaultStringConverter;
 import org.apache.commons.lang3.tuple.Triple;
 
 import java.io.IOException;
@@ -108,19 +106,9 @@ public class AssignmentsGui implements TabGui {
         btnCreate.managedProperty().bind(btnCreate.visibleProperty());
 
         name.setCellValueFactory(param -> param.getValue().nameProperty());
-        name.setCellFactory(param -> new TextFieldTableCell<>(new DefaultStringConverter()));
-        name.setOnEditCommit(event -> {
-            if (event.getNewValue().equals(event.getOldValue()))
-                return;
-            event.getRowValue().nameProperty().set(event.getNewValue());
-            Assignments.Assignment a = event.getRowValue();
-            assignments.renamed(a.getCid(), a.getAid(), a.getName());
-        });
-        name.editableProperty().bind(Bindings.createBooleanBinding(() -> UserType.hasPermission(userInfo.getUserType(), UserType.INSTRUCTOR), userInfo.userTypeProperty()));
         name.setStyle("-fx-alignment: CENTER-LEFT;");
 
         dueDate.setCellValueFactory(param -> param.getValue().dueDateProperty());
-
         dueDate.setStyle("-fx-alignment: CENTER;");
 
         status.setCellValueFactory(param -> param.getValue().statusProperty());
@@ -205,7 +193,8 @@ public class AssignmentsGui implements TabGui {
                     Set<Problems.Problem> probs = assignment.getProblems().stream().map(problems::getProblem).collect(Collectors.toSet());
                     probs.remove(null);
                     AssignmentDialog dialog = new AssignmentDialog(AssignGui.getInstance().getStage(), problems.getProblems(), assignment.getName(), assignment.getDueDate(), probs);
-                    dialog.show();
+                    Optional<Triple<String, LocalDateTime, Collection<Problems.Problem>>> result = dialog.showAndWait();
+                    result.ifPresent(r -> assignments.modifyAssignment(assignment, r.getLeft(), NetUtil.localToUTC(r.getMiddle()), r.getRight().stream().map(Problems.Problem::getPid).collect(Collectors.toSet())));
                 } catch (IOException e) {
                     LibAssign.showExceptionError(e);
                 }

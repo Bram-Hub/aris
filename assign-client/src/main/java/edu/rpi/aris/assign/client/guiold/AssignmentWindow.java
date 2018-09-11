@@ -5,7 +5,7 @@ import edu.rpi.aris.assign.ModuleService;
 import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.Problem;
 import edu.rpi.aris.assign.client.Client;
-import edu.rpi.aris.assign.client.model.Config;
+import edu.rpi.aris.assign.client.model.LocalConfig;
 import edu.rpi.aris.assign.message.*;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -106,19 +106,19 @@ public class AssignmentWindow {
     @FXML
     private void initialize() {
         lblUsername.textProperty().bind(Bindings.createStringBinding(() -> {
-            String user = Config.USERNAME.getValue();
+            String user = LocalConfig.USERNAME.getValue();
             boolean isInstructor = clientInfo.isInstructorProperty().get();
             if (user == null)
                 return "Not logged in";
             return user;// + " (" + (isInstructor ? NetUtil.USER_INSTRUCTOR : NetUtil.USER_STUDENT) + ")";
-        }, clientInfo.isInstructorProperty(), Config.USERNAME.getProperty()));
+        }, clientInfo.isInstructorProperty(), LocalConfig.USERNAME.getProperty()));
         Bindings.bindContent(classes.getItems(), clientInfo.getCourses());
         classes.getSelectionModel().selectedItemProperty().addListener((observableValue, oldCourse, newCourse) -> loadAssignments(newCourse, false));
         classes.visibleProperty().bind(clientInfo.loadedProperty());
         classes.managedProperty().bind(clientInfo.loadedProperty());
         lblClass.visibleProperty().bind(clientInfo.loadedProperty());
         lblClass.managedProperty().bind(clientInfo.loadedProperty());
-        login.visibleProperty().bind(Bindings.createBooleanBinding(() -> Config.USERNAME.getValue() == null || !clientInfo.loadedProperty().get(), Config.USERNAME.getProperty(), clientInfo.loadedProperty()));
+        login.visibleProperty().bind(Bindings.createBooleanBinding(() -> LocalConfig.USERNAME.getValue() == null || !clientInfo.loadedProperty().get(), LocalConfig.USERNAME.getProperty(), clientInfo.loadedProperty()));
         login.managedProperty().bind(login.visibleProperty());
         login.setOnAction(actionEvent -> load(true));
         refreshButton.visibleProperty().bind(clientInfo.loadedProperty());
@@ -190,7 +190,7 @@ public class AssignmentWindow {
             assignments.getPanes().clear();
             if (newCourse == null)
                 return;
-            Config.SELECTED_COURSE_ID.setValue(newCourse.getId());
+            LocalConfig.SELECTED_COURSE_ID.setValue(newCourse.getId());
             newCourse.load(() -> Platform.runLater(() -> {
                 for (Assignment assignment : newCourse.getAssignments())
                     assignments.getPanes().add(assignment.getPane());
@@ -234,7 +234,7 @@ public class AssignmentWindow {
     private void changePassword(String username) {
         Dialog<Pair<String, String>> enterPass = new Dialog<>();
         enterPass.setTitle("Change Password");
-        enterPass.setHeaderText("Change password for user: " + (username == null ? Config.USERNAME.getValue() : username));
+        enterPass.setHeaderText("Change password for user: " + (username == null ? LocalConfig.USERNAME.getValue() : username));
         GridPane gridPane = new GridPane();
         PasswordField oldPass = new PasswordField();
         oldPass.setPromptText("Current Password");
@@ -365,7 +365,7 @@ public class AssignmentWindow {
     public void load(boolean reload) {
         Tab selected = tabPane.getSelectionModel().getSelectedItem();
         clientInfo.load(() -> Platform.runLater(() -> {
-            selectClass(Config.SELECTED_COURSE_ID.getValue());
+            selectClass(LocalConfig.SELECTED_COURSE_ID.getValue());
             new Thread(() -> {
                 if (clientInfo.isInstructorProperty().get())
                     Platform.runLater(() -> tabPane.getSelectionModel().select(selected));

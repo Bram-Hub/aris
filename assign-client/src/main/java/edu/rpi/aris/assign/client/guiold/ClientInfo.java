@@ -1,14 +1,12 @@
 package edu.rpi.aris.assign.client.guiold;
 
 import edu.rpi.aris.assign.client.Client;
-import edu.rpi.aris.assign.client.model.Config;
+import edu.rpi.aris.assign.client.model.LocalConfig;
 import edu.rpi.aris.assign.message.UserGetMsg;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-
-import java.io.IOException;
 
 public class ClientInfo {
 
@@ -57,8 +55,8 @@ public class ClientInfo {
         isInstructor.set(false);
         courses.clear();
         userId = -1;
-        Config.USERNAME.setValue(null);
-        Config.ACCESS_TOKEN.setValue(null);
+        LocalConfig.USERNAME.setValue(null);
+        LocalConfig.ACCESS_TOKEN.setValue(null);
     }
 
     public SimpleBooleanProperty isInstructorProperty() {

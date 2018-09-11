@@ -3,7 +3,7 @@ package edu.rpi.aris.assign.client.controller;
 import edu.rpi.aris.assign.*;
 import edu.rpi.aris.assign.client.dialog.ImportProblemsDialog;
 import edu.rpi.aris.assign.client.dialog.ProblemDialog;
-import edu.rpi.aris.assign.client.model.Config;
+import edu.rpi.aris.assign.client.model.LocalConfig;
 import edu.rpi.aris.assign.client.model.Problems;
 import edu.rpi.aris.assign.client.model.UserInfo;
 import edu.rpi.aris.assign.spi.ArisModule;
@@ -254,7 +254,7 @@ public class ProblemsGui implements TabGui {
                 }
             }
             chooser.getExtensionFilters().add(allFiles);
-            chooser.setInitialDirectory(new File(Config.LAST_FILE_LOC.getValue()));
+            chooser.setInitialDirectory(new File(LocalConfig.LAST_FILE_LOC.getValue()));
             List<File> importList = chooser.showOpenMultipleDialog(AssignGui.getInstance().getStage());
             importFiles(importList, module);
         } catch (Exception e) {

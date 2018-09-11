@@ -1,6 +1,7 @@
 package edu.rpi.aris.assign.client.dialog;
 
 import edu.rpi.aris.assign.client.model.Problems;
+import edu.rpi.aris.assign.client.model.ServerConfig;
 import javafx.beans.binding.Bindings;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
@@ -53,6 +54,7 @@ public class AssignmentDialog extends Dialog<Triple<String, LocalDateTime, Colle
         okBtn = (Button) getDialogPane().lookupButton(ButtonType.OK);
         okBtn.setDisable(true);
         getDialogPane().setContent(loader.load());
+        timeInput.setText(ServerConfig.getStringProp(ServerConfig.DEFAULT_ASSIGNMENT_DUE_TIME));
         setResultConverter(param -> {
             if (param != ButtonType.OK)
                 return null;

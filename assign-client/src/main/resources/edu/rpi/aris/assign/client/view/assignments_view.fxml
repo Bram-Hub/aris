@@ -11,9 +11,9 @@
       <Button fx:id="btnCreate" mnemonicParsing="false" onAction="#create" text="Create Assignment" />
        <TableView fx:id="tblAssignments" editable="true" VBox.vgrow="ALWAYS">
         <columns>
-            <TableColumn fx:id="name" prefWidth="75.0" text="Assignment" />
-            <TableColumn fx:id="dueDate" prefWidth="75.0" text="Due Date" />
-            <TableColumn fx:id="status" prefWidth="75.0" text="Completed" />
+            <TableColumn fx:id="name" editable="false" prefWidth="75.0" text="Assignment" />
+            <TableColumn fx:id="dueDate" editable="false" prefWidth="75.0" text="Due Date" />
+            <TableColumn fx:id="status" editable="false" prefWidth="75.0" text="Completed" />
             <TableColumn fx:id="modifyColumn" editable="false" prefWidth="75.0" sortable="false" text="Modify Assignment" />
         </columns>
          <columnResizePolicy>

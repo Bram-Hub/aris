@@ -43,7 +43,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
     private UserInfo() {
         selectedClass.addListener((observable, oldValue, newValue) -> {
             if (newValue != null)
-                Config.SELECTED_COURSE_ID.setValue(newValue.getClassId());
+                LocalConfig.SELECTED_COURSE_ID.setValue(newValue.getClassId());
         });
     }
 
@@ -110,8 +110,8 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         classes.clear();
         classMap.clear();
         userType.set(null);
-        Config.USERNAME.setValue(null);
-        Config.ACCESS_TOKEN.setValue(null);
+        LocalConfig.USERNAME.setValue(null);
+        LocalConfig.ACCESS_TOKEN.setValue(null);
     }
 
     public void createClass(String name) {
@@ -131,7 +131,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
     @Override
     public void response(UserGetMsg message) {
         Platform.runLater(() -> {
-            user = new User(message.getUserId(), Config.USERNAME.getValue(), message.getUserType(), false);
+            user = new User(message.getUserId(), LocalConfig.USERNAME.getValue(), message.getUserType(), false);
             userType.set(message.getUserType());
             classes.clear();
             classMap.clear();
@@ -141,7 +141,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
                 classMap.put(k, info);
             });
             Collections.sort(classes);
-            selectedClass.set(classMap.get(Config.SELECTED_COURSE_ID.getValue()));
+            selectedClass.set(classMap.get(LocalConfig.SELECTED_COURSE_ID.getValue()));
             if (selectedClass.get() == null && classes.size() > 0)
                 selectedClass.set(classes.get(0));
             loggedIn.set(true);
