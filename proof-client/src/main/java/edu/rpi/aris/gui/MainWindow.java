@@ -110,6 +110,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
 
     public MainWindow(Stage primaryStage, EditMode editMode, Node headerNode) throws IOException {
         this(primaryStage, new Proof(LibAris.getInstance().getProperties().get("username") == null ? "UNKNOWN" : LibAris.getInstance().getProperties().get("username")), editMode, headerNode);
+        proof.saved();
     }
 
     public MainWindow(Stage primaryStage, Proof proof, EditMode editMode) throws IOException {
