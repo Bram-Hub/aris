@@ -64,7 +64,7 @@ public class AssignmentCreateMsg extends Message {
                 statement.setInt(6, user.uid);
                 statement.addBatch();
             }
-            statement.executeUpdate();
+            statement.executeBatch();
         }
         return null;
     }

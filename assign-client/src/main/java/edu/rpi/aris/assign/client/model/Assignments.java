@@ -101,13 +101,6 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
         Client.getInstance().processMessage(msg, createHandler);
     }
 
-//    public void renamed(int cid, int aid, String newName) {
-//        userInfo.startLoading();
-//        AssignmentEditMsg msg = new AssignmentEditMsg(cid, aid);
-//        msg.setName(newName);
-//        Client.getInstance().processMessage(msg, editHandler);
-//    }
-
     public void delete(int cid, int aid) {
         userInfo.startLoading();
         Client.getInstance().processMessage(new AssignmentDeleteMsg(cid, aid), deleteHandler);
@@ -254,7 +247,20 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
 
         @Override
         public void response(AssignmentEditMsg message) {
-            Platform.runLater(() -> userInfo.finishLoading());
+            Platform.runLater(() -> {
+                for (Assignment a : assignments) {
+                    if (a.getCid() == message.getCid() && a.getAid() == message.getAid()) {
+                        if (message.getNewName() != null)
+                            a.nameProperty().set(message.getNewName());
+                        if (message.getNewDueDate() != null)
+                            a.dueDate.set(new Date(NetUtil.UTCToMilli(message.getNewDueDate())));
+                        a.getProblems().removeAll(message.getRemovedProblems());
+                        a.getProblems().addAll(message.getAddedProblems());
+                        break;
+                    }
+                }
+                userInfo.finishLoading();
+            });
         }
 
         @Override

@@ -91,14 +91,14 @@ public class AssignmentEditMsg extends Message {
                     return ErrorType.NOT_FOUND;
                 String n = rs.getString(1);
                 Timestamp due_date = rs.getTimestamp(2);
-                String assigned = rs.getString(3);
+                int assigned = rs.getInt(3);
                 for (int pid : addProblems) {
                     addProblem.setInt(1, aid);
                     addProblem.setInt(2, cid);
                     addProblem.setInt(3, pid);
                     addProblem.setString(4, n);
                     addProblem.setTimestamp(5, due_date);
-                    addProblem.setString(6, assigned);
+                    addProblem.setInt(6, assigned);
                     addProblem.addBatch();
                 }
                 addProblem.executeBatch();
@@ -145,4 +145,15 @@ public class AssignmentEditMsg extends Message {
         return newName;
     }
 
+    public ZonedDateTime getNewDueDate() {
+        return newDueDate;
+    }
+
+    public ArrayList<Integer> getAddedProblems() {
+        return addProblems;
+    }
+
+    public ArrayList<Integer> getRemovedProblems() {
+        return removeProblems;
+    }
 }

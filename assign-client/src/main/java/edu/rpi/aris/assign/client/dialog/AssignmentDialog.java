@@ -97,6 +97,8 @@ public class AssignmentDialog extends Dialog<Triple<String, LocalDateTime, Colle
         combo.setPromptText("Select Problem");
         combo.getItems().setAll(availableProblems);
         combo.setMaxWidth(Double.MAX_VALUE);
+        combo.setStyle("-fx-opacity: 1;");
+        combo.setDisable(!addSelectorOnChange);
         combo.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<Problems.Problem>() {
 
             boolean added = !addSelectorOnChange;
