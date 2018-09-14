@@ -42,6 +42,10 @@ public class ServerPermissions {
         return hasPermission(rollMap.get(userRoll), permissionMap.get(permissionName));
     }
 
+    public boolean hasPermission(ServerRole userRole, Perm permission) {
+        return permission != null && hasPermission(userRole, permissionMap.get(permission.name()));
+    }
+
     public boolean hasPermission(ServerRole userRoll, Permission permission) {
         if (permission == null)
             return false;

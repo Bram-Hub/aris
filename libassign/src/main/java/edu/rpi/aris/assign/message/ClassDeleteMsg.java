@@ -23,7 +23,7 @@ public class ClassDeleteMsg extends Message {
 
     @Override
     public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
-        if (!user.isAdmin() && !permissions.hasClassPermission(user.uid, cid, permissions.getPermission(Perm.CLASS_DELETE), connection))
+        if (!user.isAdmin() && !permissions.hasClassPermission(user.uid, cid, permissions.getPermission(Perm.CLASS_CREATE_DELETE), connection))
             return ErrorType.UNAUTHORIZED;
         try (PreparedStatement deleteClass = connection.prepareStatement("DELETE FROM class WHERE id = ?;")) {
             deleteClass.setInt(1, cid);

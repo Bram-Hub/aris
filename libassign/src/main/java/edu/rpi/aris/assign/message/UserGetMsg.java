@@ -16,18 +16,19 @@ import java.util.Map;
 public class UserGetMsg extends Message {
 
     private int userId;
-    private ServerRole defaultRole;
-    private HashMap<Integer, Pair<String, ServerRole>> classes = new HashMap<>();
+    private int defaultRole;
+    private ServerPermissions permissions;
+    private HashMap<Integer, Pair<String, Integer>> classes = new HashMap<>();
 
-    public ServerRole getUserType() {
-        return defaultRole;
+    public ServerRole getDefaultRole() {
+        return permissions == null ? null : permissions.getRole(defaultRole);
     }
 
     public void setDefaultRole(ServerRole defaultRole) {
-        this.defaultRole = defaultRole;
+        this.defaultRole = defaultRole.getId();
     }
 
-    public HashMap<Integer, Pair<String, ServerRole>> getClasses() {
+    public HashMap<Integer, Pair<String, Integer>> getClasses() {
         return classes;
     }
 
@@ -39,16 +40,21 @@ public class UserGetMsg extends Message {
         this.userId = userId;
     }
 
+    public ServerPermissions getPermissions() {
+        return permissions;
+    }
+
     @Override
     public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
         userId = user.uid;
+        this.permissions = permissions;
         try (PreparedStatement getInfo = connection.prepareStatement(user.isAdmin() ? "SELECT id, name FROM class;" : "SELECT c.id, c.name, uc.role_id FROM class c, users u, user_class uc WHERE u.id = uc.user_id AND c.id = uc.class_id AND u.id = ?")) {
-            defaultRole = user.defaultRole;
+            defaultRole = user.defaultRole.getId();
             if (!user.isAdmin())
                 getInfo.setInt(1, userId);
             try (ResultSet infoRs = getInfo.executeQuery()) {
                 while (infoRs.next())
-                    classes.put(infoRs.getInt(1), new ImmutablePair<>(infoRs.getString(2), user.isAdmin() ? permissions.getAdminRole() : permissions.getRole(infoRs.getInt(3))));
+                    classes.put(infoRs.getInt(1), new ImmutablePair<>(infoRs.getString(2), user.isAdmin() ? permissions.getAdminRole().getId() : permissions.getRole(infoRs.getInt(3)).getId()));
             }
         }
         return null;
@@ -61,7 +67,7 @@ public class UserGetMsg extends Message {
 
     @Override
     public boolean checkValid() {
-        for (Map.Entry<Integer, Pair<String, ServerRole>> c : classes.entrySet())
+        for (Map.Entry<Integer, Pair<String, Integer>> c : classes.entrySet())
             if (c.getKey() == null || c.getValue() == null || c.getValue().getLeft() == null)
                 return false;
         return true;

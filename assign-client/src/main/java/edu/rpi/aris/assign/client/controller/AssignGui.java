@@ -1,11 +1,13 @@
 package edu.rpi.aris.assign.client.controller;
 
 import edu.rpi.aris.assign.LibAssign;
+import edu.rpi.aris.assign.Perm;
+import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.ServerRole;
-import edu.rpi.aris.assign.UserType;
 import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.model.ClassInfo;
 import edu.rpi.aris.assign.client.model.LocalConfig;
+import edu.rpi.aris.assign.client.model.ServerConfig;
 import edu.rpi.aris.assign.client.model.UserInfo;
 import javafx.beans.binding.Bindings;
 import javafx.collections.ListChangeListener;
@@ -165,7 +167,7 @@ public class AssignGui {
         refreshButton.visibleProperty().bind(userInfo.loginProperty());
         refreshButton.managedProperty().bind(userInfo.loginProperty());
 
-        lblUsername.textProperty().bind(Bindings.createStringBinding(() -> userInfo.isLoggedIn() ? LocalConfig.USERNAME.getValue() + " (" + userInfo.getUserRole().readableName + ")" : "Not Logged In", LocalConfig.USERNAME.getProperty(), userInfo.userRoleProperty(), userInfo.loginProperty()));
+        lblUsername.textProperty().bind(Bindings.createStringBinding(() -> userInfo.isLoggedIn() ? LocalConfig.USERNAME.getValue() + " (" + userInfo.getClassRole().getName() + ")" : "Not Logged In", LocalConfig.USERNAME.getProperty(), userInfo.classRoleProperty(), userInfo.loginProperty()));
 
         loginMenu.textProperty().bind(Bindings.createStringBinding(() -> userInfo.loginProperty().get() ? "Logout" : "Login", userInfo.loginProperty()));
         loginMenu.disableProperty().bind(userInfo.loadingBinding());
@@ -174,21 +176,30 @@ public class AssignGui {
         userTab.setContent(usersGui.getRoot());
         problemTab.setContent(problemsGui.getRoot());
 
-        userInfo.userRoleProperty().addListener((observable, oldValue, newValue) -> setTabs(newValue));
+        userInfo.defaultRoleProperty().addListener((observable, oldValue, newValue) -> setTabs(newValue));
         setTabs(null);
 
-        classMenu.visibleProperty().bind(Bindings.createBooleanBinding(() -> UserType.hasPermission(userInfo.getUserRole(), UserType.INSTRUCTOR), userInfo.userRoleProperty()));
-
+        classMenu.visibleProperty().bind(Bindings.createBooleanBinding(() -> {
+            ServerPermissions permissions = ServerConfig.getPermissions();
+            return permissions != null && permissions.hasPermission(userInfo.getDefaultRole(), Perm.CLASS_CREATE_DELETE);
+        }, userInfo.defaultRoleProperty()));
     }
 
     private void setTabs(ServerRole role) {
-        if (UserType.hasPermission(type, UserType.INSTRUCTOR)) {
-            if (!tabPane.getTabs().contains(userTab))
-                tabPane.getTabs().add(1, userTab);
-            if (!tabPane.getTabs().contains(problemTab))
-                tabPane.getTabs().add(2, problemTab);
-        } else
+        ServerPermissions permissions = ServerConfig.getPermissions();
+        if (permissions == null || role == null) {
             tabPane.getTabs().removeAll(userTab, problemTab);
+            return;
+        }
+        boolean users = permissions.hasPermission(role, Perm.USER_EDIT);
+        if (users)
+            tabPane.getTabs().add(1, userTab);
+        else
+            tabPane.getTabs().remove(userTab);
+        if (permissions.hasPermission(role, Perm.PROBLEMS_GET))
+            tabPane.getTabs().add(users ? 2 : 1, problemTab);
+        else
+            tabPane.getTabs().remove(problemTab);
     }
 
     @FXML

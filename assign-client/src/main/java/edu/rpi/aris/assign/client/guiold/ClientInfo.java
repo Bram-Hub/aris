@@ -29,7 +29,7 @@ public class ClientInfo {
                     return;
                 userId = reply.getUserId();
                 Platform.runLater(() -> {
-//                    isInstructor.set(reply.getUserRole().equals(NetUtil.USER_INSTRUCTOR));
+//                    isInstructor.set(reply.getDefaultRole().equals(NetUtil.USER_INSTRUCTOR));
                     reply.getClasses().forEach((id, name) -> courses.add(new Course(id, name.getKey())));
                     loaded.set(true);
                 });

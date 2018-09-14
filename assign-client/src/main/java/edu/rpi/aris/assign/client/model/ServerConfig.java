@@ -1,5 +1,6 @@
 package edu.rpi.aris.assign.client.model;
 
+import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.client.ConfigProp;
 
 import java.util.HashMap;
@@ -8,12 +9,11 @@ import java.util.prefs.Preferences;
 public class ServerConfig {
 
     public static final String DEFAULT_ASSIGNMENT_DUE_TIME = "default_assignment_due_time";
-
     private static final Preferences preferences = Preferences.userNodeForPackage(ServerConfig.class);
-
     private static final HashMap<String, ConfigProp<String>> stringProps = new HashMap<>();
     private static final HashMap<String, ConfigProp<Integer>> intProps = new HashMap<>();
     private static final HashMap<String, ConfigProp<Boolean>> boolProps = new HashMap<>();
+    private static ServerPermissions permissions;
 
     static {
         setDefaults();
@@ -53,4 +53,11 @@ public class ServerConfig {
         boolProps.computeIfAbsent(key, k -> new ConfigProp<>(preferences, key, value)).setValue(value);
     }
 
+    public static ServerPermissions getPermissions() {
+        return permissions;
+    }
+
+    public static void setPermissions(ServerPermissions permissions) {
+        ServerConfig.permissions = permissions;
+    }
 }

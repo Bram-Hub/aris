@@ -33,7 +33,7 @@ public class ClassCreateMsg extends Message {
 
     @Override
     public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
-        if (!user.isAdmin() && !permissions.hasClassPermission(user.uid, cid, permissions.getPermission(Perm.CLASS_CREATE), connection))
+        if (!user.isAdmin() && !permissions.hasClassPermission(user.uid, cid, permissions.getPermission(Perm.CLASS_CREATE_DELETE), connection))
             return ErrorType.UNAUTHORIZED;
         try (PreparedStatement insertClass = connection.prepareStatement("INSERT INTO class (name) VALUES(?);");
              PreparedStatement selectClassId = connection.prepareStatement("SELECT id FROM class ORDER BY id DESC LIMIT 1;");

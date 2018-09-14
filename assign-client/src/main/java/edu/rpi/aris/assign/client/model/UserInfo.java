@@ -9,6 +9,7 @@ import edu.rpi.aris.assign.message.ClassCreateMsg;
 import edu.rpi.aris.assign.message.ClassDeleteMsg;
 import edu.rpi.aris.assign.message.UserGetMsg;
 import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleIntegerProperty;
@@ -26,7 +27,8 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
 
     private static final UserInfo instance = new UserInfo();
 
-    private SimpleObjectProperty<ServerRole> userRole = new SimpleObjectProperty<>();
+    private SimpleObjectProperty<ServerRole> defaultRole = new SimpleObjectProperty<>();
+    private SimpleObjectProperty<ServerRole> classRole = new SimpleObjectProperty<>();
     private ObservableList<ClassInfo> classes = FXCollections.observableArrayList();
     private SimpleBooleanProperty loggedIn = new SimpleBooleanProperty();
     private SimpleIntegerProperty loading = new SimpleIntegerProperty();
@@ -45,6 +47,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
             if (newValue != null)
                 LocalConfig.SELECTED_COURSE_ID.setValue(newValue.getClassId());
         });
+        classRole.bind(Bindings.createObjectBinding(() -> selectedClass.get() == null ? defaultRole.get() : selectedClass.get().getUserRole(), selectedClass, defaultRole));
     }
 
     public static UserInfo getInstance() {
@@ -67,8 +70,8 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         return loggedIn;
     }
 
-    public SimpleObjectProperty<ServerRole> userRoleProperty() {
-        return userRole;
+    public SimpleObjectProperty<ServerRole> defaultRoleProperty() {
+        return defaultRole;
     }
 
     public SimpleObjectProperty<ClassInfo> selectedClassProperty() {
@@ -91,8 +94,8 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         loading.set(loading.get() - 1);
     }
 
-    public ServerRole getUserRole() {
-        return userRole.get();
+    public ServerRole getDefaultRole() {
+        return defaultRole.get();
     }
 
     public void getUserInfo(boolean refresh, Runnable onLoad) {
@@ -109,7 +112,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         loggedIn.set(false);
         classes.clear();
         classMap.clear();
-        userRole.set(null);
+        defaultRole.set(null);
         LocalConfig.USERNAME.setValue(null);
         LocalConfig.ACCESS_TOKEN.setValue(null);
     }
@@ -131,12 +134,13 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
     @Override
     public void response(UserGetMsg message) {
         Platform.runLater(() -> {
-            user = new User(message.getUserId(), LocalConfig.USERNAME.getValue(), message.getUserType(), false);
-            userRole.set(message.getUserType());
+            ServerConfig.setPermissions(message.getPermissions());
+            user = new User(message.getUserId(), LocalConfig.USERNAME.getValue(), message.getDefaultRole(), false);
+            defaultRole.set(message.getDefaultRole());
             classes.clear();
             classMap.clear();
             message.getClasses().forEach((k, v) -> {
-                ClassInfo info = new ClassInfo(k, v.getLeft(), v.getRight());
+                ClassInfo info = new ClassInfo(k, v.getLeft(), message.getPermissions() == null ? null : message.getPermissions().getRole(v.getRight()));
                 classes.add(info);
                 classMap.put(k, info);
             });
@@ -170,6 +174,14 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
 
     public ClassInfo getSelectedClass() {
         return selectedClass.get();
+    }
+
+    public ServerRole getClassRole() {
+        return classRole.get();
+    }
+
+    public SimpleObjectProperty<ServerRole> classRoleProperty() {
+        return classRole;
     }
 
     public static class ClassStringConverter extends StringConverter<ClassInfo> {
@@ -217,7 +229,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         @Override
         public void response(ClassCreateMsg message) {
             Platform.runLater(() -> {
-                ClassInfo info = new ClassInfo(message.getClassId(), message.getClassName(), userRole.get());
+                ClassInfo info = new ClassInfo(message.getClassId(), message.getClassName(), defaultRole.get());
                 classMap.put(message.getClassId(), info);
                 classes.add(info);
                 Collections.sort(classes);

@@ -684,7 +684,7 @@ public class Client implements MessageCommunication {
         if (result.get() != null && result.get().isPresent()) {
             String oldPass = result.get().get().getKey();
             String newPass = result.get().get().getValue();
-            UserEditMsg editMsg = new UserEditMsg(LocalConfig.USERNAME.getValue(), null, newPass, oldPass, true);
+            UserEditMsg editMsg = new UserEditMsg(LocalConfig.USERNAME.getValue(), newPass, oldPass, true);
             try {
                 connect();
             } catch (PasswordResetRequiredException ignored) {

@@ -1,6 +1,8 @@
 package edu.rpi.aris.assign.client.model;
 
 import edu.rpi.aris.assign.NetUtil;
+import edu.rpi.aris.assign.Perm;
+import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
@@ -142,6 +144,16 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
             modify.setOnAction(event -> modify());
             Button delete = new Button("Delete");
             delete.setOnAction(event -> delete());
+            boolean deleteVisible = false;
+            for (ClassInfo info : userInfo.classesProperty()) {
+                if (info.getClassId() == cid) {
+                    ServerPermissions permissions = ServerConfig.getPermissions();
+                    deleteVisible = permissions != null && permissions.hasPermission(info.getUserRole(), Perm.ASSIGNMENT_DELETE);
+                    break;
+                }
+            }
+            delete.setVisible(deleteVisible);
+            delete.setManaged(deleteVisible);
             box.getChildren().addAll(modify, delete);
             box.setAlignment(Pos.CENTER);
             modifyColumn.set(box);
