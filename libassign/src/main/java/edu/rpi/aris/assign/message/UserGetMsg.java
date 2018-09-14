@@ -1,7 +1,10 @@
 package edu.rpi.aris.assign.message;
 
+import edu.rpi.aris.assign.ServerPermissions;
+import edu.rpi.aris.assign.ServerRole;
 import edu.rpi.aris.assign.User;
-import edu.rpi.aris.assign.UserType;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -13,18 +16,18 @@ import java.util.Map;
 public class UserGetMsg extends Message {
 
     private int userId;
-    private UserType userType;
-    private HashMap<Integer, String> classes = new HashMap<>();
+    private ServerRole defaultRole;
+    private HashMap<Integer, Pair<String, ServerRole>> classes = new HashMap<>();
 
-    public UserType getUserType() {
-        return userType;
+    public ServerRole getUserType() {
+        return defaultRole;
     }
 
-    public void setUserType(UserType userType) {
-        this.userType = userType;
+    public void setDefaultRole(ServerRole defaultRole) {
+        this.defaultRole = defaultRole;
     }
 
-    public HashMap<Integer, String> getClasses() {
+    public HashMap<Integer, Pair<String, ServerRole>> getClasses() {
         return classes;
     }
 
@@ -37,15 +40,15 @@ public class UserGetMsg extends Message {
     }
 
     @Override
-    public ErrorType processMessage(Connection connection, User user) throws SQLException {
+    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
         userId = user.uid;
-        try (PreparedStatement getInfo = connection.prepareStatement(user.userType == UserType.ADMIN ? "SELECT id, name FROM class;" : "SELECT c.id, c.name FROM class c, users u, user_class uc WHERE u.id = uc.user_id AND c.id = uc.class_id AND u.id = ?")) {
-            userType = user.userType;
-            if (userType != UserType.ADMIN)
+        try (PreparedStatement getInfo = connection.prepareStatement(user.isAdmin() ? "SELECT id, name FROM class;" : "SELECT c.id, c.name, uc.role_id FROM class c, users u, user_class uc WHERE u.id = uc.user_id AND c.id = uc.class_id AND u.id = ?")) {
+            defaultRole = user.defaultRole;
+            if (!user.isAdmin())
                 getInfo.setInt(1, userId);
             try (ResultSet infoRs = getInfo.executeQuery()) {
                 while (infoRs.next())
-                    classes.put(infoRs.getInt(1), infoRs.getString(2));
+                    classes.put(infoRs.getInt(1), new ImmutablePair<>(infoRs.getString(2), user.isAdmin() ? permissions.getAdminRole() : permissions.getRole(infoRs.getInt(3))));
             }
         }
         return null;
@@ -58,8 +61,8 @@ public class UserGetMsg extends Message {
 
     @Override
     public boolean checkValid() {
-        for (Map.Entry<Integer, String> c : classes.entrySet())
-            if (c.getKey() == null || c.getValue() == null)
+        for (Map.Entry<Integer, Pair<String, ServerRole>> c : classes.entrySet())
+            if (c.getKey() == null || c.getValue() == null || c.getValue().getLeft() == null)
                 return false;
         return true;
     }

@@ -1,16 +1,20 @@
 package edu.rpi.aris.assign.client.model;
 
+import edu.rpi.aris.assign.ServerRole;
+
 import java.util.Objects;
 
 public class ClassInfo implements Comparable<ClassInfo> {
 
     private final int classId;
     private final String className;
+    private final ServerRole userRole;
 
-    public ClassInfo(int classId, String className) {
+    public ClassInfo(int classId, String className, ServerRole userRole) {
         Objects.requireNonNull(className);
         this.classId = classId;
         this.className = className;
+        this.userRole = userRole;
     }
 
     public int getClassId() {
@@ -19,6 +23,10 @@ public class ClassInfo implements Comparable<ClassInfo> {
 
     public String getClassName() {
         return className;
+    }
+
+    public ServerRole getUserRole() {
+        return userRole;
     }
 
     @Override
@@ -38,4 +46,5 @@ public class ClassInfo implements Comparable<ClassInfo> {
     public int compareTo(ClassInfo o) {
         return className.compareTo(o.className);
     }
+
 }

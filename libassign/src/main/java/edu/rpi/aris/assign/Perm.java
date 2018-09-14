@@ -1,0 +1,16 @@
+package edu.rpi.aris.assign;
+
+public enum Perm {
+
+    ASSIGNMENT_CREATE,
+    ASSIGNMENT_DELETE,
+    ASSIGNMENT_EDIT,
+    CLASS_CREATE,
+    CLASS_DELETE,
+    PROBLEM_CREATE,
+    PROBLEM_DELETE,
+    PROBLEM_EDIT,
+    PROBLEMS_GET,
+    USER_EDIT
+
+}

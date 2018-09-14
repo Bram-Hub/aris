@@ -1,9 +1,6 @@
 package edu.rpi.aris.assign.server;
 
-import edu.rpi.aris.assign.LibAssign;
-import edu.rpi.aris.assign.NetUtil;
-import edu.rpi.aris.assign.Update;
-import edu.rpi.aris.assign.UserType;
+import edu.rpi.aris.assign.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -82,6 +79,7 @@ public class AssignServer implements Runnable {
     private HashSet<ClientHandler> clients = new HashSet<>();
     private Thread serverThread = null;
     private final Thread shutdownHook = new Thread(this::shutdown, "AssignServer Shutdown Hook");
+    private ServerPermissions permissions;
 
     public AssignServer(int port, File caCertificate, File privateKey) throws FileNotFoundException {
         logger.info("Preparing server");
@@ -108,6 +106,12 @@ public class AssignServer implements Runnable {
             dbManager = new DatabaseManager(config.getDbHost(), config.getDbPort(), config.getDbName(), config.getDbUser(), config.getDbPass());
         } catch (IOException | SQLException e) {
             RuntimeException e1 = new RuntimeException("Failed to open sql database", e);
+            LibAssign.getInstance().showExceptionError(Thread.currentThread(), e1, true);
+        }
+        try {
+            permissions = new ServerPermissions(dbManager.getConnection());
+        } catch (SQLException e) {
+            RuntimeException e1 = new RuntimeException("Failed to load server permissions", e);
             LibAssign.getInstance().showExceptionError(Thread.currentThread(), e1, true);
         }
         Timer updateTimer = new Timer();
@@ -383,8 +387,8 @@ public class AssignServer implements Runnable {
         return null;
     }
 
-    public synchronized boolean addUser(String username, String pass, UserType userType, boolean forceReset) throws SQLException {
-        Pair<String, String> result = dbManager.createUser(username, pass, userType, forceReset);
+    public synchronized boolean addUser(String username, String pass, ServerRole role, boolean forceReset) throws SQLException {
+        Pair<String, String> result = dbManager.createUser(username, pass, role, forceReset);
         return result != null && result.getRight().equals(NetUtil.OK);
     }
 
@@ -400,6 +404,10 @@ public class AssignServer implements Runnable {
 
     public DatabaseManager getDbManager() {
         return dbManager;
+    }
+
+    public ServerPermissions getPermissions() {
+        return permissions;
     }
 
 }

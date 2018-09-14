@@ -1,8 +1,8 @@
 package edu.rpi.aris.assign.message;
 
 import edu.rpi.aris.assign.NetUtil;
+import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
-import edu.rpi.aris.assign.UserType;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -38,10 +38,10 @@ public class AssignmentsGetMsg extends Message {
     }
 
     @Override
-    public ErrorType processMessage(Connection connection, User user) throws SQLException {
-        try (PreparedStatement selectAssignments = connection.prepareStatement(user.userType == UserType.ADMIN ? SELECT_ASSIGNMENTS_ADMIN : SELECT_ASSIGNMENTS_NON_ADMIN)) {
+    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
+        try (PreparedStatement selectAssignments = connection.prepareStatement(user.isAdmin() ? SELECT_ASSIGNMENTS_ADMIN : SELECT_ASSIGNMENTS_NON_ADMIN)) {
             selectAssignments.setInt(1, classId);
-            if (user.userType != UserType.ADMIN)
+            if (user.isAdmin())
                 selectAssignments.setString(2, user.username);
             try (ResultSet assignmentsRs = selectAssignments.executeQuery();
                  PreparedStatement selectProblems = connection.prepareStatement(SELECT_PROBLEMS)) {

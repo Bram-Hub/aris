@@ -1,5 +1,6 @@
 package edu.rpi.aris.assign.message;
 
+import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
 
 import java.sql.Connection;
@@ -37,7 +38,7 @@ public class ErrorMsg extends Message {
     }
 
     @Override
-    public ErrorType processMessage(Connection connection, User user) {
+    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) {
         return errorType;
     }
 

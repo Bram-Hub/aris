@@ -93,7 +93,7 @@ public class AssignmentsGui implements TabGui {
             else
                 return "No Assignments!";
         }, userInfo.loginProperty(), userInfo.selectedClassProperty(), userInfo.loadingProperty(), assignments.loadErrorProperty()));
-        userInfo.userTypeProperty().addListener((observable, oldValue, newValue) -> modifyColumn.setVisible(UserType.hasPermission(userInfo.getUserType(), UserType.INSTRUCTOR)));
+        userInfo.selectedClassProperty().addListener((observable, oldValue, newValue) -> modifyColumn.setVisible(newValue != null && newValue.hasEditPermission()));
 
         tblAssignments.itemsProperty().set(assignments.getAssignments());
 
@@ -102,7 +102,7 @@ public class AssignmentsGui implements TabGui {
                 assignments.clear();
         });
         userInfo.selectedClassProperty().addListener((observable, oldValue, newValue) -> assignments.clear());
-        btnCreate.visibleProperty().bind(Bindings.createBooleanBinding(() -> UserType.hasPermission(userInfo.getUserType(), UserType.INSTRUCTOR), userInfo.userTypeProperty()));
+        btnCreate.visibleProperty().bind(Bindings.createBooleanBinding(() -> UserType.hasPermission(userInfo.getUserRole(), UserType.INSTRUCTOR), userInfo.userRoleProperty()));
         btnCreate.managedProperty().bind(btnCreate.visibleProperty());
 
         name.setCellValueFactory(param -> param.getValue().nameProperty());

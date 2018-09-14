@@ -2,6 +2,7 @@ package edu.rpi.aris.assign.message;
 
 import edu.rpi.aris.assign.ModuleService;
 import edu.rpi.aris.assign.ProblemConverter;
+import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
 import edu.rpi.aris.assign.spi.ArisModule;
 
@@ -26,7 +27,7 @@ public class ProblemFetchMessage<T extends ArisModule> extends ProblemMessage<T>
     }
 
     @Override
-    public ErrorType processMessage(Connection connection, User user) throws Exception {
+    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws Exception {
         try (PreparedStatement statement = connection.prepareStatement("SELECT module_name, data FROM problem WHERE id = ?;")) {
             statement.setInt(1, pid);
             try (ResultSet rs = statement.executeQuery()) {

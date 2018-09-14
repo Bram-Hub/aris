@@ -1,6 +1,7 @@
 package edu.rpi.aris.assign.client.controller;
 
 import edu.rpi.aris.assign.LibAssign;
+import edu.rpi.aris.assign.ServerRole;
 import edu.rpi.aris.assign.UserType;
 import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.model.ClassInfo;
@@ -164,7 +165,7 @@ public class AssignGui {
         refreshButton.visibleProperty().bind(userInfo.loginProperty());
         refreshButton.managedProperty().bind(userInfo.loginProperty());
 
-        lblUsername.textProperty().bind(Bindings.createStringBinding(() -> userInfo.isLoggedIn() ? LocalConfig.USERNAME.getValue() + " (" + userInfo.getUserType().readableName + ")" : "Not Logged In", LocalConfig.USERNAME.getProperty(), userInfo.userTypeProperty(), userInfo.loginProperty()));
+        lblUsername.textProperty().bind(Bindings.createStringBinding(() -> userInfo.isLoggedIn() ? LocalConfig.USERNAME.getValue() + " (" + userInfo.getUserRole().readableName + ")" : "Not Logged In", LocalConfig.USERNAME.getProperty(), userInfo.userRoleProperty(), userInfo.loginProperty()));
 
         loginMenu.textProperty().bind(Bindings.createStringBinding(() -> userInfo.loginProperty().get() ? "Logout" : "Login", userInfo.loginProperty()));
         loginMenu.disableProperty().bind(userInfo.loadingBinding());
@@ -173,14 +174,14 @@ public class AssignGui {
         userTab.setContent(usersGui.getRoot());
         problemTab.setContent(problemsGui.getRoot());
 
-        userInfo.userTypeProperty().addListener((observable, oldValue, newValue) -> setTabs(newValue));
+        userInfo.userRoleProperty().addListener((observable, oldValue, newValue) -> setTabs(newValue));
         setTabs(null);
 
-        classMenu.visibleProperty().bind(Bindings.createBooleanBinding(() -> UserType.hasPermission(userInfo.getUserType(), UserType.INSTRUCTOR), userInfo.userTypeProperty()));
+        classMenu.visibleProperty().bind(Bindings.createBooleanBinding(() -> UserType.hasPermission(userInfo.getUserRole(), UserType.INSTRUCTOR), userInfo.userRoleProperty()));
 
     }
 
-    private void setTabs(UserType type) {
+    private void setTabs(ServerRole role) {
         if (UserType.hasPermission(type, UserType.INSTRUCTOR)) {
             if (!tabPane.getTabs().contains(userTab))
                 tabPane.getTabs().add(1, userTab);

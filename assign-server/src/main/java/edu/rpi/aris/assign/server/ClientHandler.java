@@ -33,6 +33,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
     private static PassiveExpiringMap<String, HashSet<Long>> loginAttempts = new PassiveExpiringMap<>(10 * 60 * 1000);
     private final SSLSocket socket;
     private DatabaseManager dbManager;
+    private ServerPermissions permissions;
     private String clientVersion;
     private DataInputStream in;
     private DataOutputStream out;
@@ -41,6 +42,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
     ClientHandler(SSLSocket socket, DatabaseManager dbManager) {
         this.socket = socket;
         this.dbManager = dbManager;
+        permissions = AssignServerMain.getServer().getPermissions();
     }
 
     @Override
@@ -131,21 +133,21 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
         logger.info("Authenticating user: " + username);
         String pass = URLDecoder.decode(auth[3], "UTF-8");
         try (Connection connection = dbManager.getConnection();
-             PreparedStatement statement = connection.prepareStatement("SELECT salt, password_hash, access_token, id, user_type, force_reset FROM users WHERE username = ?;")) {
+             PreparedStatement statement = connection.prepareStatement("SELECT salt, password_hash, access_token, id, default_role, force_reset FROM users WHERE username = ?;")) {
             statement.setString(1, username);
             try (ResultSet set = statement.executeQuery()) {
                 if (set.next()) {
                     String salt = set.getString(1);
                     String savedHash = set.getString(auth[1].equals(NetUtil.AUTH_PASS) ? 2 : 3);
                     int userId = set.getInt(4);
-                    UserType userType;
+                    ServerRole userRole;
                     try {
-                        userType = UserType.valueOf(set.getString(5));
+                        userRole = permissions.getRole(set.getInt(5));
                     } catch (IllegalArgumentException e) {
                         logger.error("Failed to parse UserType", e);
-                        userType = UserType.STUDENT;
-                        try (PreparedStatement updateUserType = connection.prepareStatement("UPDATE users SET user_type = ? WHERE username = ?;")) {
-                            updateUserType.setString(1, userType.name());
+                        userRole = permissions.getLowestRole();
+                        try (PreparedStatement updateUserType = connection.prepareStatement("UPDATE users SET default_role = ? WHERE username = ?;")) {
+                            updateUserType.setInt(1, userRole.getId());
                             updateUserType.setString(2, username);
                             updateUserType.executeUpdate();
                         }
@@ -162,7 +164,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                             updateAccessToken.executeUpdate();
                         }
                         sendMessage((forceReset ? NetUtil.AUTH_RESET : NetUtil.AUTH_OK) + " " + URLEncoder.encode(access_token, "UTF-8"));
-                        user = new User(userId, username, userType, forceReset);
+                        user = new User(userId, username, userRole, forceReset);
                         return true;
                     } else {
                         if (auth[1].equals(NetUtil.AUTH_PASS)) {
@@ -223,11 +225,11 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                             ErrorType error;
                             if (user.requireReset()) {
                                 if (msg instanceof UserEditMsg && ((UserEditMsg) msg).isChangePass() && user.username.equals(((UserEditMsg) msg).getUsername()))
-                                    error = msg.processMessage(connection, user);
+                                    error = msg.processMessage(connection, user, permissions);
                                 else
                                     error = ErrorType.RESET_PASS;
                             } else {
-                                error = msg.processMessage(connection, user);
+                                error = msg.processMessage(connection, user, permissions);
                             }
                             if (error == null) {
                                 connection.commit();
@@ -558,7 +560,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                 }
             }
         }
-        Pair<String, String> res = dbManager.createUser(username, password, user.userType, false);
+        Pair<String, String> res = dbManager.createUser(username, password, user.defaultRole, false);
         if (res.getValue().equals(NetUtil.OK)) {
             if (!res.getKey().equals(password))
                 sendMessage(NetUtil.OK + " " + URLEncoder.encode(res.getKey(), "UTF-8"));

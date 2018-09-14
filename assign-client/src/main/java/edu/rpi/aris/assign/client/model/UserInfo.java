@@ -1,7 +1,7 @@
 package edu.rpi.aris.assign.client.model;
 
+import edu.rpi.aris.assign.ServerRole;
 import edu.rpi.aris.assign.User;
-import edu.rpi.aris.assign.UserType;
 import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
@@ -26,7 +26,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
 
     private static final UserInfo instance = new UserInfo();
 
-    private SimpleObjectProperty<UserType> userType = new SimpleObjectProperty<>();
+    private SimpleObjectProperty<ServerRole> userRole = new SimpleObjectProperty<>();
     private ObservableList<ClassInfo> classes = FXCollections.observableArrayList();
     private SimpleBooleanProperty loggedIn = new SimpleBooleanProperty();
     private SimpleIntegerProperty loading = new SimpleIntegerProperty();
@@ -67,8 +67,8 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         return loggedIn;
     }
 
-    public SimpleObjectProperty<UserType> userTypeProperty() {
-        return userType;
+    public SimpleObjectProperty<ServerRole> userRoleProperty() {
+        return userRole;
     }
 
     public SimpleObjectProperty<ClassInfo> selectedClassProperty() {
@@ -91,8 +91,8 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         loading.set(loading.get() - 1);
     }
 
-    public UserType getUserType() {
-        return userType.get();
+    public ServerRole getUserRole() {
+        return userRole.get();
     }
 
     public void getUserInfo(boolean refresh, Runnable onLoad) {
@@ -109,7 +109,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         loggedIn.set(false);
         classes.clear();
         classMap.clear();
-        userType.set(null);
+        userRole.set(null);
         LocalConfig.USERNAME.setValue(null);
         LocalConfig.ACCESS_TOKEN.setValue(null);
     }
@@ -132,11 +132,11 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
     public void response(UserGetMsg message) {
         Platform.runLater(() -> {
             user = new User(message.getUserId(), LocalConfig.USERNAME.getValue(), message.getUserType(), false);
-            userType.set(message.getUserType());
+            userRole.set(message.getUserType());
             classes.clear();
             classMap.clear();
             message.getClasses().forEach((k, v) -> {
-                ClassInfo info = new ClassInfo(k, v);
+                ClassInfo info = new ClassInfo(k, v.getLeft(), v.getRight());
                 classes.add(info);
                 classMap.put(k, info);
             });
@@ -217,7 +217,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         @Override
         public void response(ClassCreateMsg message) {
             Platform.runLater(() -> {
-                ClassInfo info = new ClassInfo(message.getClassId(), message.getClassName());
+                ClassInfo info = new ClassInfo(message.getClassId(), message.getClassName(), userRole.get());
                 classMap.put(message.getClassId(), info);
                 classes.add(info);
                 Collections.sort(classes);

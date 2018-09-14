@@ -4,13 +4,13 @@ public class User {
 
     public final int uid;
     public final String username;
-    public final UserType userType;
+    public final ServerRole defaultRole;
     private boolean resetPass;
 
-    public User(int uid, String username, UserType userType, boolean resetPass) {
+    public User(int uid, String username, ServerRole defaultRole, boolean resetPass) {
         this.uid = uid;
         this.username = username;
-        this.userType = userType;
+        this.defaultRole = defaultRole;
         this.resetPass = resetPass;
     }
 
@@ -20,6 +20,10 @@ public class User {
 
     public void resetPass() {
         resetPass = false;
+    }
+
+    public boolean isAdmin() {
+        return defaultRole.getRollRank() <= 0;
     }
 
 }

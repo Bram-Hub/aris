@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import edu.rpi.aris.assign.ArisModuleException;
 import edu.rpi.aris.assign.MessageCommunication;
+import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -88,7 +89,7 @@ public abstract class Message {
         return reply;
     }
 
-    public abstract ErrorType processMessage(Connection connection, User user) throws Exception;
+    public abstract ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws Exception;
 
     public abstract MessageType getMessageType();
 

@@ -1,8 +1,9 @@
 package edu.rpi.aris.assign.message;
 
 import edu.rpi.aris.assign.DBUtils;
+import edu.rpi.aris.assign.Perm;
+import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
-import edu.rpi.aris.assign.UserType;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.sql.Connection;
@@ -13,14 +14,12 @@ import java.sql.SQLException;
 public class UserEditMsg extends Message {
 
     private final String username;
-    private final UserType newType;
     private final boolean changePass;
     private String newPass;
     private String oldPass;
 
-    public UserEditMsg(String username, UserType newType, String newPass, String oldPass, boolean changePass) {
+    public UserEditMsg(String username, String newPass, String oldPass, boolean changePass) {
         this.username = username;
-        this.newType = newType;
         this.newPass = newPass;
         this.oldPass = oldPass;
         this.changePass = changePass;
@@ -31,20 +30,15 @@ public class UserEditMsg extends Message {
         username = null;
         newPass = null;
         oldPass = null;
-        newType = null;
         changePass = false;
     }
 
     @Override
-    public ErrorType processMessage(Connection connection, User user) throws SQLException {
+    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
         boolean resetPass = newPass != null;
         try {
-            if (!user.username.equals(username) && !UserType.hasPermission(user, UserType.INSTRUCTOR))
+            if (!user.username.equals(username) && !user.isAdmin() && permissions.hasPermission(user.defaultRole, permissions.getPermission(Perm.USER_EDIT)))
                 return ErrorType.UNAUTHORIZED;
-            if (newType != null && newType != user.userType) {
-                if (newType.permissionLevel >= user.userType.permissionLevel && !UserType.hasPermission(user, UserType.ADMIN))
-                    return ErrorType.UNAUTHORIZED;
-            }
             if (oldPass == null)
                 return ErrorType.AUTH_FAIL;
             try (PreparedStatement getHash = connection.prepareStatement("SELECT salt, password_hash FROM users WHERE username = ?;")) {
@@ -54,12 +48,6 @@ public class UserEditMsg extends Message {
                         return ErrorType.AUTH_FAIL;
                 }
             }
-            if (newType != null && !newType.equals(user.userType))
-                try (PreparedStatement update = connection.prepareStatement("UPDATE users SET user_type = ? WHERE username = ?;")) {
-                    update.setString(1, newType.name());
-                    update.setString(2, username);
-                    update.executeUpdate();
-                }
             if (changePass) {
                 if (newPass.equals(oldPass) || !DBUtils.checkPasswordComplexity(username, newPass))
                     return ErrorType.AUTH_WEAK_PASS;
