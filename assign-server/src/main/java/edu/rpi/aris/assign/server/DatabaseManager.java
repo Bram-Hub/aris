@@ -1,5 +1,6 @@
 package edu.rpi.aris.assign.server;
 
+import com.mchange.v2.c3p0.ComboPooledDataSource;
 import edu.rpi.aris.assign.DBUtils;
 import edu.rpi.aris.assign.GradingStatus;
 import edu.rpi.aris.assign.NetUtil;
@@ -21,6 +22,8 @@ import java.util.ArrayList;
 public class DatabaseManager {
 
     public static final String DEFAULT_ADMIN_PASS = "ArisAdmin1";
+    private static final String[] defaultRoleName = new String[]{"Admin", "Instructor", "TA", "Student"};
+    private static final int[] defaultRoleRank = new int[]{0, 1, 2, 3};
     private static final String[] tables = new String[]{"submission", "assignment", "problem", "user_class", "users", "class", "version"};
     private static final int DB_SCHEMA_VERSION = 7;
     private static Logger logger = LogManager.getLogger(DatabaseManager.class);
@@ -30,25 +33,39 @@ public class DatabaseManager {
             Security.addProvider(new BouncyCastleProvider());
     }
 
-    private final String user;
-    private final String pass;
+//    private final String user;
+//    private final String pass;
 
-    private String connectionString;
+    //    private String connectionString;
+    private ComboPooledDataSource dataSource;
 
     public DatabaseManager(String host, int port, String database, String user, String pass) throws IOException, SQLException {
-        this.user = user;
-        this.pass = pass;
-        connectionString = "jdbc:postgresql://" + host + ":" + port + "/" + database;
+//        this.user = user;
+//        this.pass = pass;
+        dataSource = new ComboPooledDataSource();
+        dataSource.setJdbcUrl("jdbc:postgresql://" + host + ":" + port + "/" + database);
+        dataSource.setUser(user);
+        dataSource.setPassword(pass);
+        dataSource.setAutoCommitOnClose(true);
         try (Connection connection = getConnection()) {
             logger.info("Verifying database connection");
             verifyDatabase(connection);
         }
     }
 
+    private void createDefaultRoles() throws SQLException {
+        //noinspection ConstantConditions
+        if (defaultRoleName.length != defaultRoleRank.length)
+            throw new IndexOutOfBoundsException("Default role names/ranks do not match");
+        for (int i = 0; i < defaultRoleName.length; ++i)
+            createRole(defaultRoleName[i], defaultRoleRank[i]);
+    }
+
     private void verifyDatabase(Connection connection) throws SQLException, IOException {
         try (PreparedStatement statement = connection.prepareStatement("SELECT count(*) FROM information_schema.tables WHERE table_name='version';");
              ResultSet set = statement.executeQuery();
-             PreparedStatement version = connection.prepareStatement("SELECT version FROM version LIMIT 1;")) {
+             PreparedStatement version = connection.prepareStatement("SELECT version FROM version LIMIT 1;");
+             PreparedStatement checkRole = connection.prepareStatement("SELECT count(*) FROM role;")) {
             logger.info("Checking database schema version");
             if (!set.next() || set.getInt(1) == 0)
                 createTables(connection);
@@ -71,6 +88,10 @@ public class DatabaseManager {
                         }
                     }
                 }
+            }
+            try (ResultSet rs = checkRole.executeQuery()) {
+                if (rs.next() && rs.getInt(1) == 0)
+                    createDefaultRoles();
             }
         }
     }
@@ -144,8 +165,9 @@ public class DatabaseManager {
                     "(name text PRIMARY KEY," +
                     "role_id int," +
                     "constraint perm_rfk foreign key (role_id) references role(id) on delete restrict);");
+            createDefaultRoles();
+            createUser("admin", DEFAULT_ADMIN_PASS, 0, true);
             connection.commit();
-            createUser("admin", DEFAULT_ADMIN_PASS, createRole("Admin", 0), true);
         } catch (Throwable e) {
             connection.rollback();
             logger.error("An error occurred while creating the tables and the changes were rolled back");
@@ -275,15 +297,29 @@ public class DatabaseManager {
                     "role_id int," +
                     "constraint perm_rfk foreign key (role_id) references role(id) on delete restrict);");
 
-            createRole("Admin", 0);
+            createDefaultRoles();
 
+            // Update users table
             statement.execute("ALTER TABLE users ADD COLUMN default_role integer;");
-            statement.execute("ALTER TABLE users DROP COLUMN user_type;");
             statement.execute("ALTER TABLE users ADD constraint u_rfk foreign key (default_role) references role(id) on delete restrict;");
 
-            statement.execute("ALTER TABLE user_class DROP COLUMN is_ta;");
+            statement.execute("UPDATE users SET default_role=1 WHERE user_type='ADMIN';");
+            statement.execute("UPDATE users SET default_role=2 WHERE user_type='INSTRUCTOR';");
+            statement.execute("UPDATE users SET default_role=4 WHERE user_type='STUDENT';");
+
+            statement.execute("ALTER TABLE users DROP COLUMN user_type;");
+
+            // Update user_class table
             statement.execute("ALTER TABLE user_class ADD COLUMN role_id integer;");
             statement.execute("ALTER TABLE user_class ADD constraint uc_rfk foreign key (role_id) references role(id) on delete restrict;");
+
+            statement.execute("UPDATE user_class SET role_id=4;");
+
+            statement.execute("UPDATE user_class SET role_id=3 WHERE is_ta;");
+
+            statement.execute("ALTER TABLE user_class DROP COLUMN is_ta;");
+
+            statement.execute("UPDATE user_class SET role_id=2 FROM users WHERE users.id=user_class.user_id AND users.user_type='INSTRUCTOR';");
 
             statement.execute("UPDATE version SET version=7;");
             connection.commit();
@@ -296,8 +332,8 @@ public class DatabaseManager {
         }
     }
 
-    public Pair<String, String> createUser(String username, String password, ServerRole role, boolean forceReset) throws SQLException {
-        if (username == null || username.length() == 0 || role == null)
+    public Pair<String, String> createUser(String username, String password, int roleId, boolean forceReset) throws SQLException {
+        if (username == null || username.length() == 0)
             return new ImmutablePair<>(null, NetUtil.INVALID);
         if (password == null)
             password = RandomStringUtils.randomAlphabetic(16);
@@ -314,7 +350,7 @@ public class DatabaseManager {
             statement.setString(2, sh.getKey());
             statement.setString(3, sh.getValue());
             statement.setBoolean(4, forceReset);
-            statement.setInt(5, role.getId());
+            statement.setInt(5, roleId);
             statement.executeUpdate();
             return new ImmutablePair<>(password, NetUtil.OK);
         }
@@ -348,7 +384,8 @@ public class DatabaseManager {
     }
 
     public Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(connectionString, user, pass);
+        return dataSource.getConnection();
+//        return DriverManager.getConnection(connectionString, user, pass);
     }
 
 }

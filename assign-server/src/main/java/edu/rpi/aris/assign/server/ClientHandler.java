@@ -560,7 +560,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                 }
             }
         }
-        Pair<String, String> res = dbManager.createUser(username, password, user.defaultRole, false);
+        Pair<String, String> res = dbManager.createUser(username, password, user.defaultRole.getId(), false);
         if (res.getValue().equals(NetUtil.OK)) {
             if (!res.getKey().equals(password))
                 sendMessage(NetUtil.OK + " " + URLEncoder.encode(res.getKey(), "UTF-8"));

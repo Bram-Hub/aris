@@ -13,7 +13,7 @@ public class ServerPermissions {
 
     private static final Logger log = LogManager.getLogger();
 
-    private final HashMap<Integer, ServerRole> rollMap = new HashMap<>();
+    private final HashMap<Integer, ServerRole> roleMap = new HashMap<>();
     private final HashMap<String, Permission> permissionMap = new HashMap<>();
 
     public ServerPermissions(Connection connection) throws SQLException {
@@ -21,13 +21,56 @@ public class ServerPermissions {
     }
 
     private void loadPermissions(Connection connection) throws SQLException {
-        try (PreparedStatement selectRoles = connection.prepareStatement("")) {
+        try (PreparedStatement selectRoles = connection.prepareStatement("SELECT id, name, role_rank FROM role;");
+             PreparedStatement selectPerms = connection.prepareStatement("SELECT name, role_id FROM permissions;");
+             ResultSet roleRs = selectRoles.executeQuery()) {
+            while (roleRs.next()) {
+                ServerRole r = new ServerRole(roleRs.getInt(1), roleRs.getString(2), roleRs.getInt(3));
+                roleMap.put(r.getId(), r);
+            }
+            HashMap<String, Integer> rawPermissions = new HashMap<>();
+            try (ResultSet permRs = selectPerms.executeQuery()) {
+                while (permRs.next())
+                    rawPermissions.put(permRs.getString(1), permRs.getInt(2));
+            }
+            if (rawPermissions.size() == 0) {
+                loadDefaultPermissions(connection);
+                return;
+            }
+            for (Perm p : Perm.values()) {
+                Integer roleId = rawPermissions.get(p.name());
+                if (roleId == null) {
+                    ServerRole role = getAdminRole();
+                    for (ServerRole r : roleMap.values()) {
+                        if (r.getRollRank() > role.getRollRank() && r.getRollRank() <= p.defaultRoleRank)
+                            role = r;
+                    }
+                    roleId = role.getId();
+                }
+                permissionMap.put(p.name(), new Permission(p.name(), roleId));
+            }
+        }
+    }
 
+    private void loadDefaultPermissions(Connection connection) throws SQLException {
+        try (PreparedStatement addPerm = connection.prepareStatement("INSERT INTO permissions (name, role_id) VALUES (?, ?);")) {
+            for (Perm p : Perm.values()) {
+                ServerRole role = getAdminRole();
+                for (ServerRole r : roleMap.values()) {
+                    if (r.getRollRank() > role.getRollRank() && r.getRollRank() <= p.defaultRoleRank)
+                        role = r;
+                }
+                addPerm.setString(1, p.name());
+                addPerm.setInt(2, role.getId());
+                addPerm.addBatch();
+                permissionMap.put(p.name(), new Permission(p.name(), role.getId()));
+            }
+            addPerm.executeBatch();
         }
     }
 
     public ServerRole getRole(int roleId) {
-        return rollMap.get(roleId);
+        return roleMap.get(roleId);
     }
 
     public Permission getPermission(Perm perm) {
@@ -39,7 +82,7 @@ public class ServerPermissions {
     }
 
     public boolean hasPermission(int userRoll, String permissionName) {
-        return hasPermission(rollMap.get(userRoll), permissionMap.get(permissionName));
+        return hasPermission(roleMap.get(userRoll), permissionMap.get(permissionName));
     }
 
     public boolean hasPermission(ServerRole userRole, Perm permission) {
@@ -49,7 +92,7 @@ public class ServerPermissions {
     public boolean hasPermission(ServerRole userRoll, Permission permission) {
         if (permission == null)
             return false;
-        return hasPermission(userRoll, rollMap.get(permission.getRollId()));
+        return hasPermission(userRoll, roleMap.get(permission.getRollId()));
     }
 
     public boolean hasPermission(ServerRole userRoll, ServerRole permissionRole) {
@@ -66,7 +109,7 @@ public class ServerPermissions {
             selectRoleId.setInt(2, cid);
             try (ResultSet rs = selectRoleId.executeQuery()) {
                 if (rs.next()) {
-                    ServerRole role = rollMap.get(rs.getInt(1));
+                    ServerRole role = roleMap.get(rs.getInt(1));
                     return hasPermission(role, permission);
                 }
             }
@@ -77,7 +120,7 @@ public class ServerPermissions {
     }
 
     public ServerRole getAdminRole() {
-        for (ServerRole r : rollMap.values())
+        for (ServerRole r : roleMap.values())
             if (r.getRollRank() <= 0)
                 return r;
         return null;
@@ -85,9 +128,10 @@ public class ServerPermissions {
 
     public ServerRole getLowestRole() {
         ServerRole role = null;
-        for (ServerRole r : rollMap.values())
+        for (ServerRole r : roleMap.values())
             if (role == null || r.getRollRank() > role.getRollRank())
                 role = r;
         return role;
     }
+
 }
