@@ -13,17 +13,18 @@ public class ProblemDeleteMsg extends Message {
     private final int pid;
 
     public ProblemDeleteMsg(int pid) {
+        super(Perm.PROBLEM_DELETE);
         this.pid = pid;
     }
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
     private ProblemDeleteMsg() {
-        pid = 0;
+        this(0);
     }
 
     @Override
     public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
-        if (!user.isAdmin() && !permissions.hasPermission(user.defaultRole, permissions.getPermission(Perm.PROBLEM_DELETE)))
+        if (!permissions.hasPermission(user, Perm.PROBLEM_DELETE))
             return ErrorType.UNAUTHORIZED;
         try (PreparedStatement deleteProblem = connection.prepareStatement("DELETE FROM problem WHERE id = ?;")) {
             deleteProblem.setInt(1, pid);

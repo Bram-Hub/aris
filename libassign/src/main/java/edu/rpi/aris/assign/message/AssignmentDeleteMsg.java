@@ -14,18 +14,19 @@ public class AssignmentDeleteMsg extends Message {
     private final int aid;
 
     public AssignmentDeleteMsg(int cid, int aid) {
+        super(Perm.ASSIGNMENT_DELETE);
         this.cid = cid;
         this.aid = aid;
     }
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
     private AssignmentDeleteMsg() {
-        aid = cid = 0;
+        this(0, 0);
     }
 
     @Override
     public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
-        if (!user.isAdmin() && !permissions.hasClassPermission(user.uid, cid, permissions.getPermission(Perm.ASSIGNMENT_DELETE), connection))
+        if (!permissions.hasClassPermission(user, cid, Perm.ASSIGNMENT_DELETE, connection))
             return ErrorType.UNAUTHORIZED;
         try (PreparedStatement statement = connection.prepareStatement("DELETE FROM assignment WHERE id = ? AND class_id = ?;")) {
             statement.setInt(1, aid);

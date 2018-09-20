@@ -239,8 +239,9 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                                 logger.error(msg.getMessageType().name() + " processing failed with error: " + error.name());
                                 if (msg instanceof ErrorMsg)
                                     msg.send(this);
-                                else
+                                else {
                                     new ErrorMsg(error).send(this);
+                                }
                             }
                         } catch (IOException | SQLException e) {
                             connection.rollback();

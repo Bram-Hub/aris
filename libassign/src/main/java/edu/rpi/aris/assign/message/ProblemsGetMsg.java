@@ -16,13 +16,17 @@ public class ProblemsGetMsg extends Message {
 
     private final ArrayList<MsgUtil.ProblemInfo> problems = new ArrayList<>();
 
+    public ProblemsGetMsg() {
+        super(Perm.PROBLEMS_GET);
+    }
+
     public ArrayList<MsgUtil.ProblemInfo> getProblems() {
         return problems;
     }
 
     @Override
     public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
-        if (!user.isAdmin() && !permissions.hasPermission(user.defaultRole, permissions.getPermission(Perm.PROBLEMS_GET)))
+        if (!permissions.hasPermission(user, Perm.PROBLEMS_GET))
             return ErrorType.UNAUTHORIZED;
         try (PreparedStatement statement = connection.prepareStatement("SELECT id, name, created_by, created_on, module_name FROM problem ORDER BY created_on DESC;")) {
             try (ResultSet rs = statement.executeQuery()) {
@@ -46,8 +50,8 @@ public class ProblemsGetMsg extends Message {
 
     @Override
     public boolean checkValid() {
-        for(MsgUtil.ProblemInfo info : problems)
-            if(info == null || !info.checkValid())
+        for (MsgUtil.ProblemInfo info : problems)
+            if (info == null || !info.checkValid())
                 return false;
         return true;
     }

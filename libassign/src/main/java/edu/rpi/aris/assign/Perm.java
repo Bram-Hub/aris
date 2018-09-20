@@ -10,7 +10,10 @@ public enum Perm {
     PROBLEM_DELETE(1),
     PROBLEM_EDIT(2),
     PROBLEMS_GET(2),
-    USER_EDIT(1);
+    USER_EDIT(1),
+    ASSIGNMENT_GET(3),
+    PROBLEM_FETCH(3),
+    USER_GET(3);
 
     public final int defaultRoleRank;
 

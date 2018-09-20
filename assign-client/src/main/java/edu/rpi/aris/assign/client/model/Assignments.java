@@ -244,8 +244,6 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
         public void onError(boolean suggestRetry, AssignmentCreateMsg msg) {
             if (suggestRetry)
                 createAssignment(msg.getCid(), msg.getName(), msg.getDueDate(), msg.getProblems());
-            else
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred creating the assignment");
             Platform.runLater(() -> userInfo.finishLoading());
         }
 
@@ -281,7 +279,6 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
                 userInfo.startLoading();
                 Client.getInstance().processMessage(msg, this);
             } else {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred while modifying the assignment");
                 loadAssignments(true);
             }
             Platform.runLater(() -> userInfo.finishLoading());
@@ -307,8 +304,6 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
         public void onError(boolean suggestRetry, AssignmentDeleteMsg msg) {
             if (suggestRetry)
                 delete(msg.getCid(), msg.getAid());
-            else
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred while deleting the assignment");
             Platform.runLater(() -> userInfo.finishLoading());
         }
 

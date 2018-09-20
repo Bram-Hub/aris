@@ -25,14 +25,14 @@ public class SubmissionGetInstructorMsg extends Message {
     private final HashMap<Integer, HashMap<Integer, ArrayList<MsgUtil.SubmissionInfo>>> submissions = new HashMap<>();
 
     public SubmissionGetInstructorMsg(int aid, int cid) {
+        super(null);
         this.aid = aid;
         this.cid = cid;
     }
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
     private SubmissionGetInstructorMsg() {
-        aid = 0;
-        cid = 0;
+        this(0,0);
     }
 
     public HashMap<Integer, HashMap<Integer, ArrayList<MsgUtil.SubmissionInfo>>> getSubmissions() {

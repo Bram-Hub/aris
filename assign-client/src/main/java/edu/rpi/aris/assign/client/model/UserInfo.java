@@ -213,8 +213,6 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         public void onError(boolean suggestRetry, ClassDeleteMsg msg) {
             if (suggestRetry)
                 Client.getInstance().processMessage(msg, this);
-            else
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error Deleting Class", "An error occured while attempting to delete the class");
             Platform.runLater(UserInfo.this::finishLoading);
         }
 
@@ -242,8 +240,6 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         public void onError(boolean suggestRetry, ClassCreateMsg msg) {
             if (suggestRetry)
                 Client.getInstance().processMessage(msg, this);
-            else
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error Creating Class", "An error occurred while attempting to create the class");
             Platform.runLater(UserInfo.this::finishLoading);
         }
 

@@ -190,8 +190,6 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         public void onError(boolean suggestRetry, ProblemCreateMsg<T> msg) {
             if (suggestRetry)
                 createProblem(msg.getName(), msg.getModuleName(), msg.getProblem());
-            else
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred creating the problem");
             Platform.runLater(() -> userInfo.finishLoading());
         }
 
@@ -213,7 +211,6 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
             if (suggestRetry)
                 renamed(problemMap.get(msg.getPid()));
             else {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred while renaming the problem");
                 loadProblems(true);
             }
             Platform.runLater(() -> userInfo.finishLoading());
@@ -247,7 +244,6 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
             if (suggestRetry)
                 uploadModifiedProblem(problemInfo, msg.getProblem());
             else {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Upload Error", "An error occurred while uploading the problem", true);
                 ArisModule<T> module = ModuleService.getService().getModule(msg.getModuleName());
                 if (module != null) {
                     try {
@@ -282,8 +278,6 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         public void onError(boolean suggestRetry, ProblemDeleteMsg msg) {
             if (suggestRetry)
                 delete(problemMap.get(msg.getPid()));
-            else
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred while deleting the problem");
             Platform.runLater(() -> userInfo.finishLoading());
         }
 
@@ -320,8 +314,6 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         public void onError(boolean suggestRetry, ProblemFetchMessage<T> msg) {
             if (suggestRetry)
                 fetchAndModify(msg.getPid(), module);
-            else
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", "An error occurred fetching the problem");
             Platform.runLater(() -> userInfo.finishLoading());
         }
 

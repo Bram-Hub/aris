@@ -19,6 +19,7 @@ public class UserEditMsg extends Message {
     private String oldPass;
 
     public UserEditMsg(String username, String newPass, String oldPass, boolean changePass) {
+        super(Perm.USER_EDIT, true);
         this.username = username;
         this.newPass = newPass;
         this.oldPass = oldPass;
@@ -27,17 +28,14 @@ public class UserEditMsg extends Message {
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
     private UserEditMsg() {
-        username = null;
-        newPass = null;
-        oldPass = null;
-        changePass = false;
+        this(null, null, null, false);
     }
 
     @Override
     public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
         boolean resetPass = newPass != null;
         try {
-            if (!user.username.equals(username) && !user.isAdmin() && permissions.hasPermission(user.defaultRole, permissions.getPermission(Perm.USER_EDIT)))
+            if (!user.username.equals(username) && !permissions.hasPermission(user, Perm.USER_EDIT))
                 return ErrorType.UNAUTHORIZED;
             if (oldPass == null)
                 return ErrorType.AUTH_FAIL;

@@ -15,12 +15,13 @@ public class ClassCreateMsg extends Message {
     private int cid;
 
     public ClassCreateMsg(String name) {
+        super(Perm.CLASS_CREATE_DELETE);
         this.name = name;
     }
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
     private ClassCreateMsg() {
-        name = null;
+        this(null);
     }
 
     public int getClassId() {
@@ -33,7 +34,7 @@ public class ClassCreateMsg extends Message {
 
     @Override
     public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
-        if (!user.isAdmin() && !permissions.hasClassPermission(user.uid, cid, permissions.getPermission(Perm.CLASS_CREATE_DELETE), connection))
+        if(!permissions.hasPermission(user, Perm.CLASS_CREATE_DELETE))
             return ErrorType.UNAUTHORIZED;
         try (PreparedStatement insertClass = connection.prepareStatement("INSERT INTO class (name) VALUES(?);");
              PreparedStatement selectClassId = connection.prepareStatement("SELECT id FROM class ORDER BY id DESC LIMIT 1;");

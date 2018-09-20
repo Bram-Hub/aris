@@ -1,9 +1,6 @@
 package edu.rpi.aris.assign.message;
 
-import edu.rpi.aris.assign.ArisModuleException;
-import edu.rpi.aris.assign.ModuleService;
-import edu.rpi.aris.assign.Problem;
-import edu.rpi.aris.assign.ProblemConverter;
+import edu.rpi.aris.assign.*;
 import edu.rpi.aris.assign.spi.ArisModule;
 
 import java.io.*;
@@ -13,7 +10,14 @@ public abstract class ProblemMessage<T extends ArisModule> extends DataMessage {
     private final String moduleName;
     private transient Problem<T> problem;
 
-    ProblemMessage(String moduleName, Problem<T> problem) {
+    ProblemMessage(String moduleName, Problem<T> problem, Perm perm, boolean customPermCheck) {
+        super(perm, customPermCheck);
+        this.moduleName = moduleName;
+        this.problem = problem;
+    }
+
+    ProblemMessage(String moduleName, Problem<T> problem, Perm perm) {
+        super(perm);
         this.moduleName = moduleName;
         this.problem = problem;
     }

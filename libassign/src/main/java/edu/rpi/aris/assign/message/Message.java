@@ -3,10 +3,7 @@ package edu.rpi.aris.assign.message;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
-import edu.rpi.aris.assign.ArisModuleException;
-import edu.rpi.aris.assign.MessageCommunication;
-import edu.rpi.aris.assign.ServerPermissions;
-import edu.rpi.aris.assign.User;
+import edu.rpi.aris.assign.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -25,6 +22,18 @@ public abstract class Message {
         gsonBuilder.registerTypeAdapter(byte[].class, new ByteArrayAdapter());
         gsonBuilder.registerTypeAdapter(ZonedDateTime.class, new ZDTGsonAdapter());
         gson = gsonBuilder.create();
+    }
+
+    private final transient Perm permission;
+    private final transient boolean customPermCheck;
+
+    protected Message(Perm permission, boolean customPermCheck) {
+        this.permission = permission;
+        this.customPermCheck = customPermCheck;
+    }
+
+    protected Message(Perm permission) {
+        this(permission, false);
     }
 
     private static Message parse(MessageCommunication com) {
@@ -59,6 +68,14 @@ public abstract class Message {
             return null;
         }
         return reply;
+    }
+
+    public final Perm getPermission() {
+        return permission;
+    }
+
+    public final boolean hasCustomPermissionCheck() {
+        return customPermCheck;
     }
 
     public final void send(MessageCommunication com) throws Exception {

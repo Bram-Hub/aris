@@ -1,5 +1,6 @@
 package edu.rpi.aris.assign.message;
 
+import edu.rpi.aris.assign.Perm;
 import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.ServerRole;
 import edu.rpi.aris.assign.User;
@@ -20,12 +21,12 @@ public class UserGetMsg extends Message {
     private ServerPermissions permissions;
     private HashMap<Integer, Pair<String, Integer>> classes = new HashMap<>();
 
-    public ServerRole getDefaultRole() {
-        return permissions == null ? null : permissions.getRole(defaultRole);
+    public UserGetMsg() {
+        super(Perm.USER_GET);
     }
 
-    public void setDefaultRole(ServerRole defaultRole) {
-        this.defaultRole = defaultRole.getId();
+    public ServerRole getDefaultRole() {
+        return permissions == null ? null : permissions.getRole(defaultRole);
     }
 
     public HashMap<Integer, Pair<String, Integer>> getClasses() {
@@ -34,10 +35,6 @@ public class UserGetMsg extends Message {
 
     public int getUserId() {
         return userId;
-    }
-
-    public void setUserId(int userId) {
-        this.userId = userId;
     }
 
     public ServerPermissions getPermissions() {

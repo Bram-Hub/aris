@@ -1,6 +1,7 @@
 package edu.rpi.aris.assign.message;
 
 import edu.rpi.aris.assign.NetUtil;
+import edu.rpi.aris.assign.Perm;
 import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
 
@@ -21,12 +22,13 @@ public class AssignmentsGetMsg extends Message {
     private final ArrayList<MsgUtil.AssignmentData> assignments = new ArrayList<>();
 
     public AssignmentsGetMsg(int classId) {
+        super(Perm.ASSIGNMENT_GET, false);
         this.classId = classId;
     }
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
     private AssignmentsGetMsg() {
-        classId = 0;
+        this(0);
     }
 
     public ArrayList<MsgUtil.AssignmentData> getAssignments() {

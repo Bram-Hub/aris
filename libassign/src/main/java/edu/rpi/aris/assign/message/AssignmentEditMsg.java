@@ -19,21 +19,18 @@ public class AssignmentEditMsg extends Message {
     private ZonedDateTime newDueDate = null;
 
     public AssignmentEditMsg(int cid, int aid) {
+        super(Perm.ASSIGNMENT_EDIT);
         this.cid = cid;
         this.aid = aid;
     }
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
     private AssignmentEditMsg() {
-        cid = aid = 0;
+        this(0,0);
     }
 
     public void setName(String name) {
         newName = name;
-    }
-
-    public void setNewDueDate(ZonedDateTime utcTime) {
-        newDueDate = utcTime;
     }
 
     public void removeProblem(int pid) {
@@ -110,7 +107,7 @@ public class AssignmentEditMsg extends Message {
 
     @Override
     public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
-        if (!user.isAdmin() && !permissions.hasClassPermission(user.uid, cid, permissions.getPermission(Perm.ASSIGNMENT_EDIT), connection))
+        if (!permissions.hasClassPermission(user, cid, Perm.ASSIGNMENT_EDIT, connection))
             return ErrorType.UNAUTHORIZED;
         rename(connection);
         changeDue(connection);
@@ -148,6 +145,10 @@ public class AssignmentEditMsg extends Message {
 
     public ZonedDateTime getNewDueDate() {
         return newDueDate;
+    }
+
+    public void setNewDueDate(ZonedDateTime utcTime) {
+        newDueDate = utcTime;
     }
 
     public ArrayList<Integer> getAddedProblems() {

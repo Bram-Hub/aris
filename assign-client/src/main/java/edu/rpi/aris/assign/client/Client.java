@@ -486,6 +486,9 @@ public class Client implements MessageCommunication {
             } catch (AuthBanException e) {
                 AssignClient.getInstance().getMainWindow().displayErrorMsg("Temporary Ban", e.getMessage());
                 responseHandler.onError(false, message);
+            } catch (ErrorDialogException e) {
+                AssignClient.getInstance().getMainWindow().displayErrorMsg(e.getTitle(), e.getMessage(), e.doWait());
+                responseHandler.onError(false, message);
             } catch (PasswordResetRequiredException e) {
                 AssignClient.getInstance().getMainWindow().displayErrorMsg("Password Reset", e.getMessage(), true);
                 disconnect();
@@ -786,6 +789,8 @@ public class Client implements MessageCommunication {
                 throw new InvalidCredentialsException();
             case AUTH_WEAK_PASS:
                 throw new WeakPasswordException();
+            case UNAUTHORIZED:
+                throw new ErrorDialogException("Unauthorized", "You do not have permission to perform " + msg.getErrorMsg(), false);
             default:
                 throw new RuntimeException("Error: " + msg.getErrorType());
         }

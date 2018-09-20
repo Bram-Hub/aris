@@ -33,39 +33,24 @@ public class ServerPermissions {
                 while (permRs.next())
                     rawPermissions.put(permRs.getString(1), permRs.getInt(2));
             }
-            if (rawPermissions.size() == 0) {
-                loadDefaultPermissions(connection);
-                return;
-            }
-            for (Perm p : Perm.values()) {
-                Integer roleId = rawPermissions.get(p.name());
-                if (roleId == null) {
-                    ServerRole role = getAdminRole();
-                    for (ServerRole r : roleMap.values()) {
-                        if (r.getRollRank() > role.getRollRank() && r.getRollRank() <= p.defaultRoleRank)
-                            role = r;
+            try (PreparedStatement addPerm = connection.prepareStatement("INSERT INTO permissions (name, role_id) VALUES (?, ?);")) {
+                for (Perm p : Perm.values()) {
+                    Integer roleId = rawPermissions.get(p.name());
+                    if (roleId == null) {
+                        ServerRole role = getAdminRole();
+                        for (ServerRole r : roleMap.values()) {
+                            if (r.getRollRank() > role.getRollRank() && r.getRollRank() <= p.defaultRoleRank)
+                                role = r;
+                        }
+                        addPerm.setString(1, p.name());
+                        addPerm.setInt(2, role.getId());
+                        addPerm.addBatch();
+                        roleId = role.getId();
                     }
-                    roleId = role.getId();
+                    permissionMap.put(p.name(), new Permission(p.name(), roleId));
                 }
-                permissionMap.put(p.name(), new Permission(p.name(), roleId));
+                addPerm.executeBatch();
             }
-        }
-    }
-
-    private void loadDefaultPermissions(Connection connection) throws SQLException {
-        try (PreparedStatement addPerm = connection.prepareStatement("INSERT INTO permissions (name, role_id) VALUES (?, ?);")) {
-            for (Perm p : Perm.values()) {
-                ServerRole role = getAdminRole();
-                for (ServerRole r : roleMap.values()) {
-                    if (r.getRollRank() > role.getRollRank() && r.getRollRank() <= p.defaultRoleRank)
-                        role = r;
-                }
-                addPerm.setString(1, p.name());
-                addPerm.setInt(2, role.getId());
-                addPerm.addBatch();
-                permissionMap.put(p.name(), new Permission(p.name(), role.getId()));
-            }
-            addPerm.executeBatch();
         }
     }
 
@@ -73,39 +58,41 @@ public class ServerPermissions {
         return roleMap.get(roleId);
     }
 
-    public Permission getPermission(Perm perm) {
-        return perm == null ? null : getPermission(perm.name());
-    }
-
-    public Permission getPermission(String permissionName) {
-        return permissionMap.get(permissionName);
-    }
-
-    public boolean hasPermission(int userRoll, String permissionName) {
-        return hasPermission(roleMap.get(userRoll), permissionMap.get(permissionName));
-    }
-
     public boolean hasPermission(ServerRole userRole, Perm permission) {
         return permission != null && hasPermission(userRole, permissionMap.get(permission.name()));
     }
 
-    public boolean hasPermission(ServerRole userRoll, Permission permission) {
+    private boolean hasPermission(ServerRole userRoll, Permission permission) {
         if (permission == null)
             return false;
         return hasPermission(userRoll, roleMap.get(permission.getRollId()));
     }
 
-    public boolean hasPermission(ServerRole userRoll, ServerRole permissionRole) {
+    private boolean hasPermission(ServerRole userRoll, ServerRole permissionRole) {
         if (userRoll == null || permissionRole == null)
             return false;
         return userRoll.getRollRank() <= permissionRole.getRollRank();
     }
 
-    public boolean hasClassPermission(int uid, int cid, Permission permission, Connection connection) {
+    public boolean hasPermission(User user, Perm perm) {
+        return perm != null && hasPermission(user, permissionMap.get(perm.name()));
+    }
+
+    public boolean hasPermission(User user, Permission permission) {
+        return user != null && (user.isAdmin() || hasPermission(user.defaultRole, permission));
+    }
+
+    public boolean hasClassPermission(User user, int cid, Perm permission, Connection connection) {
+        return permission != null && hasClassPermission(user, cid, permissionMap.get(permission.name()), connection);
+    }
+
+    private boolean hasClassPermission(User user, int cid, Permission permission, Connection connection) {
+        if (user.isAdmin())
+            return true;
         if (permission == null)
             return false;
         try (PreparedStatement selectRoleId = connection.prepareStatement("SELECT role_id FROM user_class WHERE user_id = ? AND class_id = ?;")) {
-            selectRoleId.setInt(1, uid);
+            selectRoleId.setInt(1, user.uid);
             selectRoleId.setInt(2, cid);
             try (ResultSet rs = selectRoleId.executeQuery()) {
                 if (rs.next()) {

@@ -25,6 +25,7 @@ public class AssignmentCreateMsg extends Message {
     private int aid;
 
     public AssignmentCreateMsg(int cid, String name, ZonedDateTime dueDate) {
+        super(Perm.ASSIGNMENT_CREATE);
         this.cid = cid;
         this.name = name;
         this.dueDate = dueDate;
@@ -32,9 +33,7 @@ public class AssignmentCreateMsg extends Message {
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
     private AssignmentCreateMsg() {
-        cid = 0;
-        name = null;
-        dueDate = null;
+        this(0, null, null);
     }
 
     public void addProof(int pid) {
@@ -47,7 +46,7 @@ public class AssignmentCreateMsg extends Message {
 
     @Override
     public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
-        if (!user.isAdmin() && !permissions.hasClassPermission(user.uid, cid, permissions.getPermission(Perm.ASSIGNMENT_CREATE), connection))
+        if (!permissions.hasClassPermission(user, cid, Perm.ASSIGNMENT_CREATE, connection))
             return ErrorType.UNAUTHORIZED;
         try (PreparedStatement select = connection.prepareStatement("SELECT id FROM assignment ORDER BY id DESC LIMIT 1;");
              PreparedStatement statement = connection.prepareStatement("INSERT INTO assignment VALUES(?, ?, ?, ?, ?, ?);")) {
