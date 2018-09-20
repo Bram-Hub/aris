@@ -26,8 +26,6 @@ public class ProblemCreateMsg<T extends ArisModule> extends ProblemMessage<T> {
 
     @Override
     public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws Exception {
-        if (!permissions.hasPermission(user, Perm.PROBLEM_CREATE))
-            return ErrorType.UNAUTHORIZED;
         ArisModule<T> module = ModuleService.getService().getModule(getModuleName());
         if (module == null)
             return ErrorType.MISSING_MODULE;

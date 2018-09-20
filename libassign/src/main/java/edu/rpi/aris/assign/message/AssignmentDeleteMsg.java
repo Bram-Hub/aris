@@ -26,8 +26,6 @@ public class AssignmentDeleteMsg extends Message implements ClassMessage {
 
     @Override
     public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
-        if (!permissions.hasClassPermission(user, cid, Perm.ASSIGNMENT_DELETE, connection))
-            return ErrorType.UNAUTHORIZED;
         try (PreparedStatement statement = connection.prepareStatement("DELETE FROM assignment WHERE id = ? AND class_id = ?;")) {
             statement.setInt(1, aid);
             statement.setInt(2, cid);

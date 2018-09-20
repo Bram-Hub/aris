@@ -107,8 +107,6 @@ public class AssignmentEditMsg extends Message implements ClassMessage {
 
     @Override
     public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
-        if (!permissions.hasClassPermission(user, cid, Perm.ASSIGNMENT_EDIT, connection))
-            return ErrorType.UNAUTHORIZED;
         rename(connection);
         changeDue(connection);
         removeProblem(connection);

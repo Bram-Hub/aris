@@ -46,8 +46,6 @@ public class AssignmentCreateMsg extends Message implements ClassMessage {
 
     @Override
     public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
-        if (!permissions.hasClassPermission(user, cid, Perm.ASSIGNMENT_CREATE, connection))
-            return ErrorType.UNAUTHORIZED;
         try (PreparedStatement select = connection.prepareStatement("SELECT id FROM assignment ORDER BY id DESC LIMIT 1;");
              PreparedStatement statement = connection.prepareStatement("INSERT INTO assignment VALUES(?, ?, ?, ?, ?, ?);")) {
             aid = 1;

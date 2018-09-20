@@ -34,8 +34,6 @@ public class ProblemEditMsg<T extends ArisModule> extends ProblemMessage<T> {
 
     @Override
     public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws Exception {
-        if (!permissions.hasPermission(user, Perm.PROBLEM_EDIT))
-            return ErrorType.UNAUTHORIZED;
         if (name != null) {
             try (PreparedStatement updateName = connection.prepareStatement("UPDATE problem SET name = ? WHERE id = ?")) {
                 updateName.setString(1, name);
