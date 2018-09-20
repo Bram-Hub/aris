@@ -9,7 +9,7 @@ import java.sql.*;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 
-public class AssignmentEditMsg extends Message {
+public class AssignmentEditMsg extends Message implements ClassMessage {
 
     private final int cid;
     private final int aid;
@@ -131,7 +131,7 @@ public class AssignmentEditMsg extends Message {
         return cid > 0 && aid > 0;
     }
 
-    public int getCid() {
+    public int getClassId() {
         return cid;
     }
 

@@ -4,8 +4,6 @@ import edu.rpi.aris.assign.Perm;
 import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.ServerRole;
 import edu.rpi.aris.assign.User;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -19,7 +17,8 @@ public class UserGetMsg extends Message {
     private int userId;
     private int defaultRole;
     private ServerPermissions permissions;
-    private HashMap<Integer, Pair<String, Integer>> classes = new HashMap<>();
+    private HashMap<Integer, String> classNames = new HashMap<>();
+    private HashMap<Integer, Integer> classRoles = new HashMap<>();
 
     public UserGetMsg() {
         super(Perm.USER_GET);
@@ -29,8 +28,12 @@ public class UserGetMsg extends Message {
         return permissions == null ? null : permissions.getRole(defaultRole);
     }
 
-    public HashMap<Integer, Pair<String, Integer>> getClasses() {
-        return classes;
+    public HashMap<Integer, String> getClassNames() {
+        return classNames;
+    }
+
+    public HashMap<Integer, Integer> getClassRoles() {
+        return classRoles;
     }
 
     public int getUserId() {
@@ -50,8 +53,11 @@ public class UserGetMsg extends Message {
             if (!user.isAdmin())
                 getInfo.setInt(1, userId);
             try (ResultSet infoRs = getInfo.executeQuery()) {
-                while (infoRs.next())
-                    classes.put(infoRs.getInt(1), new ImmutablePair<>(infoRs.getString(2), user.isAdmin() ? permissions.getAdminRole().getId() : permissions.getRole(infoRs.getInt(3)).getId()));
+                while (infoRs.next()) {
+                    int cid = infoRs.getInt(1);
+                    classNames.put(cid, infoRs.getString(2));
+                    classRoles.put(cid, user.isAdmin() ? permissions.getAdminRole().getId() : permissions.getRole(infoRs.getInt(3)).getId());
+                }
             }
         }
         return null;
@@ -64,8 +70,8 @@ public class UserGetMsg extends Message {
 
     @Override
     public boolean checkValid() {
-        for (Map.Entry<Integer, Pair<String, Integer>> c : classes.entrySet())
-            if (c.getKey() == null || c.getValue() == null || c.getValue().getLeft() == null)
+        for (Map.Entry<Integer, String> c : classNames.entrySet())
+            if (c.getKey() == null || c.getValue() == null || !classRoles.containsKey(c.getKey()))
                 return false;
         return true;
     }

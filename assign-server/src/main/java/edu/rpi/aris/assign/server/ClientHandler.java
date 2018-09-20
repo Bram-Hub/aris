@@ -1,10 +1,7 @@
 package edu.rpi.aris.assign.server;
 
 import edu.rpi.aris.assign.*;
-import edu.rpi.aris.assign.message.ErrorMsg;
-import edu.rpi.aris.assign.message.ErrorType;
-import edu.rpi.aris.assign.message.Message;
-import edu.rpi.aris.assign.message.UserEditMsg;
+import edu.rpi.aris.assign.message.*;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -130,6 +127,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
             return false;
         }
         String username = URLDecoder.decode(auth[2], "UTF-8").toLowerCase();
+        Thread.currentThread().setName(Thread.currentThread().getName() + "/" + username);
         logger.info("Authenticating user: " + username);
         String pass = URLDecoder.decode(auth[3], "UTF-8");
         try (Connection connection = dbManager.getConnection();
@@ -223,13 +221,21 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                         try {
                             connection.setAutoCommit(false);
                             ErrorType error;
+                            Perm perm = msg.getPermission();
                             if (user.requireReset()) {
                                 if (msg instanceof UserEditMsg && ((UserEditMsg) msg).isChangePass() && user.username.equals(((UserEditMsg) msg).getUsername()))
                                     error = msg.processMessage(connection, user, permissions);
                                 else
                                     error = ErrorType.RESET_PASS;
                             } else {
-                                error = msg.processMessage(connection, user, permissions);
+                                if (msg.hasCustomPermissionCheck()) {
+                                    error = msg.processMessage(connection, user, permissions);
+                                } else {
+                                    if (msg instanceof ClassMessage ? permissions.hasClassPermission(user, ((ClassMessage) msg).getClassId(), perm, connection) : (permissions.hasPermission(user, perm)))
+                                        error = msg.processMessage(connection, user, permissions);
+                                    else
+                                        error = ErrorType.UNAUTHORIZED;
+                                }
                             }
                             if (error == null) {
                                 connection.commit();
@@ -240,7 +246,10 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                                 if (msg instanceof ErrorMsg)
                                     msg.send(this);
                                 else {
-                                    new ErrorMsg(error).send(this);
+                                    if (error == ErrorType.UNAUTHORIZED)
+                                        new ErrorMsg(error, perm == null ? null : perm.name()).send(this);
+                                    else
+                                        new ErrorMsg(error).send(this);
                                 }
                             }
                         } catch (IOException | SQLException e) {

@@ -1,6 +1,5 @@
 package edu.rpi.aris.assign.message;
 
-import edu.rpi.aris.assign.Perm;
 import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
 
@@ -27,7 +26,7 @@ public class ErrorMsg extends Message {
     }
 
     public ErrorMsg(ErrorType error, String msg) {
-        super(null);
+        super(null, true);
         errorType = error == null ? ErrorType.UNKNOWN_ERROR : error;
         errorMsg = msg;
     }

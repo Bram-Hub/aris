@@ -792,7 +792,7 @@ public class Client implements MessageCommunication {
             case UNAUTHORIZED:
                 throw new ErrorDialogException("Unauthorized", "You do not have permission to perform " + msg.getErrorMsg(), false);
             default:
-                throw new RuntimeException("Error: " + msg.getErrorType());
+                throw new ErrorDialogException("Error: " + msg.getErrorType(), msg.getErrorMsg(), false);
         }
     }
 

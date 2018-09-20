@@ -2,7 +2,6 @@ package edu.rpi.aris.assign.client.model;
 
 import edu.rpi.aris.assign.ServerRole;
 import edu.rpi.aris.assign.User;
-import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
 import edu.rpi.aris.assign.message.ClassCreateMsg;
@@ -139,8 +138,8 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
             defaultRole.set(message.getDefaultRole());
             classes.clear();
             classMap.clear();
-            message.getClasses().forEach((k, v) -> {
-                ClassInfo info = new ClassInfo(k, v.getLeft(), message.getPermissions() == null ? null : message.getPermissions().getRole(v.getRight()));
+            message.getClassNames().forEach((k, v) -> {
+                ClassInfo info = new ClassInfo(k, v, message.getPermissions() == null ? null : message.getPermissions().getRole(message.getClassRoles().get(k)));
                 classes.add(info);
                 classMap.put(k, info);
             });

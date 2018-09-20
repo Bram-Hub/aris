@@ -15,7 +15,7 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 
-public class AssignmentCreateMsg extends Message {
+public class AssignmentCreateMsg extends Message implements ClassMessage {
 
     private static final Logger logger = LogManager.getLogger(AssignmentCreateMsg.class);
     private final int cid;
@@ -98,7 +98,7 @@ public class AssignmentCreateMsg extends Message {
         return dueDate;
     }
 
-    public int getCid() {
+    public int getClassId() {
         return cid;
     }
 }

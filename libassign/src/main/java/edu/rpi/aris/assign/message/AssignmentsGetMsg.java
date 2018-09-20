@@ -13,7 +13,7 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 
-public class AssignmentsGetMsg extends Message {
+public class AssignmentsGetMsg extends Message implements ClassMessage {
 
     private static final String SELECT_ASSIGNMENTS_ADMIN = "SELECT a.name , a.due_date , u.username , a.id FROM assignment a , users u , class c WHERE a.class_id = c.id AND a.assigned_by = u.id AND c.id = ? GROUP BY a.id , a.name , a.due_date , u.username ORDER BY a.due_date;";
     private static final String SELECT_ASSIGNMENTS_NON_ADMIN = "SELECT a.name, a.due_date, u2.username, a.id FROM assignment a, users u, users u2, class c, user_class uc WHERE uc.user_id = u.id AND uc.class_id = c.id AND a.class_id = uc.class_id AND a.assigned_by = u2.id AND c.id = ? AND u.username = ? GROUP BY a.id, a.name, a.due_date, u2.username ORDER BY a.due_date;";
@@ -22,7 +22,7 @@ public class AssignmentsGetMsg extends Message {
     private final ArrayList<MsgUtil.AssignmentData> assignments = new ArrayList<>();
 
     public AssignmentsGetMsg(int classId) {
-        super(Perm.ASSIGNMENT_GET, false);
+        super(Perm.ASSIGNMENT_GET);
         this.classId = classId;
     }
 
@@ -43,7 +43,7 @@ public class AssignmentsGetMsg extends Message {
     public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
         try (PreparedStatement selectAssignments = connection.prepareStatement(user.isAdmin() ? SELECT_ASSIGNMENTS_ADMIN : SELECT_ASSIGNMENTS_NON_ADMIN)) {
             selectAssignments.setInt(1, classId);
-            if (user.isAdmin())
+            if (!user.isAdmin())
                 selectAssignments.setString(2, user.username);
             try (ResultSet assignmentsRs = selectAssignments.executeQuery();
                  PreparedStatement selectProblems = connection.prepareStatement(SELECT_PROBLEMS)) {

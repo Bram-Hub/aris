@@ -8,7 +8,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-public class AssignmentDeleteMsg extends Message {
+public class AssignmentDeleteMsg extends Message implements ClassMessage {
 
     private final int cid;
     private final int aid;
@@ -46,7 +46,7 @@ public class AssignmentDeleteMsg extends Message {
         return cid > 0 && aid > 0;
     }
 
-    public int getCid() {
+    public int getClassId() {
         return cid;
     }
 
