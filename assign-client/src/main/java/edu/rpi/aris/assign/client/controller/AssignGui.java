@@ -49,14 +49,19 @@ public class AssignGui {
     @FXML
     private Tab userTab;
     @FXML
+    private Tab permissionTab;
+    @FXML
     private Tab problemTab;
     @FXML
     private MenuItem loginMenu;
     @FXML
     private Menu classMenu;
+    @FXML
+    private Label noClasses;
 
     private AssignmentsGui assignmentsGui;
     private UsersGui usersGui;
+    private PermissionsGui permissionsGui;
     private ProblemsGui problemsGui;
     private Stage stage;
     private UserInfo userInfo = UserInfo.getInstance();
@@ -118,9 +123,11 @@ public class AssignGui {
 
         assignmentsGui = new AssignmentsGui();
         usersGui = new UsersGui();
+        permissionsGui = new PermissionsGui();
         problemsGui = new ProblemsGui();
         tabGuis.put(assignmentTab, assignmentsGui);
         tabGuis.put(userTab, usersGui);
+        tabGuis.put(permissionTab, permissionsGui);
         tabGuis.put(problemTab, problemsGui);
 
         tabPane.getTabs().addListener((ListChangeListener<Tab>) c -> {
@@ -158,8 +165,11 @@ public class AssignGui {
         login.managedProperty().bind(userInfo.loginProperty().not());
         login.disableProperty().bind(userInfo.loadingBinding());
 
-        classes.visibleProperty().bind(userInfo.loginProperty());
-        classes.managedProperty().bind(userInfo.loginProperty());
+        classes.visibleProperty().bind(userInfo.loginProperty().and(Bindings.isNotEmpty(userInfo.classesProperty())));
+        classes.managedProperty().bind(classes.visibleProperty());
+
+        noClasses.visibleProperty().bind(userInfo.loginProperty().and(Bindings.isEmpty(userInfo.classesProperty())));
+        noClasses.managedProperty().bind(noClasses.visibleProperty());
 
         lblClass.visibleProperty().bind(userInfo.loginProperty());
         lblClass.managedProperty().bind(userInfo.loginProperty());
@@ -174,10 +184,12 @@ public class AssignGui {
 
         assignmentTab.setContent(assignmentsGui.getRoot());
         userTab.setContent(usersGui.getRoot());
+        permissionTab.setContent(permissionsGui.getRoot());
         problemTab.setContent(problemsGui.getRoot());
 
-        userInfo.defaultRoleProperty().addListener((observable, oldValue, newValue) -> setTabs(newValue));
-        setTabs(null);
+        userInfo.defaultRoleProperty().addListener((observable, oldValue, newValue) -> setTabs(newValue, userInfo.getClassRole()));
+        userInfo.classRoleProperty().addListener(((observable, oldValue, newValue) -> setTabs(userInfo.getDefaultRole(), newValue)));
+        setTabs(null, null);
 
         classMenu.visibleProperty().bind(Bindings.createBooleanBinding(() -> {
             ServerPermissions permissions = ServerConfig.getPermissions();
@@ -185,19 +197,27 @@ public class AssignGui {
         }, userInfo.defaultRoleProperty()));
     }
 
-    private void setTabs(ServerRole role) {
+    private void setTabs(ServerRole defaultRole, ServerRole classRole) {
         ServerPermissions permissions = ServerConfig.getPermissions();
-        if (permissions == null || role == null) {
-            tabPane.getTabs().removeAll(userTab, problemTab);
+        if (permissions == null || defaultRole == null) {
+            tabPane.getTabs().removeAll(assignmentTab, userTab, permissionTab, problemTab);
             return;
         }
-        boolean users = permissions.hasPermission(role, Perm.USER_EDIT);
-        if (users)
-            tabPane.getTabs().add(1, userTab);
+        int tabIndex = 0;
+        if (permissions.hasPermission(classRole, Perm.ASSIGNMENT_GET))
+            tabPane.getTabs().add(tabIndex++, assignmentTab);
+        else
+            tabPane.getTabs().remove(assignmentTab);
+        if (permissions.hasPermission(defaultRole, Perm.USER_EDIT))
+            tabPane.getTabs().add(tabIndex++, userTab);
         else
             tabPane.getTabs().remove(userTab);
-        if (permissions.hasPermission(role, Perm.PROBLEMS_GET))
-            tabPane.getTabs().add(users ? 2 : 1, problemTab);
+        if (permissions.hasPermission(defaultRole, Perm.PERMISSIONS_EDIT))
+            tabPane.getTabs().add(tabIndex++, permissionTab);
+        else
+            tabPane.getTabs().remove(permissionTab);
+        if (permissions.hasPermission(defaultRole, Perm.PROBLEMS_GET))
+            tabPane.getTabs().add(tabIndex, problemTab);
         else
             tabPane.getTabs().remove(problemTab);
     }

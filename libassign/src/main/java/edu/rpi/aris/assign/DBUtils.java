@@ -23,6 +23,7 @@ public class DBUtils {
             "\t1 upper case letter (A-Z)\n" +
             "\t1 lower case letter (a-z)\n" +
             "\t1 number(0-9)\n" +
+            "\tCannot contain your username\n" +
             "\tCannot be your old password";
     private static final Logger logger = LogManager.getLogger(DBUtils.class);
     private static final SecureRandom random = new SecureRandom();

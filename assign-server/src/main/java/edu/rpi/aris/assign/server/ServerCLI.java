@@ -72,6 +72,15 @@ public class ServerCLI {
                     case "rmuser":
                         log.error("rmuser not implemented");
                         break;
+                    case "rlperm":
+                        log.info("Reloading permissions from database...");
+                        try {
+                            AssignServerMain.getServer().getPermissions().reloadPermissions(AssignServerMain.getServer().getDbManager().getConnection());
+                            log.info("Permissions reloaded");
+                        } catch (SQLException e) {
+                            LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, false);
+                        }
+                        break;
                     default:
                         log.error("Unrecognized command: " + cmd);
                         help(true, null);
@@ -121,6 +130,7 @@ public class ServerCLI {
             log.log(lvl, "\tuseradd <username> - adds the specified user");
             log.log(lvl, "\tuserlist           - lists the users for this server");
             log.log(lvl, "\trmuser <username>  - deletes the given user from the server");
+            log.log(lvl, "\trlperm             - reloads the permissions from the database");
         }
     }
 

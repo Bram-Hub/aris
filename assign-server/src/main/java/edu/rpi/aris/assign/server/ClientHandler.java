@@ -216,50 +216,50 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
             //noinspection InfiniteLoopStatement
             try {
                 Message msg = Message.get(this);
-                if (msg != null) {
-                    try (Connection connection = dbManager.getConnection()) {
-                        try {
-                            connection.setAutoCommit(false);
-                            ErrorType error;
-                            Perm perm = msg.getPermission();
-                            if (user.requireReset()) {
-                                if (msg instanceof UserEditMsg && ((UserEditMsg) msg).isChangePass() && user.username.equals(((UserEditMsg) msg).getUsername()))
+                if (msg == null)
+                    return;
+                try (Connection connection = dbManager.getConnection()) {
+                    try {
+                        connection.setAutoCommit(false);
+                        ErrorType error;
+                        Perm perm = msg.getPermission();
+                        if (user.requireReset()) {
+                            if (msg instanceof UserEditMsg && ((UserEditMsg) msg).isChangePass() && user.username.equals(((UserEditMsg) msg).getUsername()))
+                                error = msg.processMessage(connection, user, permissions);
+                            else
+                                error = ErrorType.RESET_PASS;
+                        } else {
+                            if (msg.hasCustomPermissionCheck()) {
+                                error = msg.processMessage(connection, user, permissions);
+                            } else {
+                                if (msg instanceof ClassMessage ? permissions.hasClassPermission(user, ((ClassMessage) msg).getClassId(), perm, connection) : (permissions.hasPermission(user, perm)))
                                     error = msg.processMessage(connection, user, permissions);
                                 else
-                                    error = ErrorType.RESET_PASS;
-                            } else {
-                                if (msg.hasCustomPermissionCheck()) {
-                                    error = msg.processMessage(connection, user, permissions);
-                                } else {
-                                    if (msg instanceof ClassMessage ? permissions.hasClassPermission(user, ((ClassMessage) msg).getClassId(), perm, connection) : (permissions.hasPermission(user, perm)))
-                                        error = msg.processMessage(connection, user, permissions);
-                                    else
-                                        error = ErrorType.UNAUTHORIZED;
-                                }
+                                    error = ErrorType.UNAUTHORIZED;
                             }
-                            if (error == null) {
-                                connection.commit();
-                                msg.send(this);
-                            } else {
-                                connection.rollback();
-                                logger.error(msg.getMessageType().name() + " processing failed with error: " + error.name());
-                                if (msg instanceof ErrorMsg)
-                                    msg.send(this);
-                                else {
-                                    if (error == ErrorType.UNAUTHORIZED)
-                                        new ErrorMsg(error, perm == null ? null : perm.name()).send(this);
-                                    else
-                                        new ErrorMsg(error).send(this);
-                                }
-                            }
-                        } catch (IOException | SQLException e) {
-                            connection.rollback();
-                            throw e;
-                        } catch (Exception e) {
-                            connection.rollback();
-                            new ErrorMsg(ErrorType.EXCEPTION, e.getClass().getCanonicalName() + ": " + e.getMessage()).send(this);
-                            throw e;
                         }
+                        if (error == null) {
+                            connection.commit();
+                            msg.send(this);
+                        } else {
+                            connection.rollback();
+                            logger.error(msg.getMessageType().name() + " processing failed with error: " + error.name());
+                            if (msg instanceof ErrorMsg)
+                                msg.send(this);
+                            else {
+                                if (error == ErrorType.UNAUTHORIZED)
+                                    new ErrorMsg(error, perm == null ? null : perm.name()).send(this);
+                                else
+                                    new ErrorMsg(error).send(this);
+                            }
+                        }
+                    } catch (IOException | SQLException e) {
+                        connection.rollback();
+                        throw e;
+                    } catch (Throwable e) {
+                        connection.rollback();
+                        new ErrorMsg(ErrorType.EXCEPTION, e.getClass().getCanonicalName() + ": " + e.getMessage()).send(this);
+                        throw e;
                     }
                 }
             } catch (SQLException e) {

@@ -33,15 +33,9 @@ public class DatabaseManager {
             Security.addProvider(new BouncyCastleProvider());
     }
 
-//    private final String user;
-//    private final String pass;
-
-    //    private String connectionString;
     private ComboPooledDataSource dataSource;
 
     public DatabaseManager(String host, int port, String database, String user, String pass) throws IOException, SQLException {
-//        this.user = user;
-//        this.pass = pass;
         dataSource = new ComboPooledDataSource();
         dataSource.setJdbcUrl("jdbc:postgresql://" + host + ":" + port + "/" + database);
         dataSource.setUser(user);
@@ -385,7 +379,6 @@ public class DatabaseManager {
 
     public Connection getConnection() throws SQLException {
         return dataSource.getConnection();
-//        return DriverManager.getConnection(connectionString, user, pass);
     }
 
 }

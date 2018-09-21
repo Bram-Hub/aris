@@ -8,22 +8,42 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class ServerPermissions {
 
     private static final Logger log = LogManager.getLogger();
 
+    private transient final ReentrantReadWriteLock lock;
+
     private final HashMap<Integer, ServerRole> roleMap = new HashMap<>();
     private final HashMap<String, Permission> permissionMap = new HashMap<>();
 
     public ServerPermissions(Connection connection) throws SQLException {
+        this();
         loadPermissions(connection);
+    }
+
+    private ServerPermissions() {
+        lock = new ReentrantReadWriteLock(true);
+    }
+
+    public void reloadPermissions(Connection connection) throws SQLException {
+        try {
+            lock.writeLock().lock();
+            roleMap.clear();
+            permissionMap.clear();
+            loadPermissions(connection);
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
     private void loadPermissions(Connection connection) throws SQLException {
         try (PreparedStatement selectRoles = connection.prepareStatement("SELECT id, name, role_rank FROM role;");
              PreparedStatement selectPerms = connection.prepareStatement("SELECT name, role_id FROM permissions;");
              ResultSet roleRs = selectRoles.executeQuery()) {
+            lock.writeLock().lock();
             while (roleRs.next()) {
                 ServerRole r = new ServerRole(roleRs.getInt(1), roleRs.getString(2), roleRs.getInt(3));
                 roleMap.put(r.getId(), r);
@@ -51,39 +71,62 @@ public class ServerPermissions {
                 }
                 addPerm.executeBatch();
             }
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 
     public ServerRole getRole(int roleId) {
-        return roleMap.get(roleId);
+        try {
+            lock.readLock().lock();
+            return roleMap.get(roleId);
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     public boolean hasPermission(ServerRole userRole, Perm permission) {
-        return permission != null && hasPermission(userRole, permissionMap.get(permission.name()));
+        try {
+            lock.readLock().lock();
+            return permission != null && hasPermission(userRole, permissionMap.get(permission.name()));
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     private boolean hasPermission(ServerRole userRoll, Permission permission) {
-        if (permission == null)
-            return false;
-        return hasPermission(userRoll, roleMap.get(permission.getRollId()));
+        try {
+            lock.readLock().lock();
+            return permission != null && hasPermission(userRoll, roleMap.get(permission.getRollId()));
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     private boolean hasPermission(ServerRole userRoll, ServerRole permissionRole) {
-        if (userRoll == null || permissionRole == null)
-            return false;
-        return userRoll.getRollRank() <= permissionRole.getRollRank();
+        return userRoll != null && permissionRole != null && userRoll.getRollRank() <= permissionRole.getRollRank();
     }
 
     public boolean hasPermission(User user, Perm perm) {
-        return perm != null && hasPermission(user, permissionMap.get(perm.name()));
+        try {
+            lock.readLock().lock();
+            return perm != null && hasPermission(user, permissionMap.get(perm.name()));
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
-    public boolean hasPermission(User user, Permission permission) {
+    private boolean hasPermission(User user, Permission permission) {
         return user != null && (user.isAdmin() || hasPermission(user.defaultRole, permission));
     }
 
     public boolean hasClassPermission(User user, int cid, Perm permission, Connection connection) {
-        return permission != null && hasClassPermission(user, cid, permissionMap.get(permission.name()), connection);
+        try {
+            lock.readLock().lock();
+            return permission != null && hasClassPermission(user, cid, permissionMap.get(permission.name()), connection);
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     private boolean hasClassPermission(User user, int cid, Permission permission, Connection connection) {
@@ -95,10 +138,13 @@ public class ServerPermissions {
             selectRoleId.setInt(1, user.uid);
             selectRoleId.setInt(2, cid);
             try (ResultSet rs = selectRoleId.executeQuery()) {
+                lock.readLock().lock();
                 if (rs.next()) {
                     ServerRole role = roleMap.get(rs.getInt(1));
                     return hasPermission(role, permission);
                 }
+            } finally {
+                lock.readLock().unlock();
             }
         } catch (SQLException e) {
             log.error("Failed to check user permissions", e);
@@ -107,18 +153,28 @@ public class ServerPermissions {
     }
 
     public ServerRole getAdminRole() {
-        for (ServerRole r : roleMap.values())
-            if (r.getRollRank() <= 0)
-                return r;
-        return null;
+        try {
+            lock.readLock().lock();
+            for (ServerRole r : roleMap.values())
+                if (r.getRollRank() <= 0)
+                    return r;
+            return null;
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     public ServerRole getLowestRole() {
-        ServerRole role = null;
-        for (ServerRole r : roleMap.values())
-            if (role == null || r.getRollRank() > role.getRollRank())
-                role = r;
-        return role;
+        try {
+            lock.readLock().lock();
+            ServerRole role = null;
+            for (ServerRole r : roleMap.values())
+                if (role == null || r.getRollRank() > role.getRollRank())
+                    role = r;
+            return role;
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
 }
