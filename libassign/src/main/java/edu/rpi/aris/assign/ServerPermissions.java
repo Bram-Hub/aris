@@ -85,6 +85,15 @@ public class ServerPermissions {
         }
     }
 
+    public Permission getPermission(Perm perm) {
+        try {
+            lock.readLock().lock();
+            return permissionMap.get(perm.name());
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
     public boolean hasPermission(ServerRole userRole, Perm permission) {
         try {
             lock.readLock().lock();

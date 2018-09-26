@@ -1,39 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TreeTableColumn?>
+<?import javafx.scene.control.TreeTableView?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.*?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.text.Font?>
+
 <BorderPane xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1">
     <top>
         <HBox alignment="CENTER_LEFT" spacing="5.0" BorderPane.alignment="CENTER">
             <children>
                 <Label fx:id="name" text="Name:">
                     <font>
-                        <Font name="System Bold" size="13.0"/>
+                        <Font name="System Bold" size="13.0" />
                     </font>
                 </Label>
-                <Label text="Due"/>
-                <Label fx:id="dueDate" text="Due Date"/>
-                <Separator visible="false" HBox.hgrow="ALWAYS"/>
-                <Label fx:id="status" text="Status"/>
-                <ImageView fx:id="statusIcon" fitHeight="25.0" fitWidth="25.0" pickOnBounds="true"
-                           preserveRatio="true"/>
+                <Label text="Due" />
+                <Label fx:id="dueDate" text="Due Date" />
+                <Separator visible="false" HBox.hgrow="ALWAYS" />
+                <Label fx:id="status" text="Status" />
+                <ImageView fx:id="statusIcon" fitHeight="25.0" fitWidth="25.0" pickOnBounds="true" preserveRatio="true" />
             </children>
         </HBox>
     </top>
     <padding>
-        <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
+        <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
     </padding>
     <center>
-        <TreeTableView prefHeight="200.0" prefWidth="200.0" sortMode="ONLY_FIRST_LEVEL" BorderPane.alignment="CENTER">
+        <TreeTableView fx:id="treeTable" sortMode="ONLY_FIRST_LEVEL" BorderPane.alignment="CENTER">
             <columns>
-                <TreeTableColumn prefWidth="75.0" text="C1"/>
-                <TreeTableColumn prefWidth="75.0" text="C2"/>
+                <TreeTableColumn fx:id="nameColumn" prefWidth="75.0" text="Problem" />
+            <TreeTableColumn fx:id="submittedColumn" prefWidth="75.0" text="Submitted On" />
+                <TreeTableColumn fx:id="statusColumn" prefWidth="75.0" text="Status" />
+            <TreeTableColumn fx:id="buttonColumn" prefWidth="75.0" text="Submit/View" />
             </columns>
             <columnResizePolicy>
-                <TreeTableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                <TreeTableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
             </columnResizePolicy>
         </TreeTableView>
     </center>
