@@ -52,7 +52,7 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         this.gui = gui;
     }
 
-    public void loadProblems(boolean reload) {
+    public synchronized void loadProblems(boolean reload) {
         if (reload || !loaded) {
             userInfo.startLoading();
             clear();
@@ -102,7 +102,7 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         return lock;
     }
 
-    public void clear() {
+    public synchronized void clear() {
         problems.clear();
         problemMap.clear();
         loaded = false;

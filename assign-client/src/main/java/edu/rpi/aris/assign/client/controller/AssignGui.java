@@ -222,6 +222,14 @@ public class AssignGui {
             tabPane.getTabs().remove(problemTab);
     }
 
+    public void addTabGui(TabGui gui) {
+        Tab tab = new Tab(gui.getName(), gui.getRoot());
+        tab.textProperty().bind(gui.nameProperty());
+        tabGuis.put(tab, gui);
+        tabPane.getTabs().add(tab);
+        tabPane.getSelectionModel().select(tab);
+    }
+
     @FXML
     public void loginOut() {
         if (userInfo.loginProperty().get()) {

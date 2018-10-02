@@ -40,7 +40,7 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
         this.gui = gui;
     }
 
-    public void loadAssignments(boolean reload) {
+    public synchronized void loadAssignments(boolean reload) {
         if (userInfo.getSelectedClass() == null)
             return;
         if (reload || loaded != userInfo.getSelectedClass().getClassId()) {
@@ -53,7 +53,7 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
         return assignments;
     }
 
-    public void clear() {
+    public synchronized void clear() {
         assignments.clear();
         loaded = -1;
     }

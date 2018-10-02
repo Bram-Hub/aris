@@ -12,11 +12,13 @@ import edu.rpi.aris.assign.client.model.ServerConfig;
 import edu.rpi.aris.assign.client.model.UserInfo;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.Region;
 import javafx.stage.Modality;
 import org.apache.commons.lang3.tuple.Triple;
@@ -32,8 +34,8 @@ import java.util.stream.Collectors;
 
 public class AssignmentsGui implements TabGui {
 
-    private UserInfo userInfo = UserInfo.getInstance();
-
+    private final UserInfo userInfo = UserInfo.getInstance();
+    private final SimpleStringProperty tabName = new SimpleStringProperty("Assignments");
     @FXML
     private TableView<Assignments.Assignment> tblAssignments;
     @FXML
@@ -46,7 +48,6 @@ public class AssignmentsGui implements TabGui {
     private TableColumn<Assignments.Assignment, Node> modifyColumn;
     @FXML
     private Button btnCreate;
-
     private Parent root;
     private Assignments assignments = new Assignments(this);
 
@@ -67,6 +68,16 @@ public class AssignmentsGui implements TabGui {
     @Override
     public boolean isPermanentTab() {
         return true;
+    }
+
+    @Override
+    public String getName() {
+        return tabName.get();
+    }
+
+    @Override
+    public SimpleStringProperty nameProperty() {
+        return tabName;
     }
 
     @Override
@@ -101,6 +112,18 @@ public class AssignmentsGui implements TabGui {
         });
 
         tblAssignments.itemsProperty().set(assignments.getAssignments());
+        tblAssignments.setRowFactory(param -> {
+            TableRow<Assignments.Assignment> row = new TableRow<>();
+            row.setOnMouseClicked(event -> {
+                if (!row.isEmpty() && event.getButton() == MouseButton.PRIMARY) {
+                    Assignments.Assignment assignment = row.getItem();
+                    ServerPermissions permissions = ServerConfig.getPermissions();
+                    if (permissions.hasPermission(userInfo.getClassRole(), Perm.ASSIGNMENT_GET_STUDENT) && permissions.getPermission(Perm.ASSIGNMENT_GET_STUDENT).getRollId() == userInfo.getClassRole().getId())
+                        AssignGui.getInstance().addTabGui(new StudentAssignmentGui(assignment.getName(), assignment.getCid(), assignment.getAid()));
+                }
+            });
+            return row;
+        });
 
         userInfo.loginProperty().addListener((observable, oldValue, newValue) -> {
             if (!newValue)

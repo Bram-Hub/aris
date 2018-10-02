@@ -101,6 +101,10 @@ public class AssignmentGetStudentMsg extends Message implements ClassMessage {
         return dueDate;
     }
 
+    public String getName() {
+        return name;
+    }
+
     public HashSet<MsgUtil.ProblemInfo> getProblems() {
         return problems;
     }

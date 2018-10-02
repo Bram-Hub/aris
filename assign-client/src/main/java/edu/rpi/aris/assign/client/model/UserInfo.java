@@ -97,7 +97,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         return defaultRole.get();
     }
 
-    public void getUserInfo(boolean refresh, Runnable onLoad) {
+    public synchronized void getUserInfo(boolean refresh, Runnable onLoad) {
         if (refresh || !loggedIn.get()) {
             if (lock.isLocked())
                 return;
@@ -107,7 +107,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         }
     }
 
-    public void logout() {
+    public synchronized void logout() {
         loggedIn.set(false);
         classes.clear();
         classMap.clear();
