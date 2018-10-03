@@ -19,10 +19,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.TreeItem;
 
 import java.time.ZonedDateTime;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.HashMap;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -92,10 +89,13 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
                     p.getChildren().forEach(item -> item.getValue().name.set("Submission " + (i.getAndIncrement())));
                     updateProblemStatus(assignedProblem, p.getChildren());
                 });
-                for (MsgUtil.SubmissionInfo submissionInfo : message.getSubmissions().get(problemInfo.pid)) {
-                    Submission submission = new Submission(submissionInfo);
-                    TreeItem<Submission> sub = new TreeItem<>(submission);
-                    subs.add(sub);
+                HashSet<MsgUtil.SubmissionInfo> submissionInfos = message.getSubmissions().get(problemInfo.pid);
+                if(submissionInfos != null) {
+                    for (MsgUtil.SubmissionInfo submissionInfo : message.getSubmissions().get(problemInfo.pid)) {
+                        Submission submission = new Submission(submissionInfo);
+                        TreeItem<Submission> sub = new TreeItem<>(submission);
+                        subs.add(sub);
+                    }
                 }
                 problems.add(p);
             }
@@ -162,7 +162,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
             this.name = new SimpleStringProperty(name);
             this.submittedOn = new SimpleObjectProperty<>(submittedOn);
             this.status = status;
-            this.submittedOnStr.bind(Bindings.createStringBinding(() -> AssignGui.DATE_FORMAT.format(new Date(NetUtil.UTCToMilli(submittedOn))), this.submittedOn));
+            this.submittedOnStr.bind(Bindings.createStringBinding(() -> submittedOn == null ? null : AssignGui.DATE_FORMAT.format(new Date(NetUtil.UTCToMilli(submittedOn))), this.submittedOn));
             this.statusStr = new SimpleStringProperty(statusStr);
             Button btn = new Button("View");
             btn.setOnAction(this::buttonPushed);

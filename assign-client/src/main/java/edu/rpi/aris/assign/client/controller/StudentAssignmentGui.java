@@ -2,15 +2,14 @@ package edu.rpi.aris.assign.client.controller;
 
 import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.client.model.StudentAssignment;
-import edu.rpi.aris.assign.client.model.UserInfo;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
+import javafx.scene.image.ImageView;
 
-import javax.swing.text.html.ImageView;
 import java.io.IOException;
 
 public class StudentAssignmentGui implements TabGui {
@@ -83,10 +82,12 @@ public class StudentAssignmentGui implements TabGui {
         treeTable.setRoot(rootItem);
         treeTable.setShowRoot(false);
         assignment.getProblems().addListener((ListChangeListener<TreeItem<StudentAssignment.Submission>>) c -> {
-            if (c.wasAdded())
-                rootItem.getChildren().addAll(c.getAddedSubList());
-            if (c.wasRemoved())
-                rootItem.getChildren().removeAll(c.getRemoved());
+            while(c.next()) {
+                if (c.wasAdded())
+                    rootItem.getChildren().addAll(c.getAddedSubList());
+                if (c.wasRemoved())
+                    rootItem.getChildren().removeAll(c.getRemoved());
+            }
         });
         nameColumn.setCellValueFactory(param -> param.getValue().getValue().nameProperty());
         submittedColumn.setCellValueFactory(param -> param.getValue().getValue().submittedOnProperty());

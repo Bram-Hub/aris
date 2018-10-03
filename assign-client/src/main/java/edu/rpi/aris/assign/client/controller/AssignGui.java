@@ -204,21 +204,25 @@ public class AssignGui {
             return;
         }
         int tabIndex = 0;
-        if (permissions.hasPermission(classRole, Perm.ASSIGNMENT_GET))
-            tabPane.getTabs().add(tabIndex++, assignmentTab);
-        else
+        if (permissions.hasPermission(classRole, Perm.ASSIGNMENT_GET)) {
+            if (!tabPane.getTabs().contains(assignmentTab))
+                tabPane.getTabs().add(tabIndex++, assignmentTab);
+        } else
             tabPane.getTabs().remove(assignmentTab);
-        if (permissions.hasPermission(defaultRole, Perm.USER_EDIT))
-            tabPane.getTabs().add(tabIndex++, userTab);
-        else
+        if (permissions.hasPermission(defaultRole, Perm.USER_EDIT)) {
+            if (!tabPane.getTabs().contains(userTab))
+                tabPane.getTabs().add(tabIndex++, userTab);
+        } else
             tabPane.getTabs().remove(userTab);
-        if (permissions.hasPermission(defaultRole, Perm.PERMISSIONS_EDIT))
-            tabPane.getTabs().add(tabIndex++, permissionTab);
-        else
+        if (permissions.hasPermission(defaultRole, Perm.PERMISSIONS_EDIT)) {
+            if (!tabPane.getTabs().contains(permissionTab))
+                tabPane.getTabs().add(tabIndex++, permissionTab);
+        } else
             tabPane.getTabs().remove(permissionTab);
-        if (permissions.hasPermission(defaultRole, Perm.PROBLEMS_GET))
-            tabPane.getTabs().add(tabIndex, problemTab);
-        else
+        if (permissions.hasPermission(defaultRole, Perm.PROBLEMS_GET)) {
+            if (!tabPane.getTabs().contains(problemTab))
+                tabPane.getTabs().add(tabIndex, problemTab);
+        } else
             tabPane.getTabs().remove(problemTab);
     }
 

@@ -47,12 +47,12 @@ public class DatabaseManager {
         }
     }
 
-    private void createDefaultRoles() throws SQLException {
+    private void createDefaultRoles(Connection connection) throws SQLException {
         //noinspection ConstantConditions
         if (defaultRoleName.length != defaultRoleRank.length)
             throw new IndexOutOfBoundsException("Default role names/ranks do not match");
         for (int i = 0; i < defaultRoleName.length; ++i)
-            createRole(defaultRoleName[i], defaultRoleRank[i]);
+            createRole(defaultRoleName[i], defaultRoleRank[i], connection);
     }
 
     private void verifyDatabase(Connection connection) throws SQLException, IOException {
@@ -74,7 +74,9 @@ public class DatabaseManager {
                             throw new SQLException("Unknown database schema version: " + v);
                         if (v < DB_SCHEMA_VERSION) {
                             try {
-                                Method update = DatabaseManager.class.getDeclaredMethod("updateSchema" + v, Connection.class);
+                                String methodName = "updateSchema" + v;
+                                logger.info("Calling update method: " + methodName);
+                                Method update = DatabaseManager.class.getDeclaredMethod(methodName, Connection.class);
                                 update.invoke(this, connection);
                             } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                                 throw new IOException("Cannot update database schema from version " + v, e);
@@ -85,7 +87,7 @@ public class DatabaseManager {
             }
             try (ResultSet rs = checkRole.executeQuery()) {
                 if (rs.next() && rs.getInt(1) == 0)
-                    createDefaultRoles();
+                    createDefaultRoles(connection);
             }
         }
     }
@@ -159,7 +161,7 @@ public class DatabaseManager {
                     "(name text PRIMARY KEY," +
                     "role_id int," +
                     "constraint perm_rfk foreign key (role_id) references role(id) on delete restrict);");
-            createDefaultRoles();
+            createDefaultRoles(connection);
             createUser("admin", DEFAULT_ADMIN_PASS, 0, true);
             connection.commit();
         } catch (Throwable e) {
@@ -291,7 +293,7 @@ public class DatabaseManager {
                     "role_id int," +
                     "constraint perm_rfk foreign key (role_id) references role(id) on delete restrict);");
 
-            createDefaultRoles();
+            createDefaultRoles(connection);
 
             // Update users table
             statement.execute("ALTER TABLE users ADD COLUMN default_role integer;");
@@ -300,8 +302,6 @@ public class DatabaseManager {
             statement.execute("UPDATE users SET default_role=1 WHERE user_type='ADMIN';");
             statement.execute("UPDATE users SET default_role=2 WHERE user_type='INSTRUCTOR';");
             statement.execute("UPDATE users SET default_role=4 WHERE user_type='STUDENT';");
-
-            statement.execute("ALTER TABLE users DROP COLUMN user_type;");
 
             // Update user_class table
             statement.execute("ALTER TABLE user_class ADD COLUMN role_id integer;");
@@ -314,6 +314,8 @@ public class DatabaseManager {
             statement.execute("ALTER TABLE user_class DROP COLUMN is_ta;");
 
             statement.execute("UPDATE user_class SET role_id=2 FROM users WHERE users.id=user_class.user_id AND users.user_type='INSTRUCTOR';");
+
+            statement.execute("ALTER TABLE users DROP COLUMN user_type;");
 
             statement.execute("UPDATE version SET version=7;");
             connection.commit();
@@ -350,11 +352,10 @@ public class DatabaseManager {
         }
     }
 
-    public ServerRole createRole(String name, int rank) throws SQLException {
+    public ServerRole createRole(String name, int rank, Connection connection) throws SQLException {
         if (name == null)
             return null;
-        try (Connection connection = getConnection();
-             PreparedStatement createRole = connection.prepareStatement("INSERT INTO role (name, role_rank) VALUES (?, ?) RETURNING id;")) {
+        try (PreparedStatement createRole = connection.prepareStatement("INSERT INTO role (name, role_rank) VALUES (?, ?) RETURNING id;")) {
             createRole.setString(1, name);
             createRole.setInt(2, rank);
             try (ResultSet rs = createRole.executeQuery()) {
