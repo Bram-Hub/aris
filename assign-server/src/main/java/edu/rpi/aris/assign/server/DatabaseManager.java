@@ -3,7 +3,6 @@ package edu.rpi.aris.assign.server;
 import com.mchange.v2.c3p0.ComboPooledDataSource;
 import edu.rpi.aris.assign.DBUtils;
 import edu.rpi.aris.assign.GradingStatus;
-import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.ServerRole;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -152,7 +151,7 @@ public class DatabaseManager {
                     "time timestamp," +
                     "short_status text," +
                     "status text," +
-                    "check (short_status in ('" + GradingStatus.CORRECT.name() + "', '" + GradingStatus.INCORRECT.name() + "', '" + GradingStatus.GRADING.name() + "', '" + GradingStatus.CORRECT_WARN.name() + "', '" + GradingStatus.INCORRECT_WARN.name() + "'))," +
+                    "check (short_status in ('" + GradingStatus.CORRECT.name() + "', '" + GradingStatus.INCORRECT.name() + "', '" + GradingStatus.GRADING.name() + "'))," +
                     "constraint s_cfk foreign key (class_id) references class(id) on delete cascade," +
                     "constraint s_afk foreign key (assignment_id, class_id, problem_id) references assignment(id, class_id, problem_id) on delete cascade," +
                     "constraint s_ufk foreign key (user_id) references users(id) on delete cascade," +

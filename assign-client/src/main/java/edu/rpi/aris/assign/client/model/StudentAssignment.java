@@ -50,10 +50,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
             switch (status) {
                 case CORRECT:
                     return "Complete";
-                case CORRECT_WARN:
-                    return "There is a problem with your submission";
                 case INCORRECT:
-                case INCORRECT_WARN:
                     return "Incomplete";
                 case GRADING:
                     return "Your submission is being graded";
@@ -199,13 +196,11 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
 
     private void updateAssignmentStatus() {
         boolean correct = true;
-        boolean warn = false;
         for (TreeItem<Submission> item : problems) {
             Submission prob = item.getValue();
-            correct &= prob.status.get() != GradingStatus.CORRECT && prob.status.get() != GradingStatus.CORRECT_WARN && prob.status.get() != GradingStatus.NONE;
-            warn |= prob.status.get() == GradingStatus.CORRECT_WARN || prob.status.get() == GradingStatus.INCORRECT_WARN;
+            correct &= prob.status.get() != GradingStatus.CORRECT && prob.status.get() != GradingStatus.NONE;
         }
-        status.set(correct ? (warn ? GradingStatus.CORRECT_WARN : GradingStatus.CORRECT) : (warn ? GradingStatus.INCORRECT_WARN : GradingStatus.INCORRECT));
+        status.set(correct ? GradingStatus.CORRECT : GradingStatus.INCORRECT);
     }
 
     public static class Submission implements Comparable<Submission> {
@@ -302,10 +297,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
                         return "Grading problem";
                     case CORRECT:
                         return "Correct";
-                    case CORRECT_WARN:
-                        return "There is a problem with your submission";
                     case INCORRECT:
-                    case INCORRECT_WARN:
                         return "Incorrect";
                     case NONE:
                         return "No Submissions";

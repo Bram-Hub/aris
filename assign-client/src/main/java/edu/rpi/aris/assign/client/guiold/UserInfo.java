@@ -36,30 +36,30 @@ public class UserInfo extends AssignmentInfo {
 
     @Override
     public void addChild(AssignmentInfo info) {
-        if (!(info instanceof ProblemInfo))
-            return;
-        children.add((ProblemInfo) info);
-        int correct = 0;
-        boolean warn = false;
-        long timestamp = -1;
-        for (ProblemInfo p : children) {
-            if (p.getGradingStatus() == GradingStatus.CORRECT || p.getGradingStatus() == GradingStatus.CORRECT_WARN) {
-                if (correct == 0)
-                    warn = false;
-                correct++;
-            }
-            if (p.getGradingStatus() == GradingStatus.CORRECT_WARN)
-                warn = true;
-            if (correct == 0 && p.getGradingStatus() == GradingStatus.INCORRECT_WARN)
-                warn = true;
-            timestamp = p.getTimestamp() > timestamp ? p.getTimestamp() : timestamp;
-        }
-        if (correct == children.size())
-            gradingStatus = warn ? GradingStatus.CORRECT_WARN : GradingStatus.CORRECT;
-        else
-            gradingStatus = warn ? GradingStatus.INCORRECT_WARN : GradingStatus.INCORRECT;
-        status = correct + "/" + children.size() + (warn ? " (Warning)" : "");
-        date = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(timestamp));
+//        if (!(info instanceof ProblemInfo))
+//            return;
+//        children.add((ProblemInfo) info);
+//        int correct = 0;
+//        boolean warn = false;
+//        long timestamp = -1;
+//        for (ProblemInfo p : children) {
+//            if (p.getGradingStatus() == GradingStatus.CORRECT || p.getGradingStatus() == GradingStatus.CORRECT_WARN) {
+//                if (correct == 0)
+//                    warn = false;
+//                correct++;
+//            }
+//            if (p.getGradingStatus() == GradingStatus.CORRECT_WARN)
+//                warn = true;
+//            if (correct == 0 && p.getGradingStatus() == GradingStatus.INCORRECT_WARN)
+//                warn = true;
+//            timestamp = p.getTimestamp() > timestamp ? p.getTimestamp() : timestamp;
+//        }
+//        if (correct == children.size())
+//            gradingStatus = warn ? GradingStatus.CORRECT_WARN : GradingStatus.CORRECT;
+//        else
+//            gradingStatus = warn ? GradingStatus.INCORRECT_WARN : GradingStatus.INCORRECT;
+//        status = correct + "/" + children.size() + (warn ? " (Warning)" : "");
+//        date = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(timestamp));
     }
 
     @Override
