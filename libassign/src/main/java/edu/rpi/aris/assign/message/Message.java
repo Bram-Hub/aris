@@ -38,9 +38,8 @@ public abstract class Message {
 
     private static Message parse(MessageCommunication com) {
         try {
-            String msgStr = com.readMessage();
-            logger.debug("Parsing json message: " + msgStr);
-            Message msg = gson.fromJson(msgStr, Message.class);
+//            logger.debug("Parsing json message: " + msgStr);
+            Message msg = gson.fromJson(com.getReader(), Message.class);
             if (msg instanceof DataMessage)
                 ((DataMessage) msg).receiveData(com.getInputStream());
             if (!msg.checkValid()) {
@@ -81,9 +80,8 @@ public abstract class Message {
     }
 
     public final void send(MessageCommunication com) throws Exception {
-        String json = gson.toJson(this, Message.class);
-        logger.debug("Sending json message: " + json);
-        com.sendMessage(json);
+        gson.toJson(this, Message.class, com.getWriter());
+        com.getWriter().flush();
         if (this instanceof DataMessage)
             ((DataMessage) this).sendData(com.getOutputStream());
     }

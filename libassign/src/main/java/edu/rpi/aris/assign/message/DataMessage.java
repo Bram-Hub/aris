@@ -4,6 +4,8 @@ import edu.rpi.aris.assign.Perm;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 public abstract class DataMessage extends Message {
 

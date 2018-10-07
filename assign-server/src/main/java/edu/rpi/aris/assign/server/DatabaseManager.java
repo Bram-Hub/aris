@@ -162,7 +162,7 @@ public class DatabaseManager {
                     "role_id int," +
                     "constraint perm_rfk foreign key (role_id) references role(id) on delete restrict);");
             createDefaultRoles(connection);
-            createUser("admin", DEFAULT_ADMIN_PASS, 0, true);
+            createUser(connection, "admin", DEFAULT_ADMIN_PASS, 1, true);
             connection.commit();
         } catch (Throwable e) {
             connection.rollback();
@@ -328,18 +328,23 @@ public class DatabaseManager {
         }
     }
 
-    public Pair<String, String> createUser(String username, String password, int roleId, boolean forceReset) throws SQLException {
+    public Pair<String, Boolean> createUser(String username, String password, int roleId, boolean forceReset) throws SQLException {
+        try (Connection connection = getConnection()) {
+            return createUser(connection, username, password, roleId, forceReset);
+        }
+    }
+
+    public Pair<String, Boolean> createUser(Connection connection, String username, String password, int roleId, boolean forceReset) throws SQLException {
         if (username == null || username.length() == 0)
-            return new ImmutablePair<>(null, NetUtil.INVALID);
+            return new ImmutablePair<>(null, false);
         if (password == null)
             password = RandomStringUtils.randomAlphabetic(16);
-        try (Connection connection = getConnection();
-             PreparedStatement count = connection.prepareStatement("SELECT count(*) FROM users WHERE username = ?;");
+        try (PreparedStatement count = connection.prepareStatement("SELECT count(*) FROM users WHERE username = ?;");
              PreparedStatement statement = connection.prepareStatement("INSERT INTO users (username, salt, password_hash, force_reset, default_role) VALUES(?, ?, ?, ?, ?);")) {
             count.setString(1, username);
             try (ResultSet rs = count.executeQuery()) {
                 if (rs.next() && rs.getInt(1) > 0)
-                    return new ImmutablePair<>(null, NetUtil.USER_EXISTS);
+                    return new ImmutablePair<>(null, false);
             }
             Pair<String, String> sh = DBUtils.getSaltAndHash(password);
             statement.setString(1, username);
@@ -348,7 +353,7 @@ public class DatabaseManager {
             statement.setBoolean(4, forceReset);
             statement.setInt(5, roleId);
             statement.executeUpdate();
-            return new ImmutablePair<>(password, NetUtil.OK);
+            return new ImmutablePair<>(password, true);
         }
     }
 

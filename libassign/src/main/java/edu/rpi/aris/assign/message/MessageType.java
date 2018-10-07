@@ -25,7 +25,8 @@ public enum MessageType {
     UPDATE_CLASS(null),
     ERROR(ErrorMsg.class),
     FETCH_PROBLEM(ProblemFetchMessage.class),
-    ASSIGNMENT_GET_STUDENT(AssignmentGetStudentMsg.class);
+    ASSIGNMENT_GET_STUDENT(AssignmentGetStudentMsg.class),
+    AUTH(AuthMessage.class);
 
     public final Class<? extends Message> msgClass;
 

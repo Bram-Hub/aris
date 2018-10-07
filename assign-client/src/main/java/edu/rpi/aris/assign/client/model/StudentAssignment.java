@@ -9,6 +9,7 @@ import edu.rpi.aris.assign.message.AssignmentGetStudentMsg;
 import edu.rpi.aris.assign.message.MsgUtil;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -31,8 +32,10 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
     private final SimpleStringProperty name = new SimpleStringProperty();
     private final SimpleStringProperty dueDate = new SimpleStringProperty();
     private final SimpleObjectProperty<GradingStatus> status = new SimpleObjectProperty<>();
+    private final SimpleStringProperty statusStr = new SimpleStringProperty();
     private final ObservableList<TreeItem<Submission>> problems = FXCollections.observableArrayList();
     private final HashMap<Integer, ObservableList<TreeItem<Submission>>> submissions = new HashMap<>();
+    private final SimpleBooleanProperty loadErrorProperty = new SimpleBooleanProperty(false);
     private final ReentrantLock lock = new ReentrantLock(true);
     private boolean loaded = false;
 
@@ -40,6 +43,26 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         this.name.set(name);
         this.cid = cid;
         this.aid = aid;
+        statusStr.bind(Bindings.createStringBinding(() -> {
+            GradingStatus status = this.status.get();
+            if (status == null)
+                return "Unknown";
+            switch (status) {
+                case CORRECT:
+                    return "Complete";
+                case CORRECT_WARN:
+                    return "There is a problem with your submission";
+                case INCORRECT:
+                case INCORRECT_WARN:
+                    return "Incomplete";
+                case GRADING:
+                    return "Your submission is being graded";
+                case NONE:
+                    return "You have not made any submissions";
+                default:
+                    return "Unknown";
+            }
+        }, status));
     }
 
     public synchronized void loadAssignment(boolean reload) {
@@ -51,7 +74,8 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
     }
 
     public synchronized void clear() {
-
+        problems.clear();
+        submissions.clear();
     }
 
     public SimpleStringProperty nameProperty() {
@@ -62,12 +86,48 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         return name.get();
     }
 
+    public SimpleStringProperty dueDateProperty() {
+        return dueDate;
+    }
+
+    public String getDueDate() {
+        return dueDate.get();
+    }
+
+    public SimpleStringProperty statusProperty() {
+        return statusStr;
+    }
+
+    public String getStatusStr() {
+        return statusStr.get();
+    }
+
+    public GradingStatus getStatus() {
+        return status.get();
+    }
+
+    public SimpleBooleanProperty loadErrorProperty() {
+        return loadErrorProperty;
+    }
+
+    public boolean isLoadError() {
+        return loadErrorProperty.get();
+    }
+
     public ObservableList<TreeItem<Submission>> getProblems() {
         return problems;
     }
 
     public HashMap<Integer, ObservableList<TreeItem<Submission>>> getSubmissions() {
         return submissions;
+    }
+
+    public int getAid() {
+        return aid;
+    }
+
+    public int getCid() {
+        return cid;
     }
 
     @Override
@@ -90,7 +150,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
                     updateProblemStatus(assignedProblem, p.getChildren());
                 });
                 HashSet<MsgUtil.SubmissionInfo> submissionInfos = message.getSubmissions().get(problemInfo.pid);
-                if(submissionInfos != null) {
+                if (submissionInfos != null) {
                     for (MsgUtil.SubmissionInfo submissionInfo : message.getSubmissions().get(problemInfo.pid)) {
                         Submission submission = new Submission(submissionInfo);
                         TreeItem<Submission> sub = new TreeItem<>(submission);
@@ -98,8 +158,10 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
                     }
                 }
                 problems.add(p);
+                updateProblemStatus(assignedProblem, p.getChildren());
             }
             loaded = true;
+            loadErrorProperty.set(false);
             userInfo.finishLoading();
         });
     }
@@ -109,6 +171,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         Platform.runLater(() -> {
             clear();
             userInfo.finishLoading();
+            loadErrorProperty.set(true);
             if (suggestRetry)
                 loadAssignment(true);
         });
@@ -123,14 +186,14 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         GradingStatus status = GradingStatus.NONE;
         for (TreeItem<Submission> item : children) {
             Submission sub = item.getValue();
-            if (sub.status == GradingStatus.CORRECT) {
-                parent.status = GradingStatus.CORRECT;
+            if (sub.status.get() == GradingStatus.CORRECT) {
+                parent.status.set(GradingStatus.CORRECT);
                 return;
             }
-            if (sub.status.compareTo(status) < 0)
-                status = sub.status;
+            if (sub.status.get().compareTo(status) < 0)
+                status = sub.status.get();
         }
-        parent.status = status;
+        parent.status.set(status);
         updateAssignmentStatus();
     }
 
@@ -139,8 +202,8 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         boolean warn = false;
         for (TreeItem<Submission> item : problems) {
             Submission prob = item.getValue();
-            correct &= prob.status != GradingStatus.CORRECT && prob.status != GradingStatus.CORRECT_WARN;
-            warn |= prob.status == GradingStatus.CORRECT_WARN || prob.status == GradingStatus.INCORRECT_WARN;
+            correct &= prob.status.get() != GradingStatus.CORRECT && prob.status.get() != GradingStatus.CORRECT_WARN && prob.status.get() != GradingStatus.NONE;
+            warn |= prob.status.get() == GradingStatus.CORRECT_WARN || prob.status.get() == GradingStatus.INCORRECT_WARN;
         }
         status.set(correct ? (warn ? GradingStatus.CORRECT_WARN : GradingStatus.CORRECT) : (warn ? GradingStatus.INCORRECT_WARN : GradingStatus.INCORRECT));
     }
@@ -154,15 +217,15 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         private final SimpleStringProperty submittedOnStr = new SimpleStringProperty();
         private final SimpleStringProperty statusStr;
         private final SimpleObjectProperty<Button> button;
-        private GradingStatus status;
+        private final SimpleObjectProperty<GradingStatus> status;
 
         public Submission(int pid, int sid, String name, ZonedDateTime submittedOn, GradingStatus status, String statusStr) {
             this.pid = pid;
             this.sid = sid;
             this.name = new SimpleStringProperty(name);
             this.submittedOn = new SimpleObjectProperty<>(submittedOn);
-            this.status = status;
-            this.submittedOnStr.bind(Bindings.createStringBinding(() -> submittedOn == null ? null : AssignGui.DATE_FORMAT.format(new Date(NetUtil.UTCToMilli(submittedOn))), this.submittedOn));
+            this.status = new SimpleObjectProperty<>(status);
+            this.submittedOnStr.bind(Bindings.createStringBinding(() -> submittedOn == null ? "Never" : AssignGui.DATE_FORMAT.format(new Date(NetUtil.UTCToMilli(submittedOn))), this.submittedOn));
             this.statusStr = new SimpleStringProperty(statusStr);
             Button btn = new Button("View");
             btn.setOnAction(this::buttonPushed);
@@ -222,7 +285,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
             return 0;
         }
 
-        public GradingStatus getStatus() {
+        public SimpleObjectProperty<GradingStatus> getStatusProperty() {
             return status;
         }
     }
@@ -233,6 +296,22 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         public AssignedProblem(int pid, String name, String status) {
             super(pid, 0, name, null, GradingStatus.NONE, status);
             getButton().setText("Create Submission");
+            statusStrProperty().bind(Bindings.createStringBinding(() -> {
+                switch (getStatusProperty().get()) {
+                    case GRADING:
+                        return "Grading problem";
+                    case CORRECT:
+                        return "Correct";
+                    case CORRECT_WARN:
+                        return "There is a problem with your submission";
+                    case INCORRECT:
+                    case INCORRECT_WARN:
+                        return "Incorrect";
+                    case NONE:
+                        return "No Submissions";
+                }
+                return null;
+            }, getStatusProperty()));
         }
 
         public AssignedProblem(MsgUtil.ProblemInfo info) {

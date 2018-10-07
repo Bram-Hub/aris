@@ -11,29 +11,29 @@ import java.time.format.DateTimeFormatter;
 public class NetUtil {
 
     public static final String ARIS_NAME = "Aris-Java";
-    public static final String AUTH_BAN = "AUTH BAN";
-    public static final String AUTH_FAIL = "AUTH FAIL";
-    public static final String AUTH_OK = "AUTH OK";
-    public static final String AUTH_RESET = "AUTH RESET";
-    public static final String AUTH_ERR = "AUTH UNKNOWN_ERROR";
-    public static final String AUTH_INVALID = "AUTH INVALID";
-    public static final String AUTH = "AUTH";
-    public static final String AUTH_PASS = "PASS";
-    public static final String AUTH_ACCESS_TOKEN = "TOKEN";
+//    public static final String AUTH_BAN = "AUTH BAN";
+//    public static final String AUTH_FAIL = "AUTH FAIL";
+//    public static final String AUTH_OK = "AUTH OK";
+//    public static final String AUTH_RESET = "AUTH RESET";
+//    public static final String AUTH_ERR = "AUTH UNKNOWN_ERROR";
+//    public static final String AUTH_INVALID = "AUTH INVALID";
+//    public static final String AUTH = "AUTH";
+//    public static final String AUTH_PASS = "PASS";
+//    public static final String AUTH_ACCESS_TOKEN = "TOKEN";
 
 //    public static final String USER_STUDENT = "student";
 //    public static final String USER_INSTRUCTOR = "instructor";
 
     public static final long MAX_FILE_SIZE = 5242880; // 5MiB
-    public static final String UNAUTHORIZED = "UNAUTHORIZED";
-    public static final String ERROR = "UNKNOWN_ERROR";
-    public static final String OK = "OK";
-    public static final String INVALID = "INVALID";
+//    public static final String UNAUTHORIZED = "UNAUTHORIZED";
+//    public static final String ERROR = "UNKNOWN_ERROR";
+//    public static final String OK = "OK";
+//    public static final String INVALID = "INVALID";
 
-    public static final String INVALID_VERSION = "INVALID VERSION";
-    public static final String VERSION_OK = "VERSION OK";
-    public static final String DONE = "DONE";
-    public static final String USER_EXISTS = "EXISTS";
+//    public static final String INVALID_VERSION = "INVALID VERSION";
+//    public static final String VERSION_OK = "VERSION OK";
+//    public static final String DONE = "DONE";
+//    public static final String USER_EXISTS = "EXISTS";
 
     public static final String STATUS_GRADING = "Grading";
     public static final String STATUS_CORRECT = "Correct";

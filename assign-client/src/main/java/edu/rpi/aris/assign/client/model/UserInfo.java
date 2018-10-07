@@ -46,7 +46,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
             if (newValue != null)
                 LocalConfig.SELECTED_COURSE_ID.setValue(newValue.getClassId());
         });
-        classRole.bind(Bindings.createObjectBinding(() -> selectedClass.get() == null ? defaultRole.get() : selectedClass.get().getUserRole(), selectedClass, defaultRole));
+        classRole.bind(Bindings.createObjectBinding(() -> defaultRole.get() == null ? null : (selectedClass.get() == null ? defaultRole.get() : selectedClass.get().getUserRole()), selectedClass, defaultRole));
     }
 
     public static UserInfo getInstance() {

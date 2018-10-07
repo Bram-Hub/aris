@@ -200,33 +200,28 @@ public class AssignGui {
     private void setTabs(ServerRole defaultRole, ServerRole classRole) {
         ServerPermissions permissions = ServerConfig.getPermissions();
         if (permissions == null || defaultRole == null) {
-            tabPane.getTabs().removeAll(assignmentTab, userTab, permissionTab, problemTab);
+            tabPane.getTabs().clear();
+            tabGuis.values().removeIf(gui -> !gui.isPermanentTab());
             return;
         }
-        int tabIndex = 0;
-        if (permissions.hasPermission(classRole, Perm.ASSIGNMENT_GET)) {
-            if (!tabPane.getTabs().contains(assignmentTab))
-                tabPane.getTabs().add(tabIndex++, assignmentTab);
+        int tabIndex = conditionalAddTab(classRole, Perm.ASSIGNMENT_GET, assignmentTab, 0);
+        tabIndex = conditionalAddTab(defaultRole, Perm.USER_EDIT, userTab, tabIndex);
+        tabIndex = conditionalAddTab(defaultRole, Perm.PERMISSIONS_EDIT, permissionTab, tabIndex);
+        conditionalAddTab(defaultRole, Perm.PROBLEMS_GET, problemTab, tabIndex);
+    }
+
+    private int conditionalAddTab(ServerRole role, Perm permission, Tab tab, int index) {
+        if (ServerConfig.getPermissions().hasPermission(role, permission)) {
+            if (!tabPane.getTabs().contains(tab))
+                tabPane.getTabs().add(index++, tab);
         } else
-            tabPane.getTabs().remove(assignmentTab);
-        if (permissions.hasPermission(defaultRole, Perm.USER_EDIT)) {
-            if (!tabPane.getTabs().contains(userTab))
-                tabPane.getTabs().add(tabIndex++, userTab);
-        } else
-            tabPane.getTabs().remove(userTab);
-        if (permissions.hasPermission(defaultRole, Perm.PERMISSIONS_EDIT)) {
-            if (!tabPane.getTabs().contains(permissionTab))
-                tabPane.getTabs().add(tabIndex++, permissionTab);
-        } else
-            tabPane.getTabs().remove(permissionTab);
-        if (permissions.hasPermission(defaultRole, Perm.PROBLEMS_GET)) {
-            if (!tabPane.getTabs().contains(problemTab))
-                tabPane.getTabs().add(tabIndex, problemTab);
-        } else
-            tabPane.getTabs().remove(problemTab);
+            tabPane.getTabs().remove(tab);
+        return index;
     }
 
     public void addTabGui(TabGui gui) {
+        if (tabGuis.values().contains(gui))
+            return;
         Tab tab = new Tab(gui.getName(), gui.getRoot());
         tab.textProperty().bind(gui.nameProperty());
         tabGuis.put(tab, gui);
@@ -236,7 +231,7 @@ public class AssignGui {
 
     @FXML
     public void loginOut() {
-        if (userInfo.loginProperty().get()) {
+        if (userInfo.isLoggedIn()) {
             userInfo.logout();
         } else
             refresh();
@@ -262,7 +257,7 @@ public class AssignGui {
         dialog.initOwner(stage);
         dialog.initModality(Modality.WINDOW_MODAL);
         Optional<String> result = dialog.showAndWait();
-        new Thread(() -> result.ifPresent(name -> userInfo.createClass(name)), "Create class thread").start();
+        result.ifPresent(name -> userInfo.createClass(name));
     }
 
     @FXML

@@ -1,11 +1,14 @@
 package edu.rpi.aris.assign.client;
 
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 import edu.rpi.aris.assign.DBUtils;
 import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.MessageCommunication;
 import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.client.exceptions.*;
 import edu.rpi.aris.assign.client.model.LocalConfig;
+import edu.rpi.aris.assign.message.AuthMessage;
 import edu.rpi.aris.assign.message.ErrorMsg;
 import edu.rpi.aris.assign.message.Message;
 import edu.rpi.aris.assign.message.UserEditMsg;
@@ -45,8 +48,6 @@ import javax.security.auth.x500.X500Principal;
 import java.io.*;
 import java.math.BigInteger;
 import java.net.InetAddress;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
 import java.net.UnknownHostException;
 import java.security.*;
 import java.security.cert.CertPathBuilderException;
@@ -93,6 +94,8 @@ public class Client implements MessageCommunication {
     private SSLSocket socket;
     private DataInputStream in;
     private DataOutputStream out;
+    private JsonReader reader;
+    private JsonWriter writer;
     private Exception connectionException;
     private ConnectionStatus connectionStatus = ConnectionStatus.DISCONNECTED;
     private SimpleObjectProperty<ConnectionStatus> connectionStatusProperty = new SimpleObjectProperty<>(connectionStatus);
@@ -160,24 +163,24 @@ public class Client implements MessageCommunication {
         return ks;
     }
 
-    public static String checkError(String msg) throws IOException {
-        if (msg == null)
-            throw new IOException("Server did not send a response");
-        if (msg.startsWith(NetUtil.ERROR) || msg.startsWith(NetUtil.INVALID) || msg.startsWith(NetUtil.UNAUTHORIZED))
-            throw new IOException(msg);
-        return msg;
-    }
+//    public static String checkError(String msg) throws IOException {
+//        if (msg == null)
+//            throw new IOException("Server did not send a response");
+//        if (msg.startsWith(NetUtil.ERROR) || msg.startsWith(NetUtil.INVALID) || msg.startsWith(NetUtil.UNAUTHORIZED))
+//            throw new IOException(msg);
+//        return msg;
+//    }
 
-    public static String[] checkSplit(String str, int len) {
-        String[] split = str.split("\\|");
-        if (split.length < len) {
-            String[] newSplit = Arrays.copyOf(split, len);
-            for (int i = split.length; i < len; ++i)
-                newSplit[i] = "";
-            return newSplit;
-        }
-        return split;
-    }
+//    public static String[] checkSplit(String str, int len) {
+//        String[] split = str.split("\\|");
+//        if (split.length < len) {
+//            String[] newSplit = Arrays.copyOf(split, len);
+//            for (int i = split.length; i < len; ++i)
+//                newSplit[i] = "";
+//            return newSplit;
+//        }
+//        return split;
+//    }
 
     public static Client getInstance() {
         return instance;
@@ -381,6 +384,11 @@ public class Client implements MessageCommunication {
             case HANDSHAKING:
                 in = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
                 out = new DataOutputStream(socket.getOutputStream());
+                reader = new JsonReader(new InputStreamReader(in));
+                writer = new JsonWriter(new OutputStreamWriter(out));
+                writer.beginArray();
+                writer.flush();
+                reader.beginArray();
                 setConnectionStatus(ConnectionStatus.CONNECTED);
                 doAuth(user, pass, isAccessToken);
                 System.out.println("Connected");
@@ -394,35 +402,32 @@ public class Client implements MessageCommunication {
     }
 
     private synchronized void doAuth(String user, String pass, boolean isAccessToken) throws Exception {
-        sendMessage(NetUtil.ARIS_NAME + " " + LibAssign.VERSION);
-        String version = in.readUTF();
-        if (version.equals(NetUtil.INVALID_VERSION))
-            throw new IOException("Invalid client version");
-        String[] versionSplit = version.split(" ");
-        if (versionSplit.length != 2 || !versionSplit[0].equals(NetUtil.ARIS_NAME))
-            throw new IOException("Invalid server version: " + version);
-        sendMessage(NetUtil.VERSION_OK);
-        sendMessage(NetUtil.AUTH + "|" + (isAccessToken ? NetUtil.AUTH_ACCESS_TOKEN : NetUtil.AUTH_PASS) + "|" + URLEncoder.encode(user, "UTF-8") + "|" + URLEncoder.encode(pass, "UTF-8"));
-        String res = in.readUTF();
-        switch (res) {
-            case NetUtil.AUTH_BAN:
-                throw new AuthBanException();
-            case NetUtil.AUTH_FAIL:
-                if (isAccessToken) {
+        AuthMessage msg = new AuthMessage(user, pass, isAccessToken);
+        msg = (AuthMessage) msg.sendAndGet(this);
+        if (msg == null)
+            throw new IOException("The server failed to respond to the authentication request");
+        LocalConfig.ACCESS_TOKEN.setValue(msg.getPassAccessToken());
+        Platform.runLater(() -> LocalConfig.USERNAME.setValue(user));
+        switch (msg.getStatus()) {
+            case UNSUPPORTED_VERSION:
+                throw new IOException("The server does not support this version of the Assign client");
+            case FAIL:
+                if (isAccessToken)
                     throw new InvalidAccessTokenException();
-                } else
+                else
                     throw new InvalidCredentialsException();
-            case NetUtil.AUTH_ERR:
+            case BAN:
+                throw new AuthBanException();
+            case ERROR:
                 throw new IOException("The server encountered an error while attempting to authenticate this connection");
+            case RESET:
+                throw new PasswordResetRequiredException();
+            case INVALID:
+                throw new IOException("Client sent invalid auth format");
+            case OK:
+                break;
             default:
-                if (res.startsWith(NetUtil.AUTH_OK) || res.startsWith(NetUtil.AUTH_RESET)) {
-                    String accessToken = res.replaceFirst(res.startsWith(NetUtil.AUTH_OK) ? NetUtil.AUTH_OK : NetUtil.AUTH_RESET, "").trim();
-                    LocalConfig.ACCESS_TOKEN.setValue(URLDecoder.decode(accessToken, "UTF-8"));
-                    Platform.runLater(() -> LocalConfig.USERNAME.setValue(user));
-                    if (res.startsWith(NetUtil.AUTH_RESET))
-                        throw new PasswordResetRequiredException();
-                } else
-                    throw new IOException(res);
+                throw new IOException("Unknown Auth status: " + msg.getStatus().name());
         }
     }
 
@@ -749,28 +754,38 @@ public class Client implements MessageCommunication {
     }
 
     @Override
-    public synchronized void sendMessage(String msg) throws IOException {
-        if (connectionStatus == ConnectionStatus.CONNECTED && socket != null && out != null) {
-            try {
-                out.writeUTF(msg);
-                out.flush();
-            } catch (IOException e) {
-                disconnect();
-                throw e;
-            }
-        } else
-            throw new IOException("Not connected to the server");
+    public JsonReader getReader() {
+        return reader;
     }
 
     @Override
-    public synchronized String readMessage() throws IOException {
-        try {
-            return in.readUTF();
-        } catch (IOException e) {
-            disconnect();
-            throw e;
-        }
+    public JsonWriter getWriter() {
+        return writer;
     }
+
+    //    @Override
+//    public synchronized void sendMessage(String msg) throws IOException {
+//        if (connectionStatus == ConnectionStatus.CONNECTED && socket != null && out != null) {
+//            try {
+//                out.writeUTF(msg);
+//                out.flush();
+//            } catch (IOException e) {
+//                disconnect();
+//                throw e;
+//            }
+//        } else
+//            throw new IOException("Not connected to the server");
+//    }
+
+//    @Override
+//    public synchronized String readMessage() throws IOException {
+//        try {
+//            return in.readUTF();
+//        } catch (IOException e) {
+//            disconnect();
+//            throw e;
+//        }
+//    }
 
     @Override
     public synchronized DataInputStream getInputStream() {
