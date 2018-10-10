@@ -1,7 +1,7 @@
 package edu.rpi.aris.assign.client.model;
 
-import edu.rpi.aris.assign.GradingStatus;
-import edu.rpi.aris.assign.NetUtil;
+import edu.rpi.aris.assign.*;
+import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
 import edu.rpi.aris.assign.client.controller.AssignGui;
@@ -9,6 +9,7 @@ import edu.rpi.aris.assign.client.controller.StudentAssignmentGui;
 import edu.rpi.aris.assign.message.AssignmentGetStudentMsg;
 import edu.rpi.aris.assign.message.MsgUtil;
 import edu.rpi.aris.assign.message.ProblemFetchMessage;
+import edu.rpi.aris.assign.spi.ArisModule;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -74,9 +75,9 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         }
     }
 
-    public void fetchAndCreate(int pid, String moduleName) {
+    public <T extends ArisModule> void fetchAndCreate(int pid, ArisModule<T> module) {
         userInfo.startLoading();
-        Client.getInstance().processMessage(new ProblemFetchMessage(pid, moduleName), null);
+        Client.getInstance().processMessage(new ProblemFetchMessage<>(pid, module.getModuleName()), new ProblemFetchResponseHandler<>(module));
     }
 
     public synchronized void clear() {
@@ -212,6 +213,56 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         status.set(correct ? GradingStatus.CORRECT : GradingStatus.INCORRECT);
     }
 
+    public <T extends ArisModule> void saveLocalSubmission(AssignedProblem problemInfo, Problem<T> problem, ArisModule<T> module) {
+        //TODO
+    }
+
+    public <T extends ArisModule> void uploadSubmission(AssignedProblem problemInfo, Problem<T> problem) {
+        //TODO
+    }
+
+    private class ProblemFetchResponseHandler<T extends ArisModule> implements ResponseHandler<ProblemFetchMessage<T>> {
+
+        private final ArisModule<T> module;
+
+        public ProblemFetchResponseHandler(ArisModule<T> module) {
+            this.module = module;
+        }
+
+        @Override
+        public void response(ProblemFetchMessage<T> message) {
+            Platform.runLater(() -> {
+                AssignedProblem problemInfo = null;
+                for (TreeItem<Submission> item : problems)
+                    if (item.getValue() instanceof AssignedProblem && item.getValue().getPid() == message.getPid()) {
+                        problemInfo = (AssignedProblem) item.getValue();
+                        break;
+                    }
+                if (problemInfo != null) {
+                    Problem<T> problem = message.getProblem();
+                    try {
+                        gui.createSubmission(problemInfo, problem, module);
+                    } catch (Exception e) {
+                        LibAssign.showExceptionError(e);
+                    }
+                }
+                userInfo.finishLoading();
+            });
+        }
+
+        @Override
+        public void onError(boolean suggestRetry, ProblemFetchMessage msg) {
+            if (suggestRetry)
+                fetchAndCreate(msg.getPid(), module);
+            Platform.runLater(userInfo::finishLoading);
+        }
+
+        @Override
+        public ReentrantLock getLock() {
+            return lock;
+        }
+    }
+
     public class Submission implements Comparable<Submission> {
 
         private final int pid;
@@ -222,13 +273,15 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         private final SimpleStringProperty statusStr;
         private final SimpleObjectProperty<Button> button;
         private final SimpleObjectProperty<GradingStatus> status;
+        private final String moduleName;
 
-        public Submission(int pid, int sid, String name, ZonedDateTime submittedOn, GradingStatus status, String statusStr) {
+        public Submission(int pid, int sid, String name, ZonedDateTime submittedOn, GradingStatus status, String statusStr, String moduleName) {
             this.pid = pid;
             this.sid = sid;
             this.name = new SimpleStringProperty(name);
             this.submittedOn = new SimpleObjectProperty<>(submittedOn);
             this.status = new SimpleObjectProperty<>(status);
+            this.moduleName = moduleName;
             this.submittedOnStr.bind(Bindings.createStringBinding(() -> submittedOn == null ? "Never" : AssignGui.DATE_FORMAT.format(new Date(NetUtil.UTCToMilli(submittedOn))), this.submittedOn));
             this.statusStr = new SimpleStringProperty(statusStr);
             Button btn = new Button("View");
@@ -237,10 +290,10 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         }
 
         public Submission(MsgUtil.SubmissionInfo info) {
-            this(info.pid, info.sid, null, info.submissionTime, info.status, info.statusStr);
+            this(info.pid, info.sid, null, info.submissionTime, info.status, info.statusStr, info.moduleName);
         }
 
-        protected void buttonPushed(ActionEvent actionEvent) {
+        protected <T extends ArisModule> void buttonPushed(ActionEvent actionEvent) {
             gui.viewSubmission(this);
         }
 
@@ -292,13 +345,17 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         public SimpleObjectProperty<GradingStatus> getStatusProperty() {
             return status;
         }
+
+        public String getModuleName() {
+            return moduleName;
+        }
     }
 
 
     public class AssignedProblem extends Submission {
 
-        public AssignedProblem(int pid, String name, String status) {
-            super(pid, 0, name, null, GradingStatus.NONE, status);
+        public AssignedProblem(int pid, String name, String status, String moduleName) {
+            super(pid, 0, name, null, GradingStatus.NONE, status, moduleName);
             getButton().setText("Create Submission");
             statusStrProperty().bind(Bindings.createStringBinding(() -> {
                 switch (getStatusProperty().get()) {
@@ -316,12 +373,17 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         }
 
         public AssignedProblem(MsgUtil.ProblemInfo info) {
-            this(info.pid, info.name, null);
+            this(info.pid, info.name, null, info.moduleName);
         }
 
         @Override
-        protected void buttonPushed(ActionEvent actionEvent) {
-            fetchAndCreate(getPid(), null);
+        protected <T extends ArisModule> void buttonPushed(ActionEvent actionEvent) {
+            ArisModule<T> module = ModuleService.getService().getModule(getModuleName());
+            if (module == null) {
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Missing Module", "Client is missing \"" + getModuleName() + "\" module");
+                return;
+            }
+            fetchAndCreate(getPid(), module);
         }
     }
 

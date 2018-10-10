@@ -1,8 +1,9 @@
 package edu.rpi.aris.assign.client.controller;
 
-import edu.rpi.aris.assign.LibAssign;
+import edu.rpi.aris.assign.*;
 import edu.rpi.aris.assign.client.model.StudentAssignment;
 import edu.rpi.aris.assign.client.model.UserInfo;
+import edu.rpi.aris.assign.spi.ArisModule;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.ListChangeListener;
@@ -11,11 +12,16 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.Region;
+import javafx.stage.Modality;
+import javafx.stage.Window;
 
 import java.io.IOException;
+import java.util.Optional;
 
 public class StudentAssignmentGui implements TabGui {
 
+    private static final ModuleUIOptions SUBMIT_OPTIONS = new ModuleUIOptions(EditMode.RESTRICTED_EDIT, "Create Submission", true, false, true, true, false);
     private final StudentAssignment assignment;
     @FXML
     private TreeTableView<StudentAssignment.Submission> treeTable;
@@ -124,8 +130,70 @@ public class StudentAssignmentGui implements TabGui {
         buttonColumn.setStyle("-fx-alignment: CENTER;");
     }
 
-    public void createSubmission(StudentAssignment.AssignedProblem problem) {
-        
+    public <T extends ArisModule> void createSubmission(StudentAssignment.AssignedProblem problemInfo, Problem<T> problem, ArisModule<T> module) throws Exception {
+        ArisClientModule<T> clientModule = module.getClientModule();
+        ModuleUI<T> moduleUI = clientModule.createModuleGui(SUBMIT_OPTIONS, problem);
+        moduleUI.setDescription("Create submission for problem: \"" + problemInfo.getName() + "\"");
+        moduleUI.setModuleUIListener(new ModuleUIListener() {
+
+            @Override
+            public boolean guiCloseRequest(boolean hasUnsavedChanges) {
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Submit Problem?");
+                alert.setHeaderText("Would you like to submit this problem?");
+                alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+                alert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
+                Window window = moduleUI.getUIWindow();
+                if (window != null) {
+                    alert.initOwner(window);
+                    alert.initModality(Modality.WINDOW_MODAL);
+                } else {
+                    alert.initOwner(AssignGui.getInstance().getStage());
+                    alert.initModality(Modality.APPLICATION_MODAL);
+                }
+                Optional<ButtonType> result = alert.showAndWait();
+                if (result.isPresent() && result.get() == ButtonType.YES) {
+                    uploadProblem();
+                } else if (hasUnsavedChanges) {
+                    alert = new Alert(Alert.AlertType.WARNING);
+                    alert.setTitle("Unsaved Changes");
+                    alert.setHeaderText("You have unsaved changes that will be lost. Are you sure you want to exit?");
+                    alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+                    alert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
+                    if (window != null) {
+                        alert.initOwner(window);
+                        alert.initModality(Modality.WINDOW_MODAL);
+                    } else {
+                        alert.initOwner(AssignGui.getInstance().getStage());
+                        alert.initModality(Modality.APPLICATION_MODAL);
+                    }
+                    result = alert.showAndWait();
+                    return result.isPresent() && result.get() == ButtonType.YES;
+                }
+                return true;
+            }
+
+            @Override
+            public void guiClosed() {
+            }
+
+            @Override
+            public void saveProblemLocally() {
+                assignment.saveLocalSubmission(problemInfo, problem, module);
+            }
+
+            @Override
+            public void uploadProblem() {
+                assignment.uploadSubmission(problemInfo, problem);
+                try {
+                    moduleUI.hide();
+                } catch (Exception e) {
+                    LibAssign.showExceptionError(e);
+                }
+            }
+        });
+        moduleUI.setModal(Modality.WINDOW_MODAL, AssignGui.getInstance().getStage());
+        moduleUI.show();
     }
 
     public void viewSubmission(StudentAssignment.Submission submission) {

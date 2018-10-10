@@ -314,7 +314,7 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         public void onError(boolean suggestRetry, ProblemFetchMessage<T> msg) {
             if (suggestRetry)
                 fetchAndModify(msg.getPid(), module);
-            Platform.runLater(() -> userInfo.finishLoading());
+            Platform.runLater(userInfo::finishLoading);
         }
 
         @Override

@@ -66,7 +66,8 @@ public class AssignmentGetStudentMsg extends Message implements ClassMessage {
                                         status = GradingStatus.NONE;
                                     }
                                     String statusStr = submissionRs.getString(4);
-                                    MsgUtil.SubmissionInfo submissionInfo = new MsgUtil.SubmissionInfo(user.uid, sid, pid, cid, aid, status, statusStr, submitted);
+                                    //TODO get moduleName
+                                    MsgUtil.SubmissionInfo submissionInfo = new MsgUtil.SubmissionInfo(user.uid, sid, pid, cid, aid, status, statusStr, submitted, null);
                                     submissions.computeIfAbsent(pid, id -> new HashSet<>()).add(submissionInfo);
                                 }
                             }
