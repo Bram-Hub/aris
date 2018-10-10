@@ -40,7 +40,7 @@ public class StudentAssignmentGui implements TabGui {
     private TreeItem<StudentAssignment.Submission> rootItem = new TreeItem<>();
 
     public StudentAssignmentGui(String name, int cid, int aid) {
-        assignment = new StudentAssignment(name, cid, aid);
+        assignment = new StudentAssignment(this, name, cid, aid);
         FXMLLoader loader = new FXMLLoader(ProblemsGui.class.getResource("/edu/rpi/aris/assign/client/view/student_assignment.fxml"));
         loader.setController(this);
         try {
@@ -122,6 +122,14 @@ public class StudentAssignmentGui implements TabGui {
         statusColumn.setStyle("-fx-alignment: CENTER;");
         buttonColumn.setCellValueFactory(param -> param.getValue().getValue().buttonProperty());
         buttonColumn.setStyle("-fx-alignment: CENTER;");
+    }
+
+    public void createSubmission(StudentAssignment.AssignedProblem problem) {
+        
+    }
+
+    public void viewSubmission(StudentAssignment.Submission submission) {
+
     }
 
 }

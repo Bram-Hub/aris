@@ -5,8 +5,10 @@ import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
 import edu.rpi.aris.assign.client.controller.AssignGui;
+import edu.rpi.aris.assign.client.controller.StudentAssignmentGui;
 import edu.rpi.aris.assign.message.AssignmentGetStudentMsg;
 import edu.rpi.aris.assign.message.MsgUtil;
+import edu.rpi.aris.assign.message.ProblemFetchMessage;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -37,9 +39,11 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
     private final HashMap<Integer, ObservableList<TreeItem<Submission>>> submissions = new HashMap<>();
     private final SimpleBooleanProperty loadErrorProperty = new SimpleBooleanProperty(false);
     private final ReentrantLock lock = new ReentrantLock(true);
+    private final StudentAssignmentGui gui;
     private boolean loaded = false;
 
-    public StudentAssignment(String name, int cid, int aid) {
+    public StudentAssignment(StudentAssignmentGui gui, String name, int cid, int aid) {
+        this.gui = gui;
         this.name.set(name);
         this.cid = cid;
         this.aid = aid;
@@ -68,6 +72,11 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
             clear();
             Client.getInstance().processMessage(new AssignmentGetStudentMsg(cid, aid), this);
         }
+    }
+
+    public void fetchAndCreate(int pid, String moduleName) {
+        userInfo.startLoading();
+        Client.getInstance().processMessage(new ProblemFetchMessage(pid, moduleName), null);
     }
 
     public synchronized void clear() {
@@ -203,7 +212,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         status.set(correct ? GradingStatus.CORRECT : GradingStatus.INCORRECT);
     }
 
-    public static class Submission implements Comparable<Submission> {
+    public class Submission implements Comparable<Submission> {
 
         private final int pid;
         private final int sid;
@@ -232,7 +241,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         }
 
         protected void buttonPushed(ActionEvent actionEvent) {
-
+            gui.viewSubmission(this);
         }
 
         public SimpleStringProperty submittedOnProperty() {
@@ -286,7 +295,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
     }
 
 
-    public static class AssignedProblem extends Submission {
+    public class AssignedProblem extends Submission {
 
         public AssignedProblem(int pid, String name, String status) {
             super(pid, 0, name, null, GradingStatus.NONE, status);
@@ -312,7 +321,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
 
         @Override
         protected void buttonPushed(ActionEvent actionEvent) {
-
+            fetchAndCreate(getPid(), null);
         }
     }
 
