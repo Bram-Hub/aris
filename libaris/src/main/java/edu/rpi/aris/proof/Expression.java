@@ -249,7 +249,7 @@ public class Expression {
                 return this.equalswithoutDNs(expr);
             } else if (operator.isType(Operator.Type.GENERALIZABLE_LOGIC) || operator.isType(Operator.Type.GENERALIZABLE_MATH)) {
                 ArrayList<Expression> expressions = new ArrayList<>(Arrays.asList(getExpressions()));
-                for (Expression subExpr : getExpressions()) {
+                for (Expression subExpr : expr.getExpressions()) {
                     boolean found = false;
                     for (int i = 0; i < expressions.size(); ++i) {
                         if (subExpr.equalsFullPower(expressions.get(i))) {
@@ -303,6 +303,59 @@ public class Expression {
             return this;
         }
     }
+
+    public Expression withoutID()throws ExpressionParseException {
+        boolean found_one = false;
+        boolean found_two = false;
+        for(Expression sub_express : getExpressions()){
+            for(int i = 0; i < getNumExpressions(); i++){
+                System.out.println("Sub expression: " + sub_express.toLogicString());
+                System.out.println("Looking for: " + expressions[i].toLogicString() + " in Sub expression");
+                System.out.println("Found one already? " + found_one);
+                System.out.println("Foudn two already? " + found_two);
+                if(expressions[i].equals(sub_express)){
+                    System.out.println("Expression matches sub expression");
+                    if(!found_one) {
+                        System.out.println("Now found one");
+                        found_one = true;
+                    }else if(!found_two){
+                        System.out.println("Now found two");
+                        found_two = true;
+                    }else if(found_two){
+                        System.out.println("Removing idempotence");
+                        System.out.println("Expressions size " + expressions.length);
+                        Expression[] temp = new Expression[expressions.length - 1];
+                        int counter = 0;
+                        boolean got_one = false;
+                        for(int j = 0; j < expressions.length; j++){
+                            System.out.println("Place in temp array: " + counter);
+                            if(!expressions[j].equals(sub_express)){
+                                temp[counter] = expressions[j];
+                                counter++;
+                            }else if(expressions[j].equals((sub_express)) && !got_one){
+                                temp[counter] = expressions[j];
+                                counter++;
+                                got_one = true;
+                            }
+                        }
+                        expressions = temp;
+                        return this;
+                    }
+                }
+            }
+        }
+
+        if(getNumExpressions() > 0){
+            Expression subExprs[] = new Expression[getNumExpressions()];
+            for(int i = 0; i < getNumExpressions(); i++){
+                subExprs[i] = getExpressions()[i].withoutID();
+            }
+        }else{
+            return this;
+        }
+        return this;
+    }
+
 
     //non-recursive implementation
     /*public Expression withoutDNs() {

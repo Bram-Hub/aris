@@ -10,7 +10,11 @@ public enum RuleList {
     MODUS_TOLLENS(new ModusTollens()),
     HYPOTHETICAL_SYLLOGISM(new HypotheticalSyllogism()),
     EXCLUDED_MIDDLE(new ExcludedMiddle()),
-    CONSTRUCTIVE_DILEMMA(new ConstructiveDilemma());
+    CONSTRUCTIVE_DILEMMA(new ConstructiveDilemma()),
+    Association(new Association()),
+    COMMUTATION(new Commutation()),
+    DOUBLENEGATION(new DoubleNegation()),
+    Idempotence (new Idempotence());
 
     public final String name, simpleName;
     public final Rule rule;
