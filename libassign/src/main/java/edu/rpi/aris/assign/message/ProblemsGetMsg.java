@@ -1,8 +1,9 @@
 package edu.rpi.aris.assign.message;
 
 import edu.rpi.aris.assign.NetUtil;
+import edu.rpi.aris.assign.Perm;
+import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
-import edu.rpi.aris.assign.UserType;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -15,14 +16,16 @@ public class ProblemsGetMsg extends Message {
 
     private final ArrayList<MsgUtil.ProblemInfo> problems = new ArrayList<>();
 
+    public ProblemsGetMsg() {
+        super(Perm.PROBLEMS_GET);
+    }
+
     public ArrayList<MsgUtil.ProblemInfo> getProblems() {
         return problems;
     }
 
     @Override
-    public ErrorType processMessage(Connection connection, User user) throws SQLException {
-        if (!UserType.hasPermission(user, UserType.INSTRUCTOR))
-            return ErrorType.UNAUTHORIZED;
+    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("SELECT id, name, created_by, created_on, module_name FROM problem ORDER BY created_on DESC;")) {
             try (ResultSet rs = statement.executeQuery()) {
                 while (rs.next()) {
@@ -45,8 +48,8 @@ public class ProblemsGetMsg extends Message {
 
     @Override
     public boolean checkValid() {
-        for(MsgUtil.ProblemInfo info : problems)
-            if(info == null || !info.checkValid())
+        for (MsgUtil.ProblemInfo info : problems)
+            if (info == null || !info.checkValid())
                 return false;
         return true;
     }

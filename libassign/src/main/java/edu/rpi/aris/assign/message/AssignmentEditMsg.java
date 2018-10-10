@@ -1,14 +1,15 @@
 package edu.rpi.aris.assign.message;
 
 import edu.rpi.aris.assign.NetUtil;
+import edu.rpi.aris.assign.Perm;
+import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
-import edu.rpi.aris.assign.UserType;
 
 import java.sql.*;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 
-public class AssignmentEditMsg extends Message {
+public class AssignmentEditMsg extends Message implements ClassMessage {
 
     private final int cid;
     private final int aid;
@@ -18,21 +19,18 @@ public class AssignmentEditMsg extends Message {
     private ZonedDateTime newDueDate = null;
 
     public AssignmentEditMsg(int cid, int aid) {
+        super(Perm.ASSIGNMENT_EDIT);
         this.cid = cid;
         this.aid = aid;
     }
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
     private AssignmentEditMsg() {
-        cid = aid = 0;
+        this(0,0);
     }
 
     public void setName(String name) {
         newName = name;
-    }
-
-    public void setNewDueDate(ZonedDateTime utcTime) {
-        newDueDate = utcTime;
     }
 
     public void removeProblem(int pid) {
@@ -91,14 +89,14 @@ public class AssignmentEditMsg extends Message {
                     return ErrorType.NOT_FOUND;
                 String n = rs.getString(1);
                 Timestamp due_date = rs.getTimestamp(2);
-                String assigned = rs.getString(3);
+                int assigned = rs.getInt(3);
                 for (int pid : addProblems) {
                     addProblem.setInt(1, aid);
                     addProblem.setInt(2, cid);
                     addProblem.setInt(3, pid);
                     addProblem.setString(4, n);
                     addProblem.setTimestamp(5, due_date);
-                    addProblem.setString(6, assigned);
+                    addProblem.setInt(6, assigned);
                     addProblem.addBatch();
                 }
                 addProblem.executeBatch();
@@ -108,9 +106,7 @@ public class AssignmentEditMsg extends Message {
     }
 
     @Override
-    public ErrorType processMessage(Connection connection, User user) throws SQLException {
-        if (!UserType.hasPermission(user, UserType.INSTRUCTOR))
-            return ErrorType.UNAUTHORIZED;
+    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
         rename(connection);
         changeDue(connection);
         removeProblem(connection);
@@ -133,7 +129,7 @@ public class AssignmentEditMsg extends Message {
         return cid > 0 && aid > 0;
     }
 
-    public int getCid() {
+    public int getClassId() {
         return cid;
     }
 
@@ -145,4 +141,19 @@ public class AssignmentEditMsg extends Message {
         return newName;
     }
 
+    public ZonedDateTime getNewDueDate() {
+        return newDueDate;
+    }
+
+    public void setNewDueDate(ZonedDateTime utcTime) {
+        newDueDate = utcTime;
+    }
+
+    public ArrayList<Integer> getAddedProblems() {
+        return addProblems;
+    }
+
+    public ArrayList<Integer> getRemovedProblems() {
+        return removeProblems;
+    }
 }

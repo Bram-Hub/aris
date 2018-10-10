@@ -1,5 +1,6 @@
 package edu.rpi.aris.assign.message;
 
+import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
 
 import java.sql.Connection;
@@ -15,6 +16,7 @@ public class ErrorMsg extends Message {
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
     private ErrorMsg() {
+        super(null, true);
         errorMsg = null;
         errorType = null;
     }
@@ -24,6 +26,7 @@ public class ErrorMsg extends Message {
     }
 
     public ErrorMsg(ErrorType error, String msg) {
+        super(null, true);
         errorType = error == null ? ErrorType.UNKNOWN_ERROR : error;
         errorMsg = msg;
     }
@@ -37,7 +40,7 @@ public class ErrorMsg extends Message {
     }
 
     @Override
-    public ErrorType processMessage(Connection connection, User user) {
+    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) {
         return errorType;
     }
 

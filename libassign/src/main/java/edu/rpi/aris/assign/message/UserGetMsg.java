@@ -1,7 +1,9 @@
 package edu.rpi.aris.assign.message;
 
+import edu.rpi.aris.assign.Perm;
+import edu.rpi.aris.assign.ServerPermissions;
+import edu.rpi.aris.assign.ServerRole;
 import edu.rpi.aris.assign.User;
-import edu.rpi.aris.assign.UserType;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -13,39 +15,49 @@ import java.util.Map;
 public class UserGetMsg extends Message {
 
     private int userId;
-    private UserType userType;
-    private HashMap<Integer, String> classes = new HashMap<>();
+    private int defaultRole;
+    private ServerPermissions permissions;
+    private HashMap<Integer, String> classNames = new HashMap<>();
+    private HashMap<Integer, Integer> classRoles = new HashMap<>();
 
-    public UserType getUserType() {
-        return userType;
+    public UserGetMsg() {
+        super(Perm.USER_GET);
     }
 
-    public void setUserType(UserType userType) {
-        this.userType = userType;
+    public ServerRole getDefaultRole() {
+        return permissions == null ? null : permissions.getRole(defaultRole);
     }
 
-    public HashMap<Integer, String> getClasses() {
-        return classes;
+    public HashMap<Integer, String> getClassNames() {
+        return classNames;
+    }
+
+    public HashMap<Integer, Integer> getClassRoles() {
+        return classRoles;
     }
 
     public int getUserId() {
         return userId;
     }
 
-    public void setUserId(int userId) {
-        this.userId = userId;
+    public ServerPermissions getPermissions() {
+        return permissions;
     }
 
     @Override
-    public ErrorType processMessage(Connection connection, User user) throws SQLException {
+    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
         userId = user.uid;
-        try (PreparedStatement getInfo = connection.prepareStatement(user.userType == UserType.ADMIN ? "SELECT id, name FROM class;" : "SELECT c.id, c.name FROM class c, users u, user_class uc WHERE u.id = uc.user_id AND c.id = uc.class_id AND u.id = ?")) {
-            userType = user.userType;
-            if (userType != UserType.ADMIN)
+        this.permissions = permissions;
+        try (PreparedStatement getInfo = connection.prepareStatement(user.isAdmin() ? "SELECT id, name FROM class;" : "SELECT c.id, c.name, uc.role_id FROM class c, users u, user_class uc WHERE u.id = uc.user_id AND c.id = uc.class_id AND u.id = ?")) {
+            defaultRole = user.defaultRole.getId();
+            if (!user.isAdmin())
                 getInfo.setInt(1, userId);
             try (ResultSet infoRs = getInfo.executeQuery()) {
-                while (infoRs.next())
-                    classes.put(infoRs.getInt(1), infoRs.getString(2));
+                while (infoRs.next()) {
+                    int cid = infoRs.getInt(1);
+                    classNames.put(cid, infoRs.getString(2));
+                    classRoles.put(cid, user.isAdmin() ? permissions.getAdminRole().getId() : permissions.getRole(infoRs.getInt(3)).getId());
+                }
             }
         }
         return null;
@@ -58,8 +70,8 @@ public class UserGetMsg extends Message {
 
     @Override
     public boolean checkValid() {
-        for (Map.Entry<Integer, String> c : classes.entrySet())
-            if (c.getKey() == null || c.getValue() == null)
+        for (Map.Entry<Integer, String> c : classNames.entrySet())
+            if (c.getKey() == null || c.getValue() == null || !classRoles.containsKey(c.getKey()))
                 return false;
         return true;
     }

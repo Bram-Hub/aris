@@ -3,9 +3,7 @@ package edu.rpi.aris.assign.message;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
-import edu.rpi.aris.assign.ArisModuleException;
-import edu.rpi.aris.assign.MessageCommunication;
-import edu.rpi.aris.assign.User;
+import edu.rpi.aris.assign.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -26,9 +24,22 @@ public abstract class Message {
         gson = gsonBuilder.create();
     }
 
+    private final transient Perm permission;
+    private final transient boolean customPermCheck;
+
+    protected Message(Perm permission, boolean customPermCheck) {
+        this.permission = permission;
+        this.customPermCheck = customPermCheck;
+    }
+
+    protected Message(Perm permission) {
+        this(permission, false);
+    }
+
     private static Message parse(MessageCommunication com) {
         try {
-            Message msg = gson.fromJson(com.readMessage(), Message.class);
+//            logger.debug("Parsing json message: " + msgStr);
+            Message msg = gson.fromJson(com.getReader(), Message.class);
             if (msg instanceof DataMessage)
                 ((DataMessage) msg).receiveData(com.getInputStream());
             if (!msg.checkValid()) {
@@ -60,8 +71,17 @@ public abstract class Message {
         return reply;
     }
 
+    public final Perm getPermission() {
+        return permission;
+    }
+
+    public final boolean hasCustomPermissionCheck() {
+        return customPermCheck;
+    }
+
     public final void send(MessageCommunication com) throws Exception {
-        com.sendMessage(gson.toJson(this, Message.class));
+        gson.toJson(this, Message.class, com.getWriter());
+        com.getWriter().flush();
         if (this instanceof DataMessage)
             ((DataMessage) this).sendData(com.getOutputStream());
     }
@@ -88,7 +108,7 @@ public abstract class Message {
         return reply;
     }
 
-    public abstract ErrorType processMessage(Connection connection, User user) throws Exception;
+    public abstract ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws Exception;
 
     public abstract MessageType getMessageType();
 

@@ -8,6 +8,7 @@ import edu.rpi.aris.assign.client.model.Problems;
 import edu.rpi.aris.assign.client.model.UserInfo;
 import edu.rpi.aris.assign.spi.ArisModule;
 import javafx.beans.binding.Bindings;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
@@ -37,6 +38,7 @@ public class ProblemsGui implements TabGui {
     private static final Logger log = LogManager.getLogger();
     private static final ModuleUIOptions MODIFY_OPTIONS = new ModuleUIOptions(EditMode.CREATE_EDIT_PROBLEM, "Modify Problem", true, true, true, true, false);
     private static final FileChooser.ExtensionFilter allFiles = new FileChooser.ExtensionFilter("All Files", "*");
+    private final SimpleStringProperty tabName = new SimpleStringProperty("Problems");
     @FXML
     private TableView<Problems.Problem> problemTbl;
     @FXML
@@ -74,6 +76,16 @@ public class ProblemsGui implements TabGui {
     @Override
     public boolean isPermanentTab() {
         return true;
+    }
+
+    @Override
+    public String getName() {
+        return tabName.get();
+    }
+
+    @Override
+    public SimpleStringProperty nameProperty() {
+        return tabName;
     }
 
     @Override

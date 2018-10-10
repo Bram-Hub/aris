@@ -22,22 +22,18 @@ public class ProblemEditMsg<T extends ArisModule> extends ProblemMessage<T> {
     }
 
     public ProblemEditMsg(int pid, String name, String moduleName, Problem<T> problem) {
-        super(moduleName, problem);
+        super(moduleName, problem, Perm.PROBLEM_EDIT);
         this.pid = pid;
         this.name = name;
     }
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
     private ProblemEditMsg() {
-        super(null, null);
-        pid = 0;
-        name = null;
+        this(0, null);
     }
 
     @Override
-    public ErrorType processMessage(Connection connection, User user) throws Exception {
-        if (!UserType.hasPermission(user, UserType.INSTRUCTOR))
-            return ErrorType.UNAUTHORIZED;
+    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws Exception {
         if (name != null) {
             try (PreparedStatement updateName = connection.prepareStatement("UPDATE problem SET name = ? WHERE id = ?")) {
                 updateName.setString(1, name);

@@ -1,8 +1,9 @@
 package edu.rpi.aris.assign.message;
 
 import edu.rpi.aris.assign.NetUtil;
+import edu.rpi.aris.assign.Perm;
+import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
-import edu.rpi.aris.assign.UserType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -14,7 +15,7 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 
-public class AssignmentCreateMsg extends Message {
+public class AssignmentCreateMsg extends Message implements ClassMessage {
 
     private static final Logger logger = LogManager.getLogger(AssignmentCreateMsg.class);
     private final int cid;
@@ -24,6 +25,7 @@ public class AssignmentCreateMsg extends Message {
     private int aid;
 
     public AssignmentCreateMsg(int cid, String name, ZonedDateTime dueDate) {
+        super(Perm.ASSIGNMENT_CREATE);
         this.cid = cid;
         this.name = name;
         this.dueDate = dueDate;
@@ -31,9 +33,7 @@ public class AssignmentCreateMsg extends Message {
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
     private AssignmentCreateMsg() {
-        cid = 0;
-        name = null;
-        dueDate = null;
+        this(0, null, null);
     }
 
     public void addProof(int pid) {
@@ -45,9 +45,7 @@ public class AssignmentCreateMsg extends Message {
     }
 
     @Override
-    public ErrorType processMessage(Connection connection, User user) throws SQLException {
-        if (!UserType.hasPermission(user, UserType.INSTRUCTOR))
-            return ErrorType.UNAUTHORIZED;
+    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
         try (PreparedStatement select = connection.prepareStatement("SELECT id FROM assignment ORDER BY id DESC LIMIT 1;");
              PreparedStatement statement = connection.prepareStatement("INSERT INTO assignment VALUES(?, ?, ?, ?, ?, ?);")) {
             aid = 1;
@@ -64,7 +62,7 @@ public class AssignmentCreateMsg extends Message {
                 statement.setInt(6, user.uid);
                 statement.addBatch();
             }
-            statement.executeUpdate();
+            statement.executeBatch();
         }
         return null;
     }
@@ -98,7 +96,7 @@ public class AssignmentCreateMsg extends Message {
         return dueDate;
     }
 
-    public int getCid() {
+    public int getClassId() {
         return cid;
     }
 }

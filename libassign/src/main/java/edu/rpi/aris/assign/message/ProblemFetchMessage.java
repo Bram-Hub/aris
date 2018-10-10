@@ -1,8 +1,6 @@
 package edu.rpi.aris.assign.message;
 
-import edu.rpi.aris.assign.ModuleService;
-import edu.rpi.aris.assign.ProblemConverter;
-import edu.rpi.aris.assign.User;
+import edu.rpi.aris.assign.*;
 import edu.rpi.aris.assign.spi.ArisModule;
 
 import java.io.InputStream;
@@ -15,18 +13,17 @@ public class ProblemFetchMessage<T extends ArisModule> extends ProblemMessage<T>
     private final int pid;
 
     public ProblemFetchMessage(int pid, String moduleName) {
-        super(moduleName, null);
+        super(moduleName, null, Perm.PROBLEM_FETCH);
         this.pid = pid;
     }
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
     private ProblemFetchMessage() {
-        super(null, null);
-        pid = -1;
+        this(-1, null);
     }
 
     @Override
-    public ErrorType processMessage(Connection connection, User user) throws Exception {
+    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws Exception {
         try (PreparedStatement statement = connection.prepareStatement("SELECT module_name, data FROM problem WHERE id = ?;")) {
             statement.setInt(1, pid);
             try (ResultSet rs = statement.executeQuery()) {

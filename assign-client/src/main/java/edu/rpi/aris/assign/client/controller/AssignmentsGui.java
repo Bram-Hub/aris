@@ -2,19 +2,23 @@ package edu.rpi.aris.assign.client.controller;
 
 import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.NetUtil;
-import edu.rpi.aris.assign.UserType;
+import edu.rpi.aris.assign.Perm;
+import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.dialog.AssignmentDialog;
 import edu.rpi.aris.assign.client.model.Assignments;
 import edu.rpi.aris.assign.client.model.Problems;
+import edu.rpi.aris.assign.client.model.ServerConfig;
 import edu.rpi.aris.assign.client.model.UserInfo;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.Region;
 import javafx.stage.Modality;
 import org.apache.commons.lang3.tuple.Triple;
@@ -30,8 +34,8 @@ import java.util.stream.Collectors;
 
 public class AssignmentsGui implements TabGui {
 
-    private UserInfo userInfo = UserInfo.getInstance();
-
+    private final UserInfo userInfo = UserInfo.getInstance();
+    private final SimpleStringProperty tabName = new SimpleStringProperty("Assignments");
     @FXML
     private TableView<Assignments.Assignment> tblAssignments;
     @FXML
@@ -44,7 +48,6 @@ public class AssignmentsGui implements TabGui {
     private TableColumn<Assignments.Assignment, Node> modifyColumn;
     @FXML
     private Button btnCreate;
-
     private Parent root;
     private Assignments assignments = new Assignments(this);
 
@@ -65,6 +68,16 @@ public class AssignmentsGui implements TabGui {
     @Override
     public boolean isPermanentTab() {
         return true;
+    }
+
+    @Override
+    public String getName() {
+        return tabName.get();
+    }
+
+    @Override
+    public SimpleStringProperty nameProperty() {
+        return tabName;
     }
 
     @Override
@@ -93,16 +106,34 @@ public class AssignmentsGui implements TabGui {
             else
                 return "No Assignments!";
         }, userInfo.loginProperty(), userInfo.selectedClassProperty(), userInfo.loadingProperty(), assignments.loadErrorProperty()));
-        userInfo.userTypeProperty().addListener((observable, oldValue, newValue) -> modifyColumn.setVisible(UserType.hasPermission(userInfo.getUserType(), UserType.INSTRUCTOR)));
+        userInfo.classRoleProperty().addListener((observable, oldValue, newValue) -> {
+            ServerPermissions permissions = ServerConfig.getPermissions();
+            modifyColumn.setVisible(permissions != null && permissions.hasPermission(newValue, Perm.ASSIGNMENT_EDIT));
+        });
 
         tblAssignments.itemsProperty().set(assignments.getAssignments());
+        tblAssignments.setRowFactory(param -> {
+            TableRow<Assignments.Assignment> row = new TableRow<>();
+            row.setOnMouseClicked(event -> {
+                if (!row.isEmpty() && event.getButton() == MouseButton.PRIMARY) {
+                    Assignments.Assignment assignment = row.getItem();
+                    ServerPermissions permissions = ServerConfig.getPermissions();
+                    if (permissions.hasPermission(userInfo.getClassRole(), Perm.ASSIGNMENT_GET_STUDENT) && permissions.getPermission(Perm.ASSIGNMENT_GET_STUDENT).getRollId() == userInfo.getClassRole().getId())
+                        AssignGui.getInstance().addTabGui(new StudentAssignmentGui(assignment.getName(), assignment.getCid(), assignment.getAid()));
+                }
+            });
+            return row;
+        });
 
         userInfo.loginProperty().addListener((observable, oldValue, newValue) -> {
             if (!newValue)
                 assignments.clear();
         });
         userInfo.selectedClassProperty().addListener((observable, oldValue, newValue) -> assignments.clear());
-        btnCreate.visibleProperty().bind(Bindings.createBooleanBinding(() -> UserType.hasPermission(userInfo.getUserType(), UserType.INSTRUCTOR), userInfo.userTypeProperty()));
+        btnCreate.visibleProperty().bind(Bindings.createBooleanBinding(() -> {
+            ServerPermissions permissions = ServerConfig.getPermissions();
+            return permissions != null && permissions.hasPermission(userInfo.getClassRole(), Perm.ASSIGNMENT_CREATE);
+        }, userInfo.classRoleProperty()));
         btnCreate.managedProperty().bind(btnCreate.visibleProperty());
 
         name.setCellValueFactory(param -> param.getValue().nameProperty());

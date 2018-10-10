@@ -29,8 +29,8 @@ public class ClientInfo {
                     return;
                 userId = reply.getUserId();
                 Platform.runLater(() -> {
-//                    isInstructor.set(reply.getUserType().equals(NetUtil.USER_INSTRUCTOR));
-                    reply.getClasses().forEach((id, name) -> courses.add(new Course(id, name)));
+//                    isInstructor.set(reply.getDefaultRole().equals(NetUtil.USER_INSTRUCTOR));
+//                    reply.getClasses().forEach((id, name) -> courses.add(new Course(id, name.getKey())));
                     loaded.set(true);
                 });
                 if (runnable != null)

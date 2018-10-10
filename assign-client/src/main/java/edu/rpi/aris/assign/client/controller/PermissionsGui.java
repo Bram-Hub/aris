@@ -3,7 +3,7 @@ package edu.rpi.aris.assign.client.controller;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.Parent;
 
-public class UsersGui implements TabGui {
+public class PermissionsGui implements TabGui {
     @Override
     public void load(boolean reload) {
 

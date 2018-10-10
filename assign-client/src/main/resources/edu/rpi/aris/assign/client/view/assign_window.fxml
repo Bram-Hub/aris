@@ -30,6 +30,7 @@
                           <Insets />
                       </HBox.margin>
                   </Label>
+                   <Label fx:id="noClasses" text="No classes available"/>
                   <ChoiceBox fx:id="classes" />
                   <Button fx:id="refreshButton" graphicTextGap="0.0" mnemonicParsing="false" onAction="#refresh">
                       <graphic>
@@ -60,6 +61,7 @@
                <TabPane fx:id="tabPane" VBox.vgrow="ALWAYS">
                   <Tab fx:id="assignmentTab" closable="false" text="Assignments" />
                   <Tab fx:id="userTab" closable="false" text="Users" />
+                   <Tab fx:id="permissionTab" closable="false" text="Permissions"/>
                   <Tab fx:id="problemTab" closable="false" text="Problems" />
               </TabPane>
            </children>

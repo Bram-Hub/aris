@@ -1,7 +1,6 @@
 package edu.rpi.aris.assign.server;
 
 import edu.rpi.aris.assign.LibAssign;
-import edu.rpi.aris.assign.UserType;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.Level;
@@ -51,7 +50,7 @@ public class ServerCLI {
                             log.error("Usage: useradd <username>");
                         else {
                             try {
-                                if (AssignServerMain.getServer().addUser(args.get(0), DatabaseManager.DEFAULT_ADMIN_PASS, UserType.ADMIN, true))
+                                if (AssignServerMain.getServer().addUser(args.get(0), DatabaseManager.DEFAULT_ADMIN_PASS, AssignServerMain.getServer().getPermissions().getAdminRole(), true))
                                     log.info("User Added with password \"" + DatabaseManager.DEFAULT_ADMIN_PASS + "\"");
                                 else
                                     log.error("Failed to add user");
@@ -63,7 +62,7 @@ public class ServerCLI {
                     case "userlist":
                         try {
                             log.info("Users:");
-                            for (Pair<String, UserType> p : AssignServerMain.getServer().getDbManager().getUsers()) {
+                            for (Pair<String, String> p : AssignServerMain.getServer().getDbManager().getUsers()) {
                                 log.info(p.getKey() + " - " + p.getRight());
                             }
                         } catch (SQLException e) {
@@ -72,6 +71,15 @@ public class ServerCLI {
                         break;
                     case "rmuser":
                         log.error("rmuser not implemented");
+                        break;
+                    case "rlperm":
+                        log.info("Reloading permissions from database...");
+                        try {
+                            AssignServerMain.getServer().getPermissions().reloadPermissions(AssignServerMain.getServer().getDbManager().getConnection());
+                            log.info("Permissions reloaded");
+                        } catch (SQLException e) {
+                            LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, false);
+                        }
                         break;
                     default:
                         log.error("Unrecognized command: " + cmd);
@@ -122,6 +130,7 @@ public class ServerCLI {
             log.log(lvl, "\tuseradd <username> - adds the specified user");
             log.log(lvl, "\tuserlist           - lists the users for this server");
             log.log(lvl, "\trmuser <username>  - deletes the given user from the server");
+            log.log(lvl, "\trlperm             - reloads the permissions from the database");
         }
     }
 

@@ -1,14 +1,14 @@
 package edu.rpi.aris.assign.client.model;
 
+import edu.rpi.aris.assign.ServerRole;
 import edu.rpi.aris.assign.User;
-import edu.rpi.aris.assign.UserType;
-import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
 import edu.rpi.aris.assign.message.ClassCreateMsg;
 import edu.rpi.aris.assign.message.ClassDeleteMsg;
 import edu.rpi.aris.assign.message.UserGetMsg;
 import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleIntegerProperty;
@@ -26,7 +26,8 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
 
     private static final UserInfo instance = new UserInfo();
 
-    private SimpleObjectProperty<UserType> userType = new SimpleObjectProperty<>();
+    private SimpleObjectProperty<ServerRole> defaultRole = new SimpleObjectProperty<>();
+    private SimpleObjectProperty<ServerRole> classRole = new SimpleObjectProperty<>();
     private ObservableList<ClassInfo> classes = FXCollections.observableArrayList();
     private SimpleBooleanProperty loggedIn = new SimpleBooleanProperty();
     private SimpleIntegerProperty loading = new SimpleIntegerProperty();
@@ -45,6 +46,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
             if (newValue != null)
                 LocalConfig.SELECTED_COURSE_ID.setValue(newValue.getClassId());
         });
+        classRole.bind(Bindings.createObjectBinding(() -> defaultRole.get() == null ? null : (selectedClass.get() == null ? defaultRole.get() : selectedClass.get().getUserRole()), selectedClass, defaultRole));
     }
 
     public static UserInfo getInstance() {
@@ -67,8 +69,8 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         return loggedIn;
     }
 
-    public SimpleObjectProperty<UserType> userTypeProperty() {
-        return userType;
+    public SimpleObjectProperty<ServerRole> defaultRoleProperty() {
+        return defaultRole;
     }
 
     public SimpleObjectProperty<ClassInfo> selectedClassProperty() {
@@ -91,11 +93,11 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         loading.set(loading.get() - 1);
     }
 
-    public UserType getUserType() {
-        return userType.get();
+    public ServerRole getDefaultRole() {
+        return defaultRole.get();
     }
 
-    public void getUserInfo(boolean refresh, Runnable onLoad) {
+    public synchronized void getUserInfo(boolean refresh, Runnable onLoad) {
         if (refresh || !loggedIn.get()) {
             if (lock.isLocked())
                 return;
@@ -105,11 +107,11 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         }
     }
 
-    public void logout() {
+    public synchronized void logout() {
         loggedIn.set(false);
         classes.clear();
         classMap.clear();
-        userType.set(null);
+        defaultRole.set(null);
         LocalConfig.USERNAME.setValue(null);
         LocalConfig.ACCESS_TOKEN.setValue(null);
     }
@@ -131,12 +133,13 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
     @Override
     public void response(UserGetMsg message) {
         Platform.runLater(() -> {
-            user = new User(message.getUserId(), LocalConfig.USERNAME.getValue(), message.getUserType(), false);
-            userType.set(message.getUserType());
+            ServerConfig.setPermissions(message.getPermissions());
+            user = new User(message.getUserId(), LocalConfig.USERNAME.getValue(), message.getDefaultRole(), false);
+            defaultRole.set(message.getDefaultRole());
             classes.clear();
             classMap.clear();
-            message.getClasses().forEach((k, v) -> {
-                ClassInfo info = new ClassInfo(k, v);
+            message.getClassNames().forEach((k, v) -> {
+                ClassInfo info = new ClassInfo(k, v, message.getPermissions() == null ? null : message.getPermissions().getRole(message.getClassRoles().get(k)));
                 classes.add(info);
                 classMap.put(k, info);
             });
@@ -172,6 +175,14 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         return selectedClass.get();
     }
 
+    public ServerRole getClassRole() {
+        return classRole.get();
+    }
+
+    public SimpleObjectProperty<ServerRole> classRoleProperty() {
+        return classRole;
+    }
+
     public static class ClassStringConverter extends StringConverter<ClassInfo> {
         @Override
         public String toString(ClassInfo object) {
@@ -201,8 +212,6 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         public void onError(boolean suggestRetry, ClassDeleteMsg msg) {
             if (suggestRetry)
                 Client.getInstance().processMessage(msg, this);
-            else
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error Deleting Class", "An error occured while attempting to delete the class");
             Platform.runLater(UserInfo.this::finishLoading);
         }
 
@@ -217,7 +226,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         @Override
         public void response(ClassCreateMsg message) {
             Platform.runLater(() -> {
-                ClassInfo info = new ClassInfo(message.getClassId(), message.getClassName());
+                ClassInfo info = new ClassInfo(message.getClassId(), message.getClassName(), defaultRole.get());
                 classMap.put(message.getClassId(), info);
                 classes.add(info);
                 Collections.sort(classes);
@@ -230,8 +239,6 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         public void onError(boolean suggestRetry, ClassCreateMsg msg) {
             if (suggestRetry)
                 Client.getInstance().processMessage(msg, this);
-            else
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error Creating Class", "An error occurred while attempting to create the class");
             Platform.runLater(UserInfo.this::finishLoading);
         }
 

@@ -82,27 +82,31 @@ public class AssignmentDialog extends Dialog<Triple<String, LocalDateTime, Colle
         this(parent, availableProblems);
         problemBox.getChildren().clear();
         for (Problems.Problem info : problems)
-            addSelector().getSelectionModel().select(info);
+            addSelector(false).getSelectionModel().select(info);
+        addSelector(true);
+        getDialogPane().getScene().getWindow().sizeToScene();
         nameField.setText(name);
         timeInput.setText(timeFormat.format(dueDate));
         this.dueDate.setValue(dueDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
         edit = true;
     }
 
-    private ComboBox<Problems.Problem> addSelector() {
+    private ComboBox<Problems.Problem> addSelector(boolean addSelectorOnChange) {
         HBox box = new HBox(5);
         ComboBox<Problems.Problem> combo = new ComboBox<>();
         combo.setPromptText("Select Problem");
         combo.getItems().setAll(availableProblems);
         combo.setMaxWidth(Double.MAX_VALUE);
+        combo.setStyle("-fx-opacity: 1;");
+        combo.setDisable(!addSelectorOnChange);
         combo.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<Problems.Problem>() {
 
-            boolean added = false;
+            boolean added = !addSelectorOnChange;
 
             @Override
             public void changed(ObservableValue<? extends Problems.Problem> observable, Problems.Problem oldValue, Problems.Problem newValue) {
                 if (oldValue == null && !added) {
-                    addSelector();
+                    addSelector(true);
                     added = true;
                 }
             }
@@ -136,6 +140,6 @@ public class AssignmentDialog extends Dialog<Triple<String, LocalDateTime, Colle
     @FXML
     private void initialize() {
         okBtn.disableProperty().bind(Bindings.createBooleanBinding(() -> !timePattern.matcher(timeInput.getText()).matches() || nameField.getText().length() == 0 || dueDate.getValue() == null || problemBox.getChildren().size() < 2, timeInput.textProperty(), nameField.textProperty(), dueDate.valueProperty(), problemBox.getChildren()));
-        addSelector();
+        addSelector(true);
     }
 }

@@ -1,7 +1,8 @@
 package edu.rpi.aris.assign.message;
 
+import edu.rpi.aris.assign.Perm;
+import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
-import edu.rpi.aris.assign.UserType;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -12,18 +13,17 @@ public class ProblemDeleteMsg extends Message {
     private final int pid;
 
     public ProblemDeleteMsg(int pid) {
+        super(Perm.PROBLEM_DELETE);
         this.pid = pid;
     }
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
     private ProblemDeleteMsg() {
-        pid = 0;
+        this(0);
     }
 
     @Override
-    public ErrorType processMessage(Connection connection, User user) throws SQLException {
-        if (!UserType.hasPermission(user, UserType.INSTRUCTOR))
-            return ErrorType.UNAUTHORIZED;
+    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
         try (PreparedStatement deleteProblem = connection.prepareStatement("DELETE FROM problem WHERE id = ?;")) {
             deleteProblem.setInt(1, pid);
             deleteProblem.executeUpdate();

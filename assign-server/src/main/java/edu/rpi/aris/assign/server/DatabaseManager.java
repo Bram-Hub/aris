@@ -1,9 +1,9 @@
 package edu.rpi.aris.assign.server;
 
+import com.mchange.v2.c3p0.ComboPooledDataSource;
 import edu.rpi.aris.assign.DBUtils;
 import edu.rpi.aris.assign.GradingStatus;
-import edu.rpi.aris.assign.NetUtil;
-import edu.rpi.aris.assign.UserType;
+import edu.rpi.aris.assign.ServerRole;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -20,9 +20,11 @@ import java.util.ArrayList;
 
 public class DatabaseManager {
 
-    private static final String[] tables = new String[]{"submission", "assignment", "problem", "user_class", "users", "class", "version"};
-    private static final int DB_SCHEMA_VERSION = 6;
     public static final String DEFAULT_ADMIN_PASS = "ArisAdmin1";
+    private static final String[] defaultRoleName = new String[]{"Admin", "Instructor", "TA", "Student"};
+    private static final int[] defaultRoleRank = new int[]{0, 1, 2, 3};
+    private static final String[] tables = new String[]{"submission", "assignment", "problem", "user_class", "users", "class", "version"};
+    private static final int DB_SCHEMA_VERSION = 7;
     private static Logger logger = LogManager.getLogger(DatabaseManager.class);
 
     static {
@@ -30,25 +32,33 @@ public class DatabaseManager {
             Security.addProvider(new BouncyCastleProvider());
     }
 
-    private final String user;
-    private final String pass;
-
-    private String connectionString;
+    private ComboPooledDataSource dataSource;
 
     public DatabaseManager(String host, int port, String database, String user, String pass) throws IOException, SQLException {
-        this.user = user;
-        this.pass = pass;
-        connectionString = "jdbc:postgresql://" + host + ":" + port + "/" + database;
+        dataSource = new ComboPooledDataSource();
+        dataSource.setJdbcUrl("jdbc:postgresql://" + host + ":" + port + "/" + database);
+        dataSource.setUser(user);
+        dataSource.setPassword(pass);
+        dataSource.setAutoCommitOnClose(true);
         try (Connection connection = getConnection()) {
             logger.info("Verifying database connection");
             verifyDatabase(connection);
         }
     }
 
+    private void createDefaultRoles(Connection connection) throws SQLException {
+        //noinspection ConstantConditions
+        if (defaultRoleName.length != defaultRoleRank.length)
+            throw new IndexOutOfBoundsException("Default role names/ranks do not match");
+        for (int i = 0; i < defaultRoleName.length; ++i)
+            createRole(defaultRoleName[i], defaultRoleRank[i], connection);
+    }
+
     private void verifyDatabase(Connection connection) throws SQLException, IOException {
         try (PreparedStatement statement = connection.prepareStatement("SELECT count(*) FROM information_schema.tables WHERE table_name='version';");
              ResultSet set = statement.executeQuery();
-             PreparedStatement version = connection.prepareStatement("SELECT version FROM version LIMIT 1;")) {
+             PreparedStatement version = connection.prepareStatement("SELECT version FROM version LIMIT 1;");
+             PreparedStatement checkRole = connection.prepareStatement("SELECT count(*) FROM role;")) {
             logger.info("Checking database schema version");
             if (!set.next() || set.getInt(1) == 0)
                 createTables(connection);
@@ -63,7 +73,9 @@ public class DatabaseManager {
                             throw new SQLException("Unknown database schema version: " + v);
                         if (v < DB_SCHEMA_VERSION) {
                             try {
-                                Method update = DatabaseManager.class.getDeclaredMethod("updateSchema" + v, Connection.class);
+                                String methodName = "updateSchema" + v;
+                                logger.info("Calling update method: " + methodName);
+                                Method update = DatabaseManager.class.getDeclaredMethod(methodName, Connection.class);
                                 update.invoke(this, connection);
                             } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                                 throw new IOException("Cannot update database schema from version " + v, e);
@@ -71,6 +83,10 @@ public class DatabaseManager {
                         }
                     }
                 }
+            }
+            try (ResultSet rs = checkRole.executeQuery()) {
+                if (rs.next() && rs.getInt(1) == 0)
+                    createDefaultRoles(connection);
             }
         }
     }
@@ -84,23 +100,29 @@ public class DatabaseManager {
             statement.execute("CREATE TABLE IF NOT EXISTS version (version integer);");
             statement.execute("DELETE FROM version;");
             statement.execute("INSERT INTO version (version) VALUES (" + DB_SCHEMA_VERSION + ");");
+            statement.execute("CREATE TABLE IF NOT EXISTS role" +
+                    "(id serial PRIMARY KEY," +
+                    "name text," +
+                    "role_rank integer);");
             statement.execute("CREATE TABLE IF NOT EXISTS users" +
                     "(id serial PRIMARY KEY," +
                     "username text," +
-                    "user_type text," +
                     "salt text," +
                     "password_hash text," +
                     "access_token text," +
-                    "force_reset boolean);");
+                    "force_reset boolean," +
+                    "default_role integer," +
+                    "constraint u_rfk foreign key (default_role) references role(id) on delete restrict);");
             statement.execute("CREATE TABLE IF NOT EXISTS class" +
                     "(id serial PRIMARY KEY," +
                     "name text);");
             statement.execute("CREATE TABLE IF NOT EXISTS user_class" +
                     "(user_id integer," +
                     "class_id integer," +
-                    "is_ta boolean" +
+                    "role_id integer," +
                     "constraint uc_ufk foreign key (user_id) references users(id) on delete cascade," +
-                    "constraint uc_cfk foreign key (class_id) references class(id) on delete cascade);");
+                    "constraint uc_cfk foreign key (class_id) references class(id) on delete cascade," +
+                    "constraint uc_rfk foreign key (role_id) references role(id) on delete restrict);");
             statement.execute("CREATE TABLE IF NOT EXISTS problem" +
                     "(id serial PRIMARY KEY," +
                     "name text," +
@@ -129,13 +151,18 @@ public class DatabaseManager {
                     "time timestamp," +
                     "short_status text," +
                     "status text," +
-                    "check (short_status in ('" + GradingStatus.CORRECT.name() + "', '" + GradingStatus.INCORRECT.name() + "', '" + GradingStatus.GRADING.name() + "', '" + GradingStatus.CORRECT_WARN.name() + "', '" + GradingStatus.INCORRECT_WARN.name() + "'))," +
+                    "check (short_status in ('" + GradingStatus.CORRECT.name() + "', '" + GradingStatus.INCORRECT.name() + "', '" + GradingStatus.GRADING.name() + "'))," +
                     "constraint s_cfk foreign key (class_id) references class(id) on delete cascade," +
                     "constraint s_afk foreign key (assignment_id, class_id, problem_id) references assignment(id, class_id, problem_id) on delete cascade," +
                     "constraint s_ufk foreign key (user_id) references users(id) on delete cascade," +
                     "constraint s_pfk foreign key (problem_id) references problem(id) on delete cascade);");
+            statement.execute("CREATE TABLE IF NOT EXISTS permissions" +
+                    "(name text PRIMARY KEY," +
+                    "role_id int," +
+                    "constraint perm_rfk foreign key (role_id) references role(id) on delete restrict);");
+            createDefaultRoles(connection);
+            createUser(connection, "admin", DEFAULT_ADMIN_PASS, 1, true);
             connection.commit();
-            createUser("admin", DEFAULT_ADMIN_PASS, UserType.ADMIN, true);
         } catch (Throwable e) {
             connection.rollback();
             logger.error("An error occurred while creating the tables and the changes were rolled back");
@@ -248,46 +275,115 @@ public class DatabaseManager {
         } finally {
             connection.setAutoCommit(autoCommit);
         }
+        updateSchema6(connection);
     }
 
-    public Pair<String, String> createUser(String username, String password, UserType userType, boolean forceReset) throws SQLException {
-        if (username == null || username.length() == 0 || userType == null)
-            return new ImmutablePair<>(null, NetUtil.INVALID);
-        if (password == null)
-            password = RandomStringUtils.randomAlphabetic(16);
-        try (Connection connection = getConnection();
-             PreparedStatement count = connection.prepareStatement("SELECT count(*) FROM users WHERE username = ?;");
-             PreparedStatement statement = connection.prepareStatement("INSERT INTO users (username, user_type, salt, password_hash, force_reset) VALUES(?, ?, ?, ?, ?);")) {
-            count.setString(1, username);
-            try (ResultSet rs = count.executeQuery()) {
-                if (rs.next() && rs.getInt(1) > 0)
-                    return new ImmutablePair<>(null, NetUtil.USER_EXISTS);
-            }
-            Pair<String, String> sh = DBUtils.getSaltAndHash(password);
-            statement.setString(1, username);
-            statement.setString(2, userType.name());
-            statement.setString(3, sh.getKey());
-            statement.setString(4, sh.getValue());
-            statement.setBoolean(5, forceReset);
-            statement.executeUpdate();
-            return new ImmutablePair<>(password, NetUtil.OK);
+    private void updateSchema6(Connection connection) throws SQLException {
+        logger.info("Updating database schema to version 7");
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("CREATE TABLE IF NOT EXISTS role" +
+                    "(id serial PRIMARY KEY," +
+                    "name text," +
+                    "role_rank integer);");
+            statement.execute("CREATE TABLE IF NOT EXISTS permissions" +
+                    "(name text PRIMARY KEY," +
+                    "role_id int," +
+                    "constraint perm_rfk foreign key (role_id) references role(id) on delete restrict);");
+
+            createDefaultRoles(connection);
+
+            // Update users table
+            statement.execute("ALTER TABLE users ADD COLUMN default_role integer;");
+            statement.execute("ALTER TABLE users ADD constraint u_rfk foreign key (default_role) references role(id) on delete restrict;");
+
+            statement.execute("UPDATE users SET default_role=1 WHERE user_type='ADMIN';");
+            statement.execute("UPDATE users SET default_role=2 WHERE user_type='INSTRUCTOR';");
+            statement.execute("UPDATE users SET default_role=4 WHERE user_type='STUDENT';");
+
+            // Update user_class table
+            statement.execute("ALTER TABLE user_class ADD COLUMN role_id integer;");
+            statement.execute("ALTER TABLE user_class ADD constraint uc_rfk foreign key (role_id) references role(id) on delete restrict;");
+
+            statement.execute("UPDATE user_class SET role_id=4;");
+
+            statement.execute("UPDATE user_class SET role_id=3 WHERE is_ta;");
+
+            statement.execute("ALTER TABLE user_class DROP COLUMN is_ta;");
+
+            statement.execute("UPDATE user_class SET role_id=2 FROM users WHERE users.id=user_class.user_id AND users.user_type='INSTRUCTOR';");
+
+            statement.execute("ALTER TABLE users DROP COLUMN user_type;");
+
+            statement.execute("UPDATE version SET version=7;");
+            connection.commit();
+        } catch (Throwable e) {
+            connection.rollback();
+            logger.error("An error occurred while updating the database schema and the changes were rolled back");
+            throw e;
+        } finally {
+            connection.setAutoCommit(autoCommit);
         }
     }
 
-    public ArrayList<Pair<String, UserType>> getUsers() throws SQLException {
-        ArrayList<Pair<String, UserType>> users = new ArrayList<>();
+    public Pair<String, Boolean> createUser(String username, String password, int roleId, boolean forceReset) throws SQLException {
+        try (Connection connection = getConnection()) {
+            return createUser(connection, username, password, roleId, forceReset);
+        }
+    }
+
+    public Pair<String, Boolean> createUser(Connection connection, String username, String password, int roleId, boolean forceReset) throws SQLException {
+        if (username == null || username.length() == 0)
+            return new ImmutablePair<>(null, false);
+        if (password == null)
+            password = RandomStringUtils.randomAlphabetic(16);
+        try (PreparedStatement count = connection.prepareStatement("SELECT count(*) FROM users WHERE username = ?;");
+             PreparedStatement statement = connection.prepareStatement("INSERT INTO users (username, salt, password_hash, force_reset, default_role) VALUES(?, ?, ?, ?, ?);")) {
+            count.setString(1, username);
+            try (ResultSet rs = count.executeQuery()) {
+                if (rs.next() && rs.getInt(1) > 0)
+                    return new ImmutablePair<>(null, false);
+            }
+            Pair<String, String> sh = DBUtils.getSaltAndHash(password);
+            statement.setString(1, username);
+            statement.setString(2, sh.getKey());
+            statement.setString(3, sh.getValue());
+            statement.setBoolean(4, forceReset);
+            statement.setInt(5, roleId);
+            statement.executeUpdate();
+            return new ImmutablePair<>(password, true);
+        }
+    }
+
+    public ServerRole createRole(String name, int rank, Connection connection) throws SQLException {
+        if (name == null)
+            return null;
+        try (PreparedStatement createRole = connection.prepareStatement("INSERT INTO role (name, role_rank) VALUES (?, ?) RETURNING id;")) {
+            createRole.setString(1, name);
+            createRole.setInt(2, rank);
+            try (ResultSet rs = createRole.executeQuery()) {
+                if (rs.next())
+                    return new ServerRole(rs.getInt(1), name, rank);
+            }
+        }
+        return null;
+    }
+
+    public ArrayList<Pair<String, String>> getUsers() throws SQLException {
+        ArrayList<Pair<String, String>> users = new ArrayList<>();
         try (Connection connection = getConnection();
-             PreparedStatement getUsers = connection.prepareStatement("SELECT username, user_type FROM users;");
+             PreparedStatement getUsers = connection.prepareStatement("SELECT username, default_role FROM users;");
              ResultSet rs = getUsers.executeQuery()) {
             while (rs.next()) {
-                users.add(new ImmutablePair<>(rs.getString(1), UserType.valueOf(rs.getString(2))));
+                users.add(new ImmutablePair<>(rs.getString(1), AssignServerMain.getServer().getPermissions().getRole(rs.getInt(2)).getName()));
             }
         }
         return users;
     }
 
     public Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(connectionString, user, pass);
+        return dataSource.getConnection();
     }
 
 }

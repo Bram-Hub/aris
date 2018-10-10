@@ -1,7 +1,8 @@
 package edu.rpi.aris.assign.message;
 
+import edu.rpi.aris.assign.Perm;
+import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
-import edu.rpi.aris.assign.UserType;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -12,18 +13,17 @@ public class ClassDeleteMsg extends Message {
     private final int cid;
 
     public ClassDeleteMsg(int cid) {
+        super(Perm.CLASS_CREATE_DELETE);
         this.cid = cid;
     }
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
     private ClassDeleteMsg() {
-        cid = 0;
+        this(0);
     }
 
     @Override
-    public ErrorType processMessage(Connection connection, User user) throws SQLException {
-        if (!UserType.hasPermission(user, UserType.INSTRUCTOR))
-            return ErrorType.UNAUTHORIZED;
+    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
         try (PreparedStatement deleteClass = connection.prepareStatement("DELETE FROM class WHERE id = ?;")) {
             deleteClass.setInt(1, cid);
             deleteClass.executeUpdate();

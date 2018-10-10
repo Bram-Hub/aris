@@ -15,20 +15,17 @@ public class ProblemCreateMsg<T extends ArisModule> extends ProblemMessage<T> {
     private int pid;
 
     public ProblemCreateMsg(String name, String moduleName, Problem<T> problem) {
-        super(moduleName, problem);
+        super(moduleName, problem, Perm.PROBLEM_CREATE);
         this.name = name;
     }
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
     private ProblemCreateMsg() {
-        super(null, null);
-        name = null;
+        this(null, null, null);
     }
 
     @Override
-    public ErrorType processMessage(Connection connection, User user) throws Exception {
-        if (!UserType.hasPermission(user, UserType.INSTRUCTOR))
-            return ErrorType.UNAUTHORIZED;
+    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws Exception {
         ArisModule<T> module = ModuleService.getService().getModule(getModuleName());
         if (module == null)
             return ErrorType.MISSING_MODULE;

@@ -1,10 +1,13 @@
 package edu.rpi.aris.assign.client.controller;
 
 import edu.rpi.aris.assign.LibAssign;
-import edu.rpi.aris.assign.UserType;
+import edu.rpi.aris.assign.Perm;
+import edu.rpi.aris.assign.ServerPermissions;
+import edu.rpi.aris.assign.ServerRole;
 import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.model.ClassInfo;
 import edu.rpi.aris.assign.client.model.LocalConfig;
+import edu.rpi.aris.assign.client.model.ServerConfig;
 import edu.rpi.aris.assign.client.model.UserInfo;
 import javafx.beans.binding.Bindings;
 import javafx.collections.ListChangeListener;
@@ -46,14 +49,19 @@ public class AssignGui {
     @FXML
     private Tab userTab;
     @FXML
+    private Tab permissionTab;
+    @FXML
     private Tab problemTab;
     @FXML
     private MenuItem loginMenu;
     @FXML
     private Menu classMenu;
+    @FXML
+    private Label noClasses;
 
     private AssignmentsGui assignmentsGui;
     private UsersGui usersGui;
+    private PermissionsGui permissionsGui;
     private ProblemsGui problemsGui;
     private Stage stage;
     private UserInfo userInfo = UserInfo.getInstance();
@@ -115,9 +123,11 @@ public class AssignGui {
 
         assignmentsGui = new AssignmentsGui();
         usersGui = new UsersGui();
+        permissionsGui = new PermissionsGui();
         problemsGui = new ProblemsGui();
         tabGuis.put(assignmentTab, assignmentsGui);
         tabGuis.put(userTab, usersGui);
+        tabGuis.put(permissionTab, permissionsGui);
         tabGuis.put(problemTab, problemsGui);
 
         tabPane.getTabs().addListener((ListChangeListener<Tab>) c -> {
@@ -155,8 +165,11 @@ public class AssignGui {
         login.managedProperty().bind(userInfo.loginProperty().not());
         login.disableProperty().bind(userInfo.loadingBinding());
 
-        classes.visibleProperty().bind(userInfo.loginProperty());
-        classes.managedProperty().bind(userInfo.loginProperty());
+        classes.visibleProperty().bind(userInfo.loginProperty().and(Bindings.isNotEmpty(userInfo.classesProperty())));
+        classes.managedProperty().bind(classes.visibleProperty());
+
+        noClasses.visibleProperty().bind(userInfo.loginProperty().and(Bindings.isEmpty(userInfo.classesProperty())));
+        noClasses.managedProperty().bind(noClasses.visibleProperty());
 
         lblClass.visibleProperty().bind(userInfo.loginProperty());
         lblClass.managedProperty().bind(userInfo.loginProperty());
@@ -164,35 +177,61 @@ public class AssignGui {
         refreshButton.visibleProperty().bind(userInfo.loginProperty());
         refreshButton.managedProperty().bind(userInfo.loginProperty());
 
-        lblUsername.textProperty().bind(Bindings.createStringBinding(() -> userInfo.isLoggedIn() ? LocalConfig.USERNAME.getValue() + " (" + userInfo.getUserType().readableName + ")" : "Not Logged In", LocalConfig.USERNAME.getProperty(), userInfo.userTypeProperty(), userInfo.loginProperty()));
+        lblUsername.textProperty().bind(Bindings.createStringBinding(() -> userInfo.isLoggedIn() ? LocalConfig.USERNAME.getValue() + " (" + userInfo.getClassRole().getName() + ")" : "Not Logged In", LocalConfig.USERNAME.getProperty(), userInfo.classRoleProperty(), userInfo.loginProperty()));
 
         loginMenu.textProperty().bind(Bindings.createStringBinding(() -> userInfo.loginProperty().get() ? "Logout" : "Login", userInfo.loginProperty()));
         loginMenu.disableProperty().bind(userInfo.loadingBinding());
 
         assignmentTab.setContent(assignmentsGui.getRoot());
         userTab.setContent(usersGui.getRoot());
+        permissionTab.setContent(permissionsGui.getRoot());
         problemTab.setContent(problemsGui.getRoot());
 
-        userInfo.userTypeProperty().addListener((observable, oldValue, newValue) -> setTabs(newValue));
-        setTabs(null);
+        userInfo.defaultRoleProperty().addListener((observable, oldValue, newValue) -> setTabs(newValue, userInfo.getClassRole()));
+        userInfo.classRoleProperty().addListener(((observable, oldValue, newValue) -> setTabs(userInfo.getDefaultRole(), newValue)));
+        setTabs(null, null);
 
-        classMenu.visibleProperty().bind(Bindings.createBooleanBinding(() -> UserType.hasPermission(userInfo.getUserType(), UserType.INSTRUCTOR), userInfo.userTypeProperty()));
-
+        classMenu.visibleProperty().bind(Bindings.createBooleanBinding(() -> {
+            ServerPermissions permissions = ServerConfig.getPermissions();
+            return permissions != null && permissions.hasPermission(userInfo.getDefaultRole(), Perm.CLASS_CREATE_DELETE);
+        }, userInfo.defaultRoleProperty()));
     }
 
-    private void setTabs(UserType type) {
-        if (UserType.hasPermission(type, UserType.INSTRUCTOR)) {
-            if (!tabPane.getTabs().contains(userTab))
-                tabPane.getTabs().add(1, userTab);
-            if (!tabPane.getTabs().contains(problemTab))
-                tabPane.getTabs().add(2, problemTab);
+    private void setTabs(ServerRole defaultRole, ServerRole classRole) {
+        ServerPermissions permissions = ServerConfig.getPermissions();
+        if (permissions == null || defaultRole == null) {
+            tabPane.getTabs().clear();
+            tabGuis.values().removeIf(gui -> !gui.isPermanentTab());
+            return;
+        }
+        int tabIndex = conditionalAddTab(classRole, Perm.ASSIGNMENT_GET, assignmentTab, 0);
+        tabIndex = conditionalAddTab(defaultRole, Perm.USER_EDIT, userTab, tabIndex);
+        tabIndex = conditionalAddTab(defaultRole, Perm.PERMISSIONS_EDIT, permissionTab, tabIndex);
+        conditionalAddTab(defaultRole, Perm.PROBLEMS_GET, problemTab, tabIndex);
+    }
+
+    private int conditionalAddTab(ServerRole role, Perm permission, Tab tab, int index) {
+        if (ServerConfig.getPermissions().hasPermission(role, permission)) {
+            if (!tabPane.getTabs().contains(tab))
+                tabPane.getTabs().add(index++, tab);
         } else
-            tabPane.getTabs().removeAll(userTab, problemTab);
+            tabPane.getTabs().remove(tab);
+        return index;
+    }
+
+    public void addTabGui(TabGui gui) {
+        if (tabGuis.values().contains(gui))
+            return;
+        Tab tab = new Tab(gui.getName(), gui.getRoot());
+        tab.textProperty().bind(gui.nameProperty());
+        tabGuis.put(tab, gui);
+        tabPane.getTabs().add(tab);
+        tabPane.getSelectionModel().select(tab);
     }
 
     @FXML
     public void loginOut() {
-        if (userInfo.loginProperty().get()) {
+        if (userInfo.isLoggedIn()) {
             userInfo.logout();
         } else
             refresh();
@@ -218,7 +257,7 @@ public class AssignGui {
         dialog.initOwner(stage);
         dialog.initModality(Modality.WINDOW_MODAL);
         Optional<String> result = dialog.showAndWait();
-        new Thread(() -> result.ifPresent(name -> userInfo.createClass(name)), "Create class thread").start();
+        result.ifPresent(name -> userInfo.createClass(name));
     }
 
     @FXML
