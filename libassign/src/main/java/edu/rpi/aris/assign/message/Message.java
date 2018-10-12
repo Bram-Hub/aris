@@ -42,6 +42,10 @@ public abstract class Message {
             Message msg = gson.fromJson(com.getReader(), Message.class);
             if (msg instanceof DataMessage)
                 ((DataMessage) msg).receiveData(com.getInputStream());
+            if (msg == null) {
+                logger.error("Received empty message");
+                return new ErrorMsg(ErrorType.IO_ERROR, "Message not received");
+            }
             if (!msg.checkValid()) {
                 logger.error("Message not formatted properly");
                 return new ErrorMsg(ErrorType.PARSE_ERR, "Improperly formatted json message");

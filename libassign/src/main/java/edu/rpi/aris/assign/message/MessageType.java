@@ -10,7 +10,7 @@ public enum MessageType {
     LIST_SUBMISSIONS(null),
     GET_SUBMISSION(null),
     GET_SUBMISSION_DETAIL(null),
-    CREATE_SUBMISSION(null),
+    CREATE_SUBMISSION(SubmissionCreateMsg.class),
     CREATE_ASSIGNMENT(AssignmentCreateMsg.class),
     DELETE_ASSIGNMENT(AssignmentDeleteMsg.class),
     EDIT_ASSIGNMENT(AssignmentEditMsg.class),

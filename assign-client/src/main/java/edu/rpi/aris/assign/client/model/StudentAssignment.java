@@ -9,6 +9,7 @@ import edu.rpi.aris.assign.client.controller.StudentAssignmentGui;
 import edu.rpi.aris.assign.message.AssignmentGetStudentMsg;
 import edu.rpi.aris.assign.message.MsgUtil;
 import edu.rpi.aris.assign.message.ProblemFetchMessage;
+import edu.rpi.aris.assign.message.SubmissionCreateMsg;
 import edu.rpi.aris.assign.spi.ArisModule;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -157,14 +158,16 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
                 TreeItem<Submission> p = new TreeItem<>(assignedProblem);
                 ObservableList<TreeItem<Submission>> subs = submissions.computeIfAbsent(assignedProblem.getPid(), pid -> FXCollections.observableArrayList());
                 subs.addListener((ListChangeListener<TreeItem<Submission>>) c -> {
-                    if (c.wasRemoved())
-                        p.getChildren().removeAll(c.getRemoved());
-                    if (c.wasAdded())
-                        p.getChildren().addAll(c.getAddedSubList());
-                    p.getChildren().sorted(Comparator.comparing(TreeItem::getValue));
-                    AtomicInteger i = new AtomicInteger(1);
-                    p.getChildren().forEach(item -> item.getValue().name.set("Submission " + (i.getAndIncrement())));
-                    updateProblemStatus(assignedProblem, p.getChildren());
+                    while (c.next()) {
+                        if (c.wasRemoved())
+                            p.getChildren().removeAll(c.getRemoved());
+                        if (c.wasAdded())
+                            p.getChildren().addAll(c.getAddedSubList());
+                        p.getChildren().sorted(Comparator.comparing(TreeItem::getValue));
+                        AtomicInteger i = new AtomicInteger(1);
+                        p.getChildren().forEach(item -> item.getValue().name.set("Submission " + (i.getAndIncrement())));
+                        updateProblemStatus(assignedProblem, p.getChildren());
+                    }
                 });
                 HashSet<MsgUtil.SubmissionInfo> submissionInfos = message.getSubmissions().get(problemInfo.pid);
                 if (submissionInfos != null) {
@@ -177,6 +180,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
                 problems.add(p);
                 updateProblemStatus(assignedProblem, p.getChildren());
             }
+            problems.sort(Comparator.comparing(TreeItem::getValue));
             loaded = true;
             loadErrorProperty.set(false);
             userInfo.finishLoading();
@@ -257,7 +261,8 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
     }
 
     public <T extends ArisModule> void uploadSubmission(AssignedProblem problemInfo, Problem<T> problem) {
-        //TODO
+        userInfo.startLoading();
+        Client.getInstance().processMessage(new SubmissionCreateMsg<T>(cid, aid, problemInfo.getPid(), problemInfo.getModuleName(), problem), new SubmissionCreateResponseHandler<>(problemInfo));
     }
 
     private class ProblemFetchResponseHandler<T extends ArisModule> implements ResponseHandler<ProblemFetchMessage<T>> {
@@ -293,6 +298,51 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         public void onError(boolean suggestRetry, ProblemFetchMessage msg) {
             if (suggestRetry)
                 fetchAndCreate(msg.getPid(), module);
+            Platform.runLater(userInfo::finishLoading);
+        }
+
+        @Override
+        public ReentrantLock getLock() {
+            return lock;
+        }
+    }
+
+    private class SubmissionCreateResponseHandler<T extends ArisModule> implements ResponseHandler<SubmissionCreateMsg<T>> {
+
+        private final AssignedProblem info;
+
+        public SubmissionCreateResponseHandler(AssignedProblem info) {
+            this.info = info;
+        }
+
+        @Override
+        public void response(SubmissionCreateMsg<T> message) {
+            Platform.runLater(() -> {
+                Submission sub = new Submission(info.getPid(), message.getSid(), info.getName(), message.getSubmittedOn(), message.getStatus(), message.getStatusStr(), info.getModuleName());
+                ObservableList<TreeItem<Submission>> subs = submissions.get(info.getPid());
+                if (subs != null)
+                    subs.add(new TreeItem<>(sub));
+                File pFile = new File(submissionStorageDir, getProblemFileName(info.getPid()));
+                if (pFile.canExecute())
+                    pFile.delete();
+                userInfo.finishLoading();
+            });
+        }
+
+        @Override
+        public void onError(boolean suggestRetry, SubmissionCreateMsg<T> msg) {
+            if (suggestRetry)
+                uploadSubmission(info, msg.getProblem());
+            else {
+                ArisModule<T> module = ModuleService.getService().getModule(msg.getModuleName());
+                if (module != null) {
+                    try {
+                        gui.createSubmission(info, msg.getProblem(), module);
+                    } catch (Exception e) {
+                        LibAssign.showExceptionError(e);
+                    }
+                }
+            }
             Platform.runLater(userInfo::finishLoading);
         }
 
@@ -378,7 +428,9 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
 
         @Override
         public int compareTo(Submission o) {
-            return 0;
+            if (o == null)
+                return 0;
+            return Integer.compare(sid, o.sid);
         }
 
         public SimpleObjectProperty<GradingStatus> getStatusProperty() {
@@ -391,7 +443,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
     }
 
 
-    public class AssignedProblem extends Submission {
+    public class AssignedProblem extends Submission implements Comparable<Submission> {
 
         public AssignedProblem(int pid, String name, String status, String moduleName) {
             super(pid, 0, name, null, GradingStatus.NONE, status, moduleName);
@@ -434,6 +486,12 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
                 fetchAndCreate(getPid(), module);
         }
 
+        @Override
+        public int compareTo(Submission o) {
+            if (o instanceof AssignedProblem)
+                return getName().compareTo(o.getName());
+            return super.compareTo(o);
+        }
     }
 
 }

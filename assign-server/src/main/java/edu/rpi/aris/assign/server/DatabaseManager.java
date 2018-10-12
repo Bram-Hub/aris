@@ -24,7 +24,7 @@ public class DatabaseManager {
     private static final String[] defaultRoleName = new String[]{"Admin", "Instructor", "TA", "Student"};
     private static final int[] defaultRoleRank = new int[]{0, 1, 2, 3};
     private static final String[] tables = new String[]{"submission", "assignment", "problem", "user_class", "users", "class", "version"};
-    private static final int DB_SCHEMA_VERSION = 7;
+    private static final int DB_SCHEMA_VERSION = 8;
     private static Logger logger = LogManager.getLogger(DatabaseManager.class);
 
     static {
@@ -120,6 +120,7 @@ public class DatabaseManager {
                     "(user_id integer," +
                     "class_id integer," +
                     "role_id integer," +
+                    "PRIMARY KEY(user_id, class_id)," +
                     "constraint uc_ufk foreign key (user_id) references users(id) on delete cascade," +
                     "constraint uc_cfk foreign key (class_id) references class(id) on delete cascade," +
                     "constraint uc_rfk foreign key (role_id) references role(id) on delete restrict);");
@@ -152,9 +153,8 @@ public class DatabaseManager {
                     "short_status text," +
                     "status text," +
                     "check (short_status in ('" + GradingStatus.CORRECT.name() + "', '" + GradingStatus.INCORRECT.name() + "', '" + GradingStatus.GRADING.name() + "'))," +
-                    "constraint s_cfk foreign key (class_id) references class(id) on delete cascade," +
+                    "constraint s_cufk foreign key (user_id, class_id) references user_class(user_id, class_id) on delete cascade," +
                     "constraint s_afk foreign key (assignment_id, class_id, problem_id) references assignment(id, class_id, problem_id) on delete cascade," +
-                    "constraint s_ufk foreign key (user_id) references users(id) on delete cascade," +
                     "constraint s_pfk foreign key (problem_id) references problem(id) on delete cascade);");
             statement.execute("CREATE TABLE IF NOT EXISTS permissions" +
                     "(name text PRIMARY KEY," +
@@ -317,6 +317,29 @@ public class DatabaseManager {
             statement.execute("ALTER TABLE users DROP COLUMN user_type;");
 
             statement.execute("UPDATE version SET version=7;");
+            connection.commit();
+        } catch (Throwable e) {
+            connection.rollback();
+            logger.error("An error occurred while updating the database schema and the changes were rolled back");
+            throw e;
+        } finally {
+            connection.setAutoCommit(autoCommit);
+        }
+    }
+
+    private void updateSchema7(Connection connection) throws SQLException {
+        logger.info("Updating database schema to version 8");
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE submission DROP CONSTRAINT s_cfk;");
+            statement.execute("ALTER TABLE submission DROP CONSTRAINT s_ufk;");
+
+            statement.execute("ALTER TABLE user_class ADD PRIMARY KEY (user_id, class_id);");
+
+            statement.execute("ALTER TABLE submission ADD CONSTRAINT s_cufk foreign key (user_id, class_id) references user_class(user_id, class_id) on delete cascade;");
+
+            statement.execute("UPDATE version SET version=8;");
             connection.commit();
         } catch (Throwable e) {
             connection.rollback();

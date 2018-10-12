@@ -246,6 +246,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                         } else {
                             connection.rollback();
                             logger.error(msg.getMessageType().name() + " processing failed with error: " + error.name());
+                            logger.error("SQL changes have been rolled back");
                             if (msg instanceof ErrorMsg)
                                 msg.send(this);
                             else {
@@ -256,9 +257,11 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                             }
                         }
                     } catch (IOException | SQLException e) {
+                        logger.error("Exception occurred! Rolling back changes");
                         connection.rollback();
                         throw e;
                     } catch (Throwable e) {
+                        logger.error("Exception occurred! Rolling back changes");
                         connection.rollback();
                         new ErrorMsg(ErrorType.EXCEPTION, e.getClass().getCanonicalName() + ": " + e.getMessage()).send(this);
                         throw e;

@@ -1,3 +1,4 @@
-.tree-disclosure-node { -fx-padding: 9; }
-.hide-tab-bar { -fx-tab-max-height: 0 ; }
-.hide-tab-bar .tab-header-area { visibility: hidden ; }
+.tree-table-row-cell > .tree-disclosure-node {
+    -fx-alignment: center ;
+    -fx-padding: 10;
+}
