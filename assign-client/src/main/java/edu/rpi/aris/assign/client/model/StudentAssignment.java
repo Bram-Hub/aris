@@ -21,7 +21,15 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.scene.control.Button;
 import javafx.scene.control.TreeItem;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.bouncycastle.util.encoders.Hex;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -29,7 +37,9 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMsg> {
 
+    private static final Logger log = LogManager.getLogger();
     private static final UserInfo userInfo = UserInfo.getInstance();
+    private static final File submissionStorageDir = new File(LocalConfig.CLIENT_STORAGE_DIR, "submissions");
     private final int cid;
     private final int aid;
     private final SimpleStringProperty name = new SimpleStringProperty();
@@ -159,7 +169,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
                 HashSet<MsgUtil.SubmissionInfo> submissionInfos = message.getSubmissions().get(problemInfo.pid);
                 if (submissionInfos != null) {
                     for (MsgUtil.SubmissionInfo submissionInfo : message.getSubmissions().get(problemInfo.pid)) {
-                        Submission submission = new Submission(submissionInfo);
+                        Submission submission = new Submission(submissionInfo, assignedProblem.getModuleName());
                         TreeItem<Submission> sub = new TreeItem<>(submission);
                         subs.add(sub);
                     }
@@ -213,8 +223,37 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         status.set(correct ? GradingStatus.CORRECT : GradingStatus.INCORRECT);
     }
 
+    private String getProblemFileName(int pid) {
+        String id = cid + "." + aid + "." + pid;
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] data = digest.digest(id.getBytes());
+            id = Hex.toHexString(data);
+        } catch (NoSuchAlgorithmException e) {
+            log.error(e);
+        }
+        return id;
+    }
+
     public <T extends ArisModule> void saveLocalSubmission(AssignedProblem problemInfo, Problem<T> problem, ArisModule<T> module) {
-        //TODO
+        if (submissionStorageDir.exists() && !submissionStorageDir.isDirectory()) {
+            if (!submissionStorageDir.delete()) {
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Failed to save", "Failed to create submission storage directory");
+                return;
+            }
+        }
+        if (!submissionStorageDir.exists()) {
+            if (!submissionStorageDir.mkdirs()) {
+                AssignClient.getInstance().getMainWindow().displayErrorMsg("Failed to save", "Failed to create submission storage directory");
+                return;
+            }
+        }
+        File saveFile = new File(submissionStorageDir, getProblemFileName(problemInfo.getPid()));
+        try (FileOutputStream fos = new FileOutputStream(saveFile)) {
+            module.getProblemConverter().convertProblem(problem, fos, true);
+        } catch (Exception e) {
+            AssignClient.getInstance().getMainWindow().displayErrorMsg("Failed to save", "An error occurred while trying to save the file locally");
+        }
     }
 
     public <T extends ArisModule> void uploadSubmission(AssignedProblem problemInfo, Problem<T> problem) {
@@ -289,8 +328,8 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
             button = new SimpleObjectProperty<>(btn);
         }
 
-        public Submission(MsgUtil.SubmissionInfo info) {
-            this(info.pid, info.sid, null, info.submissionTime, info.status, info.statusStr, info.moduleName);
+        public Submission(MsgUtil.SubmissionInfo info, String moduleName) {
+            this(info.pid, info.sid, null, info.submissionTime, info.status, info.statusStr, moduleName);
         }
 
         protected <T extends ArisModule> void buttonPushed(ActionEvent actionEvent) {
@@ -383,8 +422,18 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
                 AssignClient.getInstance().getMainWindow().displayErrorMsg("Missing Module", "Client is missing \"" + getModuleName() + "\" module");
                 return;
             }
-            fetchAndCreate(getPid(), module);
+            File localFile = new File(submissionStorageDir, getProblemFileName(getPid()));
+            if (localFile.exists()) {
+                try (FileInputStream fis = new FileInputStream(localFile)) {
+                    ProblemConverter<T> converter = module.getProblemConverter();
+                    gui.createSubmission(this, converter.loadProblem(fis, true), module);
+                } catch (Exception e) {
+                    LibAssign.showExceptionError(e);
+                }
+            } else
+                fetchAndCreate(getPid(), module);
         }
+
     }
 
 }

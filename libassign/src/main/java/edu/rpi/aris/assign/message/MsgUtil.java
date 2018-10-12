@@ -51,9 +51,8 @@ public class MsgUtil {
         public final GradingStatus status;
         public final String statusStr;
         public final ZonedDateTime submissionTime;
-        public final String moduleName;
 
-        SubmissionInfo(int uid, int sid, int pid, int cid, int aid, GradingStatus status, String statusStr, ZonedDateTime submissionTime, String moduleName) {
+        SubmissionInfo(int uid, int sid, int pid, int cid, int aid, GradingStatus status, String statusStr, ZonedDateTime submissionTime) {
             this.uid = uid;
             this.sid = sid;
             this.pid = pid;
@@ -62,7 +61,6 @@ public class MsgUtil {
             this.status = status;
             this.statusStr = statusStr;
             this.submissionTime = submissionTime;
-            this.moduleName = moduleName;
         }
 
         // DO NOT REMOVE!! Default constructor is required for gson deserialization
@@ -75,7 +73,6 @@ public class MsgUtil {
             this.status = null;
             this.statusStr = null;
             this.submissionTime = null;
-            this.moduleName = null;
         }
 
         public boolean checkValid() {

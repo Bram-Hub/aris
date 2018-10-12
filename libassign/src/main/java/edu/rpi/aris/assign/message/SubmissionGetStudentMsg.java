@@ -65,8 +65,7 @@ public class SubmissionGetStudentMsg extends Message {
                     ZonedDateTime submissionTime = NetUtil.localToUTC(rs.getTimestamp(3).toLocalDateTime());
                     String statusStr = rs.getString(4);
                     GradingStatus status = GradingStatus.valueOf(rs.getString(5));
-                    //TODO moduleName
-                    this.submissions.computeIfAbsent(pid, id -> new ArrayList<>()).add(new MsgUtil.SubmissionInfo(user.uid, sid, pid, cid, aid, status, statusStr, submissionTime, null));
+                    this.submissions.computeIfAbsent(pid, id -> new ArrayList<>()).add(new MsgUtil.SubmissionInfo(user.uid, sid, pid, cid, aid, status, statusStr, submissionTime));
                 }
             }
         }

@@ -84,8 +84,7 @@ public class SubmissionGetInstructorMsg extends Message {
                     ZonedDateTime timestamp = NetUtil.localToUTC(rs.getTimestamp(4).toLocalDateTime());
                     String statusStr = rs.getString(5);
                     GradingStatus status = GradingStatus.valueOf(rs.getString(6));
-                    //TODO moduleName
-                    MsgUtil.SubmissionInfo sInfo = new MsgUtil.SubmissionInfo(uid, sid, pid, cid, aid, status, statusStr, timestamp, null);
+                    MsgUtil.SubmissionInfo sInfo = new MsgUtil.SubmissionInfo(uid, sid, pid, cid, aid, status, statusStr, timestamp);
                     submissions.computeIfAbsent(uid, id -> new HashMap<>()).computeIfAbsent(pid, id -> new ArrayList<>()).add(sInfo);
                 }
             }
