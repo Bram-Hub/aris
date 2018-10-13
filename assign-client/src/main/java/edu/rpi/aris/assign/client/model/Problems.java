@@ -164,7 +164,7 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
 
     private <T extends ArisModule> void fetchAndModify(int pid, ArisModule<T> module) {
         userInfo.startLoading();
-        Client.getInstance().processMessage(new ProblemFetchMessage<>(pid, module.getModuleName()), new ProblemFetchResponseHandler<>(module));
+        Client.getInstance().processMessage(new ProblemFetchMsg<>(pid, module.getModuleName()), new ProblemFetchResponseHandler<>(module));
     }
 
     public boolean isLoaded() {
@@ -287,7 +287,7 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         }
     }
 
-    private class ProblemFetchResponseHandler<T extends ArisModule> implements ResponseHandler<ProblemFetchMessage<T>> {
+    private class ProblemFetchResponseHandler<T extends ArisModule> implements ResponseHandler<ProblemFetchMsg<T>> {
 
         private final ArisModule<T> module;
 
@@ -296,7 +296,7 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         }
 
         @Override
-        public void response(ProblemFetchMessage<T> message) {
+        public void response(ProblemFetchMsg<T> message) {
             Platform.runLater(() -> {
                 Problem problemInfo = problemMap.get(message.getPid());
                 if (problemInfo != null) {
@@ -311,7 +311,7 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         }
 
         @Override
-        public void onError(boolean suggestRetry, ProblemFetchMessage<T> msg) {
+        public void onError(boolean suggestRetry, ProblemFetchMsg<T> msg) {
             if (suggestRetry)
                 fetchAndModify(msg.getPid(), module);
             Platform.runLater(userInfo::finishLoading);

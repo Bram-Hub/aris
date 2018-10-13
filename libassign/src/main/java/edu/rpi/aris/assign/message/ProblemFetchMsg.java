@@ -8,17 +8,17 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
-public class ProblemFetchMessage<T extends ArisModule> extends ProblemMessage<T> {
+public class ProblemFetchMsg<T extends ArisModule> extends ProblemMessage<T> {
 
     private final int pid;
 
-    public ProblemFetchMessage(int pid, String moduleName) {
+    public ProblemFetchMsg(int pid, String moduleName) {
         super(moduleName, null, Perm.PROBLEM_FETCH);
         this.pid = pid;
     }
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
-    private ProblemFetchMessage() {
+    private ProblemFetchMsg() {
         this(-1, null);
     }
 

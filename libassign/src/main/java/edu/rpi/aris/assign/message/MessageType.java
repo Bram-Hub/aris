@@ -24,9 +24,10 @@ public enum MessageType {
     DELETE_CLASS(ClassDeleteMsg.class),
     UPDATE_CLASS(null),
     ERROR(ErrorMsg.class),
-    FETCH_PROBLEM(ProblemFetchMessage.class),
+    FETCH_PROBLEM(ProblemFetchMsg.class),
     ASSIGNMENT_GET_STUDENT(AssignmentGetStudentMsg.class),
-    AUTH(AuthMessage.class);
+    AUTH(AuthMessage.class),
+    FETCH_SUBMISSION(SubmissionFetchMsg.class);
 
     public final Class<? extends Message> msgClass;
 

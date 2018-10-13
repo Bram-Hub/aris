@@ -9,6 +9,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
@@ -22,6 +23,7 @@ import java.util.Optional;
 public class StudentAssignmentGui implements TabGui {
 
     private static final ModuleUIOptions SUBMIT_OPTIONS = new ModuleUIOptions(EditMode.RESTRICTED_EDIT, "Create Submission", true, false, true, true, false);
+    private static final ModuleUIOptions READ_ONLY_OPTIONS = new ModuleUIOptions(EditMode.READ_ONLY, "View Submission", false, false, false, false, false);
     private final StudentAssignment assignment;
     @FXML
     private TreeTableView<StudentAssignment.Submission> treeTable;
@@ -32,7 +34,7 @@ public class StudentAssignmentGui implements TabGui {
     @FXML
     private TreeTableColumn<StudentAssignment.Submission, String> statusColumn;
     @FXML
-    private TreeTableColumn<StudentAssignment.Submission, Button> buttonColumn;
+    private TreeTableColumn<StudentAssignment.Submission, Node> buttonColumn;
     @FXML
     private Label name;
     @FXML
@@ -126,7 +128,7 @@ public class StudentAssignmentGui implements TabGui {
         submittedColumn.setStyle("-fx-alignment: CENTER;");
         statusColumn.setCellValueFactory(param -> param.getValue().getValue().statusStrProperty());
         statusColumn.setStyle("-fx-alignment: CENTER;");
-        buttonColumn.setCellValueFactory(param -> param.getValue().getValue().buttonProperty());
+        buttonColumn.setCellValueFactory(param -> param.getValue().getValue().controlNodeProperty());
         buttonColumn.setStyle("-fx-alignment: CENTER;");
     }
 
@@ -196,8 +198,12 @@ public class StudentAssignmentGui implements TabGui {
         moduleUI.show();
     }
 
-    public void viewSubmission(StudentAssignment.Submission submission) {
-
+    public <T extends ArisModule> void viewSubmission(StudentAssignment.Submission submission, String problemName, Problem<T> problem, ArisModule<T> module) throws Exception {
+        ArisClientModule<T> clientModule = module.getClientModule();
+        ModuleUI<T> moduleUI = clientModule.createModuleGui(READ_ONLY_OPTIONS, problem);
+        moduleUI.setDescription("Viewing " + submission.getName() + (problemName == null ? "" : " for problem: \"" + problemName + "\"") + " (read only)");
+        moduleUI.setModal(Modality.WINDOW_MODAL, AssignGui.getInstance().getStage());
+        moduleUI.show();
     }
 
 }
