@@ -47,7 +47,6 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
     private final SimpleObjectProperty<GradingStatus> status = new SimpleObjectProperty<>();
     private final SimpleStringProperty statusStr = new SimpleStringProperty();
     private final ObservableList<TreeItem<Submission>> problems = FXCollections.observableArrayList();
-    private final HashMap<Integer, ObservableList<TreeItem<Submission>>> submissions = new HashMap<>();
     private final SimpleBooleanProperty loadErrorProperty = new SimpleBooleanProperty(false);
     private final ReentrantLock lock = new ReentrantLock(true);
     private final StudentAssignmentGui gui;
@@ -92,7 +91,6 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
 
     public synchronized void clear() {
         problems.clear();
-        submissions.clear();
     }
 
     public SimpleStringProperty nameProperty() {
@@ -135,10 +133,6 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         return problems;
     }
 
-    public HashMap<Integer, ObservableList<TreeItem<Submission>>> getSubmissions() {
-        return submissions;
-    }
-
     public int getAid() {
         return aid;
     }
@@ -157,7 +151,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
             for (MsgUtil.ProblemInfo problemInfo : problemInfos) {
                 AssignedProblem assignedProblem = new AssignedProblem(problemInfo);
                 TreeItem<Submission> p = new TreeItem<>(assignedProblem);
-                ObservableList<TreeItem<Submission>> subs = submissions.computeIfAbsent(assignedProblem.getPid(), pid -> FXCollections.observableArrayList());
+                ObservableList<TreeItem<Submission>> subs = assignedProblem.submissions;
                 subs.addListener((ListChangeListener<TreeItem<Submission>>) c -> {
                     while (c.next()) {
                         if (c.wasRemoved())
@@ -378,7 +372,11 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         public void response(SubmissionCreateMsg<T> message) {
             Platform.runLater(() -> {
                 Submission sub = new Submission(info.getPid(), message.getSid(), info.getName(), message.getSubmittedOn(), message.getStatus(), message.getStatusStr(), info.getModuleName());
-                ObservableList<TreeItem<Submission>> subs = submissions.get(info.getPid());
+                ObservableList<TreeItem<Submission>> subs = null;
+                for (TreeItem<Submission> s : problems) {
+                    if (s.getValue() instanceof AssignedProblem && s.getValue().getPid() == info.getPid())
+                        subs = ((AssignedProblem) s.getValue()).submissions;
+                }
                 if (subs != null)
                     subs.add(0, new TreeItem<>(sub));
                 File pFile = new File(submissionStorageDir, getProblemFileName(info.getPid()));
@@ -515,8 +513,10 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
 
     public class AssignedProblem extends Submission implements Comparable<Submission> {
 
+        private final ObservableList<TreeItem<Submission>> submissions = FXCollections.observableArrayList();
+
         public AssignedProblem(int pid, String name, String status, String moduleName) {
-            super(pid, 0, name, null, GradingStatus.NONE, status, moduleName);
+            super(pid, -1, name, null, GradingStatus.NONE, status, moduleName);
             Button btn = new Button("Create Submission");
             controlNodeProperty().set(btn);
             btn.setOnAction(e -> createPushed());

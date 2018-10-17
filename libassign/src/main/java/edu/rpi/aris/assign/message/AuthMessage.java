@@ -37,13 +37,13 @@ public class AuthMessage extends Message {
     }
 
     public User checkAuth(Connection connection, ServerPermissions permissions) throws SQLException {
+        String pass = passAccessToken;
+        passAccessToken = null;
         if (username == null) {
             log.info("Username is null");
             status = Auth.FAIL;
             return null;
         }
-        String pass = passAccessToken;
-        passAccessToken = null;
         Thread.currentThread().setName(Thread.currentThread().getName() + "/" + username);
         log.info("Authenticating user: " + username);
         try (PreparedStatement statement = connection.prepareStatement("SELECT salt, password_hash, access_token, id, default_role, force_reset FROM users WHERE username = ?;")) {
@@ -57,7 +57,7 @@ public class AuthMessage extends Message {
                     try {
                         userRole = permissions.getRole(rs.getInt(5));
                     } catch (IllegalArgumentException e) {
-                        log.error("Failed to parse UserType", e);
+                        log.error("Failed to parse User Role", e);
                         userRole = permissions.getLowestRole();
                         try (PreparedStatement updateUserType = connection.prepareStatement("UPDATE users SET default_role = ? WHERE username = ?;")) {
                             updateUserType.setInt(1, userRole.getId());

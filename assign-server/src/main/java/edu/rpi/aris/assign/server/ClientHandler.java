@@ -215,7 +215,6 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
 
     private void messageWatch() {
         try {
-            //noinspection InfiniteLoopStatement
             try {
                 Message msg = Message.get(this);
                 if (msg == null)
@@ -226,10 +225,13 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                         ErrorType error;
                         Perm perm = msg.getPermission();
                         if (user.requireReset()) {
+                            logger.warn("Password reset required");
                             if (msg instanceof UserEditMsg && ((UserEditMsg) msg).isChangePass() && user.username.equals(((UserEditMsg) msg).getUsername()))
                                 error = msg.processMessage(connection, user, permissions);
-                            else
+                            else {
+                                logger.warn("Client did not send password reset message");
                                 error = ErrorType.RESET_PASS;
+                            }
                         } else {
                             if (msg.hasCustomPermissionCheck()) {
                                 error = msg.processMessage(connection, user, permissions);
@@ -243,6 +245,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                         if (error == null) {
                             connection.commit();
                             msg.send(this);
+                            logger.info("Finished processing message: " + msg.getMessageType());
                         } else {
                             connection.rollback();
                             logger.error(msg.getMessageType().name() + " processing failed with error: " + error.name());
@@ -250,9 +253,10 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                             if (msg instanceof ErrorMsg)
                                 msg.send(this);
                             else {
-                                if (error == ErrorType.UNAUTHORIZED)
+                                if (error == ErrorType.UNAUTHORIZED) {
+                                    logger.warn("User does not have permission: " + perm);
                                     new ErrorMsg(error, perm == null ? null : perm.name()).send(this);
-                                else
+                                } else
                                     new ErrorMsg(error).send(this);
                             }
                         }
@@ -287,17 +291,6 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
     public JsonWriter getWriter() {
         return writer;
     }
-
-//    @Override
-//    public JsonElement readMessage(Gson gson) throws IOException {
-//        return gson.fromJson(reader, Message.class);
-//    }
-//
-//    @Override
-//    public void sendMessage(JsonElement msg) throws IOException {
-//        out.writeUTF(msg);
-//        out.flush();
-//    }
 
     @Override
     public DataInputStream getInputStream() {

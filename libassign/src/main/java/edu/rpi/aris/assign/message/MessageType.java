@@ -27,7 +27,8 @@ public enum MessageType {
     FETCH_PROBLEM(ProblemFetchMsg.class),
     ASSIGNMENT_GET_STUDENT(AssignmentGetStudentMsg.class),
     AUTH(AuthMessage.class),
-    FETCH_SUBMISSION(SubmissionFetchMsg.class);
+    FETCH_SUBMISSION(SubmissionFetchMsg.class),
+    ASSIGNMENT_GET_INSTRUCTOR(AssignmentGetInstructorMsg.class);
 
     public final Class<? extends Message> msgClass;
 

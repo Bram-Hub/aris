@@ -17,7 +17,8 @@ public enum Perm {
     PERMISSIONS_EDIT(0),
     ASSIGNMENT_GET_STUDENT(3),
     SUBMISSION_CREATE(3),
-    SUBMISSION_FETCH(3);
+    SUBMISSION_FETCH(3),
+    ASSIGNMENT_GET_INSTRUCTOR(2);
 
     public static final Perm[][] mutuallyExclusivePerms = new Perm[][]{};
 

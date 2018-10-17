@@ -25,14 +25,14 @@ public class AssignmentGetStudentMsg extends Message implements ClassMessage {
     }
 
     private AssignmentGetStudentMsg() {
-        this(0, 0);
+        this(-1, -1);
     }
 
     @Override
     public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws Exception {
         try (PreparedStatement selectAssignment = connection.prepareStatement("SELECT problem_id, name, due_date FROM assignment WHERE id = ? AND class_id = ?;");
              PreparedStatement selectProblem = connection.prepareStatement("SELECT name, created_by, created_on, module_name FROM problem WHERE id = ?;");
-             PreparedStatement selectSubmissions = connection.prepareStatement("SELECT id, time, short_status, status FROM submission WHERE class_id = ? AND assignment_id = ? AND problem_id = ? AND user_id = ?;")) {
+             PreparedStatement selectSubmissions = connection.prepareStatement("SELECT id, time, short_status, status, problem_id FROM submission WHERE class_id = ? AND assignment_id = ? AND user_id = ?;")) {
             selectAssignment.setInt(1, aid);
             selectAssignment.setInt(2, cid);
             try (ResultSet assignmentRs = selectAssignment.executeQuery()) {
@@ -51,27 +51,27 @@ public class AssignmentGetStudentMsg extends Message implements ClassMessage {
                             String module = problemRs.getString(4);
                             MsgUtil.ProblemInfo problemInfo = new MsgUtil.ProblemInfo(pid, name, createdBy, createdOn, module);
                             problems.add(problemInfo);
-                            selectSubmissions.setInt(1, cid);
-                            selectSubmissions.setInt(2, aid);
-                            selectSubmissions.setInt(3, pid);
-                            selectSubmissions.setInt(4, user.uid);
-                            try (ResultSet submissionRs = selectSubmissions.executeQuery()) {
-                                while (submissionRs.next()) {
-                                    int sid = submissionRs.getInt(1);
-                                    ZonedDateTime submitted = NetUtil.localToUTC(submissionRs.getTimestamp(2).toLocalDateTime());
-                                    GradingStatus status;
-                                    try {
-                                        status = GradingStatus.valueOf(submissionRs.getString(3));
-                                    } catch (IllegalArgumentException e) {
-                                        status = GradingStatus.NONE;
-                                    }
-                                    String statusStr = submissionRs.getString(4);
-                                    MsgUtil.SubmissionInfo submissionInfo = new MsgUtil.SubmissionInfo(user.uid, sid, pid, cid, aid, status, statusStr, submitted);
-                                    submissions.computeIfAbsent(pid, id -> new HashSet<>()).add(submissionInfo);
-                                }
-                            }
                         }
                     }
+                }
+            }
+            selectSubmissions.setInt(1, cid);
+            selectSubmissions.setInt(2, aid);
+            selectSubmissions.setInt(3, user.uid);
+            try (ResultSet submissionRs = selectSubmissions.executeQuery()) {
+                while (submissionRs.next()) {
+                    int sid = submissionRs.getInt(1);
+                    ZonedDateTime submitted = NetUtil.localToUTC(submissionRs.getTimestamp(2).toLocalDateTime());
+                    GradingStatus status;
+                    try {
+                        status = GradingStatus.valueOf(submissionRs.getString(3));
+                    } catch (IllegalArgumentException e) {
+                        status = GradingStatus.NONE;
+                    }
+                    String statusStr = submissionRs.getString(4);
+                    int pid = submissionRs.getInt(5);
+                    MsgUtil.SubmissionInfo submissionInfo = new MsgUtil.SubmissionInfo(user.uid, sid, pid, cid, aid, status, statusStr, submitted);
+                    submissions.computeIfAbsent(pid, id -> new HashSet<>()).add(submissionInfo);
                 }
             }
         }

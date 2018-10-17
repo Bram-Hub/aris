@@ -136,7 +136,7 @@ public class StudentAssignmentGui implements TabGui {
         ArisClientModule<T> clientModule = module.getClientModule();
         ModuleUI<T> moduleUI = clientModule.createModuleGui(SUBMIT_OPTIONS, problem);
         moduleUI.setDescription("Create submission for problem: \"" + problemInfo.getName() + "\"");
-        moduleUI.setModuleUIListener(new ModuleUIListener() {
+        moduleUI.setModuleUIListener(new ModuleUIAdapter() {
 
             @Override
             public boolean guiCloseRequest(boolean hasUnsavedChanges) {
@@ -173,10 +173,6 @@ public class StudentAssignmentGui implements TabGui {
                     return result.isPresent() && result.get() == ButtonType.YES;
                 }
                 return true;
-            }
-
-            @Override
-            public void guiClosed() {
             }
 
             @Override

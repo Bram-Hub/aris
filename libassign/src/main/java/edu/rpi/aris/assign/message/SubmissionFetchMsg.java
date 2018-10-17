@@ -14,13 +14,19 @@ public class SubmissionFetchMsg<T extends ArisModule> extends ProblemMessage<T> 
     private final int cid;
     private final int aid;
     private final int sid;
+    private final int uid;
 
-    public SubmissionFetchMsg(int cid, int aid, int pid, int sid, String moduleName) {
+    public SubmissionFetchMsg(int cid, int aid, int pid, int sid, int uid, String moduleName) {
         super(moduleName, null, Perm.SUBMISSION_FETCH);
         this.cid = cid;
         this.aid = aid;
         this.pid = pid;
         this.sid = sid;
+        this.uid = uid;
+    }
+
+    public SubmissionFetchMsg(int cid, int aid, int pid, int sid, String moduleName) {
+        this(cid, aid, pid, sid, -1, moduleName);
     }
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
@@ -34,7 +40,13 @@ public class SubmissionFetchMsg<T extends ArisModule> extends ProblemMessage<T> 
             statement.setInt(1, sid);
             statement.setInt(2, cid);
             statement.setInt(3, aid);
-            statement.setInt(4, user.uid);
+            if (uid > 0) {
+                if (!permissions.hasClassPermission(user, cid, Perm.ASSIGNMENT_GET_INSTRUCTOR, connection))
+                    return ErrorType.UNAUTHORIZED;
+                statement.setInt(4, uid);
+            } else {
+                statement.setInt(4, user.uid);
+            }
             statement.setInt(5, pid);
             try (ResultSet rs = statement.executeQuery()) {
                 if (!rs.next())

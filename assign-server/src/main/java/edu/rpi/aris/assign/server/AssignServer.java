@@ -387,8 +387,8 @@ public class AssignServer implements Runnable {
         return null;
     }
 
-    public synchronized boolean addUser(String username, String pass, ServerRole role, boolean forceReset) throws SQLException {
-        Pair<String, Boolean> result = dbManager.createUser(username, pass, role.getId(), forceReset);
+    public synchronized boolean addUser(String username, String pass, String fullName, ServerRole role, boolean forceReset) throws SQLException {
+        Pair<String, Boolean> result = dbManager.createUser(username, pass, fullName, role.getId(), forceReset);
         return result != null && result.getRight();
     }
 

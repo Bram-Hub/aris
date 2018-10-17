@@ -24,7 +24,7 @@ public class DatabaseManager {
     private static final String[] defaultRoleName = new String[]{"Admin", "Instructor", "TA", "Student"};
     private static final int[] defaultRoleRank = new int[]{0, 1, 2, 3};
     private static final String[] tables = new String[]{"submission", "assignment", "problem", "user_class", "users", "class", "version"};
-    private static final int DB_SCHEMA_VERSION = 8;
+    private static final int DB_SCHEMA_VERSION = 9;
     private static Logger logger = LogManager.getLogger(DatabaseManager.class);
 
     static {
@@ -107,6 +107,7 @@ public class DatabaseManager {
             statement.execute("CREATE TABLE IF NOT EXISTS users" +
                     "(id serial PRIMARY KEY," +
                     "username text," +
+                    "full_name text," +
                     "salt text," +
                     "password_hash text," +
                     "access_token text," +
@@ -161,7 +162,7 @@ public class DatabaseManager {
                     "role_id int," +
                     "constraint perm_rfk foreign key (role_id) references role(id) on delete restrict);");
             createDefaultRoles(connection);
-            createUser(connection, "admin", DEFAULT_ADMIN_PASS, 1, true);
+            createUser(connection, "admin", DEFAULT_ADMIN_PASS, "Admin", 1, true);
             connection.commit();
         } catch (Throwable e) {
             connection.rollback();
@@ -325,6 +326,7 @@ public class DatabaseManager {
         } finally {
             connection.setAutoCommit(autoCommit);
         }
+        updateSchema7(connection);
     }
 
     private void updateSchema7(Connection connection) throws SQLException {
@@ -348,21 +350,41 @@ public class DatabaseManager {
         } finally {
             connection.setAutoCommit(autoCommit);
         }
+        updateSchema8(connection);
     }
 
-    public Pair<String, Boolean> createUser(String username, String password, int roleId, boolean forceReset) throws SQLException {
-        try (Connection connection = getConnection()) {
-            return createUser(connection, username, password, roleId, forceReset);
+    private void updateSchema8(Connection connection) throws SQLException {
+        logger.info("Updating database schema to version 9");
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE users ADD COLUMN full_name text;");
+            statement.execute("UPDATE users SET full_name=username;");
+
+            statement.execute("UPDATE version SET version=9;");
+            connection.commit();
+        } catch (Throwable e) {
+            connection.rollback();
+            logger.error("An error occurred while updating the database schema and the changes were rolled back");
+            throw e;
+        } finally {
+            connection.setAutoCommit(autoCommit);
         }
     }
 
-    public Pair<String, Boolean> createUser(Connection connection, String username, String password, int roleId, boolean forceReset) throws SQLException {
+    public Pair<String, Boolean> createUser(String username, String password, String fullName, int roleId, boolean forceReset) throws SQLException {
+        try (Connection connection = getConnection()) {
+            return createUser(connection, username, password, fullName, roleId, forceReset);
+        }
+    }
+
+    public Pair<String, Boolean> createUser(Connection connection, String username, String password, String fullName, int roleId, boolean forceReset) throws SQLException {
         if (username == null || username.length() == 0)
             return new ImmutablePair<>(null, false);
         if (password == null)
             password = RandomStringUtils.randomAlphabetic(16);
         try (PreparedStatement count = connection.prepareStatement("SELECT count(*) FROM users WHERE username = ?;");
-             PreparedStatement statement = connection.prepareStatement("INSERT INTO users (username, salt, password_hash, force_reset, default_role) VALUES(?, ?, ?, ?, ?);")) {
+             PreparedStatement statement = connection.prepareStatement("INSERT INTO users (username, salt, password_hash, force_reset, default_role, full_name) VALUES(?, ?, ?, ?, ?, ?);")) {
             count.setString(1, username);
             try (ResultSet rs = count.executeQuery()) {
                 if (rs.next() && rs.getInt(1) > 0)
@@ -374,6 +396,7 @@ public class DatabaseManager {
             statement.setString(3, sh.getValue());
             statement.setBoolean(4, forceReset);
             statement.setInt(5, roleId);
+            statement.setString(6, fullName);
             statement.executeUpdate();
             return new ImmutablePair<>(password, true);
         }
