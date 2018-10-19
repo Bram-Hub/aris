@@ -19,6 +19,7 @@ public enum MessageType {
     EDIT_PROBLEM(ProblemEditMsg.class),
     CREATE_USER(null),
     DELETE_USER(null),
+    USER_LIST(UserListMsg.class),
     EDIT_USER(UserEditMsg.class),
     CREATE_CLASS(ClassCreateMsg.class),
     DELETE_CLASS(ClassDeleteMsg.class),

@@ -4,6 +4,8 @@ import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.Perm;
 import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -39,8 +41,9 @@ public class AssignmentsGetMsg extends Message implements ClassMessage {
         return classId;
     }
 
+    @Nullable
     @Override
-    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
+    public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws SQLException {
         try (PreparedStatement selectAssignments = connection.prepareStatement(user.isAdmin() ? SELECT_ASSIGNMENTS_ADMIN : SELECT_ASSIGNMENTS_NON_ADMIN)) {
             selectAssignments.setInt(1, classId);
             if (!user.isAdmin())
@@ -66,6 +69,7 @@ public class AssignmentsGetMsg extends Message implements ClassMessage {
         return null;
     }
 
+    @NotNull
     @Override
     public MessageType getMessageType() {
         return MessageType.GET_ASSIGNMENTS;

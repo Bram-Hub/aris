@@ -25,6 +25,10 @@ subprojects {
     repositories {
         mavenCentral()
     }
+    
+    dependencies {
+        compile 'org.jetbrains:annotations:16.0.3'
+    }
 
     build.doLast {
         copy {

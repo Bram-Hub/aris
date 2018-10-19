@@ -2,6 +2,8 @@ package edu.rpi.aris.assign.message;
 
 import edu.rpi.aris.assign.*;
 import edu.rpi.aris.assign.spi.ArisModule;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
@@ -14,18 +16,20 @@ public class ProblemCreateMsg<T extends ArisModule> extends ProblemMessage<T> {
     private final String name;
     private int pid;
 
-    public ProblemCreateMsg(String name, String moduleName, Problem<T> problem) {
+    public ProblemCreateMsg(String name, @NotNull String moduleName, @NotNull Problem<T> problem) {
         super(moduleName, problem, Perm.PROBLEM_CREATE);
         this.name = name;
     }
 
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
+    @SuppressWarnings("ConstantConditions")
     private ProblemCreateMsg() {
         this(null, null, null);
     }
 
+    @Nullable
     @Override
-    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws Exception {
+    public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
         ArisModule<T> module = ModuleService.getService().getModule(getModuleName());
         if (module == null)
             return ErrorType.MISSING_MODULE;
@@ -51,6 +55,7 @@ public class ProblemCreateMsg<T extends ArisModule> extends ProblemMessage<T> {
         return null;
     }
 
+    @NotNull
     @Override
     public MessageType getMessageType() {
         return MessageType.CREATE_PROBLEM;

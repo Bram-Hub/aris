@@ -4,6 +4,8 @@ import edu.rpi.aris.assign.GradingStatus;
 import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -39,8 +41,9 @@ public class SubmissionGetStudentMsg extends Message {
         return submissions;
     }
 
+    @Nullable
     @Override
-    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
+    public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws SQLException {
         try (PreparedStatement assignments = connection.prepareStatement("SELECT p.aid, p.name, p.created_by, p.created_on, p.module_name FROM assignment a, problem p WHERE a.class_id = ? AND a.aid = ? AND a.problem_id = p.aid;");
              PreparedStatement submissions = connection.prepareStatement("SELECT aid, problem_id, time, status, short_status FROM submission WHERE class_id = ? AND assignment_id = ? AND user_id = ? ORDER BY problem_id, aid DESC;")) {
             assignments.setInt(1, cid);
@@ -72,6 +75,7 @@ public class SubmissionGetStudentMsg extends Message {
         return null;
     }
 
+    @NotNull
     @Override
     public MessageType getMessageType() {
         return MessageType.GET_SUBMISSIONS_STUDENT;

@@ -6,6 +6,8 @@ import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -44,8 +46,9 @@ public class AssignmentCreateMsg extends Message implements ClassMessage {
         problems.addAll(pids);
     }
 
+    @Nullable
     @Override
-    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
+    public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws SQLException {
         try (PreparedStatement select = connection.prepareStatement("SELECT id FROM assignment ORDER BY id DESC LIMIT 1;");
              PreparedStatement statement = connection.prepareStatement("INSERT INTO assignment VALUES(?, ?, ?, ?, ?, ?);")) {
             aid = 1;
@@ -67,6 +70,7 @@ public class AssignmentCreateMsg extends Message implements ClassMessage {
         return null;
     }
 
+    @NotNull
     @Override
     public MessageType getMessageType() {
         return MessageType.CREATE_ASSIGNMENT;

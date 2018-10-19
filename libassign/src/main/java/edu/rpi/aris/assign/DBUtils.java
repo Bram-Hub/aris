@@ -6,6 +6,8 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -37,12 +39,14 @@ public class DBUtils {
         }
     }
 
-    public static boolean checkPass(String pass, String salt, String savedHash) {
+    public static boolean checkPass(@NotNull String pass, String salt, String savedHash) {
         MessageDigest digest = getDigest();
         digest.update(Base64.getDecoder().decode(salt));
         return Base64.getEncoder().encodeToString(digest.digest(pass.getBytes())).equals(savedHash);
     }
 
+    @NotNull
+    @Contract("_, null, _ -> new")
     public static Pair<String, ErrorType> setPassword(Connection connection, String username, String password) throws SQLException {
         if (username == null || username.length() == 0)
             return new ImmutablePair<>(null, ErrorType.INVALID_PASSWORD);
@@ -58,13 +62,15 @@ public class DBUtils {
         }
     }
 
-    public static boolean checkPasswordComplexity(String username, String password) {
+    public static boolean checkPasswordComplexity(String username, @NotNull String password) {
         if (password.length() < 8 || password.toLowerCase().contains(username.toLowerCase()))
             return false;
         return password.matches(".*[a-z].*") && password.matches(".*[A-Z].*") && password.matches(".*[0-9].*");
     }
 
-    public static Pair<String, String> getSaltAndHash(String password) {
+    @NotNull
+    @Contract("_ -> new")
+    public static Pair<String, String> getSaltAndHash(@NotNull String password) {
         MessageDigest digest = getDigest();
         byte[] saltBytes = new byte[16];
         random.nextBytes(saltBytes);

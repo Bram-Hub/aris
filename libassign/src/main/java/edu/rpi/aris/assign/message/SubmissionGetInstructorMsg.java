@@ -4,6 +4,8 @@ import edu.rpi.aris.assign.GradingStatus;
 import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -47,8 +49,9 @@ public class SubmissionGetInstructorMsg extends Message {
         return users;
     }
 
+    @Nullable
     @Override
-    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
+    public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws SQLException {
         if (!user.isAdmin())
             return ErrorType.UNAUTHORIZED;
         try (PreparedStatement userStatement = connection.prepareStatement("SELECT u.id, u.username FROM users u, user_class uc WHERE uc.user_id = u.id AND u.user_type = 'student' AND uc.class_id = ? ORDER BY u.username;");
@@ -92,6 +95,7 @@ public class SubmissionGetInstructorMsg extends Message {
         return null;
     }
 
+    @NotNull
     @Override
     public MessageType getMessageType() {
         return MessageType.GET_SUBMISSIONS_INST;

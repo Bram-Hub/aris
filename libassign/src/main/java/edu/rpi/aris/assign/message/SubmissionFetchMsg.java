@@ -2,6 +2,8 @@ package edu.rpi.aris.assign.message;
 
 import edu.rpi.aris.assign.*;
 import edu.rpi.aris.assign.spi.ArisModule;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.InputStream;
 import java.sql.Connection;
@@ -34,8 +36,9 @@ public class SubmissionFetchMsg<T extends ArisModule> extends ProblemMessage<T> 
         this(-1, -1, -1, -1, null);
     }
 
+    @Nullable
     @Override
-    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws Exception {
+    public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
         try (PreparedStatement statement = connection.prepareStatement("SELECT p.module_name, s.data FROM submission s, problem p WHERE s.id = ? AND s.class_id=? AND s.assignment_id=? AND s.user_id=? AND s.problem_id=? AND s.problem_id = p.id;")) {
             statement.setInt(1, sid);
             statement.setInt(2, cid);
@@ -64,6 +67,7 @@ public class SubmissionFetchMsg<T extends ArisModule> extends ProblemMessage<T> 
         return null;
     }
 
+    @NotNull
     @Override
     public MessageType getMessageType() {
         return MessageType.FETCH_SUBMISSION;

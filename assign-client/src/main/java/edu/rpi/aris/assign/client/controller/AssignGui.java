@@ -6,9 +6,9 @@ import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.ServerRole;
 import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.model.ClassInfo;
+import edu.rpi.aris.assign.client.model.CurrentUser;
 import edu.rpi.aris.assign.client.model.LocalConfig;
 import edu.rpi.aris.assign.client.model.ServerConfig;
-import edu.rpi.aris.assign.client.model.UserInfo;
 import javafx.beans.binding.Bindings;
 import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;
@@ -49,6 +49,8 @@ public class AssignGui {
     @FXML
     private Tab userTab;
     @FXML
+    private Tab classTab;
+    @FXML
     private Tab permissionTab;
     @FXML
     private Tab problemTab;
@@ -61,10 +63,11 @@ public class AssignGui {
 
     private AssignmentsGui assignmentsGui;
     private UsersGui usersGui;
+    private ClassGui classGui;
     private PermissionsGui permissionsGui;
     private ProblemsGui problemsGui;
     private Stage stage;
-    private UserInfo userInfo = UserInfo.getInstance();
+    private CurrentUser userInfo = CurrentUser.getInstance();
     private HashMap<Tab, TabGui> tabGuis = new HashMap<>();
 
     private AssignGui() {
@@ -123,10 +126,12 @@ public class AssignGui {
 
         assignmentsGui = new AssignmentsGui();
         usersGui = new UsersGui();
+        classGui = new ClassGui();
         permissionsGui = new PermissionsGui();
         problemsGui = new ProblemsGui();
         tabGuis.put(assignmentTab, assignmentsGui);
         tabGuis.put(userTab, usersGui);
+        tabGuis.put(classTab, classGui);
         tabGuis.put(permissionTab, permissionsGui);
         tabGuis.put(problemTab, problemsGui);
 
@@ -148,7 +153,7 @@ public class AssignGui {
                 gui.load(false);
         });
 
-        classes.setConverter(new UserInfo.ClassStringConverter());
+        classes.setConverter(new CurrentUser.ClassStringConverter());
         classes.itemsProperty().set(userInfo.classesProperty());
         classes.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> userInfo.selectedClassProperty().set(newValue));
         userInfo.selectedClassProperty().addListener((observable, oldValue, newValue) -> {
@@ -184,6 +189,7 @@ public class AssignGui {
 
         assignmentTab.setContent(assignmentsGui.getRoot());
         userTab.setContent(usersGui.getRoot());
+        classTab.setContent(classGui.getRoot());
         permissionTab.setContent(permissionsGui.getRoot());
         problemTab.setContent(problemsGui.getRoot());
 
@@ -205,7 +211,8 @@ public class AssignGui {
             return;
         }
         int tabIndex = conditionalAddTab(classRole, Perm.ASSIGNMENT_GET, assignmentTab, 0);
-        tabIndex = conditionalAddTab(defaultRole, Perm.USER_EDIT, userTab, tabIndex);
+        tabIndex = conditionalAddTab(defaultRole, Perm.USER_LIST, userTab, tabIndex);
+        tabIndex = conditionalAddTab(defaultRole, Perm.CLASS_EDIT, classTab, tabIndex);
         tabIndex = conditionalAddTab(defaultRole, Perm.PERMISSIONS_EDIT, permissionTab, tabIndex);
         conditionalAddTab(defaultRole, Perm.PROBLEMS_GET, problemTab, tabIndex);
     }
@@ -213,7 +220,8 @@ public class AssignGui {
     private int conditionalAddTab(ServerRole role, Perm permission, Tab tab, int index) {
         if (ServerConfig.getPermissions().hasPermission(role, permission)) {
             if (!tabPane.getTabs().contains(tab))
-                tabPane.getTabs().add(index++, tab);
+                tabPane.getTabs().add(index, tab);
+            index++;
         } else
             tabPane.getTabs().remove(tab);
         return index;

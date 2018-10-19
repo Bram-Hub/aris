@@ -3,9 +3,9 @@ package edu.rpi.aris.assign.client.controller;
 import edu.rpi.aris.assign.*;
 import edu.rpi.aris.assign.client.dialog.ImportProblemsDialog;
 import edu.rpi.aris.assign.client.dialog.ProblemDialog;
+import edu.rpi.aris.assign.client.model.CurrentUser;
 import edu.rpi.aris.assign.client.model.LocalConfig;
 import edu.rpi.aris.assign.client.model.Problems;
-import edu.rpi.aris.assign.client.model.UserInfo;
 import edu.rpi.aris.assign.spi.ArisModule;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleStringProperty;
@@ -51,7 +51,7 @@ public class ProblemsGui implements TabGui {
     private TableColumn<Problems.Problem, String> createdOn;
     @FXML
     private TableColumn<Problems.Problem, Node> modify;
-    private UserInfo userInfo = UserInfo.getInstance();
+    private CurrentUser userInfo = CurrentUser.getInstance();
     private Problems problems = new Problems(this);
     private Parent root;
 

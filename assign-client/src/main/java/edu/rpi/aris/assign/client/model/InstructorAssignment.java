@@ -32,7 +32,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class InstructorAssignment implements ResponseHandler<AssignmentGetInstructorMsg> {
 
-    private static final UserInfo userInfo = UserInfo.getInstance();
+    private static final CurrentUser userInfo = CurrentUser.getInstance();
     private final int cid;
     private final int aid;
     private final SimpleStringProperty name = new SimpleStringProperty();

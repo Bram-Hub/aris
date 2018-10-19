@@ -4,6 +4,8 @@ import edu.rpi.aris.assign.Perm;
 import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.ServerRole;
 import edu.rpi.aris.assign.User;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -44,8 +46,9 @@ public class UserGetMsg extends Message {
         return permissions;
     }
 
+    @Nullable
     @Override
-    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
+    public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws SQLException {
         userId = user.uid;
         this.permissions = permissions;
         try (PreparedStatement getInfo = connection.prepareStatement(user.isAdmin() ? "SELECT id, name FROM class;" : "SELECT c.id, c.name, uc.role_id FROM class c, users u, user_class uc WHERE u.id = uc.user_id AND c.id = uc.class_id AND u.id = ?")) {
@@ -63,6 +66,7 @@ public class UserGetMsg extends Message {
         return null;
     }
 
+    @NotNull
     @Override
     public MessageType getMessageType() {
         return MessageType.GET_USER_INFO;

@@ -5,6 +5,8 @@ import edu.rpi.aris.assign.Perm;
 import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
 import org.apache.commons.lang3.tuple.Pair;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -31,8 +33,9 @@ public class UserEditMsg extends Message {
         this(null, null, null, false);
     }
 
+    @Nullable
     @Override
-    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
+    public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws SQLException {
         boolean resetPass = newPass != null;
         try {
             if (!user.username.equals(username) && !permissions.hasPermission(user, Perm.USER_EDIT))
@@ -72,6 +75,7 @@ public class UserEditMsg extends Message {
         return changePass;
     }
 
+    @NotNull
     @Override
     public MessageType getMessageType() {
         return MessageType.EDIT_USER;

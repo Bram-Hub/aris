@@ -3,6 +3,8 @@ package edu.rpi.aris.assign.message;
 import edu.rpi.aris.assign.Perm;
 import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -22,8 +24,9 @@ public class ClassDeleteMsg extends Message {
         this(0);
     }
 
+    @Nullable
     @Override
-    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
+    public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws SQLException {
         try (PreparedStatement deleteClass = connection.prepareStatement("DELETE FROM class WHERE id = ?;")) {
             deleteClass.setInt(1, cid);
             deleteClass.executeUpdate();
@@ -35,6 +38,7 @@ public class ClassDeleteMsg extends Message {
         return cid;
     }
 
+    @NotNull
     @Override
     public MessageType getMessageType() {
         return MessageType.DELETE_CLASS;

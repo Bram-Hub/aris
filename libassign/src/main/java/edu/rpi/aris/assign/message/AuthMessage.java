@@ -3,6 +3,8 @@ package edu.rpi.aris.assign.message;
 import edu.rpi.aris.assign.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -102,11 +104,13 @@ public class AuthMessage extends Message {
         return Base64.getEncoder().encodeToString(tokenBytes);
     }
 
+    @Nullable
     @Override
-    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws Exception {
+    public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
         return ErrorType.UNAUTHORIZED;
     }
 
+    @NotNull
     @Override
     public MessageType getMessageType() {
         return MessageType.AUTH;

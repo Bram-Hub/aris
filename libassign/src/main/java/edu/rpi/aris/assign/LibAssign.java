@@ -180,8 +180,8 @@ public class LibAssign implements Thread.UncaughtExceptionHandler {
             if (lock == null) {
                 lockFileChannel.close();
                 return false;
-            }
-            lockFile.deleteOnExit();
+            } else
+                lockFile.deleteOnExit();
         } catch (Throwable e) {
             return false;
         }

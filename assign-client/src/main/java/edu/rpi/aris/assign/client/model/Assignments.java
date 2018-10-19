@@ -33,7 +33,7 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
     private final SimpleBooleanProperty loadError = new SimpleBooleanProperty(false);
     private final AssignmentsGui gui;
     private final ReentrantLock lock = new ReentrantLock(true);
-    private UserInfo userInfo = UserInfo.getInstance();
+    private CurrentUser userInfo = CurrentUser.getInstance();
     private int loaded = -1;
 
     public Assignments(AssignmentsGui gui) {

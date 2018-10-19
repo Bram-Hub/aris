@@ -7,9 +7,9 @@ import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.dialog.AssignmentDialog;
 import edu.rpi.aris.assign.client.model.Assignments;
+import edu.rpi.aris.assign.client.model.CurrentUser;
 import edu.rpi.aris.assign.client.model.Problems;
 import edu.rpi.aris.assign.client.model.ServerConfig;
-import edu.rpi.aris.assign.client.model.UserInfo;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleStringProperty;
@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 
 public class AssignmentsGui implements TabGui {
 
-    private final UserInfo userInfo = UserInfo.getInstance();
+    private final CurrentUser userInfo = CurrentUser.getInstance();
     private final SimpleStringProperty tabName = new SimpleStringProperty("Assignments");
     @FXML
     private TableView<Assignments.Assignment> tblAssignments;

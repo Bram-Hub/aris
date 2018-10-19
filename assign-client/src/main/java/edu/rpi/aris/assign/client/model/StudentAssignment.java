@@ -38,7 +38,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMsg> {
 
     private static final Logger log = LogManager.getLogger();
-    private static final UserInfo userInfo = UserInfo.getInstance();
+    private static final CurrentUser userInfo = CurrentUser.getInstance();
     private static final File submissionStorageDir = new File(LocalConfig.CLIENT_STORAGE_DIR, "submissions");
     private final int cid;
     private final int aid;

@@ -6,6 +6,8 @@ import com.google.gson.JsonSyntaxException;
 import edu.rpi.aris.assign.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -27,16 +29,17 @@ public abstract class Message {
     private final transient Perm permission;
     private final transient boolean customPermCheck;
 
-    protected Message(Perm permission, boolean customPermCheck) {
+    protected Message(@NotNull Perm permission, boolean customPermCheck) {
         this.permission = permission;
         this.customPermCheck = customPermCheck;
     }
 
-    protected Message(Perm permission) {
+    protected Message(@NotNull Perm permission) {
         this(permission, false);
     }
 
-    private static Message parse(MessageCommunication com) {
+    @Nullable
+    private static Message parse(@NotNull MessageCommunication com) {
         try {
             Message msg = gson.fromJson(com.getReader(), Message.class);
             if (msg != null)
@@ -67,7 +70,8 @@ public abstract class Message {
         }
     }
 
-    public static Message get(MessageCommunication com) {
+    @Nullable
+    public static Message get(@NotNull MessageCommunication com) {
         Message reply = parse(com);
         if (reply instanceof ErrorMsg) {
             com.handleErrorMsg((ErrorMsg) reply);
@@ -84,7 +88,7 @@ public abstract class Message {
         return customPermCheck;
     }
 
-    public final void send(MessageCommunication com) throws Exception {
+    public final void send(@NotNull MessageCommunication com) throws Exception {
         logger.info("Sending message: " + getMessageType());
         gson.toJson(this, Message.class, com.getWriter());
         com.getWriter().flush();
@@ -102,7 +106,8 @@ public abstract class Message {
      * type as the object this method was called on
      * @throws IOException If there is an error when communicating
      */
-    public final Message sendAndGet(MessageCommunication com) throws Exception {
+    @Nullable
+    public final Message sendAndGet(@NotNull MessageCommunication com) throws Exception {
         send(com);
         Message reply = parse(com);
         if (!reply.getClass().equals(this.getClass())) {
@@ -114,8 +119,10 @@ public abstract class Message {
         return reply;
     }
 
-    public abstract ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws Exception;
+    @Nullable
+    public abstract ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception;
 
+    @NotNull
     public abstract MessageType getMessageType();
 
     public abstract boolean checkValid();

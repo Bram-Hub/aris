@@ -44,7 +44,7 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
     private final ProblemRenameResponseHandler renameHandler = new ProblemRenameResponseHandler();
     private final ProblemDeleteResponseHandler deleteHandler = new ProblemDeleteResponseHandler();
     private final ReentrantLock lock = new ReentrantLock(true);
-    private UserInfo userInfo = UserInfo.getInstance();
+    private CurrentUser userInfo = CurrentUser.getInstance();
     private boolean loaded = false;
     private HashSet<Consumer<Boolean>> onLoadComplete = new HashSet<>();
 

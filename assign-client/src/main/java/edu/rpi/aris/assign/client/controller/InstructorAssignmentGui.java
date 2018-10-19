@@ -1,8 +1,8 @@
 package edu.rpi.aris.assign.client.controller;
 
 import edu.rpi.aris.assign.*;
+import edu.rpi.aris.assign.client.model.CurrentUser;
 import edu.rpi.aris.assign.client.model.InstructorAssignment;
-import edu.rpi.aris.assign.client.model.UserInfo;
 import edu.rpi.aris.assign.spi.ArisModule;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleStringProperty;
@@ -38,7 +38,7 @@ public class InstructorAssignmentGui implements TabGui {
     private Label name;
     @FXML
     private Label dueDate;
-    private UserInfo userInfo = UserInfo.getInstance();
+    private CurrentUser userInfo = CurrentUser.getInstance();
     private Parent root;
     private TreeItem<InstructorAssignment.Submission> rootItem = new TreeItem<>();
 

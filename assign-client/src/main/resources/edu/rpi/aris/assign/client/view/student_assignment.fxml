@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.*?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
-<BorderPane xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1"
-            stylesheets="@assign_window.css">
-    <top>
-        <HBox alignment="CENTER_LEFT" spacing="5.0" BorderPane.alignment="CENTER">
+<VBox spacing="5.0" xmlns="http://javafx.com/javafx/8.0.172-ea" xmlns:fx="http://javafx.com/fxml/1">
+    <children>
+        <HBox alignment="CENTER_LEFT" spacing="5.0">
             <children>
                 <Label fx:id="name" text="Name:">
                     <font>
@@ -22,12 +23,7 @@
                 <ImageView fx:id="statusIcon" fitHeight="25.0" fitWidth="25.0" pickOnBounds="true" preserveRatio="true" />
             </children>
         </HBox>
-    </top>
-    <padding>
-        <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
-    </padding>
-    <center>
-        <TreeTableView fx:id="treeTable" sortMode="ONLY_FIRST_LEVEL" BorderPane.alignment="CENTER">
+        <TreeTableView fx:id="treeTable" sortMode="ONLY_FIRST_LEVEL" VBox.vgrow="ALWAYS">
             <columns>
                 <TreeTableColumn fx:id="nameColumn" prefWidth="75.0" text="Problem" />
             <TreeTableColumn fx:id="submittedColumn" prefWidth="75.0" text="Submitted On" />
@@ -38,5 +34,8 @@
                 <TreeTableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
             </columnResizePolicy>
         </TreeTableView>
-    </center>
-</BorderPane>
+    </children>
+    <padding>
+        <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
+    </padding>
+</VBox>

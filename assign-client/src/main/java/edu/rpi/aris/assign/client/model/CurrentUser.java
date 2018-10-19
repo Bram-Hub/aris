@@ -22,9 +22,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class UserInfo implements ResponseHandler<UserGetMsg> {
+public class CurrentUser implements ResponseHandler<UserGetMsg> {
 
-    private static final UserInfo instance = new UserInfo();
+    private static final CurrentUser instance = new CurrentUser();
 
     private SimpleObjectProperty<ServerRole> defaultRole = new SimpleObjectProperty<>();
     private SimpleObjectProperty<ServerRole> classRole = new SimpleObjectProperty<>();
@@ -41,7 +41,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
     private ReentrantLock lock = new ReentrantLock(true);
     private Runnable onLoad;
 
-    private UserInfo() {
+    private CurrentUser() {
         selectedClass.addListener((observable, oldValue, newValue) -> {
             if (newValue != null)
                 LocalConfig.SELECTED_COURSE_ID.setValue(newValue.getClassId());
@@ -49,7 +49,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         classRole.bind(Bindings.createObjectBinding(() -> defaultRole.get() == null ? null : (selectedClass.get() == null ? defaultRole.get() : selectedClass.get().getUserRole()), selectedClass, defaultRole));
     }
 
-    public static UserInfo getInstance() {
+    public static CurrentUser getInstance() {
         return instance;
     }
 
@@ -212,7 +212,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         public void onError(boolean suggestRetry, ClassDeleteMsg msg) {
             if (suggestRetry)
                 Client.getInstance().processMessage(msg, this);
-            Platform.runLater(UserInfo.this::finishLoading);
+            Platform.runLater(CurrentUser.this::finishLoading);
         }
 
         @Override
@@ -239,7 +239,7 @@ public class UserInfo implements ResponseHandler<UserGetMsg> {
         public void onError(boolean suggestRetry, ClassCreateMsg msg) {
             if (suggestRetry)
                 Client.getInstance().processMessage(msg, this);
-            Platform.runLater(UserInfo.this::finishLoading);
+            Platform.runLater(CurrentUser.this::finishLoading);
         }
 
         @Override

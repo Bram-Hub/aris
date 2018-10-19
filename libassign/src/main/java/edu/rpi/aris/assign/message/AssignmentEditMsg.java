@@ -4,6 +4,8 @@ import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.Perm;
 import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.*;
 import java.time.ZonedDateTime;
@@ -105,14 +107,16 @@ public class AssignmentEditMsg extends Message implements ClassMessage {
         return null;
     }
 
+    @Nullable
     @Override
-    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
+    public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws SQLException {
         rename(connection);
         changeDue(connection);
         removeProblem(connection);
         return addProblem(connection);
     }
 
+    @NotNull
     @Override
     public MessageType getMessageType() {
         return MessageType.EDIT_ASSIGNMENT;

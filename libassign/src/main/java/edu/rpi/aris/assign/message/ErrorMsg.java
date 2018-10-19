@@ -2,6 +2,8 @@ package edu.rpi.aris.assign.message;
 
 import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
 
@@ -39,11 +41,13 @@ public class ErrorMsg extends Message {
         return errorType;
     }
 
+    @Nullable
     @Override
-    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) {
+    public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) {
         return errorType;
     }
 
+    @NotNull
     @Override
     public MessageType getMessageType() {
         return MessageType.ERROR;

@@ -4,6 +4,8 @@ import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.Perm;
 import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -24,8 +26,9 @@ public class ProblemsGetMsg extends Message {
         return problems;
     }
 
+    @Nullable
     @Override
-    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws SQLException {
+    public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("SELECT id, name, created_by, created_on, module_name FROM problem ORDER BY created_on DESC;")) {
             try (ResultSet rs = statement.executeQuery()) {
                 while (rs.next()) {
@@ -41,6 +44,7 @@ public class ProblemsGetMsg extends Message {
         return null;
     }
 
+    @NotNull
     @Override
     public MessageType getMessageType() {
         return MessageType.GET_PROBLEMS;

@@ -1,7 +1,9 @@
 package edu.rpi.aris.assign.client.model;
 
 import edu.rpi.aris.assign.ServerPermissions;
+import edu.rpi.aris.assign.ServerRole;
 import edu.rpi.aris.assign.client.ConfigProp;
+import javafx.util.StringConverter;
 
 import java.util.HashMap;
 import java.util.prefs.Preferences;
@@ -14,6 +16,20 @@ public class ServerConfig {
     private static final HashMap<String, ConfigProp<Integer>> intProps = new HashMap<>();
     private static final HashMap<String, ConfigProp<Boolean>> boolProps = new HashMap<>();
     private static ServerPermissions permissions;
+    private static StringConverter<ServerRole> roleStringConverter = new StringConverter<ServerRole>() {
+        @Override
+        public String toString(ServerRole object) {
+            return object.getName();
+        }
+
+        @Override
+        public ServerRole fromString(String string) {
+            for (ServerRole r : permissions.getRoles())
+                if (r.getName().equals(string))
+                    return r;
+            return null;
+        }
+    };
 
     static {
         setDefaults();
@@ -59,5 +75,9 @@ public class ServerConfig {
 
     public static void setPermissions(ServerPermissions permissions) {
         ServerConfig.permissions = permissions;
+    }
+
+    public static StringConverter<ServerRole> getRoleStringConverter() {
+        return roleStringConverter;
     }
 }

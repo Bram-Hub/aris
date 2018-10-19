@@ -2,6 +2,8 @@ package edu.rpi.aris.assign.message;
 
 import edu.rpi.aris.assign.*;
 import edu.rpi.aris.assign.spi.ArisModule;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
@@ -32,8 +34,9 @@ public class ProblemEditMsg<T extends ArisModule> extends ProblemMessage<T> {
         this(0, null);
     }
 
+    @Nullable
     @Override
-    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws Exception {
+    public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
         if (name != null) {
             try (PreparedStatement updateName = connection.prepareStatement("UPDATE problem SET name = ? WHERE id = ?")) {
                 updateName.setString(1, name);
@@ -59,6 +62,7 @@ public class ProblemEditMsg<T extends ArisModule> extends ProblemMessage<T> {
         return null;
     }
 
+    @NotNull
     @Override
     public MessageType getMessageType() {
         return MessageType.EDIT_PROBLEM;

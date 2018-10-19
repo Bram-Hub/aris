@@ -2,6 +2,8 @@ package edu.rpi.aris.assign.message;
 
 import edu.rpi.aris.assign.*;
 import edu.rpi.aris.assign.spi.ArisModule;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.InputStream;
 import java.sql.Connection;
@@ -22,8 +24,9 @@ public class ProblemFetchMsg<T extends ArisModule> extends ProblemMessage<T> {
         this(-1, null);
     }
 
+    @Nullable
     @Override
-    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws Exception {
+    public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
         try (PreparedStatement statement = connection.prepareStatement("SELECT module_name, data FROM problem WHERE id = ?;")) {
             statement.setInt(1, pid);
             try (ResultSet rs = statement.executeQuery()) {
@@ -42,6 +45,7 @@ public class ProblemFetchMsg<T extends ArisModule> extends ProblemMessage<T> {
         return null;
     }
 
+    @NotNull
     @Override
     public MessageType getMessageType() {
         return MessageType.FETCH_PROBLEM;

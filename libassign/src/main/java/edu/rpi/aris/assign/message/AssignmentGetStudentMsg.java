@@ -1,6 +1,8 @@
 package edu.rpi.aris.assign.message;
 
 import edu.rpi.aris.assign.*;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -28,8 +30,9 @@ public class AssignmentGetStudentMsg extends Message implements ClassMessage {
         this(-1, -1);
     }
 
+    @Nullable
     @Override
-    public ErrorType processMessage(Connection connection, User user, ServerPermissions permissions) throws Exception {
+    public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
         try (PreparedStatement selectAssignment = connection.prepareStatement("SELECT problem_id, name, due_date FROM assignment WHERE id = ? AND class_id = ?;");
              PreparedStatement selectProblem = connection.prepareStatement("SELECT name, created_by, created_on, module_name FROM problem WHERE id = ?;");
              PreparedStatement selectSubmissions = connection.prepareStatement("SELECT id, time, short_status, status, problem_id FROM submission WHERE class_id = ? AND assignment_id = ? AND user_id = ?;")) {
@@ -78,6 +81,7 @@ public class AssignmentGetStudentMsg extends Message implements ClassMessage {
         return null;
     }
 
+    @NotNull
     @Override
     public MessageType getMessageType() {
         return MessageType.ASSIGNMENT_GET_STUDENT;
