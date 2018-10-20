@@ -56,8 +56,8 @@ public abstract class Message {
             }
             return msg;
         } catch (JsonSyntaxException e) {
-            logger.error("Message in incorrect format", e);
-            return new ErrorMsg(ErrorType.PARSE_ERR, "Message in incorrect format");
+            logger.error("Failed to read message", e);
+            return new ErrorMsg(ErrorType.PARSE_ERR, "Failed to read message");
         } catch (IOException e) {
             logger.error("Failed to read json from peer", e);
             return new ErrorMsg(ErrorType.IO_ERROR, "Failed to read json from peer");

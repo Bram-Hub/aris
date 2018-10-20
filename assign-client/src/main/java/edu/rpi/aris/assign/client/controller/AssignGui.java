@@ -241,8 +241,11 @@ public class AssignGui {
     public void loginOut() {
         if (userInfo.isLoggedIn()) {
             userInfo.logout();
-        } else
-            refresh();
+        } else {
+            for (TabGui gui : tabGuis.values())
+                gui.unload();
+            userInfo.getUserInfo(true, null);
+        }
     }
 
     @FXML

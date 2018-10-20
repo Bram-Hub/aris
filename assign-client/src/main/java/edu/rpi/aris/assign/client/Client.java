@@ -2,10 +2,10 @@ package edu.rpi.aris.assign.client;
 
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
-import edu.rpi.aris.assign.DBUtils;
 import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.MessageCommunication;
 import edu.rpi.aris.assign.NetUtil;
+import edu.rpi.aris.assign.client.dialog.PasswordResetDialog;
 import edu.rpi.aris.assign.client.exceptions.*;
 import edu.rpi.aris.assign.client.model.LocalConfig;
 import edu.rpi.aris.assign.message.AuthMessage;
@@ -54,7 +54,6 @@ import java.security.cert.CertPathBuilderException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.*;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -483,39 +482,8 @@ public class Client implements MessageCommunication {
             } catch (IOException e) {
                 AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", e.getMessage(), true);
                 responseHandler.onError(false, message);
-            } catch (CancellationException e) {
-                responseHandler.onError(false, message);
-            } catch (InvalidCredentialsException e) {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Invalid Credentials", "Your username or password was incorrect", true);
-                responseHandler.onError(true, message);
-            } catch (AuthBanException e) {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Temporary Ban", e.getMessage());
-                responseHandler.onError(false, message);
-            } catch (ErrorDialogException e) {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg(e.getTitle(), e.getMessage(), e.doWait());
-                responseHandler.onError(false, message);
-            } catch (PasswordResetRequiredException e) {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Password Reset", e.getMessage(), true);
-                disconnect();
-                boolean retry = false;
-                do {
-                    try {
-                        retry = false;
-                        resetPassword();
-                        responseHandler.onError(true, message);
-                    } catch (CancellationException e1) {
-                        responseHandler.onError(false, message);
-                    } catch (InvalidCredentialsException e1) {
-                        AssignClient.getInstance().getMainWindow().displayErrorMsg("Incorrect Password", "Your current password is incorrect", true);
-                        retry = true;
-                    } catch (WeakPasswordException e1) {
-                        AssignClient.getInstance().getMainWindow().displayErrorMsg("Weak Password", "Your new password does not meet the complexity requirements", true);
-                        retry = true;
-                    } catch (Throwable e1) {
-                        AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", e1.getMessage());
-                        responseHandler.onError(false, message);
-                    }
-                } while (retry);
+            } catch (ArisCommunicationException e) {
+                e.handleError(responseHandler, message);
             } catch (Throwable e) {
                 logger.error("Error sending message", e);
                 responseHandler.onError(false, message);
@@ -641,42 +609,10 @@ public class Client implements MessageCommunication {
         return new ImmutableTriple<>(user, pass, isAccessToken);
     }
 
-    private void resetPassword() throws Exception {
+    public void resetPassword() throws Exception {
         AtomicReference<Optional<Pair<String, String>>> result = new AtomicReference<>(null);
         Platform.runLater(() -> {
-            Dialog<Pair<String, String>> dialog = new Dialog<>();
-            dialog.setTitle("Reset Password");
-            dialog.setHeaderText("Your password has expired.\n" +
-                    "Please reset your password\n\n" +
-                    DBUtils.COMPLEXITY_RULES);
-            ButtonType loginButtonType = new ButtonType("Reset Password", ButtonBar.ButtonData.OK_DONE);
-            dialog.getDialogPane().getButtonTypes().addAll(loginButtonType, ButtonType.CANCEL);
-            GridPane grid = new GridPane();
-            grid.setVgap(10);
-            grid.setHgap(10);
-            grid.setPadding(new Insets(20));
-            PasswordField currentPass = new PasswordField();
-            currentPass.setPromptText("Current Password");
-            PasswordField newPassword = new PasswordField();
-            newPassword.setPromptText("New Password");
-            PasswordField retypePassword = new PasswordField();
-            retypePassword.setPromptText("Retype Password");
-            grid.add(new Label("Current Password:"), 0, 0);
-            grid.add(currentPass, 1, 0);
-            grid.add(new Label("New Password:"), 0, 1);
-            grid.add(newPassword, 1, 1);
-            grid.add(new Label("Retype Password:"), 0, 2);
-            grid.add(retypePassword, 1, 2);
-            Node loginButton = dialog.getDialogPane().lookupButton(loginButtonType);
-            loginButton.disableProperty().bind(currentPass.textProperty().isEmpty().or
-                    (newPassword.textProperty().isEmpty()).or
-                    (retypePassword.textProperty().isEmpty()).or
-                    (newPassword.textProperty().isNotEqualTo(retypePassword.textProperty())).or
-                    (Bindings.createBooleanBinding(() -> !DBUtils.checkPasswordComplexity(LocalConfig.USERNAME.getValue(), newPassword.getText()), newPassword.textProperty())).or
-                    (currentPass.textProperty().isEqualTo(newPassword.textProperty())));
-            dialog.getDialogPane().setContent(grid);
-            dialog.setResultConverter(buttonType -> buttonType == ButtonType.CANCEL ? null : new Pair<>(currentPass.getText(), newPassword.getText()));
-            currentPass.requestFocus();
+            PasswordResetDialog dialog = new PasswordResetDialog(null, true, true, true);
             result.set(dialog.showAndWait());
             synchronized (result) {
                 result.notify();

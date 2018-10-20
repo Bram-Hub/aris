@@ -151,6 +151,7 @@ public class CurrentUser implements ResponseHandler<UserGetMsg> {
             finishLoading();
             if (onLoad != null)
                 onLoad.run();
+            onLoad = null;
         });
     }
 
@@ -163,6 +164,8 @@ public class CurrentUser implements ResponseHandler<UserGetMsg> {
             classMap.clear();
             if (suggestRetry)
                 getUserInfo(false, onLoad);
+            else
+                onLoad = null;
         });
     }
 

@@ -26,10 +26,6 @@ public class UserChangePasswordMsg extends Message {
         this.oldPass = oldPass;
     }
 
-    public UserChangePasswordMsg(String username, String newPass) {
-        this(username, newPass, null);
-    }
-
     // DO NOT REMOVE!! Default constructor is required for gson deserialization
     private UserChangePasswordMsg() {
         this(null, null, null);
@@ -52,7 +48,7 @@ public class UserChangePasswordMsg extends Message {
                     }
                 }
             }
-            if (user.username.equals(username) && (newPass.equals(oldPass) || !DBUtils.checkPasswordComplexity(username, newPass)))
+            if (newPass == null || (user.username.equals(username) && (newPass.equals(oldPass) || !DBUtils.checkPasswordComplexity(username, newPass))))
                 return ErrorType.AUTH_WEAK_PASS;
             Pair<String, ErrorType> pair = DBUtils.setPassword(connection, username, newPass);
             if (pair.getRight() == null) {

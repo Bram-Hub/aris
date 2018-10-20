@@ -4,6 +4,7 @@ import edu.rpi.aris.assign.ServerRole;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
 import edu.rpi.aris.assign.client.controller.UsersGui;
+import edu.rpi.aris.assign.message.UserChangePasswordMsg;
 import edu.rpi.aris.assign.message.UserEditMsg;
 import edu.rpi.aris.assign.message.UserListMsg;
 import javafx.application.Platform;
@@ -29,7 +30,7 @@ public class Users implements ResponseHandler<UserListMsg> {
         this.gui = gui;
     }
 
-    public void loadUsers(boolean reload) {
+    public synchronized void loadUsers(boolean reload) {
         if (reload || !loaded) {
             userInfo.startLoading();
             clear();
@@ -51,7 +52,12 @@ public class Users implements ResponseHandler<UserListMsg> {
         Client.getInstance().processMessage(new UserEditMsg(info.uid, newRole), new UserRoleChangeResponseHandler(info, oldRole));
     }
 
-    public void clear() {
+    public void resetPassword(String username, String oldPass, String newPass) {
+        userInfo.startLoading();
+        Client.getInstance().processMessage(new UserChangePasswordMsg(username, newPass, oldPass), new PasswordChangeResponseHandler());
+    }
+
+    public synchronized void clear() {
         users.clear();
         loaded = false;
     }
@@ -145,6 +151,24 @@ public class Users implements ResponseHandler<UserListMsg> {
                 roleChanged(info, oldRole, msg.getNewDefaultRole());
             else
                 Platform.runLater(() -> info.defaultRole.set(oldRole));
+            Platform.runLater(userInfo::finishLoading);
+        }
+
+        @Override
+        public ReentrantLock getLock() {
+            return lock;
+        }
+    }
+
+    private class PasswordChangeResponseHandler implements ResponseHandler<UserChangePasswordMsg> {
+
+        @Override
+        public void response(UserChangePasswordMsg message) {
+            Platform.runLater(userInfo::finishLoading);
+        }
+
+        @Override
+        public void onError(boolean suggestRetry, UserChangePasswordMsg msg) {
             Platform.runLater(userInfo::finishLoading);
         }
 

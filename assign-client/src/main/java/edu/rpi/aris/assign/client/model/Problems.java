@@ -213,7 +213,7 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
             else {
                 loadProblems(true);
             }
-            Platform.runLater(() -> userInfo.finishLoading());
+            Platform.runLater(userInfo::finishLoading);
         }
 
         @Override

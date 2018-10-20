@@ -3,6 +3,7 @@ package edu.rpi.aris.assign.client.controller;
 import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.Perm;
 import edu.rpi.aris.assign.ServerRole;
+import edu.rpi.aris.assign.client.dialog.PasswordResetDialog;
 import edu.rpi.aris.assign.client.model.CurrentUser;
 import edu.rpi.aris.assign.client.model.ServerConfig;
 import edu.rpi.aris.assign.client.model.Users;
@@ -18,9 +19,11 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.ChoiceBoxTableCell;
 import javafx.scene.control.cell.TextFieldTableCell;
+import javafx.util.Pair;
 import javafx.util.converter.DefaultStringConverter;
 
 import java.io.IOException;
+import java.util.Optional;
 
 public class UsersGui implements TabGui {
 
@@ -116,9 +119,12 @@ public class UsersGui implements TabGui {
             users.roleChanged(event.getRowValue(), old, event.getNewValue());
         });
         resetPassword.setCellValueFactory(param -> {
-            Button btn = new Button("Reset Password");
-            btn.setOnAction(e -> resetPassword(param.getValue()));
-            return new SimpleObjectProperty<>(btn);
+            if (param.getValue().getDefaultRole().getRollRank() >= userInfo.getDefaultRole().getRollRank()) {
+                Button btn = new Button("Reset Password");
+                btn.setOnAction(e -> resetPassword(param.getValue()));
+                return new SimpleObjectProperty<>(btn);
+            } else
+                return new SimpleObjectProperty<>(null);
         });
         deleteUser.setCellValueFactory(param -> {
             if (param.getValue().getUid() != userInfo.getUser().uid && param.getValue().getDefaultRole().getRollRank() >= userInfo.getDefaultRole().getRollRank()) {
@@ -131,7 +137,13 @@ public class UsersGui implements TabGui {
     }
 
     private void resetPassword(Users.UserInfo info) {
-        AssignGui.getInstance().notImplemented("Reset Password");
+        PasswordResetDialog dialog;
+        if (info.getUid() == userInfo.getUser().uid)
+            dialog = new PasswordResetDialog("Reset password for " + info.getUsername(), true, false, true);
+        else
+            dialog = new PasswordResetDialog("Reset password for " + info.getUsername(), false, false, false);
+        Optional<Pair<String, String>> result = dialog.showAndWait();
+        result.ifPresent(pair -> users.resetPassword(info.getUsername(), pair.getKey(), pair.getValue()));
     }
 
     private void deleteUser(Users.UserInfo info) {
