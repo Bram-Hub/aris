@@ -17,5 +17,6 @@ public enum ErrorType {
     AUTH_WEAK_PASS,
     MISSING_MODULE,
     MODULE_ERROR,
+    CANT_CHANGE_OWN_ROLE,
     UNAUTHORIZED
 }

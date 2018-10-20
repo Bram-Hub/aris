@@ -1,10 +1,9 @@
 package edu.rpi.aris.assign.message;
 
-import edu.rpi.aris.assign.DBUtils;
 import edu.rpi.aris.assign.Perm;
 import edu.rpi.aris.assign.ServerPermissions;
+import edu.rpi.aris.assign.ServerRole;
 import edu.rpi.aris.assign.User;
-import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -15,78 +14,93 @@ import java.sql.SQLException;
 
 public class UserEditMsg extends Message {
 
-    private final String username;
-    private final boolean changePass;
-    private String newPass;
-    private String oldPass;
+    private final int uid;
+    private final String newName;
+    private final int newDefaultRole;
 
-    public UserEditMsg(String username, String newPass, String oldPass, boolean changePass) {
-        super(Perm.USER_EDIT, true);
-        this.username = username;
-        this.newPass = newPass;
-        this.oldPass = oldPass;
-        this.changePass = changePass;
+    public UserEditMsg(int uid, String newName, int newDefaultRole) {
+        super(Perm.USER_EDIT, false);
+        this.uid = uid;
+        this.newName = newName;
+        this.newDefaultRole = newDefaultRole;
     }
 
-    // DO NOT REMOVE!! Default constructor is required for gson deserialization
+    public UserEditMsg(int uid, String newName) {
+        this(uid, newName, -1);
+    }
+
+    public UserEditMsg(int uid, int newDefaultRole) {
+        this(uid, null, newDefaultRole);
+    }
+
     private UserEditMsg() {
-        this(null, null, null, false);
+        this(-1, null, -1);
     }
 
-    @Nullable
-    @Override
-    public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws SQLException {
-        boolean resetPass = newPass != null;
-        try {
-            if (!user.username.equals(username) && !permissions.hasPermission(user, Perm.USER_EDIT))
-                return ErrorType.UNAUTHORIZED;
-            if (oldPass == null)
-                return ErrorType.AUTH_FAIL;
-            try (PreparedStatement getHash = connection.prepareStatement("SELECT salt, password_hash FROM users WHERE username = ?;")) {
-                getHash.setString(1, username);
-                try (ResultSet rs = getHash.executeQuery()) {
-                    if (!rs.next() || !DBUtils.checkPass(oldPass, rs.getString(1), rs.getString(2)))
-                        return ErrorType.AUTH_FAIL;
-                }
-            }
-            if (changePass) {
-                if (newPass.equals(oldPass) || !DBUtils.checkPasswordComplexity(username, newPass))
-                    return ErrorType.AUTH_WEAK_PASS;
-                Pair<String, ErrorType> pair = DBUtils.setPassword(connection, username, newPass);
-                newPass = pair.getLeft();
-                if (pair.getRight() == null) {
-                    user.resetPass();
-                    try (PreparedStatement forceOff = connection.prepareStatement("UPDATE users SET force_reset = false WHERE username = ?;")) {
-                        forceOff.setString(1, username);
-                        forceOff.executeUpdate();
-                    }
-                }
-                return pair.getRight();
-            }
-            return null;
-        } finally {
-            if (resetPass)
-                newPass = null;
-            oldPass = null;
+    private void setName(Connection connection) throws SQLException {
+        if (newName == null)
+            return;
+        try (PreparedStatement updateName = connection.prepareStatement("UPDATE users SET full_name=? WHERE id=?;")) {
+            updateName.setString(1, newName);
+            updateName.setInt(2, uid);
+            updateName.executeUpdate();
         }
     }
 
-    public boolean isChangePass() {
-        return changePass;
+    private ErrorType setDefaultRole(Connection connection, User user, ServerPermissions permissions) throws SQLException {
+        if (newDefaultRole > 0) {
+            if (uid == user.uid)
+                return ErrorType.CANT_CHANGE_OWN_ROLE;
+            try (PreparedStatement updateRole = connection.prepareStatement("UPDATE users SET default_role=? WHERE id=?;")) {
+                ServerRole newRole = permissions.getRole(newDefaultRole);
+                if (newRole == null)
+                    return ErrorType.NOT_FOUND;
+                else if (newRole.getRollRank() < user.defaultRole.getRollRank())
+                    return ErrorType.UNAUTHORIZED;
+                updateRole.setInt(1, newDefaultRole);
+                updateRole.setInt(2, uid);
+                updateRole.executeUpdate();
+            }
+        }
+        return null;
     }
 
-    @NotNull
     @Override
-    public MessageType getMessageType() {
-        return MessageType.EDIT_USER;
+    public @Nullable ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
+        ServerRole currentRole = null;
+        try (PreparedStatement selectUserInfo = connection.prepareStatement("SELECT default_role FROM users WHERE id=?;")) {
+            selectUserInfo.setInt(1, uid);
+            try (ResultSet rs = selectUserInfo.executeQuery()) {
+                if (rs.next())
+                    currentRole = permissions.getRole(rs.getInt(1));
+            }
+        }
+        if (currentRole == null)
+            return ErrorType.NOT_FOUND;
+        else if (currentRole.getRollRank() < user.defaultRole.getRollRank())
+            return ErrorType.UNAUTHORIZED;
+        ErrorType err;
+        setName(connection);
+        if ((err = setDefaultRole(connection, user, permissions)) != null)
+            return err;
+        return null;
+    }
+
+    @Override
+    public @NotNull MessageType getMessageType() {
+        return MessageType.USER_EDIT;
     }
 
     @Override
     public boolean checkValid() {
-        return username != null;
+        return uid > 0;
     }
 
-    public String getUsername() {
-        return username;
+    public String getNewName() {
+        return newName;
+    }
+
+    public int getNewDefaultRole() {
+        return newDefaultRole;
     }
 }

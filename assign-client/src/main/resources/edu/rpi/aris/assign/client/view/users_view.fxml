@@ -6,18 +6,24 @@
 <?import javafx.scene.layout.VBox?>
 <VBox spacing="5.0" xmlns="http://javafx.com/javafx/8.0.172-ea" xmlns:fx="http://javafx.com/fxml/1">
     <children>
-        <HBox spacing="5.0">
+        <HBox alignment="CENTER_LEFT" spacing="5.0">
             <children>
                 <Button mnemonicParsing="false" onAction="#addUser" text="Add User"/>
+                <Separator visible="false" HBox.hgrow="ALWAYS"/>
+                <Label text="Double click cell to edit"/>
             </children>
         </HBox>
         <TableView fx:id="userTable" editable="true" VBox.vgrow="ALWAYS">
             <columns>
-                <TableColumn fx:id="username" minWidth="-1.0" prefWidth="-1.0" text="Username"/>
-                <TableColumn fx:id="fullName" minWidth="-1.0" prefWidth="-1.0" text="Full Name"/>
-                <TableColumn fx:id="defaultRole" minWidth="-1.0" prefWidth="-1.0" text="Default Role"/>
-                <TableColumn fx:id="resetPassword" minWidth="-1.0" prefWidth="-1.0" text="Reset Password"/>
-                <TableColumn fx:id="deleteUser" prefWidth="75.0" text="Delete User"/>
+                <TableColumn fx:id="username" minWidth="-1.0" prefWidth="-1.0" style="-fx-alignment: CENTER-LEFT;"
+                             text="Username"/>
+                <TableColumn fx:id="fullName" minWidth="-1.0" prefWidth="-1.0" style="-fx-alignment: CENTER;"
+                             text="Full Name"/>
+                <TableColumn fx:id="defaultRole" minWidth="-1.0" prefWidth="-1.0" style="-fx-alignment: CENTER;"
+                             text="Default Role"/>
+                <TableColumn fx:id="resetPassword" minWidth="-1.0" prefWidth="-1.0" style="-fx-alignment: CENTER;"
+                             text="Reset Password"/>
+                <TableColumn fx:id="deleteUser" prefWidth="75.0" style="-fx-alignment: CENTER;" text="Delete User"/>
             </columns>
             <columnResizePolicy>
                 <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>

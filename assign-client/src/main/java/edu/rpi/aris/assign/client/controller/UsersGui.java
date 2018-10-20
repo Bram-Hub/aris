@@ -7,6 +7,7 @@ import edu.rpi.aris.assign.client.model.CurrentUser;
 import edu.rpi.aris.assign.client.model.ServerConfig;
 import edu.rpi.aris.assign.client.model.Users;
 import javafx.beans.binding.Bindings;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -102,8 +103,39 @@ public class UsersGui implements TabGui {
         username.setCellValueFactory(param -> param.getValue().usernameProperty());
         fullName.setCellValueFactory(param -> param.getValue().fullNameProperty());
         fullName.setCellFactory(param -> new TextFieldTableCell<>(new DefaultStringConverter()));
+        fullName.setOnEditCommit(event -> {
+            String old = event.getOldValue();
+            event.getRowValue().fullNameProperty().set(event.getNewValue());
+            users.fullNameChanged(event.getRowValue(), old, event.getNewValue());
+        });
         defaultRole.setCellValueFactory(param -> param.getValue().defaultRoleProperty());
         defaultRole.setCellFactory(param -> new ChoiceBoxTableCell<>(ServerConfig.getRoleStringConverter(), ServerConfig.getPermissions().getRoles().toArray(new ServerRole[0])));
+        defaultRole.setOnEditCommit(event -> {
+            ServerRole old = event.getOldValue();
+            event.getRowValue().defaultRoleProperty().set(event.getNewValue());
+            users.roleChanged(event.getRowValue(), old, event.getNewValue());
+        });
+        resetPassword.setCellValueFactory(param -> {
+            Button btn = new Button("Reset Password");
+            btn.setOnAction(e -> resetPassword(param.getValue()));
+            return new SimpleObjectProperty<>(btn);
+        });
+        deleteUser.setCellValueFactory(param -> {
+            if (param.getValue().getUid() != userInfo.getUser().uid && param.getValue().getDefaultRole().getRollRank() >= userInfo.getDefaultRole().getRollRank()) {
+                Button btn = new Button("Delete User");
+                btn.setOnAction(e -> deleteUser(param.getValue()));
+                return new SimpleObjectProperty<>(btn);
+            } else
+                return new SimpleObjectProperty<>(null);
+        });
+    }
+
+    private void resetPassword(Users.UserInfo info) {
+        AssignGui.getInstance().notImplemented("Reset Password");
+    }
+
+    private void deleteUser(Users.UserInfo info) {
+        AssignGui.getInstance().notImplemented("Delete User");
     }
 
     @FXML

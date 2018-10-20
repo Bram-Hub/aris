@@ -226,7 +226,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                         Perm perm = msg.getPermission();
                         if (user.requireReset()) {
                             logger.warn("Password reset required");
-                            if (msg instanceof UserEditMsg && ((UserEditMsg) msg).isChangePass() && user.username.equals(((UserEditMsg) msg).getUsername()))
+                            if (msg instanceof UserChangePasswordMsg && user.username.equals(((UserChangePasswordMsg) msg).getUsername()))
                                 error = msg.processMessage(connection, user, permissions);
                             else {
                                 logger.warn("Client did not send password reset message");

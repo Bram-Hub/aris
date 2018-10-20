@@ -59,15 +59,11 @@
                    </padding>
               </HBox>
                <TabPane fx:id="tabPane" tabClosingPolicy="ALL_TABS" VBox.vgrow="ALWAYS">
-                  <Tab fx:id="assignmentTab" closable="false" text="Assignments" />
                   <Tab fx:id="userTab" closable="false" text="Users" />
-                   <Tab fx:id="classTab" closable="false" text="Classes">
-                       <content>
-                           <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0"/>
-                       </content>
-                   </Tab>
+                   <Tab fx:id="classTab" closable="false" text="Classes"/>
                    <Tab fx:id="permissionTab" closable="false" text="Permissions"/>
                   <Tab fx:id="problemTab" closable="false" text="Problems" />
+                   <Tab fx:id="assignmentTab" closable="false" text="Assignments"/>
               </TabPane>
            </children>
        </VBox>

@@ -11,7 +11,7 @@ import edu.rpi.aris.assign.client.model.LocalConfig;
 import edu.rpi.aris.assign.message.AuthMessage;
 import edu.rpi.aris.assign.message.ErrorMsg;
 import edu.rpi.aris.assign.message.Message;
-import edu.rpi.aris.assign.message.UserEditMsg;
+import edu.rpi.aris.assign.message.UserChangePasswordMsg;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleObjectProperty;
@@ -692,7 +692,7 @@ public class Client implements MessageCommunication {
         if (result.get() != null && result.get().isPresent()) {
             String oldPass = result.get().get().getKey();
             String newPass = result.get().get().getValue();
-            UserEditMsg editMsg = new UserEditMsg(LocalConfig.USERNAME.getValue(), newPass, oldPass, true);
+            UserChangePasswordMsg editMsg = new UserChangePasswordMsg(LocalConfig.USERNAME.getValue(), newPass, oldPass);
             try {
                 connect();
             } catch (PasswordResetRequiredException ignored) {
@@ -703,7 +703,7 @@ public class Client implements MessageCommunication {
             } finally {
                 disconnect();
             }
-            if (!(res instanceof UserEditMsg))
+            if (!(res instanceof UserChangePasswordMsg))
                 resetPassword();
         } else
             throw new CancellationException();

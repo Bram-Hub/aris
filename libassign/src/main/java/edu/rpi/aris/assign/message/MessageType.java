@@ -20,7 +20,7 @@ public enum MessageType {
     CREATE_USER(null),
     DELETE_USER(null),
     USER_LIST(UserListMsg.class),
-    EDIT_USER(UserEditMsg.class),
+    CHANGE_PASSWORD(UserChangePasswordMsg.class),
     CREATE_CLASS(ClassCreateMsg.class),
     DELETE_CLASS(ClassDeleteMsg.class),
     UPDATE_CLASS(null),
@@ -29,7 +29,8 @@ public enum MessageType {
     ASSIGNMENT_GET_STUDENT(AssignmentGetStudentMsg.class),
     AUTH(AuthMessage.class),
     FETCH_SUBMISSION(SubmissionFetchMsg.class),
-    ASSIGNMENT_GET_INSTRUCTOR(AssignmentGetInstructorMsg.class);
+    ASSIGNMENT_GET_INSTRUCTOR(AssignmentGetInstructorMsg.class),
+    USER_EDIT(UserEditMsg.class);
 
     public final Class<? extends Message> msgClass;
 

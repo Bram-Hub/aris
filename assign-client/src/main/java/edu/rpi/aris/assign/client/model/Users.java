@@ -4,6 +4,7 @@ import edu.rpi.aris.assign.ServerRole;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
 import edu.rpi.aris.assign.client.controller.UsersGui;
+import edu.rpi.aris.assign.message.UserEditMsg;
 import edu.rpi.aris.assign.message.UserListMsg;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -34,6 +35,20 @@ public class Users implements ResponseHandler<UserListMsg> {
             clear();
             Client.getInstance().processMessage(new UserListMsg(), this);
         }
+    }
+
+    public void fullNameChanged(UserInfo info, String oldName, String newName) {
+        userInfo.startLoading();
+        Client.getInstance().processMessage(new UserEditMsg(info.uid, newName), new UserRenameResponseHandler(info, oldName));
+    }
+
+    public void roleChanged(UserInfo info, ServerRole oldRole, ServerRole newRole) {
+        roleChanged(info, oldRole, newRole.getId());
+    }
+
+    private void roleChanged(UserInfo info, ServerRole oldRole, int newRole) {
+        userInfo.startLoading();
+        Client.getInstance().processMessage(new UserEditMsg(info.uid, newRole), new UserRoleChangeResponseHandler(info, oldRole));
     }
 
     public void clear() {
@@ -79,6 +94,66 @@ public class Users implements ResponseHandler<UserListMsg> {
         return lock;
     }
 
+    private class UserRenameResponseHandler implements ResponseHandler<UserEditMsg> {
+
+        private final UserInfo info;
+        private final String oldName;
+
+        UserRenameResponseHandler(UserInfo info, String oldName) {
+            this.info = info;
+            this.oldName = oldName;
+        }
+
+        @Override
+        public void response(UserEditMsg message) {
+            Platform.runLater(userInfo::finishLoading);
+        }
+
+        @Override
+        public void onError(boolean suggestRetry, UserEditMsg msg) {
+            if (suggestRetry)
+                fullNameChanged(info, oldName, msg.getNewName());
+            else
+                Platform.runLater(() -> info.fullName.set(oldName));
+            Platform.runLater(userInfo::finishLoading);
+        }
+
+        @Override
+        public ReentrantLock getLock() {
+            return lock;
+        }
+    }
+
+    private class UserRoleChangeResponseHandler implements ResponseHandler<UserEditMsg> {
+
+        private final UserInfo info;
+        private final ServerRole oldRole;
+
+        UserRoleChangeResponseHandler(UserInfo info, ServerRole oldRole) {
+            this.info = info;
+            this.oldRole = oldRole;
+        }
+
+        @Override
+        public void response(UserEditMsg message) {
+            Platform.runLater(userInfo::finishLoading);
+        }
+
+        @Override
+        public void onError(boolean suggestRetry, UserEditMsg msg) {
+            if (suggestRetry)
+                roleChanged(info, oldRole, msg.getNewDefaultRole());
+            else
+                Platform.runLater(() -> info.defaultRole.set(oldRole));
+            Platform.runLater(userInfo::finishLoading);
+        }
+
+        @Override
+        public ReentrantLock getLock() {
+            return lock;
+        }
+    }
+
     public class UserInfo {
 
         private final int uid;
@@ -89,7 +164,7 @@ public class Users implements ResponseHandler<UserListMsg> {
             this.uid = uid;
             this.username = new SimpleStringProperty(username);
             this.fullName = new SimpleStringProperty(fullName);
-            this.defaultRole = new SimpleObjectProperty<>(defaultRole);
+            this.defaultRole = new SimpleObjectProperty<>(defaultRole == null ? ServerConfig.getPermissions().getLowestRole() : defaultRole);
         }
 
         public UserInfo(UserListMsg.User user) {

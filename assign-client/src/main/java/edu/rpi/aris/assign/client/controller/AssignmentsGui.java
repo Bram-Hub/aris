@@ -139,16 +139,12 @@ public class AssignmentsGui implements TabGui {
         btnCreate.managedProperty().bind(btnCreate.visibleProperty());
 
         name.setCellValueFactory(param -> param.getValue().nameProperty());
-        name.setStyle("-fx-alignment: CENTER-LEFT;");
 
         dueDate.setCellValueFactory(param -> param.getValue().dueDateProperty());
-        dueDate.setStyle("-fx-alignment: CENTER;");
 
         status.setCellValueFactory(param -> param.getValue().statusProperty());
-        status.setStyle("-fx-alignment: CENTER;");
 
         modifyColumn.setCellValueFactory(param -> param.getValue().modifyColumnProperty());
-        modifyColumn.setStyle("-fx-alignment: CENTER;");
 
     }
 

@@ -129,11 +129,6 @@ public class ProblemsGui implements TabGui {
             problems.renamed(event.getRowValue());
         });
         name.setCellFactory(param -> new TextFieldTableCell<>(new DefaultStringConverter()));
-        name.setStyle("-fx-alignment: CENTER-LEFT;");
-        module.setStyle("-fx-alignment: CENTER;");
-        createdBy.setStyle("-fx-alignment: CENTER;");
-        createdOn.setStyle("-fx-alignment: CENTER;");
-        modify.setStyle("-fx-alignment: CENTER;");
     }
 
     @FXML

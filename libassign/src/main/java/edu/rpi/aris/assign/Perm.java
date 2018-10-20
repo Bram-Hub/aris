@@ -13,6 +13,7 @@ public enum Perm {
     PROBLEM_EDIT(2),
     USER_LIST(2),
     USER_EDIT(1, new Perm[]{USER_LIST}),
+    USER_CHANGE_PASS(1),
     ASSIGNMENT_GET(3),
     PROBLEM_FETCH(3),
     USER_GET(3),

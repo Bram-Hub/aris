@@ -190,7 +190,7 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         public void onError(boolean suggestRetry, ProblemCreateMsg<T> msg) {
             if (suggestRetry)
                 createProblem(msg.getName(), msg.getModuleName(), msg.getProblem());
-            Platform.runLater(() -> userInfo.finishLoading());
+            Platform.runLater(userInfo::finishLoading);
         }
 
         @Override

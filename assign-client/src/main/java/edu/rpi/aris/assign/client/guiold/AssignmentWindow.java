@@ -269,7 +269,7 @@ public class AssignmentWindow {
             try {
                 client.connect();
 //                String type = clientInfo.isInstructorProperty().get() ? NetUtil.USER_INSTRUCTOR : NetUtil.USER_STUDENT;
-//                new UserEditMsg(username, null, newPassPair.get().getValue(), newPassPair.get().getKey(), true).sendAndGet(client);
+//                new UserChangePasswordMsg(username, null, newPassPair.get().getValue(), newPassPair.get().getKey(), true).sendAndGet(client);
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {

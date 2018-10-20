@@ -23,8 +23,7 @@ public class DatabaseManager {
     public static final String DEFAULT_ADMIN_PASS = "ArisAdmin1";
     private static final String[] defaultRoleName = new String[]{"Admin", "Instructor", "TA", "Student"};
     private static final int[] defaultRoleRank = new int[]{0, 1, 2, 3};
-    private static final String[] tables = new String[]{"submission", "assignment", "problem", "user_class", "users", "class", "version"};
-    private static final int DB_SCHEMA_VERSION = 9;
+    private static final int DB_SCHEMA_VERSION = 10;
     private static Logger logger = LogManager.getLogger(DatabaseManager.class);
 
     static {
@@ -101,65 +100,65 @@ public class DatabaseManager {
             statement.execute("DELETE FROM version;");
             statement.execute("INSERT INTO version (version) VALUES (" + DB_SCHEMA_VERSION + ");");
             statement.execute("CREATE TABLE IF NOT EXISTS role" +
-                    "(id serial PRIMARY KEY," +
-                    "name text," +
-                    "role_rank integer);");
+                    "(id serial NOT NULL PRIMARY KEY," +
+                    "name text NOT NULL," +
+                    "role_rank integer NOT NULL);");
             statement.execute("CREATE TABLE IF NOT EXISTS users" +
-                    "(id serial PRIMARY KEY," +
-                    "username text," +
-                    "full_name text," +
-                    "salt text," +
-                    "password_hash text," +
-                    "access_token text," +
-                    "force_reset boolean," +
-                    "default_role integer," +
+                    "(id serial NOT NULL PRIMARY KEY," +
+                    "username text NOT NULL UNIQUE," +
+                    "full_name text NOT NULL," +
+                    "salt text NOT NULL," +
+                    "password_hash text NOT NULL," +
+                    "access_token text NOT NULL," +
+                    "force_reset boolean NOT NULL," +
+                    "default_role integer NOT NULL," +
                     "constraint u_rfk foreign key (default_role) references role(id) on delete restrict);");
             statement.execute("CREATE TABLE IF NOT EXISTS class" +
-                    "(id serial PRIMARY KEY," +
-                    "name text);");
+                    "(id serial NOT NULL PRIMARY KEY," +
+                    "name text NOT NULL);");
             statement.execute("CREATE TABLE IF NOT EXISTS user_class" +
-                    "(user_id integer," +
-                    "class_id integer," +
-                    "role_id integer," +
+                    "(user_id integer NOT NULL," +
+                    "class_id integer NOT NULL," +
+                    "role_id integer NOT NULL," +
                     "PRIMARY KEY(user_id, class_id)," +
                     "constraint uc_ufk foreign key (user_id) references users(id) on delete cascade," +
                     "constraint uc_cfk foreign key (class_id) references class(id) on delete cascade," +
                     "constraint uc_rfk foreign key (role_id) references role(id) on delete restrict);");
             statement.execute("CREATE TABLE IF NOT EXISTS problem" +
-                    "(id serial PRIMARY KEY," +
-                    "name text," +
-                    "data bytea," +
-                    "created_by text," +
-                    "created_on timestamp," +
-                    "module_name text);");
+                    "(id serial NOT NULL PRIMARY KEY," +
+                    "name text NOT NULL," +
+                    "data bytea NOT NULL," +
+                    "created_by text NOT NULL," +
+                    "created_on timestamp NOT NULL," +
+                    "module_name text NOT NULL);");
             statement.execute("CREATE TABLE IF NOT EXISTS assignment" +
-                    "(id integer," +
-                    "class_id integer," +
-                    "problem_id integer," +
-                    "name text," +
-                    "due_date timestamp," +
-                    "assigned_by integer," +
+                    "(id integer NOT NULL," +
+                    "class_id integer NOT NULL," +
+                    "problem_id integer NOT NULL," +
+                    "name text NOT NULL," +
+                    "due_date timestamp NOT NULL," +
+                    "assigned_by integer NULL," +
                     "PRIMARY KEY(id, class_id, problem_id)," +
                     "constraint a_cfk foreign key (class_id) references class(id) on delete cascade," +
                     "constraint a_pfk foreign key (problem_id) references problem(id) on delete cascade," +
                     "constraint a_abfk foreign key (assigned_by) references users(id) on delete set NULL);");
             statement.execute("CREATE TABLE IF NOT EXISTS submission" +
-                    "(id serial PRIMARY KEY," +
-                    "class_id integer," +
-                    "assignment_id integer," +
-                    "user_id integer," +
-                    "problem_id integer," +
-                    "data bytea," +
-                    "time timestamp," +
-                    "short_status text," +
-                    "status text," +
+                    "(id serial NOT NULL PRIMARY KEY," +
+                    "class_id integer NOT NULL," +
+                    "assignment_id integer NOT NULL," +
+                    "user_id integer NOT NULL," +
+                    "problem_id integer NOT NULL," +
+                    "data bytea NOT NULL," +
+                    "time timestamp NOT NULL," +
+                    "short_status text NOT NULL," +
+                    "status text NOT NULL," +
                     "check (short_status in ('" + GradingStatus.CORRECT.name() + "', '" + GradingStatus.INCORRECT.name() + "', '" + GradingStatus.GRADING.name() + "'))," +
                     "constraint s_cufk foreign key (user_id, class_id) references user_class(user_id, class_id) on delete cascade," +
                     "constraint s_afk foreign key (assignment_id, class_id, problem_id) references assignment(id, class_id, problem_id) on delete cascade," +
                     "constraint s_pfk foreign key (problem_id) references problem(id) on delete cascade);");
             statement.execute("CREATE TABLE IF NOT EXISTS permissions" +
-                    "(name text PRIMARY KEY," +
-                    "role_id int," +
+                    "(name text NOT NULL PRIMARY KEY," +
+                    "role_id integer NOT NULL," +
                     "constraint perm_rfk foreign key (role_id) references role(id) on delete restrict);");
             createDefaultRoles(connection);
             createUser(connection, "admin", DEFAULT_ADMIN_PASS, "Admin", 1, true);
@@ -362,6 +361,23 @@ public class DatabaseManager {
             statement.execute("UPDATE users SET full_name=username;");
 
             statement.execute("UPDATE version SET version=9;");
+            connection.commit();
+        } catch (Throwable e) {
+            connection.rollback();
+            logger.error("An error occurred while updating the database schema and the changes were rolled back");
+            throw e;
+        } finally {
+            connection.setAutoCommit(autoCommit);
+        }
+        updateSchema9(connection);
+    }
+
+    private void updateSchema9(Connection connection) throws SQLException {
+        logger.info("Updating database schema to version 10");
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE users ADD UNIQUE (username);");
             connection.commit();
         } catch (Throwable e) {
             connection.rollback();

@@ -210,11 +210,11 @@ public class AssignGui {
             tabGuis.values().removeIf(gui -> !gui.isPermanentTab());
             return;
         }
-        int tabIndex = conditionalAddTab(classRole, Perm.ASSIGNMENT_GET, assignmentTab, 0);
-        tabIndex = conditionalAddTab(defaultRole, Perm.USER_LIST, userTab, tabIndex);
+        int tabIndex = conditionalAddTab(defaultRole, Perm.USER_LIST, userTab, 0);
         tabIndex = conditionalAddTab(defaultRole, Perm.CLASS_EDIT, classTab, tabIndex);
         tabIndex = conditionalAddTab(defaultRole, Perm.PERMISSIONS_EDIT, permissionTab, tabIndex);
-        conditionalAddTab(defaultRole, Perm.PROBLEMS_GET, problemTab, tabIndex);
+        tabIndex = conditionalAddTab(defaultRole, Perm.PROBLEMS_GET, problemTab, tabIndex);
+        conditionalAddTab(classRole, Perm.ASSIGNMENT_GET, assignmentTab, tabIndex);
     }
 
     private int conditionalAddTab(ServerRole role, Perm permission, Tab tab, int index) {
