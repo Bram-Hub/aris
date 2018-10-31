@@ -318,7 +318,7 @@ public class InstructorAssignment implements ResponseHandler<AssignmentGetInstru
         public <T extends ArisModule> void viewSubmission() {
             ArisModule<T> module = ModuleService.getService().getModule(moduleName);
             if (module == null) {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Missing Module", "Client is missing \"" + moduleName + "\" module");
+                AssignClient.displayErrorMsg("Missing Module", "Client is missing \"" + moduleName + "\" module");
                 return;
             }
             fetchSubmission(this, module);
@@ -386,7 +386,7 @@ public class InstructorAssignment implements ResponseHandler<AssignmentGetInstru
         private <T extends ArisModule> void viewProblem() {
             ArisModule<T> module = ModuleService.getService().getModule(super.moduleName);
             if (module == null) {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Missing Module", "Client is missing \"" + super.moduleName + "\" module");
+                AssignClient.displayErrorMsg("Missing Module", "Client is missing \"" + super.moduleName + "\" module");
                 return;
             }
             fetchProblem(super.pid, module);

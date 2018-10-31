@@ -304,7 +304,7 @@ public class LibAssign implements Thread.UncaughtExceptionHandler {
             } catch (Throwable e1) {
                 logger.fatal("An error has occurred while attempting to report a different error");
                 logger.catching(Level.FATAL, e1);
-                logger.fatal("The program will not exit");
+                logger.fatal("The program will now exit");
                 System.exit(1);
             }
         });

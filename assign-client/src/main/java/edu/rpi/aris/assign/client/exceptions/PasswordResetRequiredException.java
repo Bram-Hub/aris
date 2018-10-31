@@ -15,7 +15,7 @@ public class PasswordResetRequiredException extends ArisCommunicationException {
 
     @Override
     public <T extends Message> void handleError(ResponseHandler<T> handler, T message) {
-        AssignClient.getInstance().getMainWindow().displayErrorMsg("Password Reset", getMessage(), true);
+        AssignClient.displayErrorMsg("Password Reset", getMessage(), true);
         Client.getInstance().disconnect();
         boolean retry = false;
         do {
@@ -26,13 +26,13 @@ public class PasswordResetRequiredException extends ArisCommunicationException {
             } catch (CancellationException e) {
                 handler.onError(false, message);
             } catch (InvalidCredentialsException e) {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Incorrect Password", "Your current password is incorrect", true);
+                AssignClient.displayErrorMsg("Incorrect Password", "Your current password is incorrect", true);
                 retry = true;
             } catch (WeakPasswordException e) {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Weak Password", "Your new password does not meet the complexity requirements", true);
+                AssignClient.displayErrorMsg("Weak Password", "Your new password does not meet the complexity requirements", true);
                 retry = true;
             } catch (Throwable e) {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", e.getMessage());
+                AssignClient.displayErrorMsg("Error", e.getMessage());
                 handler.onError(false, message);
             }
         } while (retry);

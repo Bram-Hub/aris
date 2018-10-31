@@ -12,7 +12,7 @@ public class AuthBanException extends ArisCommunicationException {
 
     @Override
     public <T extends Message> void handleError(ResponseHandler<T> handler, T message) {
-        AssignClient.getInstance().getMainWindow().displayErrorMsg("Temporary Ban", getMessage());
+        AssignClient.displayErrorMsg("Temporary Ban", getMessage());
         handler.onError(false, message);
     }
 }

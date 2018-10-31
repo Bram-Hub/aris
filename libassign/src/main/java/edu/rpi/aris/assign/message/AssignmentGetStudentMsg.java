@@ -34,7 +34,7 @@ public class AssignmentGetStudentMsg extends Message implements ClassMessage {
     @Override
     public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
         try (PreparedStatement selectAssignment = connection.prepareStatement("SELECT problem_id, name, due_date FROM assignment WHERE id = ? AND class_id = ?;");
-             PreparedStatement selectProblem = connection.prepareStatement("SELECT name, created_by, created_on, module_name FROM problem WHERE id = ?;");
+             PreparedStatement selectProblem = connection.prepareStatement("SELECT name, created_by, created_on, module_name, problem_hash FROM problem WHERE id = ?;");
              PreparedStatement selectSubmissions = connection.prepareStatement("SELECT id, time, short_status, status, problem_id FROM submission WHERE class_id = ? AND assignment_id = ? AND user_id = ?;")) {
             selectAssignment.setInt(1, aid);
             selectAssignment.setInt(2, cid);
@@ -52,7 +52,8 @@ public class AssignmentGetStudentMsg extends Message implements ClassMessage {
                             String createdBy = problemRs.getString(2);
                             ZonedDateTime createdOn = NetUtil.localToUTC(problemRs.getTimestamp(3).toLocalDateTime());
                             String module = problemRs.getString(4);
-                            MsgUtil.ProblemInfo problemInfo = new MsgUtil.ProblemInfo(pid, name, createdBy, createdOn, module);
+                            String problemHash = problemRs.getString(5);
+                            MsgUtil.ProblemInfo problemInfo = new MsgUtil.ProblemInfo(pid, name, createdBy, createdOn, module, problemHash);
                             problems.add(problemInfo);
                         }
                     }

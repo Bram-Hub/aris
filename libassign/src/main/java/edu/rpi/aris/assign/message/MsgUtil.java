@@ -88,13 +88,15 @@ public class MsgUtil {
         public final String createdBy;
         public final String moduleName;
         public final ZonedDateTime createdDateUTC;
+        public final String problemHash;
 
-        ProblemInfo(int pid, String name, String createdBy, ZonedDateTime createdDateUTC, String moduleName) {
+        ProblemInfo(int pid, String name, String createdBy, ZonedDateTime createdDateUTC, String moduleName, String problemHash) {
             this.pid = pid;
             this.name = name;
             this.createdBy = createdBy;
             this.createdDateUTC = createdDateUTC;
             this.moduleName = moduleName;
+            this.problemHash = problemHash;
         }
 
         // DO NOT REMOVE!! Default constructor is required for gson deserialization
@@ -104,10 +106,11 @@ public class MsgUtil {
             this.createdBy = null;
             this.createdDateUTC = null;
             this.moduleName = null;
+            this.problemHash = null;
         }
 
         public boolean checkValid() {
-            return pid > 0 && name != null && createdBy != null && createdDateUTC != null && moduleName != null;
+            return pid > 0 && name != null && createdBy != null && createdDateUTC != null && moduleName != null && problemHash != null;
         }
 
     }

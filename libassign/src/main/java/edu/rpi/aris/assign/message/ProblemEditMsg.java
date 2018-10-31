@@ -2,11 +2,15 @@ package edu.rpi.aris.assign.message;
 
 import edu.rpi.aris.assign.*;
 import edu.rpi.aris.assign.spi.ArisModule;
+import org.apache.commons.io.IOUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import javax.xml.bind.DatatypeConverter;
+import java.io.ByteArrayOutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 
@@ -38,7 +42,7 @@ public class ProblemEditMsg<T extends ArisModule> extends ProblemMessage<T> {
     @Override
     public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
         if (name != null) {
-            try (PreparedStatement updateName = connection.prepareStatement("UPDATE problem SET name = ? WHERE id = ?")) {
+            try (PreparedStatement updateName = connection.prepareStatement("UPDATE problem SET name = ? WHERE id = ?;")) {
                 updateName.setString(1, name);
                 updateName.setInt(2, pid);
                 updateName.executeUpdate();
@@ -47,15 +51,20 @@ public class ProblemEditMsg<T extends ArisModule> extends ProblemMessage<T> {
         if (getProblem() != null) {
             ArisModule<T> module = ModuleService.getService().getModule(getModuleName());
             ProblemConverter<T> converter = module.getProblemConverter();
-            try (PreparedStatement updateData = connection.prepareStatement("UPDATE problem SET data = ? WHERE id = ?");
+            try (PreparedStatement updateData = connection.prepareStatement("UPDATE problem SET data = ?, problem_hash = ? WHERE id = ?;");
                  PipedInputStream pis = new PipedInputStream();
-                 PipedOutputStream pos = new PipedOutputStream(pis)) {
+                 PipedOutputStream pos = new PipedOutputStream(pis);
+                 ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
 
                 converter.convertProblem(getProblem(), pos, false);
                 pos.close();
-                updateData.setBinaryStream(1, pis);
+                IOUtils.copy(pis, baos);
+                MessageDigest digest = MessageDigest.getInstance("MD5");
+                String hash = DatatypeConverter.printHexBinary(digest.digest(baos.toByteArray())).toLowerCase();
 
-                updateData.setInt(2, pid);
+                updateData.setBytes(1, baos.toByteArray());
+                updateData.setString(2, hash);
+                updateData.setInt(3, pid);
                 updateData.executeUpdate();
             }
         }

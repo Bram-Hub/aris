@@ -477,10 +477,10 @@ public class Client implements MessageCommunication {
                     logger.error("ResponseHandler threw an error", e);
                 }
             } catch (CertificateException e) {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Invalid Certificate", "Server provided an invalid certificate. The connection cannot continue", true);
+                AssignClient.displayErrorMsg("Invalid Certificate", "Server provided an invalid certificate. The connection cannot continue", true);
                 responseHandler.onError(false, message);
             } catch (IOException e) {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Error", e.getMessage(), true);
+                AssignClient.displayErrorMsg("Error", e.getMessage(), true);
                 responseHandler.onError(false, message);
             } catch (ArisCommunicationException e) {
                 e.handleError(responseHandler, message);

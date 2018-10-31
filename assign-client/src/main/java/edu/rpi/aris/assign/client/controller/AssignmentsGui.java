@@ -174,7 +174,7 @@ public class AssignmentsGui implements TabGui {
                 }
             }
             if (!problems.isLoaded()) {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Load Error", "Unable to load the problems list");
+                AssignClient.displayErrorMsg("Load Error", "Unable to load the problems list");
                 return null;
             }
         }

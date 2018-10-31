@@ -12,7 +12,7 @@ public class WeakPasswordException extends ArisCommunicationException {
 
     @Override
     public <T extends Message> void handleError(ResponseHandler<T> handler, T message) {
-        AssignClient.getInstance().getMainWindow().displayErrorMsg("Weak Password", "The password does not meet the complexity requirements", true);
+        AssignClient.displayErrorMsg("Weak Password", "The password does not meet the complexity requirements", true);
         handler.onError(true, message);
     }
 }

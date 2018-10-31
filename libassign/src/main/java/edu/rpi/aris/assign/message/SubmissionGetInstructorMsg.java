@@ -55,7 +55,7 @@ public class SubmissionGetInstructorMsg extends Message {
         if (!user.isAdmin())
             return ErrorType.UNAUTHORIZED;
         try (PreparedStatement userStatement = connection.prepareStatement("SELECT u.id, u.username FROM users u, user_class uc WHERE uc.user_id = u.id AND u.user_type = 'student' AND uc.class_id = ? ORDER BY u.username;");
-             PreparedStatement problems = connection.prepareStatement("SELECT p.id, p.name, p.created_by, p.created_on, p.module_name FROM problem p, assignment a WHERE a.problem_id = p.id AND a.class_id = ? AND a.id = ? ORDER BY p.name;");
+             PreparedStatement problems = connection.prepareStatement("SELECT p.id, p.name, p.created_by, p.created_on, p.module_name, p.problem_hash FROM problem p, assignment a WHERE a.problem_id = p.id AND a.class_id = ? AND a.id = ? ORDER BY p.name;");
              PreparedStatement userSubmissions = connection.prepareStatement("SELECT u.id, s.id, s.problem_id, s.time, s.status, s.short_status FROM users u, assignment a, submission s, problem p WHERE a.class_id = ? AND a.id = ? AND u.user_type = 'student' AND s.class_id = a.class_id AND s.assignment_id = a.id AND s.user_id = u.id AND p.id = s.problem_id ORDER BY u.username, p.name, s.time DESC;")) {
             userStatement.setInt(1, cid);
             try (ResultSet rs = userStatement.executeQuery()) {
@@ -74,7 +74,8 @@ public class SubmissionGetInstructorMsg extends Message {
                     String createdBy = rs.getString(3);
                     ZonedDateTime timestamp = NetUtil.localToUTC(rs.getTimestamp(4).toLocalDateTime());
                     String moduleName = rs.getString(5);
-                    assignedProblems.add(new MsgUtil.ProblemInfo(pid, pName, createdBy, timestamp, moduleName));
+                    String problemHash = rs.getString(6);
+                    assignedProblems.add(new MsgUtil.ProblemInfo(pid, pName, createdBy, timestamp, moduleName, problemHash));
                 }
             }
             userSubmissions.setInt(1, cid);

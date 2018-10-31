@@ -29,7 +29,7 @@ public class ProblemsGetMsg extends Message {
     @Nullable
     @Override
     public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement("SELECT id, name, created_by, created_on, module_name FROM problem ORDER BY created_on DESC;")) {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT id, name, created_by, created_on, module_name, problem_hash FROM problem ORDER BY created_on DESC;")) {
             try (ResultSet rs = statement.executeQuery()) {
                 while (rs.next()) {
                     int id = rs.getInt(1);
@@ -37,7 +37,8 @@ public class ProblemsGetMsg extends Message {
                     String createdBy = rs.getString(3);
                     ZonedDateTime createdOn = NetUtil.localToUTC(rs.getTimestamp(4).toLocalDateTime());
                     String moduleName = rs.getString(5);
-                    problems.add(new MsgUtil.ProblemInfo(id, name, createdBy, createdOn, moduleName));
+                    String problemHash = rs.getString(6);
+                    problems.add(new MsgUtil.ProblemInfo(id, name, createdBy, createdOn, moduleName, problemHash));
                 }
             }
         }

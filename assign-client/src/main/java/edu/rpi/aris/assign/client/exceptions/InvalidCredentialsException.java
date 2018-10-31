@@ -12,7 +12,7 @@ public class InvalidCredentialsException extends ArisCommunicationException {
 
     @Override
     public <T extends Message> void handleError(ResponseHandler<T> handler, T message) {
-        AssignClient.getInstance().getMainWindow().displayErrorMsg("Invalid Credentials", "Your username or password was incorrect", true);
+        AssignClient.displayErrorMsg("Invalid Credentials", "Your username or password was incorrect", true);
         handler.onError(true, message);
     }
 }

@@ -35,7 +35,7 @@ public class AssignmentGetInstructorMsg extends Message implements ClassMessage 
     @Override
     public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
         try (PreparedStatement selectAssignment = connection.prepareStatement("SELECT problem_id, name, due_date FROM assignment WHERE id = ? AND class_id = ?;");
-             PreparedStatement selectProblem = connection.prepareStatement("SELECT name, created_by, created_on, module_name FROM problem WHERE id = ?;");
+             PreparedStatement selectProblem = connection.prepareStatement("SELECT name, created_by, created_on, module_name, problem_hash FROM problem WHERE id = ?;");
              PreparedStatement selectUsers = connection.prepareStatement("SELECT u.id, u.username, u.full_name FROM users u, user_class uc WHERE uc.user_id = u.id AND uc.class_id = ? AND uc.role_id = ?;");
              PreparedStatement selectSubmissions = connection.prepareStatement("SELECT id, time, short_status, status, problem_id, user_id FROM submission WHERE class_id = ? AND assignment_id = ?;")) {
             selectUsers.setInt(1, cid);
@@ -61,7 +61,8 @@ public class AssignmentGetInstructorMsg extends Message implements ClassMessage 
                         String createdBy = probRs.getString(2);
                         ZonedDateTime createdOn = NetUtil.localToUTC(probRs.getTimestamp(3).toLocalDateTime());
                         String module = probRs.getString(4);
-                        MsgUtil.ProblemInfo problemInfo = new MsgUtil.ProblemInfo(pid, name, createdBy, createdOn, module);
+                        String problemHash = probRs.getString(5);
+                        MsgUtil.ProblemInfo problemInfo = new MsgUtil.ProblemInfo(pid, name, createdBy, createdOn, module, problemHash);
                         problems.add(problemInfo);
                     }
                 }

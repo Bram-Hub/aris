@@ -10,10 +10,14 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.util.encoders.Hex;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.Security;
 import java.sql.*;
 import java.util.ArrayList;
@@ -23,7 +27,7 @@ public class DatabaseManager {
     public static final String DEFAULT_ADMIN_PASS = "ArisAdmin1";
     private static final String[] defaultRoleName = new String[]{"Admin", "Instructor", "TA", "Student"};
     private static final int[] defaultRoleRank = new int[]{0, 1, 2, 3};
-    private static final int DB_SCHEMA_VERSION = 10;
+    private static final int DB_SCHEMA_VERSION = 11;
     private static Logger logger = LogManager.getLogger(DatabaseManager.class);
 
     static {
@@ -130,7 +134,8 @@ public class DatabaseManager {
                     "data bytea NOT NULL," +
                     "created_by text NOT NULL," +
                     "created_on timestamp NOT NULL," +
-                    "module_name text NOT NULL);");
+                    "module_name text NOT NULL," +
+                    "problem_hash text NOT NULL);");
             statement.execute("CREATE TABLE IF NOT EXISTS assignment" +
                     "(id integer NOT NULL," +
                     "class_id integer NOT NULL," +
@@ -378,6 +383,52 @@ public class DatabaseManager {
         connection.setAutoCommit(false);
         try (Statement statement = connection.createStatement()) {
             statement.execute("ALTER TABLE users ADD UNIQUE (username);");
+
+            statement.execute("UPDATE version SET version=10;");
+            connection.commit();
+        } catch (Throwable e) {
+            connection.rollback();
+            logger.error("An error occurred while updating the database schema and the changes were rolled back");
+            throw e;
+        } finally {
+            connection.setAutoCommit(autoCommit);
+        }
+        updateSchema10(connection);
+    }
+
+    private void updateSchema10(Connection connection) throws SQLException {
+        logger.info("Updating database schema to version 11");
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE problem ADD COLUMN problem_hash text;");
+            MessageDigest digest;
+            try {
+                digest = MessageDigest.getInstance("MD5");
+            } catch (NoSuchAlgorithmException e) {
+                throw new SQLException("Failed to add problem hash column", e);
+            }
+            try (ResultSet rs = statement.executeQuery("SELECT id, data FROM problem;");
+                 PreparedStatement updateHash = connection.prepareStatement("UPDATE problem SET problem_hash=? WHERE id=?;")) {
+                byte[] buffer = new byte[1024];
+                int read;
+                while (rs.next()) {
+                    int id = rs.getInt(1);
+                    try (InputStream in = rs.getBinaryStream(2)) {
+                        while ((read = in.read(buffer)) >= 0) {
+                            digest.update(buffer, 0, read);
+                        }
+                        updateHash.setString(1, Hex.toHexString(digest.digest()));
+                        updateHash.setInt(2, id);
+                        updateHash.addBatch();
+                    } catch (IOException e) {
+                        throw new SQLException("Failed to read problem for hashing", e);
+                    }
+                }
+                updateHash.executeBatch();
+            }
+            statement.execute("ALTER TABLE problem ALTER COLUMN problem_hash SET NOT NULL;");
+            statement.execute("UPDATE version SET version=11;");
             connection.commit();
         } catch (Throwable e) {
             connection.rollback();

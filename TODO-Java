@@ -26,3 +26,14 @@ Install Tasks:
     install postgres
     install java
     create database?
+
+Server Stuff
+	Replace submissions with attempts
+		Attempts are stored offline until submitted by the user
+		Once submitted it is no longer editable but you can copy a submission to a new attempt
+	Offline cache
+		When an assignment is opened cache the assignment and problems for offline use
+		Do not cache submissions created on other computers
+		Allow users to copy a submission for a new attempt while offline
+		Allow users to edit un-submitted attempts while offline
+		Allow users to create new attempts while offline

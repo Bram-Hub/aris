@@ -76,7 +76,7 @@ public class ProblemDialog<T extends ArisModule> extends Dialog<Triple<String, S
                 String moduleName = module.getSelectionModel().getSelectedItem();
                 ArisClientModule<T> client = ModuleService.getService().getClientModule(moduleName);
                 if (client == null) {
-                    AssignClient.getInstance().getMainWindow().displayErrorMsg("Error loading module", "Failed to load client module for \"" + moduleName + "\"");
+                    AssignClient.displayErrorMsg("Error loading module", "Failed to load client module for \"" + moduleName + "\"");
                     return;
                 }
                 replaceModuleChoice(moduleName);

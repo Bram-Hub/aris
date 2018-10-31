@@ -25,7 +25,7 @@ public class ErrorDialogException extends ArisCommunicationException {
 
     @Override
     public <T extends Message> void handleError(ResponseHandler<T> handler, T message) {
-        AssignClient.getInstance().getMainWindow().displayErrorMsg(title, getMessage(), wait);
+        AssignClient.displayErrorMsg(title, getMessage(), wait);
         handler.onError(false, message);
     }
 }

@@ -138,13 +138,13 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
     public <T extends ArisModule> void saveLocalModification(Problem problemInfo, edu.rpi.aris.assign.Problem<T> problem, ArisModule<T> module) {
         if (problemStorageDir.exists() && !problemStorageDir.isDirectory()) {
             if (!problemStorageDir.delete()) {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Failed to save", "Failed to create problem storage directory");
+                AssignClient.displayErrorMsg("Failed to save", "Failed to create problem storage directory");
                 return;
             }
         }
         if (!problemStorageDir.exists()) {
             if (!problemStorageDir.mkdirs()) {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Failed to save", "Failed to create problem storage directory");
+                AssignClient.displayErrorMsg("Failed to save", "Failed to create problem storage directory");
                 return;
             }
         }
@@ -152,7 +152,7 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         try (FileOutputStream fos = new FileOutputStream(saveFile)) {
             module.getProblemConverter().convertProblem(problem, fos, false);
         } catch (Exception e) {
-            AssignClient.getInstance().getMainWindow().displayErrorMsg("Failed to save", "An error occurred while trying to save the file locally");
+            AssignClient.displayErrorMsg("Failed to save", "An error occurred while trying to save the file locally");
         }
 
     }
@@ -252,7 +252,7 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
                         LibAssign.showExceptionError(e);
                     }
                 } else
-                    AssignClient.getInstance().getMainWindow().displayErrorMsg("Missing module", "Unable to find module \"" + msg.getModuleName() + "\"");
+                    AssignClient.displayErrorMsg("Missing module", "Unable to find module \"" + msg.getModuleName() + "\"");
             }
             Platform.runLater(() -> userInfo.finishLoading());
         }
@@ -358,7 +358,7 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
             File localFile = new File(problemStorageDir, String.valueOf(pid));
             ArisModule<T> module = ModuleService.getService().getModule(getModule());
             if (module == null) {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Missing Module", "Client is missing \"" + getModule() + "\" module");
+                AssignClient.displayErrorMsg("Missing Module", "Client is missing \"" + getModule() + "\" module");
                 return;
             }
             if (localFile.exists()) {

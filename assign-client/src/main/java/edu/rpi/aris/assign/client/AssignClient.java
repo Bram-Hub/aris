@@ -136,6 +136,14 @@ public class AssignClient extends Application implements ArisExceptionHandler {
         return mainWindow;
     }
 
+    public static void displayErrorMsg(String title, String msg) {
+        getInstance().getMainWindow().displayErrorMsg(title, msg);
+    }
+
+    public static void displayErrorMsg(String title, String msg, boolean wait) {
+        getInstance().getMainWindow().displayErrorMsg(title, msg, wait);
+    }
+
     @Override
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Aris Assign");

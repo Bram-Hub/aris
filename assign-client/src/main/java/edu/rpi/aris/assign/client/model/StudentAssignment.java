@@ -18,18 +18,26 @@ import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.TreeItem;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
+import javafx.stage.Modality;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.util.encoders.Hex;
+import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import java.io.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -39,7 +47,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
 
     private static final Logger log = LogManager.getLogger();
     private static final CurrentUser userInfo = CurrentUser.getInstance();
-    private static final File submissionStorageDir = new File(LocalConfig.CLIENT_STORAGE_DIR, "submissions");
+    private static final File problemStorageDir = new File(LocalConfig.CLIENT_CACHE_DIR, "problems");
     private final int cid;
     private final int aid;
     private final SimpleStringProperty name = new SimpleStringProperty();
@@ -84,9 +92,27 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         }
     }
 
-    public <T extends ArisModule> void fetchAndCreate(int pid, ArisModule<T> module) {
-        userInfo.startLoading();
-        Client.getInstance().processMessage(new ProblemFetchMsg<>(pid, module.getModuleName()), new ProblemFetchResponseHandler<>(module));
+    private <T extends ArisModule> void cacheProblem(AssignedProblem problem, boolean open) {
+        File f = new File(problemStorageDir, problem.problemHash);
+        ArisModule<T> module = ModuleService.getService().getModule(problem.getModuleName());
+        if (module == null) {
+            AssignClient.displayErrorMsg("Missing Module", "Client is missing \"" + problem.getModuleName() + "\" module");
+            return;
+        }
+        if (!f.exists()) {
+            userInfo.startLoading();
+            Client.getInstance().processMessage(new ProblemFetchMsg<>(problem.getPid(), problem.getModuleName()), new ProblemFetchResponseHandler<>(problem, open, module));
+        } else if (open) {
+            try (FileInputStream fis = new FileInputStream(f)) {
+                ProblemConverter<T> converter = module.getProblemConverter();
+                gui.createAttempt(new Attempt(problem), problem.getName(), converter.loadProblem(fis, false), module);
+            } catch (Exception e) {
+                if (f.delete())
+                    cacheProblem(problem, true);
+                else
+                    LibAssign.showExceptionError(e);
+            }
+        }
     }
 
     public synchronized void clear() {
@@ -141,6 +167,39 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         return cid;
     }
 
+    private void loadAttempts() {
+        if (OfflineDB.loaded()) {
+            HashMap<Integer, HashSet<Attempt>> attempts = new HashMap<>();
+            try (Connection connection = OfflineDB.getConnection();
+                 PreparedStatement statement = connection.prepareStatement("SELECT pid, created_time, module_name FROM attempts WHERE aid=? AND cid=?;")) {
+                statement.setInt(1, aid);
+                statement.setInt(2, cid);
+                try (ResultSet rs = statement.executeQuery()) {
+                    while (rs.next()) {
+                        int pid = rs.getInt(1);
+                        Attempt attempt = new Attempt(pid, ZonedDateTime.parse(rs.getString(2)), null, rs.getString(3));
+                        attempts.computeIfAbsent(pid, id -> new HashSet<>()).add(attempt);
+                    }
+                }
+            } catch (SQLException e) {
+                log.error("Failed to load attempts from offline DB", e);
+                LibAssign.showExceptionError(e);
+            }
+            Platform.runLater(() -> {
+                for (TreeItem<Submission> sub : problems) {
+                    AssignedProblem prob = (AssignedProblem) sub.getValue();
+                    HashSet<Attempt> set = attempts.get(prob.getPid());
+                    if (set != null) {
+                        set.stream().sorted().map(TreeItem<Submission>::new).forEach(i -> {
+                            ((Attempt) i.getValue()).setProblemName(prob.getName());
+                            prob.submissions.add(0, i);
+                        });
+                    }
+                }
+            });
+        }
+    }
+
     @Override
     public void response(AssignmentGetStudentMsg message) {
         Platform.runLater(() -> {
@@ -159,8 +218,11 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
                         if (c.wasAdded())
                             p.getChildren().addAll(c.getFrom(), c.getAddedSubList());
                         p.getChildren().sorted(Comparator.comparing(TreeItem::getValue));
-                        AtomicInteger i = new AtomicInteger(c.getList().size());
-                        p.getChildren().forEach(item -> item.getValue().name.set("Submission " + (i.getAndDecrement())));
+                        AtomicInteger i = new AtomicInteger((int) c.getList().stream().filter(item -> !(item.getValue() instanceof Attempt)).count());
+                        p.getChildren().forEach(item -> {
+                            if (!(item.getValue() instanceof Attempt))
+                                item.getValue().name.set("Submission " + (i.getAndDecrement()));
+                        });
                         updateProblemStatus(assignedProblem, p.getChildren());
                     }
                 });
@@ -176,8 +238,10 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
                 }
                 problems.add(p);
                 updateProblemStatus(assignedProblem, p.getChildren());
+                cacheProblem(assignedProblem, false);
             }
             problems.sort(Comparator.comparing(TreeItem::getValue));
+            new Thread(this::loadAttempts, "Load Attempts").start();
             loaded = true;
             loadErrorProperty.set(false);
             userInfo.finishLoading();
@@ -240,28 +304,66 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         return id;
     }
 
-    public <T extends ArisModule> void saveLocalSubmission(AssignedProblem problemInfo, Problem<T> problem, ArisModule<T> module) {
-        if (submissionStorageDir.exists() && !submissionStorageDir.isDirectory()) {
-            if (!submissionStorageDir.delete()) {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Failed to save", "Failed to create submission storage directory");
-                return;
+    public synchronized <T extends ArisModule> void saveAttempt(Attempt attempt, Problem<T> problem, ArisModule<T> module) {
+        boolean error = true;
+        boolean overwrite = false;
+        if (OfflineDB.loaded()) {
+            try (Connection connection = OfflineDB.getConnection()) {
+                connection.setAutoCommit(false);
+                try (PreparedStatement check = connection.prepareStatement("SELECT count(1) FROM attempts WHERE aid=? AND cid=? AND pid=? AND created_time=?;");
+                     PreparedStatement insert = connection.prepareStatement("INSERT INTO attempts (data, aid, cid, pid, created_time, module_name) VALUES (?, ?, ?, ?, ?, ?);");
+                     PreparedStatement update = connection.prepareStatement("UPDATE attempts SET data=? WHERE aid=? AND cid=? AND pid=? AND created_time=?;");
+                     ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+                    String dateStr = attempt.getSubmittedOnDate().toString();
+
+                    check.setInt(1, aid);
+                    check.setInt(2, cid);
+                    check.setInt(3, attempt.getPid());
+                    check.setString(4, dateStr);
+
+                    try (ResultSet rs = check.executeQuery()) {
+                        if (rs.next())
+                            overwrite = rs.getInt(1) > 0;
+                    }
+
+                    PreparedStatement stmt = overwrite ? update : insert;
+                    stmt.setInt(2, aid);
+                    stmt.setInt(3, cid);
+                    stmt.setInt(4, attempt.getPid());
+                    stmt.setString(5, dateStr);
+                    if (!overwrite)
+                        stmt.setString(6, attempt.getModuleName());
+
+                    module.getProblemConverter().convertProblem(problem, baos, true);
+
+                    stmt.setBytes(1, baos.toByteArray());
+                    stmt.executeUpdate();
+                    connection.commit();
+                    error = false;
+                } catch (Exception e) {
+                    connection.rollback();
+                    throw e;
+                }
+            } catch (Exception e) {
+                log.error("An exception occurred", e);
+                e.printStackTrace();
             }
         }
-        if (!submissionStorageDir.exists()) {
-            if (!submissionStorageDir.mkdirs()) {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Failed to save", "Failed to create submission storage directory");
-                return;
+        if (error) {
+            AssignClient.displayErrorMsg("Save Error", "An error occurred while trying to save the problem locally. The problem will be uploaded and you can make a copy of the problem to continue working");
+            Platform.runLater(() -> uploadAttempt(attempt, problem));
+        } else if (!overwrite) {
+            for (TreeItem<Submission> item : problems) {
+                AssignedProblem prob = (AssignedProblem) item.getValue();
+                if (prob.getPid() == attempt.getPid()) {
+                    Platform.runLater(() -> prob.submissions.add(0, new TreeItem<>(attempt)));
+                    return;
+                }
             }
-        }
-        File saveFile = new File(submissionStorageDir, getProblemFileName(problemInfo.getPid()));
-        try (FileOutputStream fos = new FileOutputStream(saveFile)) {
-            module.getProblemConverter().convertProblem(problem, fos, true);
-        } catch (Exception e) {
-            AssignClient.getInstance().getMainWindow().displayErrorMsg("Failed to save", "An error occurred while trying to save the file locally");
         }
     }
 
-    public <T extends ArisModule> void uploadSubmission(AssignedProblem problemInfo, Problem<T> problem) {
+    public <T extends ArisModule> void uploadAttempt(Attempt problemInfo, Problem<T> problem) {
         userInfo.startLoading();
         Client.getInstance().processMessage(new SubmissionCreateMsg<>(cid, aid, problemInfo.getPid(), problemInfo.getModuleName(), problem), new SubmissionCreateResponseHandler<>(problemInfo));
     }
@@ -273,25 +375,33 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
 
     private class ProblemFetchResponseHandler<T extends ArisModule> implements ResponseHandler<ProblemFetchMsg<T>> {
 
+        private final AssignedProblem problem;
+        private final boolean open;
         private final ArisModule<T> module;
 
-        ProblemFetchResponseHandler(ArisModule<T> module) {
+        ProblemFetchResponseHandler(AssignedProblem problem, boolean open, ArisModule<T> module) {
+            this.problem = problem;
+            this.open = open;
             this.module = module;
         }
 
         @Override
         public void response(ProblemFetchMsg<T> message) {
             Platform.runLater(() -> {
-                AssignedProblem problemInfo = null;
-                for (TreeItem<Submission> item : problems)
-                    if (item.getValue() instanceof AssignedProblem && item.getValue().getPid() == message.getPid()) {
-                        problemInfo = (AssignedProblem) item.getValue();
-                        break;
+                Problem<T> problem = message.getProblem();
+                File f = new File(problemStorageDir, this.problem.problemHash);
+                if (problemStorageDir.exists() || problemStorageDir.mkdirs()) {
+                    try (FileOutputStream fos = new FileOutputStream(f)) {
+                        module.getProblemConverter().convertProblem(problem, fos, false);
+                    } catch (Exception e) {
+                        LibAssign.showExceptionError(e);
                     }
-                if (problemInfo != null) {
-                    Problem<T> problem = message.getProblem();
+                } else {
+                    AssignClient.displayErrorMsg("Cache Failed", "Failed to cache assignment. Unable to create cache directory", true);
+                }
+                if (open) {
                     try {
-                        gui.createSubmission(problemInfo, problem, module);
+                        gui.createAttempt(new Attempt(this.problem), this.problem.getName(), problem, module);
                     } catch (Exception e) {
                         LibAssign.showExceptionError(e);
                     }
@@ -303,7 +413,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         @Override
         public void onError(boolean suggestRetry, ProblemFetchMsg msg) {
             if (suggestRetry)
-                fetchAndCreate(msg.getPid(), module);
+                cacheProblem(problem, open);
             Platform.runLater(userInfo::finishLoading);
         }
 
@@ -339,7 +449,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
                     if (readonly || problemInfo == null)
                         gui.viewSubmission(submission, problemInfo == null ? null : problemInfo.getName(), problem, module);
                     else
-                        gui.createSubmission(problemInfo, problem, module);
+                        gui.createAttempt(new Attempt(problemInfo), problemInfo.getName(), problem, module);
                 } catch (Exception e) {
                     LibAssign.showExceptionError(e);
                 }
@@ -362,9 +472,9 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
 
     private class SubmissionCreateResponseHandler<T extends ArisModule> implements ResponseHandler<SubmissionCreateMsg<T>> {
 
-        private final AssignedProblem info;
+        private final Attempt info;
 
-        SubmissionCreateResponseHandler(AssignedProblem info) {
+        SubmissionCreateResponseHandler(Attempt info) {
             this.info = info;
         }
 
@@ -378,11 +488,8 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
                         subs = ((AssignedProblem) s.getValue()).submissions;
                 }
                 if (subs != null)
-                    subs.add(0, new TreeItem<>(sub));
-                File pFile = new File(submissionStorageDir, getProblemFileName(info.getPid()));
-                if (pFile.canExecute())
-                    //noinspection ResultOfMethodCallIgnored
-                    pFile.delete();
+                    subs.add((int) subs.stream().filter(i -> i.getValue() instanceof Attempt).count(), new TreeItem<>(sub));
+                info.deleteAttempt();
                 userInfo.finishLoading();
             });
         }
@@ -390,15 +497,11 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         @Override
         public void onError(boolean suggestRetry, SubmissionCreateMsg<T> msg) {
             if (suggestRetry)
-                uploadSubmission(info, msg.getProblem());
+                uploadAttempt(info, msg.getProblem());
             else {
                 ArisModule<T> module = ModuleService.getService().getModule(msg.getModuleName());
                 if (module != null) {
-                    try {
-                        gui.createSubmission(info, msg.getProblem(), module);
-                    } catch (Exception e) {
-                        LibAssign.showExceptionError(e);
-                    }
+                    saveAttempt(new Attempt(info), msg.getProblem(), module);
                 }
             }
             Platform.runLater(userInfo::finishLoading);
@@ -448,7 +551,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         private <T extends ArisModule> void viewSubmission(boolean readonly) {
             ArisModule<T> module = ModuleService.getService().getModule(getModuleName());
             if (module == null) {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Missing Module", "Client is missing \"" + getModuleName() + "\" module");
+                AssignClient.displayErrorMsg("Missing Module", "Client is missing \"" + getModuleName() + "\" module");
                 return;
             }
             fetchSubmission(this, module, readonly);
@@ -495,9 +598,9 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         }
 
         @Override
-        public int compareTo(Submission o) {
-            if (o == null)
-                return 0;
+        public int compareTo(@NotNull Submission o) {
+            if (o instanceof Attempt)
+                return -1;
             return Integer.compare(sid, o.sid);
         }
 
@@ -508,16 +611,26 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         public String getModuleName() {
             return moduleName;
         }
-    }
 
+        public ZonedDateTime getSubmittedOnDate() {
+            return submittedOn.get();
+        }
+
+        public SimpleObjectProperty<ZonedDateTime> submittedOnDateProperty() {
+            return submittedOn;
+        }
+
+    }
 
     public class AssignedProblem extends Submission implements Comparable<Submission> {
 
         private final ObservableList<TreeItem<Submission>> submissions = FXCollections.observableArrayList();
+        private final String problemHash;
 
-        public AssignedProblem(int pid, String name, String status, String moduleName) {
+        public AssignedProblem(int pid, String name, String status, String moduleName, String problemHash) {
             super(pid, -1, name, null, GradingStatus.NONE, status, moduleName);
-            Button btn = new Button("Create Submission");
+            this.problemHash = problemHash;
+            Button btn = new Button("Start Attempt");
             controlNodeProperty().set(btn);
             btn.setOnAction(e -> createPushed());
             statusStrProperty().bind(Bindings.createStringBinding(() -> {
@@ -536,32 +649,174 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         }
 
         AssignedProblem(MsgUtil.ProblemInfo info) {
-            this(info.pid, info.name, null, info.moduleName);
+            this(info.pid, info.name, null, info.moduleName, info.problemHash);
         }
 
         private <T extends ArisModule> void createPushed() {
             ArisModule<T> module = ModuleService.getService().getModule(getModuleName());
             if (module == null) {
-                AssignClient.getInstance().getMainWindow().displayErrorMsg("Missing Module", "Client is missing \"" + getModuleName() + "\" module");
+                AssignClient.displayErrorMsg("Missing Module", "Client is missing \"" + getModuleName() + "\" module");
                 return;
             }
-            File localFile = new File(submissionStorageDir, getProblemFileName(getPid()));
-            if (localFile.exists()) {
-                try (FileInputStream fis = new FileInputStream(localFile)) {
-                    ProblemConverter<T> converter = module.getProblemConverter();
-                    gui.createSubmission(this, converter.loadProblem(fis, true), module);
-                } catch (Exception e) {
-                    LibAssign.showExceptionError(e);
-                }
-            } else
-                fetchAndCreate(getPid(), module);
+            cacheProblem(this, true);
         }
 
         @Override
-        public int compareTo(Submission o) {
+        public int compareTo(@NotNull Submission o) {
             if (o instanceof AssignedProblem)
                 return getName().compareTo(o.getName());
             return super.compareTo(o);
+        }
+    }
+
+    public class Attempt extends AssignedProblem implements Comparable<Submission> {
+
+        private String problemName;
+
+        public Attempt(int pid, ZonedDateTime createdOn, String problemName, String moduleName) {
+            super(pid, null, null, moduleName, null);
+            this.problemName = problemName;
+            submittedOnDateProperty().set(createdOn);
+            nameProperty().set("Attempt " + getSubmittedOn());
+            statusStrProperty().unbind();
+            statusStrProperty().set("Not Submitted");
+            submittedOnProperty().unbind();
+            submittedOnProperty().set("Not Submitted");
+            Button edit = new Button("Edit");
+            edit.setOnAction(e -> editAttempt());
+            Button upload = new Button("Upload");
+            upload.setOnAction(e -> uploadAttempt());
+            Button delete = new Button("Delete");
+            delete.setOnAction(e -> askDelete());
+            HBox box = new HBox(5);
+            box.getChildren().addAll(edit, upload, delete);
+            box.setAlignment(Pos.CENTER);
+            controlNodeProperty().set(box);
+        }
+
+        public Attempt(AssignedProblem problem) {
+            this(problem.getPid(), ZonedDateTime.now().withZoneSameInstant(ZoneOffset.UTC), problem.getName(), problem.getModuleName());
+        }
+
+        private <T extends ArisModule> void uploadAttempt() {
+            new Thread(() -> {
+                ArisModule<T> module = ModuleService.getService().getModule(getModuleName());
+                if (module == null) {
+                    AssignClient.displayErrorMsg("Missing Module", "Client is missing \"" + getModuleName() + "\" module");
+                    return;
+                }
+                Problem<T> problem = null;
+                try (Connection connection = OfflineDB.getConnection();
+                     PreparedStatement stmt = connection.prepareStatement("SELECT data FROM attempts WHERE aid=? AND cid=? AND pid=? and created_time=?;")) {
+                    stmt.setInt(1, aid);
+                    stmt.setInt(2, cid);
+                    stmt.setInt(3, getPid());
+                    stmt.setString(4, getSubmittedOnDate().toString());
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        if (!rs.next())
+                            throw new SQLException("Attempt does not exist in database");
+                        ByteArrayInputStream bais = new ByteArrayInputStream(rs.getBytes(1));
+                        problem = module.getProblemConverter().loadProblem(bais, true);
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to load attempt from database", e);
+                    AssignClient.displayErrorMsg("Upload Failed", "An error occurred while trying to load the attempt");
+                }
+                if (problem != null) {
+                    Problem<T> finalProblem = problem;
+                    Platform.runLater(() -> StudentAssignment.this.uploadAttempt(this, finalProblem));
+                }
+            }, "Attempt Upload").start();
+        }
+
+        private void askDelete() {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setHeaderText("Delete Attempt: " + getName());
+            alert.setContentText("Are you sure you want to delete this attempt? This cannot be undone.");
+            alert.getDialogPane().getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
+            ((Button) alert.getDialogPane().lookupButton(ButtonType.NO)).setDefaultButton(true);
+            ((Button) alert.getDialogPane().lookupButton(ButtonType.YES)).setDefaultButton(false);
+            alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+            alert.initModality(Modality.WINDOW_MODAL);
+            alert.initOwner(AssignGui.getInstance().getStage());
+            Optional<ButtonType> result = alert.showAndWait();
+            result.ifPresent(r -> {
+                if (r == ButtonType.YES)
+                    deleteAttempt();
+            });
+        }
+
+        private void deleteAttempt() {
+            new Thread(() -> {
+                try (Connection connection = OfflineDB.getConnection();
+                     PreparedStatement stmt = connection.prepareStatement("DELETE FROM attempts WHERE aid=? AND cid=? AND pid=? and created_time=?;")) {
+                    stmt.setInt(1, aid);
+                    stmt.setInt(2, cid);
+                    stmt.setInt(3, getPid());
+                    stmt.setString(4, getSubmittedOnDate().toString());
+                    stmt.executeUpdate();
+                    Platform.runLater(() -> {
+                        for (TreeItem<Submission> sub : problems) {
+                            AssignedProblem prob = (AssignedProblem) sub.getValue();
+                            if (prob.getPid() == getPid()) {
+                                prob.submissions.removeIf(i -> i.getValue() == Attempt.this);
+                                return;
+                            }
+                        }
+                    });
+                } catch (Exception e) {
+                    log.error("Failed to delete attempt from database", e);
+                    AssignClient.displayErrorMsg("Delete Failed", "An error occurred while trying to delete the attempt");
+                }
+            }, "Delete Attempt").start();
+        }
+
+        private <T extends ArisModule> void editAttempt() {
+            new Thread(() -> {
+                ArisModule<T> module = ModuleService.getService().getModule(getModuleName());
+                if (module == null) {
+                    AssignClient.displayErrorMsg("Missing Module", "Client is missing \"" + getModuleName() + "\" module");
+                    return;
+                }
+                Problem<T> problem = null;
+                try (Connection connection = OfflineDB.getConnection();
+                     PreparedStatement stmt = connection.prepareStatement("SELECT data FROM attempts WHERE aid=? AND cid=? AND pid=? and created_time=?;")) {
+                    stmt.setInt(1, aid);
+                    stmt.setInt(2, cid);
+                    stmt.setInt(3, getPid());
+                    stmt.setString(4, getSubmittedOnDate().toString());
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        if (!rs.next())
+                            throw new SQLException("Attempt does not exist in database");
+                        ByteArrayInputStream bais = new ByteArrayInputStream(rs.getBytes(1));
+                        problem = module.getProblemConverter().loadProblem(bais, true);
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to load attempt from database", e);
+                    AssignClient.displayErrorMsg("Open Failed", "An error occurred while trying to open the attempt");
+                }
+                if (problem != null) {
+                    Problem<T> finalProblem = problem;
+                    Platform.runLater(() -> {
+                        try {
+                            gui.createAttempt(this, problemName, finalProblem, module);
+                        } catch (Exception e) {
+                            LibAssign.showExceptionError(e);
+                        }
+                    });
+                }
+            }, "Attempt Edit Load").start();
+        }
+
+        public int compareTo(@NotNull Submission o) {
+            if (o instanceof Attempt)
+                return getSubmittedOnDate().compareTo(o.getSubmittedOnDate());
+            else
+                return 1;
+        }
+
+        void setProblemName(String name) {
+            problemName = name;
         }
     }
 

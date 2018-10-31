@@ -132,10 +132,10 @@ public class StudentAssignmentGui implements TabGui {
         buttonColumn.setStyle("-fx-alignment: CENTER;");
     }
 
-    public <T extends ArisModule> void createSubmission(StudentAssignment.AssignedProblem problemInfo, Problem<T> problem, ArisModule<T> module) throws Exception {
+    public <T extends ArisModule> void createAttempt(StudentAssignment.Attempt problemInfo, String problemName, Problem<T> problem, ArisModule<T> module) throws Exception {
         ArisClientModule<T> clientModule = module.getClientModule();
         ModuleUI<T> moduleUI = clientModule.createModuleGui(SUBMIT_OPTIONS, problem);
-        moduleUI.setDescription("Create submission for problem: \"" + problemInfo.getName() + "\"");
+        moduleUI.setDescription("Modify attempt for problem: \"" + problemName + "\"");
         moduleUI.setModuleUIListener(new ModuleUIAdapter() {
 
             @Override
@@ -177,12 +177,12 @@ public class StudentAssignmentGui implements TabGui {
 
             @Override
             public void saveProblemLocally() {
-                assignment.saveLocalSubmission(problemInfo, problem, module);
+                new Thread(() -> assignment.saveAttempt(problemInfo, problem, module), "Local Save").start();
             }
 
             @Override
             public void uploadProblem() {
-                assignment.uploadSubmission(problemInfo, problem);
+                assignment.uploadAttempt(problemInfo, problem);
                 try {
                     moduleUI.hide();
                 } catch (Exception e) {
