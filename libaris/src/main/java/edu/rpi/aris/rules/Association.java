@@ -24,7 +24,7 @@ public class Association extends Rule{
 
     @Override
     public Type[] getRuleType() {
-        return new Type[] {Type.INFERENCE};
+        return new Type[] {Type.EQUIVALENCE};
     }
 
     @Override

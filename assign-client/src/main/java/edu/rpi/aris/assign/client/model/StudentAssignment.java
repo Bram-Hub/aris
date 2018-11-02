@@ -536,7 +536,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
             this.statusStr = new SimpleStringProperty(statusStr);
             Button view = new Button("View");
             view.setOnAction(e -> viewSubmission(true));
-            Button resubmit = new Button("Resubmit");
+            Button resubmit = new Button("Reattempt");
             resubmit.setOnAction(e -> viewSubmission(false));
             HBox box = new HBox(5);
             box.getChildren().addAll(view, resubmit);
