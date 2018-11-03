@@ -13,7 +13,6 @@ public class LocalConfig {
 
     public static final File CLIENT_STORAGE_DIR = new File(System.getProperty("user.home"), ".aris-java");
     public static final File CLIENT_MODULES_DIR = new File(CLIENT_STORAGE_DIR, "modules");
-    public static final File CLIENT_CACHE_DIR = new File(CLIENT_STORAGE_DIR, "cache");
     private static final String SERVER_ADDRESS_KEY = "server_address";
     private static final String PORT_KEY = "port";
     private static final String USERNAME_KEY = "username";

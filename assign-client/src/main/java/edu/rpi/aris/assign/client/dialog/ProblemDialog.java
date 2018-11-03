@@ -117,7 +117,8 @@ public class ProblemDialog<T extends ArisModule> extends Dialog<Triple<String, S
     }
 
     @Override
-    public void saveProblemLocally() {
+    public boolean saveProblemLocally() {
+        return false;
     }
 
     @Override

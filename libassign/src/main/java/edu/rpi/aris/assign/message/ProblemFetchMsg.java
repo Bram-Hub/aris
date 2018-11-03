@@ -13,6 +13,7 @@ import java.sql.ResultSet;
 public class ProblemFetchMsg<T extends ArisModule> extends ProblemMessage<T> {
 
     private final int pid;
+    private String problemHash;
 
     public ProblemFetchMsg(int pid, String moduleName) {
         super(moduleName, null, Perm.PROBLEM_FETCH);
@@ -27,7 +28,7 @@ public class ProblemFetchMsg<T extends ArisModule> extends ProblemMessage<T> {
     @Nullable
     @Override
     public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
-        try (PreparedStatement statement = connection.prepareStatement("SELECT module_name, data FROM problem WHERE id = ?;")) {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT module_name, data, problem_hash FROM problem WHERE id = ?;")) {
             statement.setInt(1, pid);
             try (ResultSet rs = statement.executeQuery()) {
                 if (!rs.next())
@@ -40,6 +41,7 @@ public class ProblemFetchMsg<T extends ArisModule> extends ProblemMessage<T> {
                 try (InputStream in = rs.getBinaryStream(2)) {
                     setProblem(converter.loadProblem(in, false));
                 }
+                problemHash = rs.getString(3);
             }
         }
         return null;
@@ -53,5 +55,9 @@ public class ProblemFetchMsg<T extends ArisModule> extends ProblemMessage<T> {
 
     public int getPid() {
         return pid;
+    }
+
+    public String getProblemHash() {
+        return problemHash;
     }
 }

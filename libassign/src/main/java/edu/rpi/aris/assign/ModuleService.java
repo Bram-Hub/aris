@@ -64,7 +64,7 @@ public class ModuleService {
             URLClassLoader classLoader = new URLClassLoader(urls, ClassLoader.getSystemClassLoader());
             loader = ServiceLoader.load(ArisModule.class, classLoader);
         } catch (MalformedURLException e) {
-            throw new ArisModuleException("Failed to initialize ClassLoader", e);
+            throw new ArisException("Failed to initialize ClassLoader", e);
         }
         services.clear();
         moduleNames.clear();
@@ -87,7 +87,7 @@ public class ModuleService {
             if (services.put(s.getModuleName(), s) != null) {
                 logger.fatal("Multiple modules have been found using the name \"" + s.getModuleName() + "\"");
                 logger.fatal("Either remove the extra modules or rename them");
-                throw new ArisModuleException("Multiple modules detected with the same name + \"" + s.getModuleName() + "\"");
+                throw new ArisException("Multiple modules detected with the same name + \"" + s.getModuleName() + "\"");
             }
         }
         moduleNames.addAll(services.keySet());

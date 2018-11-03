@@ -10,13 +10,18 @@ import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.stage.Stage;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 public class Aris extends Application implements ArisClientModule<LibAris>, SaveInfoListener {
 
+    private static final Logger log = LogManager.getLogger();
     private static Aris instance = null;
 
 //    private MainWindow mainWindow = null;
@@ -40,16 +45,44 @@ public class Aris extends Application implements ArisClientModule<LibAris>, Save
         return instance;
     }
 
+    private <T> T onFXThread(Supplier<T> runnable) throws Exception {
+        if (Platform.isFxApplicationThread()) {
+            log.warn("onFXThread called while already on the FX application thread", new Exception("Stack Trace"));
+            return runnable.get();
+        }
+        AtomicReference<T> result = new AtomicReference<>();
+        AtomicReference<Exception> exception = new AtomicReference<>();
+        Platform.runLater(() -> {
+            try {
+                result.set(runnable.get());
+            } catch (Exception e) {
+                exception.set(e);
+            } finally {
+                synchronized (runnable) {
+                    runnable.notifyAll();
+                }
+            }
+        });
+        synchronized (runnable) {
+            while (result.get() == null && exception.get() == null) {
+                try {
+                    runnable.wait();
+                } catch (InterruptedException e) {
+                    log.error(e);
+                }
+            }
+        }
+        if (exception.get() != null)
+            throw exception.get();
+        return result.get();
+    }
+
     @Override
     public void start(Stage stage) throws IOException {
         instance = this;
         /*mainWindow = */
         showProofWindow(stage, null);
     }
-
-//    public MainWindow getMainWindow() {
-//        return mainWindow;
-//    }
 
     @Override
     public MainWindow createModuleGui(ModuleUIOptions options) throws Exception {
@@ -58,20 +91,22 @@ public class Aris extends Application implements ArisClientModule<LibAris>, Save
 
     @Override
     public MainWindow createModuleGui(ModuleUIOptions options, Problem<LibAris> problem) throws Exception {
-        try {
-            EditMode editMode = options.getEditMode();
-            if (editMode == EditMode.CREATE_EDIT_PROBLEM)
-                editMode = EditMode.UNRESTRICTED_EDIT;
-            MainWindow window;
-            if (problem instanceof ArisProofProblem)
-                window = new MainWindow(new Stage(), ((ArisProofProblem) problem).getProof(), editMode);
-            else
-                window = new MainWindow(new Stage(), editMode);
-            window.setUIOptions(options);
-            return window;
-        } catch (IOException e) {
-            throw new ArisModuleException("Failed to create " + LibAris.NAME + " window", e);
-        }
+        return onFXThread(() -> {
+            try {
+                EditMode editMode = options.getEditMode();
+                if (editMode == EditMode.CREATE_EDIT_PROBLEM)
+                    editMode = EditMode.UNRESTRICTED_EDIT;
+                MainWindow window;
+                if (problem instanceof ArisProofProblem)
+                    window = new MainWindow(new Stage(), ((ArisProofProblem) problem).getProof(), editMode);
+                else
+                    window = new MainWindow(new Stage(), editMode);
+                window.setUIOptions(options);
+                return window;
+            } catch (IOException e) {
+                throw new ArisRuntimeException("Failed to create " + LibAris.NAME + " window", e);
+            }
+        });
     }
 
     @Override

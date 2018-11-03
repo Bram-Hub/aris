@@ -182,7 +182,7 @@ public class ProblemsGui implements TabGui {
         ArisClientModule<T> clientModule = module.getClientModule();
         ModuleUI<T> moduleUI = clientModule.createModuleGui(MODIFY_OPTIONS, problem);
         moduleUI.setDescription("Modify Problem \"" + problemInfo.getName() + "\"");
-        moduleUI.setModuleUIListener(new ModuleUIListener() {
+        moduleUI.setModuleUIListener(new ModuleUIAdapter() {
 
             @Override
             public boolean guiCloseRequest(boolean hasUnsavedChanges) {
@@ -222,12 +222,8 @@ public class ProblemsGui implements TabGui {
             }
 
             @Override
-            public void guiClosed() {
-            }
-
-            @Override
-            public void saveProblemLocally() {
-                problems.saveLocalModification(problemInfo, problem, module);
+            public boolean saveProblemLocally() {
+                return problems.saveLocalModification(problemInfo, problem, module);
             }
 
             @Override

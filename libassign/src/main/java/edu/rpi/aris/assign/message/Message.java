@@ -61,7 +61,7 @@ public abstract class Message {
         } catch (IOException e) {
             logger.error("Failed to read json from peer", e);
             return new ErrorMsg(ErrorType.IO_ERROR, "Failed to read json from peer");
-        } catch (ArisModuleException e) {
+        } catch (ArisException e) {
             logger.error("An error occurred while interacting with an Aris Module");
             return new ErrorMsg(ErrorType.MODULE_ERROR, e.getMessage());
         } catch (Exception e) {

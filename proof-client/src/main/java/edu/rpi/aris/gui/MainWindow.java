@@ -422,9 +422,11 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     private boolean saveProof(boolean saveAs) {
         if (!saveAs && moduleOptions != null) {
             if (moduleOptions.arisHandleDefaultSave() && moduleUIListener != null) {
-                moduleUIListener.saveProblemLocally();
-                proof.saved();
-                return true;
+                if (moduleUIListener.saveProblemLocally()) {
+                    proof.saved();
+                    return true;
+                } else
+                    return false;
             } else if (!moduleOptions.allowDefaultSave()) {
                 saveAs = true;
             }
@@ -515,25 +517,31 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
         selectedLine.set(lineNum);
     }
 
+    @Override
     public void show() {
-        primaryStage.show();
-        selectedLine.set(0);
-        proofLines.get(0).requestFocus();
+        Platform.runLater(() -> {
+            primaryStage.show();
+            selectedLine.set(0);
+            proofLines.get(0).requestFocus();
+        });
     }
 
+    @Override
     public void hide() {
-        primaryStage.hide();
+        Platform.runLater(primaryStage::hide);
     }
 
     @Override
     public void setModal(Modality modality, Window owner) {
-        primaryStage.initModality(modality);
-        primaryStage.initOwner(owner);
+        Platform.runLater(() -> {
+            primaryStage.initModality(modality);
+            primaryStage.initOwner(owner);
+        });
     }
 
     @Override
     public void setDescription(String description) {
-        descriptionText.setText(description);
+        Platform.runLater(() -> descriptionText.setText(description));
     }
 
     @Override

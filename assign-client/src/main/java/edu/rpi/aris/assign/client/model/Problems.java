@@ -135,26 +135,27 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         Client.getInstance().processMessage(new ProblemDeleteMsg(problem.getPid()), deleteHandler);
     }
 
-    public <T extends ArisModule> void saveLocalModification(Problem problemInfo, edu.rpi.aris.assign.Problem<T> problem, ArisModule<T> module) {
+    public <T extends ArisModule> boolean saveLocalModification(Problem problemInfo, edu.rpi.aris.assign.Problem<T> problem, ArisModule<T> module) {
         if (problemStorageDir.exists() && !problemStorageDir.isDirectory()) {
             if (!problemStorageDir.delete()) {
                 AssignClient.displayErrorMsg("Failed to save", "Failed to create problem storage directory");
-                return;
+                return false;
             }
         }
         if (!problemStorageDir.exists()) {
             if (!problemStorageDir.mkdirs()) {
                 AssignClient.displayErrorMsg("Failed to save", "Failed to create problem storage directory");
-                return;
+                return false;
             }
         }
         File saveFile = new File(problemStorageDir, String.valueOf(problemInfo.getPid()));
         try (FileOutputStream fos = new FileOutputStream(saveFile)) {
             module.getProblemConverter().convertProblem(problem, fos, false);
+            return true;
         } catch (Exception e) {
             AssignClient.displayErrorMsg("Failed to save", "An error occurred while trying to save the file locally");
         }
-
+        return false;
     }
 
     public <T extends ArisModule> void uploadModifiedProblem(Problem problemInfo, edu.rpi.aris.assign.Problem<T> problem) {

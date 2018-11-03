@@ -6,7 +6,7 @@ public interface ModuleUIListener {
 
     void guiClosed();
 
-    void saveProblemLocally();
+    boolean saveProblemLocally();
 
     void uploadProblem();
 

@@ -176,8 +176,8 @@ public class StudentAssignmentGui implements TabGui {
             }
 
             @Override
-            public void saveProblemLocally() {
-                new Thread(() -> assignment.saveAttempt(problemInfo, problem, module), "Local Save").start();
+            public boolean saveProblemLocally() {
+                return assignment.saveAttempt(problemInfo, problem, module, false);
             }
 
             @Override

@@ -32,7 +32,7 @@ public abstract class ProblemMessage<T extends ArisModule> extends DataMessage {
             }
             ArisModule<T> module = ModuleService.getService().getModule(moduleName);
             if (module == null)
-                throw new ArisModuleException("No module for name: " + moduleName);
+                throw new ArisException("No module for name: " + moduleName);
             ProblemConverter<T> converter = module.getProblemConverter();
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             converter.convertProblem(problem, baos, false);
@@ -52,7 +52,7 @@ public abstract class ProblemMessage<T extends ArisModule> extends DataMessage {
             return;
         ArisModule<T> module = ModuleService.getService().getModule(moduleName);
         if (module == null)
-            throw new ArisModuleException("No module for name: " + moduleName);
+            throw new ArisException("No module for name: " + moduleName);
         ProblemConverter<T> converter = module.getProblemConverter();
         byte[] data = new byte[size];
         if (size != in.read(data))

@@ -12,7 +12,8 @@ public class ModuleUIAdapter implements ModuleUIListener {
     }
 
     @Override
-    public void saveProblemLocally() {
+    public boolean saveProblemLocally() {
+        return false;
     }
 
     @Override
