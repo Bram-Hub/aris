@@ -1,15 +1,18 @@
 package edu.rpi.aris.proof;
 
+import edu.rpi.aris.rules.RuleList;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.commons.lang3.tuple.Triple;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Objects;
 
 public class Proof {
 
     private final HashSet<String> authors = new HashSet<>();
+    private final HashSet<RuleList> allowedRules = new HashSet<>();
     private ArrayList<Line> lines = new ArrayList<>();
     private ArrayList<Goal> goals = new ArrayList<>();
     private int numPremises = 0;
@@ -24,8 +27,14 @@ public class Proof {
         this(author);
         modified = !authors.contains(author);
         this.authors.addAll(authors);
-        if(authors.remove(null))
+        if (authors.remove(null))
             authors.add("UNKNOWN");
+    }
+
+    public Proof(Collection<String> authors, String author, Collection<RuleList> allowedRules) {
+        this(authors, author);
+        this.allowedRules.addAll(allowedRules);
+        this.allowedRules.removeIf(Objects::isNull);
     }
 
     public Line getLine(int index) {
@@ -277,6 +286,10 @@ public class Proof {
 
     public boolean isModified() {
         return modified;
+    }
+
+    public HashSet<RuleList> getAllowedRules() {
+        return allowedRules;
     }
 
     public enum Status {

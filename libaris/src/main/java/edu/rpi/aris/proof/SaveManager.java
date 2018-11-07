@@ -128,6 +128,14 @@ public class SaveManager implements ProblemConverter<LibAris> {
                 metadata.appendChild(a);
             }
 
+        for (RuleList rule : proof.getAllowedRules()) {
+            if (rule == null)
+                continue;
+            Element r = doc.createElement("allowed-rule");
+            r.appendChild(doc.createTextNode(rule.name()));
+            metadata.appendChild(r);
+        }
+
         root.insertBefore(metadata, baseProof);
 
         DOMSource src = new DOMSource(doc);
@@ -263,7 +271,14 @@ public class SaveManager implements ProblemConverter<LibAris> {
             }
             if (!verifyIntegrity)
                 authors.clear();
-            proof = new Proof(authors, author);
+            Set<RuleList> allowedRules = getElementsByTag(metadata, "allowed-rule").stream().map(element -> {
+                try {
+                    return RuleList.valueOf(element.getTextContent());
+                } catch (IllegalArgumentException e) {
+                    return null;
+                }
+            }).collect(Collectors.toSet());
+            proof = new Proof(authors, author, allowedRules);
             ArrayList<Element> proofElements = getElementsByTag(root, "proof");
             if (proofElements.size() == 0)
                 throw new IOException("Missing main proof element");

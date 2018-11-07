@@ -1,6 +1,7 @@
 package edu.rpi.aris.proof;
 
 import org.apache.commons.lang3.Range;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Timer;
 import java.util.TimerTask;
@@ -44,18 +45,18 @@ public class Goal {
         return goalString;
     }
 
-    public void setGoalString(String expression) {
+    public void setGoalString(@NotNull String expression) {
         setGoalString(expression, false);
     }
 
-    public void setGoalString(String expression, boolean buildImmediately) {
+    public void setGoalString(@NotNull String expression, boolean buildImmediately) {
         this.goalString = expression;
         if (listener != null)
             listener.expressionString(expression);
         this.expression = null;
         startTimer();
         proof.modify();
-        if(buildImmediately)
+        if (buildImmediately)
             buildExpression();
     }
 
@@ -151,5 +152,16 @@ public class Goal {
 
     public Expression getExpression() {
         return expression;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof Goal))
+            return false;
+        Goal g = (Goal) obj;
+        if ((expression == null && !buildExpression()) || (g.expression == null && !g.buildExpression()))
+            return false;
+        else
+            return expression.equals(g.expression);
     }
 }

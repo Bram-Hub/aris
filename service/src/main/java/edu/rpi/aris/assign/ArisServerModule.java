@@ -4,5 +4,6 @@ import edu.rpi.aris.assign.spi.ArisModule;
 
 public interface ArisServerModule<T extends ArisModule> {
 
+    AutoGrader<T> getAutoGrader();
 
 }

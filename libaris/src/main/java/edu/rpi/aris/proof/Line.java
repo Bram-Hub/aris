@@ -309,4 +309,19 @@ public class Line {
         if (statusListener != null)
             statusListener.errorRange(this, range);
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof Line))
+            return false;
+        Line l = (Line) obj;
+        if (expression == null)
+            buildExpression();
+        if (l.expression == null)
+            l.buildExpression();
+        if (expression == null || l.expression == null)
+            return false;
+        else
+            return expression.equals(l.expression);
+    }
 }
