@@ -37,7 +37,7 @@ public class SubmissionCreateMsg<T extends ArisModule> extends ProblemMessage<T>
         if (getProblem() != null) {
             ArisModule<T> module = ModuleService.getService().getModule(getModuleName());
             ProblemConverter<T> converter = module.getProblemConverter();
-            try (PreparedStatement insertSubmission = connection.prepareStatement("INSERT INTO submission (class_id, assignment_id, user_id, problem_id, data, time, short_status, status) VALUES (?, ?, ?, ?, ?, now(), ?, ?) RETURNING id, time;");
+            try (PreparedStatement insertSubmission = connection.prepareStatement("INSERT INTO submission (class_id, assignment_id, user_id, problem_id, data, time, short_status, status, grade) VALUES (?, ?, ?, ?, ?, now(), ?, ?, 0) RETURNING id, time;");
                  PipedInputStream pis = new PipedInputStream();
                  PipedOutputStream pos = new PipedOutputStream(pis)) {
                 insertSubmission.setInt(1, cid);

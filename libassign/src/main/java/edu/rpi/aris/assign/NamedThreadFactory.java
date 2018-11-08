@@ -1,4 +1,4 @@
-package edu.rpi.aris.assign.client;
+package edu.rpi.aris.assign;
 
 import org.jetbrains.annotations.NotNull;
 

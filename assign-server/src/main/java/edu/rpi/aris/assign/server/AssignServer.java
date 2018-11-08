@@ -30,6 +30,9 @@ import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -128,7 +131,30 @@ public class AssignServer implements Runnable {
             }
         }, calendar.getTime(), 1000 * 60 * 60 * 24); // run every 24 hours
         logger.info("Update check scheduled for " + NetUtil.DATE_FORMAT.format(calendar.getTime()));
+        checkSubmissions();
         logger.info("AssignServer preparation complete");
+    }
+
+    public ServerConfig getConfig() {
+        return config;
+    }
+
+    private void checkSubmissions() {
+        logger.info("Checking for ungraded submissions");
+        try (Connection connection = dbManager.getConnection();
+             PreparedStatement select = connection.prepareStatement("SELECT id FROM submission WHERE short_status=?;")) {
+            select.setString(1, GradingStatus.GRADING.name());
+            try (ResultSet rs = select.executeQuery()) {
+                int rows = 0;
+                while (rs.next()) {
+                    Grader.getInstance().addToGradeQueue(rs.getInt(1));
+                    rows = rs.getRow();
+                }
+                logger.info("Added " + rows + " ungraded submissions to the grade queue");
+            }
+        } catch (SQLException e) {
+            logger.error("Failed to check for ungraded submissions", e);
+        }
     }
 
     @Override

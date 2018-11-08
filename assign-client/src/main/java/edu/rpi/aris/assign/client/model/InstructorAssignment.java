@@ -75,7 +75,7 @@ public class InstructorAssignment implements ResponseHandler<AssignmentGetInstru
             if (submittedOn == null || (item.getValue().submittedOn.get() != null && submittedOn.compareTo(item.getValue().submittedOn.get()) > 0))
                 submittedOn = item.getValue().submittedOn.get();
         }
-        ((Submission) student).status.set(complete >= total ? GradingStatus.CORRECT : GradingStatus.INCORRECT);
+        ((Submission) student).status.set(complete >= total ? GradingStatus.CORRECT : complete > 1 ? GradingStatus.PARTIAL : GradingStatus.INCORRECT);
         ((Submission) student).statusStr.set(complete + "/" + total + (grading ? " (Grading)" : ""));
         ((Submission) student).submittedOn.set(submittedOn);
     }

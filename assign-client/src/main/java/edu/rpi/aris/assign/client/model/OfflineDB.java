@@ -1,6 +1,6 @@
 package edu.rpi.aris.assign.client.model;
 
-import edu.rpi.aris.assign.client.NamedThreadFactory;
+import edu.rpi.aris.assign.NamedThreadFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 

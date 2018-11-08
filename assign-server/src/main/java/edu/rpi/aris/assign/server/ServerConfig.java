@@ -19,6 +19,7 @@ public class ServerConfig {
     private static final String CA_CONFIG = "ca";
     private static final String KEY_CONFIG = "key";
     private static final String DOMAIN_KEY = "domain";
+    private static final String GRADE_THREADS = "grade-threads";
     private static final String DATABASE_NAME_CONFIG = "db-name";
     private static final String DATABASE_USER_CONFIG = "db-user";
     private static final String DATABASE_PASS_CONFIG = "db-pass";
@@ -30,7 +31,7 @@ public class ServerConfig {
     private File configFile = new File(System.getProperty("user.home"), "aris.cfg");
     private File storageDir, logDir, caFile, keyFile;
     private String dbHost, dbName, dbUser, dbPass, domain;
-    private int dbPort;
+    private int dbPort, gradeThreads;
     private HashMap<String, String> configOptions = new HashMap<>();
 
     private ServerConfig() throws IOException {
@@ -117,6 +118,13 @@ public class ServerConfig {
             logger.fatal("Invalid server port: " + portStr);
             System.exit(1);
         }
+        String gradeString = getConfigOption(GRADE_THREADS, "10", true);
+        try {
+            gradeThreads = Integer.parseInt(gradeString);
+        } catch (NumberFormatException e) {
+            logger.fatal("Invalid grade thread: " + gradeThreads);
+            System.exit(1);
+        }
         if (configOptions.size() > 0)
             logger.error("Unknown configuration options: " + StringUtils.join(configOptions.keySet(), ", "));
     }
@@ -176,5 +184,9 @@ public class ServerConfig {
 
     public String getDomain() {
         return domain;
+    }
+
+    public int getGradeThreads() {
+        return gradeThreads;
     }
 }
