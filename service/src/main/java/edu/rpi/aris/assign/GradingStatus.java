@@ -7,6 +7,7 @@ public enum GradingStatus {
     PARTIAL("partial.png"),
     GRADING("grading.png"),
     INCORRECT("incorrect.png"),
+    ERROR("error.png"),
     NONE(null);
 
     public final String icon;

@@ -223,7 +223,9 @@ public class SaveManager implements ProblemConverter<LibAris> {
     public synchronized Proof loadProof(File file, String author) throws IOException, TransformerException {
         if (file == null || !file.exists())
             return null;
-        return loadProof(new FileInputStream(file), file.getName(), author, true);
+        try (FileInputStream fis = new FileInputStream(file)) {
+            return loadProof(fis, file.getName(), author, true);
+        }
     }
 
     private synchronized Proof loadProof(InputStream in, String name, String author, boolean verifyIntegrity) throws TransformerException, IOException {

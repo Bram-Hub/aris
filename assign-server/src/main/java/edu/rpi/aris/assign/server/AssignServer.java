@@ -48,6 +48,8 @@ public class AssignServer implements Runnable {
     private static final String KEYSTORE_FILENAME = "server.keystore";
 
     private static final Logger logger = LogManager.getLogger(AssignServer.class);
+    private static final File KEYSTORE_FILE;
+    private static final File SELF_SIGNED_CERT;
 
     static {
         ServerConfig cfg = null;
@@ -57,10 +59,9 @@ public class AssignServer implements Runnable {
             LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, true);
         }
         config = cfg;
+        KEYSTORE_FILE = new File(config != null ? config.getStorageDir() : null, KEYSTORE_FILENAME);
+        SELF_SIGNED_CERT = new File(config != null ? config.getStorageDir() : null, "self-signed-cert.pem");
     }
-
-    private static final File KEYSTORE_FILE = new File(config != null ? config.getStorageDir() : null, KEYSTORE_FILENAME);
-    private static final File SELF_SIGNED_CERT = new File(config != null ? config.getStorageDir() : null, "self-signed-cert.pem");
 
     static {
         if (Security.getProvider("BC") == null)
@@ -131,7 +132,7 @@ public class AssignServer implements Runnable {
             }
         }, calendar.getTime(), 1000 * 60 * 60 * 24); // run every 24 hours
         logger.info("Update check scheduled for " + NetUtil.DATE_FORMAT.format(calendar.getTime()));
-        checkSubmissions();
+        ServerCallbacks.setServerCallbacks(new LibAssignCallbacks());
         logger.info("AssignServer preparation complete");
     }
 
@@ -169,6 +170,7 @@ public class AssignServer implements Runnable {
         try {
             serverThread = Thread.currentThread();
             Runtime.getRuntime().addShutdownHook(shutdownHook);
+            checkSubmissions();
             logger.info("Starting AssignServer on port " + port + (port == 9001 ? " (IT'S OVER 9000!!!)" : ""));
             serverSocket = getServerSocketFactory().createServerSocket(port);
             ExecutorService threadPool = Executors.newCachedThreadPool(new ThreadFactory() {

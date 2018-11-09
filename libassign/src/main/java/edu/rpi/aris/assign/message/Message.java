@@ -38,7 +38,7 @@ public abstract class Message {
         this(permission, false);
     }
 
-    @Nullable
+    @NotNull
     private static Message parse(@NotNull MessageCommunication com) {
         try {
             Message msg = gson.fromJson(com.getReader(), Message.class);

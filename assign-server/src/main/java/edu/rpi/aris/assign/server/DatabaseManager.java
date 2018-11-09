@@ -27,7 +27,7 @@ public class DatabaseManager {
     public static final String DEFAULT_ADMIN_PASS = "ArisAdmin1";
     private static final String[] defaultRoleName = new String[]{"Admin", "Instructor", "TA", "Student"};
     private static final int[] defaultRoleRank = new int[]{0, 1, 2, 3};
-    private static final int DB_SCHEMA_VERSION = 12;
+    private static final int DB_SCHEMA_VERSION = 13;
     private static Logger logger = LogManager.getLogger(DatabaseManager.class);
 
     static {
@@ -438,6 +438,7 @@ public class DatabaseManager {
         } finally {
             connection.setAutoCommit(autoCommit);
         }
+        updateSchema11(connection);
     }
 
     private void updateSchema11(Connection connection) throws SQLException {
@@ -449,6 +450,25 @@ public class DatabaseManager {
             statement.execute("ALTER TABLE submission DROP CONSTRAINT submission_short_status_check;");
             statement.execute("ALTER TABLE submission ADD CONSTRAINT submission_short_status_check check (short_status in ('" + GradingStatus.CORRECT.name() + "', '" + GradingStatus.INCORRECT.name() + "', '" + GradingStatus.GRADING.name() + "', '" + GradingStatus.PARTIAL.name() + "'));");
             statement.execute("UPDATE version SET version=12;");
+            connection.commit();
+        } catch (Throwable e) {
+            connection.rollback();
+            logger.error("An error occurred while updating the database schema and the changes were rolled back");
+            throw e;
+        } finally {
+            connection.setAutoCommit(autoCommit);
+        }
+        updateSchema12(connection);
+    }
+
+    private void updateSchema12(Connection connection) throws SQLException {
+        logger.info("Updating database schema to version 13");
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE submission DROP CONSTRAINT submission_short_status_check;");
+            statement.execute("ALTER TABLE submission ADD CONSTRAINT submission_short_status_check check (short_status in ('" + GradingStatus.CORRECT.name() + "', '" + GradingStatus.INCORRECT.name() + "', '" + GradingStatus.GRADING.name() + "', '" + GradingStatus.PARTIAL.name() + "', '" + GradingStatus.ERROR.name() + "'));");
+            statement.execute("UPDATE version SET version=13;");
             connection.commit();
         } catch (Throwable e) {
             connection.rollback();

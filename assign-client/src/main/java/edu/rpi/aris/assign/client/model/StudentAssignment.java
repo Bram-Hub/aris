@@ -331,7 +331,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
                         stmt.setString(6, attempt.getModuleName());
 
                     try (PipedInputStream pis = new PipedInputStream();
-                         PipedOutputStream pos = new PipedOutputStream()) {
+                         PipedOutputStream pos = new PipedOutputStream(pis)) {
                         module.getProblemConverter().convertProblem(problem, pos, true);
                         pos.close();
 

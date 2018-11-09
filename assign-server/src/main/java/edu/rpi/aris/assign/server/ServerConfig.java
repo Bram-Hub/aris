@@ -118,7 +118,7 @@ public class ServerConfig {
             logger.fatal("Invalid server port: " + portStr);
             System.exit(1);
         }
-        String gradeString = getConfigOption(GRADE_THREADS, "10", true);
+        String gradeString = getConfigOption(GRADE_THREADS, "3", true);
         try {
             gradeThreads = Integer.parseInt(gradeString);
         } catch (NumberFormatException e) {

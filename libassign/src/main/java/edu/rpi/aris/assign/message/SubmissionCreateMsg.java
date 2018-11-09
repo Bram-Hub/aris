@@ -55,6 +55,8 @@ public class SubmissionCreateMsg<T extends ArisModule> extends ProblemMessage<T>
                     if (rs.next()) {
                         sid = rs.getInt(1);
                         submittedOn = NetUtil.localToUTC(rs.getTimestamp(2).toLocalDateTime());
+                        connection.commit();
+                        ServerCallbacks.getInstance().scheduleForGrading(sid);
                     }
                 }
             }
