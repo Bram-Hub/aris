@@ -8,6 +8,7 @@ import edu.rpi.aris.proof.SaveInfoListener;
 import edu.rpi.aris.proof.SaveManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -99,15 +100,17 @@ public class LibAris implements ArisModule<LibAris> {
     }
 
     @Override
-    public void setArisProperties(HashMap<String, String> properties) {
+    public void setArisProperties(@NotNull HashMap<String, String> properties) {
         this.assignProperties = properties;
     }
 
+    @NotNull
     @Override
     public InputStream getModuleIcon() {
         return LibAris.class.getResourceAsStream("aris.png");
     }
 
+    @NotNull
     @Override
     public ArrayList<String> getProblemFileExtensions() {
         ArrayList<String> list = new ArrayList<>();
