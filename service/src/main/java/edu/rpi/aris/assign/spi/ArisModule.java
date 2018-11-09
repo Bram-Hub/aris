@@ -19,6 +19,7 @@ import java.util.List;
  *
  * @param <T> the type of your aris module. (ie: if you have a class extending ArisModule called MyModule then T should
  *            be MyModule)
+ * @see java.util.ServiceLoader
  */
 public interface ArisModule<T extends ArisModule> {
 

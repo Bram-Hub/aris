@@ -9,4 +9,9 @@ public class LibAssignCallbacks extends ServerCallbacks {
         Grader.getInstance().addToGradeQueue(submissionId);
     }
 
+    @Override
+    public long getMaxSubmissionSize() {
+        return AssignServerMain.getServer().getConfig().getMaxSubmissionSize();
+    }
+
 }

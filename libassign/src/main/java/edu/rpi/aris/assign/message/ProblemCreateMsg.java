@@ -21,7 +21,7 @@ public class ProblemCreateMsg<T extends ArisModule> extends ProblemMessage<T> {
     private int pid;
 
     public ProblemCreateMsg(String name, @NotNull String moduleName, @NotNull Problem<T> problem) {
-        super(moduleName, problem, Perm.PROBLEM_CREATE);
+        super(moduleName, problem, false, Perm.PROBLEM_CREATE);
         this.name = name;
     }
 
@@ -33,7 +33,7 @@ public class ProblemCreateMsg<T extends ArisModule> extends ProblemMessage<T> {
 
     @Nullable
     @Override
-    public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
+    public ErrorType processProblemMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
         ArisModule<T> module = ModuleService.getService().getModule(getModuleName());
         if (module == null)
             return ErrorType.MISSING_MODULE;

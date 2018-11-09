@@ -21,7 +21,7 @@ public class SubmissionCreateMsg<T extends ArisModule> extends ProblemMessage<T>
     private String statusStr;
 
     public SubmissionCreateMsg(int cid, int aid, int pid, String moduleName, Problem<T> problem) {
-        super(moduleName, problem, Perm.SUBMISSION_CREATE);
+        super(moduleName, problem, true, Perm.SUBMISSION_CREATE);
         this.cid = cid;
         this.aid = aid;
         this.pid = pid;
@@ -33,7 +33,7 @@ public class SubmissionCreateMsg<T extends ArisModule> extends ProblemMessage<T>
 
     @Nullable
     @Override
-    public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
+    public ErrorType processProblemMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
         if (getProblem() != null) {
             ArisModule<T> module = ModuleService.getService().getModule(getModuleName());
             ProblemConverter<T> converter = module.getProblemConverter();

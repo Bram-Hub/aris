@@ -19,7 +19,7 @@ public class SubmissionFetchMsg<T extends ArisModule> extends ProblemMessage<T> 
     private final int uid;
 
     public SubmissionFetchMsg(int cid, int aid, int pid, int sid, int uid, String moduleName) {
-        super(moduleName, null, Perm.SUBMISSION_FETCH);
+        super(moduleName, null, true, Perm.SUBMISSION_FETCH);
         this.cid = cid;
         this.aid = aid;
         this.pid = pid;
@@ -38,7 +38,7 @@ public class SubmissionFetchMsg<T extends ArisModule> extends ProblemMessage<T> 
 
     @Nullable
     @Override
-    public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
+    public ErrorType processProblemMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
         try (PreparedStatement statement = connection.prepareStatement("SELECT p.module_name, s.data FROM submission s, problem p WHERE s.id = ? AND s.class_id=? AND s.assignment_id=? AND s.user_id=? AND s.problem_id=? AND s.problem_id = p.id;")) {
             statement.setInt(1, sid);
             statement.setInt(2, cid);

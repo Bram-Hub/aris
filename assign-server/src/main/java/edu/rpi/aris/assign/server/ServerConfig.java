@@ -20,6 +20,7 @@ public class ServerConfig {
     private static final String KEY_CONFIG = "key";
     private static final String DOMAIN_KEY = "domain";
     private static final String GRADE_THREADS = "grade-threads";
+    private static final String MAX_SUB_SIZE = "max-sub-size";
     private static final String DATABASE_NAME_CONFIG = "db-name";
     private static final String DATABASE_USER_CONFIG = "db-user";
     private static final String DATABASE_PASS_CONFIG = "db-pass";
@@ -32,6 +33,7 @@ public class ServerConfig {
     private File storageDir, logDir, caFile, keyFile;
     private String dbHost, dbName, dbUser, dbPass, domain;
     private int dbPort, gradeThreads;
+    private long maxSubmissionSize;
     private HashMap<String, String> configOptions = new HashMap<>();
 
     private ServerConfig() throws IOException {
@@ -107,24 +109,13 @@ public class ServerConfig {
         dbName = getConfigOption(DATABASE_NAME_CONFIG, "aris", true);
         dbUser = getConfigOption(DATABASE_USER_CONFIG, "aris", true);
         dbHost = getConfigOption(DATABASE_HOST_CONFIG, "localhost", true);
-        String portStr = getConfigOption(DATABASE_PORT_CONFIG, "5432", true);
-        try {
-            dbPort = Integer.parseInt(portStr);
-        } catch (NumberFormatException e) {
-            logger.fatal("Invalid server port: " + portStr);
-            System.exit(1);
-        }
+        dbPort = getIntConfigOption(DATABASE_PORT_CONFIG, 5432, true);
         if (dbPort <= 0 || dbPort > 65535) {
-            logger.fatal("Invalid server port: " + portStr);
+            logger.fatal("Invalid server port: " + dbPort);
             System.exit(1);
         }
-        String gradeString = getConfigOption(GRADE_THREADS, "3", true);
-        try {
-            gradeThreads = Integer.parseInt(gradeString);
-        } catch (NumberFormatException e) {
-            logger.fatal("Invalid grade thread: " + gradeThreads);
-            System.exit(1);
-        }
+        gradeThreads = getIntConfigOption(GRADE_THREADS, 3, true);
+        maxSubmissionSize = getIntConfigOption(MAX_SUB_SIZE, 5242880 /*5 MiB*/, true);
         if (configOptions.size() > 0)
             logger.error("Unknown configuration options: " + StringUtils.join(configOptions.keySet(), ", "));
     }
@@ -136,6 +127,17 @@ public class ServerConfig {
             System.exit(1);
         }
         return option == null ? defaultValue : option;
+    }
+
+    private int getIntConfigOption(String key, int defaultValue, boolean optional) throws IOException {
+        String str = getConfigOption(key, String.valueOf(defaultValue), optional);
+        try {
+            return Integer.parseInt(str);
+        } catch (NumberFormatException e) {
+            logger.fatal("Invalid " + key + ": " + str);
+            System.exit(1);
+            return defaultValue;
+        }
     }
 
     public File getStorageDir() {
@@ -188,5 +190,9 @@ public class ServerConfig {
 
     public int getGradeThreads() {
         return gradeThreads;
+    }
+
+    public long getMaxSubmissionSize() {
+        return maxSubmissionSize;
     }
 }

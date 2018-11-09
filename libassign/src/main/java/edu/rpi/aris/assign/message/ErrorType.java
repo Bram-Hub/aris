@@ -18,5 +18,6 @@ public enum ErrorType {
     MISSING_MODULE,
     MODULE_ERROR,
     CANT_CHANGE_OWN_ROLE,
+    FILE_TOO_LARGE,
     UNAUTHORIZED
 }

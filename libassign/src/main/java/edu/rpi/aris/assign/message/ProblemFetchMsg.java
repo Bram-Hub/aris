@@ -16,7 +16,7 @@ public class ProblemFetchMsg<T extends ArisModule> extends ProblemMessage<T> {
     private String problemHash;
 
     public ProblemFetchMsg(int pid, String moduleName) {
-        super(moduleName, null, Perm.PROBLEM_FETCH);
+        super(moduleName, null, false, Perm.PROBLEM_FETCH);
         this.pid = pid;
     }
 
@@ -27,7 +27,7 @@ public class ProblemFetchMsg<T extends ArisModule> extends ProblemMessage<T> {
 
     @Nullable
     @Override
-    public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
+    public ErrorType processProblemMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
         try (PreparedStatement statement = connection.prepareStatement("SELECT module_name, data, problem_hash FROM problem WHERE id = ?;")) {
             statement.setInt(1, pid);
             try (ResultSet rs = statement.executeQuery()) {

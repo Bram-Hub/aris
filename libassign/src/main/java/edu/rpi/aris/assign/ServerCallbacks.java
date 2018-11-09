@@ -6,6 +6,11 @@ public abstract class ServerCallbacks {
         @Override
         public void scheduleForGrading(int submissionId) {
         }
+
+        @Override
+        public long getMaxSubmissionSize() {
+            return -1;
+        }
     };
 
     public static void setServerCallbacks(ServerCallbacks callbacks) {
@@ -19,5 +24,7 @@ public abstract class ServerCallbacks {
     }
 
     public abstract void scheduleForGrading(int submissionId);
+
+    public abstract long getMaxSubmissionSize();
 
 }

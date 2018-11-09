@@ -2,25 +2,37 @@ package edu.rpi.aris.assign.message;
 
 import edu.rpi.aris.assign.*;
 import edu.rpi.aris.assign.spi.ArisModule;
+import org.apache.commons.io.input.BoundedInputStream;
+import org.apache.commons.io.input.CloseShieldInputStream;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.sql.Connection;
 
 public abstract class ProblemMessage<T extends ArisModule> extends DataMessage {
 
+    private static final long MAX_FILE_SIZE = ServerCallbacks.getInstance().getMaxSubmissionSize();
+
     private final String moduleName;
+    private final boolean isProblemSolution;
+    private transient boolean tooLarge = false;
     private transient Problem<T> problem;
 
-    ProblemMessage(@NotNull String moduleName, Problem<T> problem, @NotNull Perm perm, boolean customPermCheck) {
+    ProblemMessage(@NotNull String moduleName, Problem<T> problem, boolean isProblemSolution, @NotNull Perm perm, boolean customPermCheck) {
         super(perm, customPermCheck);
         this.moduleName = moduleName;
         this.problem = problem;
+        this.isProblemSolution = isProblemSolution;
     }
 
-    ProblemMessage(@NotNull String moduleName, Problem<T> problem, @NotNull Perm perm) {
+    ProblemMessage(@NotNull String moduleName, Problem<T> problem, boolean isProblemSolution, @NotNull Perm perm) {
         super(perm);
         this.moduleName = moduleName;
         this.problem = problem;
+        this.isProblemSolution = isProblemSolution;
     }
 
     @Override
@@ -35,7 +47,7 @@ public abstract class ProblemMessage<T extends ArisModule> extends DataMessage {
                 throw new ArisException("No module for name: " + moduleName);
             ProblemConverter<T> converter = module.getProblemConverter();
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            converter.convertProblem(problem, baos, false);
+            converter.convertProblem(problem, baos, isProblemSolution);
             baos.close();
             int size = baos.size();
             out.writeInt(size);
@@ -50,16 +62,16 @@ public abstract class ProblemMessage<T extends ArisModule> extends DataMessage {
         int size = in.readInt();
         if (size == -1)
             return;
+        if (MAX_FILE_SIZE > 0 && size > MAX_FILE_SIZE) {
+            tooLarge = true;
+            return;
+        }
         ArisModule<T> module = ModuleService.getService().getModule(moduleName);
         if (module == null)
             throw new ArisException("No module for name: " + moduleName);
         ProblemConverter<T> converter = module.getProblemConverter();
-        byte[] data = new byte[size];
-        if (size != in.read(data))
-            throw new IOException("Failed to read all data from stream");
-        ByteArrayInputStream bais = new ByteArrayInputStream(data);
-        problem = converter.loadProblem(bais, false);
-        bais.close();
+        BoundedInputStream bis = new BoundedInputStream(new CloseShieldInputStream(in), size);
+        problem = converter.loadProblem(bis, isProblemSolution);
     }
 
     public String getModuleName() {
@@ -78,4 +90,14 @@ public abstract class ProblemMessage<T extends ArisModule> extends DataMessage {
     public boolean checkValid() {
         return problem == null || moduleName != null;
     }
+
+    @Override
+    public final @Nullable ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
+        if (tooLarge)
+            return ErrorType.FILE_TOO_LARGE;
+        return processProblemMessage(connection, user, permissions);
+    }
+
+    abstract @Nullable ErrorType processProblemMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception;
+
 }
