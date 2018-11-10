@@ -38,6 +38,8 @@ import javafx.stage.Stage;
 import javafx.stage.Window;
 import org.apache.commons.lang3.Range;
 import org.apache.commons.lang3.tuple.Triple;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.xml.transform.TransformerException;
 import java.io.File;
@@ -532,7 +534,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     }
 
     @Override
-    public void setModal(Modality modality, Window owner) {
+    public void setModal(@NotNull Modality modality, @NotNull Window owner) {
         Platform.runLater(() -> {
             primaryStage.initModality(modality);
             primaryStage.initOwner(owner);
@@ -540,20 +542,22 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     }
 
     @Override
-    public void setDescription(String description) {
+    public void setDescription(@NotNull String description) {
         Platform.runLater(() -> descriptionText.setText(description));
     }
 
     @Override
-    public void setModuleUIListener(ModuleUIListener listener) {
+    public void setModuleUIListener(@NotNull ModuleUIListener listener) {
         moduleUIListener = listener;
     }
 
     @Override
+    @Nullable
     public Window getUIWindow() {
         return primaryStage;
     }
 
+    @NotNull
     @Override
     public ArisProofProblem getProblem() {
         if (assignProblem == null)

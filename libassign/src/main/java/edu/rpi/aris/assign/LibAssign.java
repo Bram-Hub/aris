@@ -76,6 +76,7 @@ public class LibAssign implements Thread.UncaughtExceptionHandler {
     }
 
     public static void setLogLocation(File logDir) throws IOException {
+        logger.info("Initializing log directory: " + logDir.getCanonicalPath());
         String logPath = logDir.getCanonicalPath();
         logPath += logPath.endsWith(File.separator) ? "" : File.separator;
         LoggerContext context = (LoggerContext) LogManager.getContext(false);

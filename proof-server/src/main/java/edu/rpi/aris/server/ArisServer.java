@@ -6,6 +6,7 @@ import edu.rpi.aris.assign.AutoGrader;
 import edu.rpi.aris.proof.SaveInfoListener;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 
 public class ArisServer implements ArisServerModule<LibAris>, SaveInfoListener {
 
@@ -32,6 +33,7 @@ public class ArisServer implements ArisServerModule<LibAris>, SaveInfoListener {
         log.error("INTEGRITY CHECK FAILED: " + filename);
     }
 
+    @NotNull
     @Override
     public AutoGrader<LibAris> getAutoGrader() {
         return grader;

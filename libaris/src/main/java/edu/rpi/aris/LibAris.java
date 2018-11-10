@@ -57,6 +57,7 @@ public class LibAris implements ArisModule<LibAris> {
         return assignProperties;
     }
 
+    @NotNull
     @Override
     public String getModuleName() {
         return NAME;
@@ -94,6 +95,7 @@ public class LibAris implements ArisModule<LibAris> {
         return serverModule;
     }
 
+    @NotNull
     @Override
     public ProblemConverter<LibAris> getProblemConverter() {
         return new SaveManager((SaveInfoListener) (clientModule == null ? serverModule : clientModule));

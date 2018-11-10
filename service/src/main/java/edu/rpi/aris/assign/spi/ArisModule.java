@@ -26,10 +26,12 @@ public interface ArisModule<T extends ArisModule> {
     /**
      * Gets the name of this module. This name should be unique among all other modules
      * and this should always return the same string for a given module regardless of version as the name is used to
-     * uniquely identify this module
+     * uniquely identify this module. The name should also be the same on both the client and server side in the case
+     * of a separate server and client module
      *
      * @return the module name
      */
+    @NotNull
     String getModuleName();
 
     /**
@@ -58,13 +60,15 @@ public interface ArisModule<T extends ArisModule> {
 
     /**
      * Gets the {@link ProblemConverter} used to write a {@link edu.rpi.aris.assign.Problem} to an {@link java.io.OutputStream}
-     * and to read a {@link edu.rpi.aris.assign.Problem} from an {@link InputStream}
+     * and to read a {@link edu.rpi.aris.assign.Problem} from an {@link InputStream}. It is recommended to always return
+     * the same {@link ProblemConverter} instance to save on resources
      *
      * @return the {@link ProblemConverter} for this {@link ArisModule}
      * @throws Exception for any error that may occur while trying to get the {@link ProblemConverter}
      * @see ProblemConverter
      * @see edu.rpi.aris.assign.Problem
      */
+    @NotNull
     ProblemConverter<T> getProblemConverter() throws Exception;
 
     /**

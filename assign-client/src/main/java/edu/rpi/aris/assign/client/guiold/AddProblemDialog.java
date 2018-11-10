@@ -64,7 +64,7 @@ public class AddProblemDialog extends Dialog<Triple<String, String, Problem>> {
             }
             String description = "Creating problem " + (textField.getText().length() == 0 ? "" : "\"" + textField.getText() + "\" ");
             if (moduleUI == null) {
-                moduleUI = module.createModuleGui(null);
+//                moduleUI = module.createModuleGui(null);
                 moduleUI.setModal(Modality.WINDOW_MODAL, getDialogPane().getScene().getWindow());
 //                moduleUI.addCloseListener(() -> {
 //                    try {

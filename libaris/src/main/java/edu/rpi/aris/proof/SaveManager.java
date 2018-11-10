@@ -7,6 +7,7 @@ import edu.rpi.aris.rules.RuleList;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.jetbrains.annotations.NotNull;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -444,16 +445,17 @@ public class SaveManager implements ProblemConverter<LibAris> {
     }
 
     @Override
-    public boolean convertProblem(Problem<LibAris> problem, OutputStream out, boolean isProblemSolution) throws IOException {
+    public void convertProblem(@NotNull Problem<LibAris> problem, @NotNull OutputStream out, boolean isProblemSolution) throws IOException {
         try {
-            return saveProof(((ArisProofProblem) problem).getProof(), out, isProblemSolution);
+            saveProof(((ArisProofProblem) problem).getProof(), out, isProblemSolution);
         } catch (TransformerException e) {
             throw new IOException("Failed to save aris proof", e);
         }
     }
 
+    @NotNull
     @Override
-    public ArisProofProblem loadProblem(InputStream in, boolean isProblemSolution) throws IOException {
+    public ArisProofProblem loadProblem(@NotNull InputStream in, boolean isProblemSolution) throws IOException {
         try {
             return new ArisProofProblem(loadProof(in, "Aris Assign", LibAris.getInstance().getProperties().get("username"), isProblemSolution));
         } catch (TransformerException e) {
