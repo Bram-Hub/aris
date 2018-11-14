@@ -2,7 +2,6 @@ package edu.rpi.aris.assign.client.controller;
 
 import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.ModuleService;
-import edu.rpi.aris.assign.client.guiold.AssignmentWindow;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -23,7 +22,6 @@ public class ModuleSelect {
 
     @FXML
     private VBox moduleBox;
-    private AssignmentWindow assignmentWindow;
 
     public ModuleSelect(Stage stage) {
         this.stage = stage;

@@ -15,6 +15,11 @@ public class PermissionsGui implements TabGui {
     }
 
     @Override
+    public void closed() {
+
+    }
+
+    @Override
     public Parent getRoot() {
         return null;
     }

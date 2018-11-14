@@ -39,8 +39,6 @@ import java.util.HashSet;
 
 public class ConfigGui {
 
-
-
     private static final Logger logger = LogManager.getLogger(ConfigGui.class);
     private static ConfigGui instance;
 

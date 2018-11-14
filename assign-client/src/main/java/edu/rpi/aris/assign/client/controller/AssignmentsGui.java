@@ -90,6 +90,10 @@ public class AssignmentsGui implements TabGui {
         assignments.clear();
     }
 
+    @Override
+    public void closed() {
+    }
+
     @FXML
     public void initialize() {
         Label placeHolderLbl = new Label();

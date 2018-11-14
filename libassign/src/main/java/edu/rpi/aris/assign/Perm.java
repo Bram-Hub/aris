@@ -18,10 +18,11 @@ public enum Perm {
     PROBLEM_FETCH(3),
     USER_GET(3),
     PERMISSIONS_EDIT(0),
-    ASSIGNMENT_GET_STUDENT(3),
+    SUB_GRADE_REFRESH(3),
+    ASSIGNMENT_GET_STUDENT(3, new Perm[]{SUB_GRADE_REFRESH}),
     SUBMISSION_CREATE(3),
     SUBMISSION_FETCH(3),
-    ASSIGNMENT_GET_INSTRUCTOR(2);
+    ASSIGNMENT_GET_INSTRUCTOR(2, new Perm[]{SUB_GRADE_REFRESH});
 
     public static final Perm[][] mutuallyExclusivePerms = new Perm[][]{};
 

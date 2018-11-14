@@ -64,6 +64,11 @@ public class UsersGui implements TabGui {
     }
 
     @Override
+    public void closed() {
+
+    }
+
+    @Override
     public Parent getRoot() {
         return root;
     }

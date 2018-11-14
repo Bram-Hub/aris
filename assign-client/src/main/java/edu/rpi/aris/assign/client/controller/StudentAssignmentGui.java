@@ -69,6 +69,11 @@ public class StudentAssignmentGui implements TabGui {
     }
 
     @Override
+    public void closed() {
+        assignment.closed();
+    }
+
+    @Override
     public Parent getRoot() {
         return root;
     }

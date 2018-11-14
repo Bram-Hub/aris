@@ -49,16 +49,18 @@ public class MsgUtil {
         public final int cid;
         public final int aid;
         public final GradingStatus status;
+        public final double grade;
         public final String statusStr;
         public final ZonedDateTime submissionTime;
 
-        SubmissionInfo(int uid, int sid, int pid, int cid, int aid, GradingStatus status, String statusStr, ZonedDateTime submissionTime) {
+        SubmissionInfo(int uid, int sid, int pid, int cid, int aid, double grade, GradingStatus status, String statusStr, ZonedDateTime submissionTime) {
             this.uid = uid;
             this.sid = sid;
             this.pid = pid;
             this.cid = cid;
             this.aid = aid;
             this.status = status;
+            this.grade = grade;
             this.statusStr = statusStr;
             this.submissionTime = submissionTime;
         }
@@ -70,6 +72,7 @@ public class MsgUtil {
             this.pid = 0;
             this.cid = 0;
             this.aid = 0;
+            this.grade = 0;
             this.status = null;
             this.statusStr = null;
             this.submissionTime = null;

@@ -298,17 +298,15 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
 
         @Override
         public void response(ProblemFetchMsg<T> message) {
-            Platform.runLater(() -> {
-                Problem problemInfo = problemMap.get(message.getPid());
-                if (problemInfo != null) {
-                    try {
-                        gui.modifyProblem(problemInfo, message.getProblem(), module);
-                    } catch (Exception e) {
-                        LibAssign.showExceptionError(e);
-                    }
+            Problem problemInfo = problemMap.get(message.getPid());
+            if (problemInfo != null) {
+                try {
+                    gui.modifyProblem(problemInfo, message.getProblem(), module);
+                } catch (Exception e) {
+                    LibAssign.showExceptionError(e);
                 }
-                userInfo.finishLoading();
-            });
+            }
+            Platform.runLater(userInfo::finishLoading);
         }
 
         @Override
@@ -363,12 +361,14 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
                 return;
             }
             if (localFile.exists()) {
-                try (FileInputStream fis = new FileInputStream(localFile)) {
-                    ProblemConverter<T> converter = module.getProblemConverter();
-                    gui.modifyProblem(this, converter.loadProblem(fis, false), module);
-                } catch (Exception e) {
-                    LibAssign.showExceptionError(e);
-                }
+                new Thread(() -> {
+                    try (FileInputStream fis = new FileInputStream(localFile)) {
+                        ProblemConverter<T> converter = module.getProblemConverter();
+                        gui.modifyProblem(this, converter.loadProblem(fis, false), module);
+                    } catch (Exception e) {
+                        LibAssign.showExceptionError(e);
+                    }
+                }, "Modify Problem").start();
             } else {
                 fetchAndModify(pid, module);
             }

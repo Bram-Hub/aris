@@ -19,6 +19,7 @@ public class SubmissionCreateMsg<T extends ArisModule> extends ProblemMessage<T>
     private ZonedDateTime submittedOn;
     private GradingStatus status;
     private String statusStr;
+    private double grade;
 
     public SubmissionCreateMsg(int cid, int aid, int pid, String moduleName, Problem<T> problem) {
         super(moduleName, problem, true, Perm.SUBMISSION_CREATE);
@@ -44,10 +45,12 @@ public class SubmissionCreateMsg<T extends ArisModule> extends ProblemMessage<T>
                 insertSubmission.setInt(2, aid);
                 insertSubmission.setInt(3, user.uid);
                 insertSubmission.setInt(4, pid);
-                converter.convertProblem(getProblem(), pos, true);
-                pos.close();
+
+                LibAssign.convertProblem(pos, getProblem(), converter, true);
+
                 insertSubmission.setBinaryStream(5, pis);
                 status = GradingStatus.GRADING;
+                grade = 0;
                 statusStr = "Grading";
                 insertSubmission.setString(6, status.name());
                 insertSubmission.setString(7, statusStr);
@@ -84,5 +87,9 @@ public class SubmissionCreateMsg<T extends ArisModule> extends ProblemMessage<T>
 
     public String getStatusStr() {
         return statusStr;
+    }
+
+    public double getGrade() {
+        return grade;
     }
 }

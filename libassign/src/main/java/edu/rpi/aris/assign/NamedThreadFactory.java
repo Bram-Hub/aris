@@ -15,9 +15,16 @@ public class NamedThreadFactory implements ThreadFactory {
         this.isDaemon = isDaemon;
     }
 
+    public NamedThreadFactory(String name) {
+        this(name, false);
+    }
+
     @Override
-    public synchronized Thread newThread(@NotNull Runnable r) {
-        Thread t = new Thread(r, name + " " + threadNum++);
+    public Thread newThread(@NotNull Runnable r) {
+        Thread t;
+        synchronized (this) {
+            t = new Thread(r, name + " " + threadNum++);
+        }
         t.setDaemon(isDaemon);
         return t;
     }

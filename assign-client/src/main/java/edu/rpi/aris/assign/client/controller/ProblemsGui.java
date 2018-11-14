@@ -1,6 +1,7 @@
 package edu.rpi.aris.assign.client.controller;
 
 import edu.rpi.aris.assign.*;
+import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.dialog.ImportProblemsDialog;
 import edu.rpi.aris.assign.client.dialog.ProblemDialog;
 import edu.rpi.aris.assign.client.model.CurrentUser;
@@ -98,6 +99,11 @@ public class ProblemsGui implements TabGui {
         problems.clear();
     }
 
+    @Override
+    public void closed() {
+
+    }
+
     @FXML
     public void initialize() {
         Label placeHolderLbl = new Label();
@@ -180,6 +186,10 @@ public class ProblemsGui implements TabGui {
 
     public <T extends ArisModule> void modifyProblem(Problems.Problem problemInfo, Problem<T> problem, ArisModule<T> module) throws Exception {
         ArisClientModule<T> clientModule = module.getClientModule();
+        if (clientModule == null) {
+            AssignClient.displayErrorMsg("Client GUI Missing", "No client GUI for module \"" + module.getModuleName() + "\"");
+            return;
+        }
         ModuleUI<T> moduleUI = clientModule.createModuleGui(MODIFY_OPTIONS, problem);
         moduleUI.setDescription("Modify Problem \"" + problemInfo.getName() + "\"");
         moduleUI.setModuleUIListener(new ModuleUIAdapter() {

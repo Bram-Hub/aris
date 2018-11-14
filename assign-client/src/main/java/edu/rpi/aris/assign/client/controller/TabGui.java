@@ -9,6 +9,8 @@ public interface TabGui {
 
     void unload();
 
+    void closed();
+
     Parent getRoot();
 
     boolean isPermanentTab();

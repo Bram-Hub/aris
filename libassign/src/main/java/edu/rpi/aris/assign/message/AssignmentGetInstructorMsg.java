@@ -37,7 +37,7 @@ public class AssignmentGetInstructorMsg extends Message implements ClassMessage 
         try (PreparedStatement selectAssignment = connection.prepareStatement("SELECT problem_id, name, due_date FROM assignment WHERE id = ? AND class_id = ?;");
              PreparedStatement selectProblem = connection.prepareStatement("SELECT name, created_by, created_on, module_name, problem_hash FROM problem WHERE id = ?;");
              PreparedStatement selectUsers = connection.prepareStatement("SELECT u.id, u.username, u.full_name FROM users u, user_class uc WHERE uc.user_id = u.id AND uc.class_id = ? AND uc.role_id = ?;");
-             PreparedStatement selectSubmissions = connection.prepareStatement("SELECT id, time, short_status, status, problem_id, user_id FROM submission WHERE class_id = ? AND assignment_id = ?;")) {
+             PreparedStatement selectSubmissions = connection.prepareStatement("SELECT id, time, short_status, status, problem_id, user_id, grade FROM submission WHERE class_id = ? AND assignment_id = ?;")) {
             selectUsers.setInt(1, cid);
             selectUsers.setInt(2, permissions.getPermission(Perm.SUBMISSION_CREATE).getRollId());
             try (ResultSet userRs = selectUsers.executeQuery()) {
@@ -82,7 +82,8 @@ public class AssignmentGetInstructorMsg extends Message implements ClassMessage 
                     String statusStr = subRs.getString(4);
                     int pid = subRs.getInt(5);
                     int uid = subRs.getInt(6);
-                    MsgUtil.SubmissionInfo info = new MsgUtil.SubmissionInfo(uid, sid, pid, cid, aid, status, statusStr, submitted);
+                    double grade = subRs.getDouble(7);
+                    MsgUtil.SubmissionInfo info = new MsgUtil.SubmissionInfo(uid, sid, pid, cid, aid, grade, status, statusStr, submitted);
                     HashMap<Integer, HashSet<MsgUtil.SubmissionInfo>> subGroups = submissions.computeIfAbsent(uid, id -> new HashMap<>());
                     subGroups.computeIfAbsent(pid, id -> new HashSet<>()).add(info);
                 }

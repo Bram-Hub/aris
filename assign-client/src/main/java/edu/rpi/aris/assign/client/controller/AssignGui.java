@@ -140,8 +140,11 @@ public class AssignGui {
                 if (c.wasRemoved()) {
                     for (Tab t : c.getRemoved()) {
                         TabGui gui = tabGuis.get(t);
-                        if (gui != null && !gui.isPermanentTab())
-                            tabGuis.remove(t);
+                        if (gui != null) {
+                            gui.closed();
+                            if (!gui.isPermanentTab())
+                                tabGuis.remove(t);
+                        }
                     }
                 }
             }

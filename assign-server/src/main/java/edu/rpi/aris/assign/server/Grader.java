@@ -11,7 +11,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -20,7 +19,6 @@ public class Grader {
     private static final Logger log = LogManager.getLogger();
     private static final Grader instance = new Grader(AssignServerMain.getServer().getConfig().getGradeThreads());
     private final ThreadPoolExecutor executor;
-    private final HashMap<String, AutoGrader> autoGraders = new HashMap<>();
 
     private Grader(int threads) {
         if (threads <= 0)
@@ -110,10 +108,10 @@ public class Grader {
                     statusStr = "Correct!";
                 } else if (grade == 0) {
                     status = GradingStatus.INCORRECT;
-                    statusStr = "Incorrect. Please try again";
+                    statusStr = "Incorrect";
                 } else {
                     status = GradingStatus.PARTIAL;
-                    statusStr = "Your solution is partially correct. Keep trying to get full credit";
+                    statusStr = "Partial Credit";
                 }
             } else {
                 status = GradingStatus.INCORRECT;

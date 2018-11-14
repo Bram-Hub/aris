@@ -484,7 +484,7 @@ public class Client implements MessageCommunication {
                 responseHandler.onError(false, message);
             } catch (ArisCommunicationException e) {
                 e.handleError(responseHandler, message);
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 logger.error("Error sending message", e);
                 responseHandler.onError(false, message);
             } finally {

@@ -35,7 +35,7 @@ public class AssignmentGetStudentMsg extends Message implements ClassMessage {
     public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
         try (PreparedStatement selectAssignment = connection.prepareStatement("SELECT problem_id, name, due_date FROM assignment WHERE id = ? AND class_id = ?;");
              PreparedStatement selectProblem = connection.prepareStatement("SELECT name, created_by, created_on, module_name, problem_hash FROM problem WHERE id = ?;");
-             PreparedStatement selectSubmissions = connection.prepareStatement("SELECT id, time, short_status, status, problem_id FROM submission WHERE class_id = ? AND assignment_id = ? AND user_id = ?;")) {
+             PreparedStatement selectSubmissions = connection.prepareStatement("SELECT id, time, short_status, status, problem_id, grade FROM submission WHERE class_id = ? AND assignment_id = ? AND user_id = ?;")) {
             selectAssignment.setInt(1, aid);
             selectAssignment.setInt(2, cid);
             try (ResultSet assignmentRs = selectAssignment.executeQuery()) {
@@ -74,7 +74,8 @@ public class AssignmentGetStudentMsg extends Message implements ClassMessage {
                     }
                     String statusStr = submissionRs.getString(4);
                     int pid = submissionRs.getInt(5);
-                    MsgUtil.SubmissionInfo submissionInfo = new MsgUtil.SubmissionInfo(user.uid, sid, pid, cid, aid, status, statusStr, submitted);
+                    double grade = submissionRs.getDouble(6);
+                    MsgUtil.SubmissionInfo submissionInfo = new MsgUtil.SubmissionInfo(user.uid, sid, pid, cid, aid, grade, status, statusStr, submitted);
                     submissions.computeIfAbsent(pid, id -> new HashSet<>()).add(submissionInfo);
                 }
             }

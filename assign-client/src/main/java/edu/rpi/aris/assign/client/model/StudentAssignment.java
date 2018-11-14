@@ -11,6 +11,7 @@ import edu.rpi.aris.assign.spi.ArisModule;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -39,6 +40,9 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
@@ -47,15 +51,18 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
 
     private static final Logger log = LogManager.getLogger();
     private static final CurrentUser userInfo = CurrentUser.getInstance();
+    private static final HashSet<StudentAssignment> assignmentsOpen = new HashSet<>();
+    private static final ReentrantLock lock = new ReentrantLock(true);
+    private static ScheduledExecutorService submissionGradedCheck = null;
     private final int cid;
     private final int aid;
     private final SimpleStringProperty name = new SimpleStringProperty();
     private final SimpleStringProperty dueDate = new SimpleStringProperty();
     private final SimpleObjectProperty<GradingStatus> status = new SimpleObjectProperty<>();
+    private final SimpleDoubleProperty grade = new SimpleDoubleProperty(0);
     private final SimpleStringProperty statusStr = new SimpleStringProperty();
     private final ObservableList<TreeItem<Submission>> problems = FXCollections.observableArrayList();
     private final SimpleBooleanProperty loadErrorProperty = new SimpleBooleanProperty(false);
-    private final ReentrantLock lock = new ReentrantLock(true);
     private final StudentAssignmentGui gui;
     private boolean loaded = false;
 
@@ -66,21 +73,63 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         this.aid = aid;
         statusStr.bind(Bindings.createStringBinding(() -> {
             GradingStatus status = this.status.get();
+            String grade = " (" + Math.round(this.grade.get() * 100.0) / 100.0 + "/" + (double) problems.size() + ")";
             if (status == null)
                 return "Unknown";
             switch (status) {
                 case CORRECT:
-                    return "Complete";
+                    return "Complete" + grade;
                 case INCORRECT:
-                    return "Incomplete";
+                case PARTIAL:
+                    return "Incomplete" + grade;
                 case GRADING:
-                    return "Your submission is being graded";
+                    return "Your submission is being graded" + grade;
                 case NONE:
-                    return "You have not made any submissions";
+                    return "You have not made any submissions" + grade;
                 default:
-                    return "Unknown";
+                    return "Unknown" + grade;
             }
-        }, status));
+        }, status, grade, problems));
+        addStudentAssignment(this);
+    }
+
+    private synchronized static void updateGradingSubmissions() {
+        HashMap<Integer, TreeItem<Submission>> subs = new HashMap<>();
+        for (StudentAssignment assignment : assignmentsOpen) {
+            for (TreeItem<Submission> item : assignment.problems) {
+                AssignedProblem problem = (AssignedProblem) item.getValue();
+                if (problem.getStatusProperty().get() == GradingStatus.GRADING) {
+                    for (TreeItem<Submission> subItem : problem.submissions) {
+                        Submission sub = subItem.getValue();
+                        if (sub.getStatusProperty().get() == GradingStatus.GRADING)
+                            subs.put(sub.sid, subItem);
+                    }
+                }
+            }
+        }
+        if (subs.size() > 0) {
+            log.info(subs.size() + " Submissions to refresh");
+            Platform.runLater(() -> {
+                userInfo.startLoading();
+                Client.getInstance().processMessage(new SubmissionRefresh(subs.keySet()), new SubmissionRefreshHandler(subs));
+            });
+        }
+    }
+
+    public static synchronized void addStudentAssignment(StudentAssignment assignment) {
+        assignmentsOpen.add(assignment);
+        if (submissionGradedCheck == null) {
+            submissionGradedCheck = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("Student Submission Refresh", true));
+            submissionGradedCheck.scheduleAtFixedRate(StudentAssignment::updateGradingSubmissions, 5, 5, TimeUnit.SECONDS);
+        }
+    }
+
+    public static synchronized void removeStudentAssignment(StudentAssignment assignment) {
+        assignmentsOpen.remove(assignment);
+        if (assignmentsOpen.size() == 0 && submissionGradedCheck != null) {
+            submissionGradedCheck.shutdown();
+            submissionGradedCheck = null;
+        }
     }
 
     public synchronized void loadAssignment(boolean reload) {
@@ -275,31 +324,36 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
     }
 
     private void updateProblemStatus(Submission parent, Collection<TreeItem<Submission>> children) {
-        GradingStatus status = GradingStatus.NONE;
-        ZonedDateTime submittedOn = null;
+        Submission best = null;
+        boolean grading = false;
         for (TreeItem<Submission> item : children) {
             Submission sub = item.getValue();
-            if (sub.status.get() == GradingStatus.CORRECT) {
-                parent.status.set(GradingStatus.CORRECT);
-                return;
-            }
-            if (sub.status.get().compareTo(status) < 0)
-                status = sub.status.get();
-            if (submittedOn == null || sub.submittedOn.get().compareTo(submittedOn) > 0)
-                submittedOn = sub.submittedOn.get();
+            if (!(sub instanceof Attempt) && (best == null || sub.getGrade() > best.getGrade()))
+                best = sub;
+            if (sub.status.get() == GradingStatus.GRADING)
+                grading = true;
         }
-        parent.submittedOn.set(submittedOn);
-        parent.status.set(status);
+        if (best == null) {
+            parent.submittedOn.set(null);
+            parent.status.set(GradingStatus.NONE);
+            parent.grade.set(0);
+        } else {
+            parent.submittedOn.set(best.submittedOn.get());
+            parent.status.set(grading ? GradingStatus.GRADING : best.status.get());
+            parent.grade.set(best.grade.get());
+        }
         updateAssignmentStatus();
     }
 
     private void updateAssignmentStatus() {
-        boolean correct = true;
+        double grade = 0;
         for (TreeItem<Submission> item : problems) {
             Submission prob = item.getValue();
-            correct &= prob.status.get() != GradingStatus.CORRECT && prob.status.get() != GradingStatus.NONE;
+            grade += prob.getGrade();
         }
-        status.set(correct ? GradingStatus.CORRECT : GradingStatus.INCORRECT);
+        int numProb = problems.size();
+        this.grade.set(grade);
+        status.set(numProb == grade ? GradingStatus.CORRECT : (grade == 0 ? GradingStatus.INCORRECT : GradingStatus.PARTIAL));
     }
 
     public <T extends ArisModule> boolean saveAttempt(Attempt attempt, Problem<T> problem, ArisModule<T> module, boolean submitOnError) {
@@ -332,17 +386,17 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
 
                     try (PipedInputStream pis = new PipedInputStream();
                          PipedOutputStream pos = new PipedOutputStream(pis)) {
-                        module.getProblemConverter().convertProblem(problem, pos, true);
-                        pos.close();
+
+                        LibAssign.convertProblem(pos, problem, module, true);
 
                         stmt.setBinaryStream(1, pis);
                         stmt.executeUpdate();
+
                         connection.commit();
                     }
                     error.set(false);
                 } catch (Exception e) {
                     log.error("An exception occurred", e);
-                    e.printStackTrace();
                 }
             }
         }, true);
@@ -371,6 +425,47 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
     public <T extends ArisModule> void fetchSubmission(Submission submission, ArisModule<T> module, boolean readonly) {
         userInfo.startLoading();
         Client.getInstance().processMessage(new SubmissionFetchMsg<>(cid, aid, submission.getPid(), submission.getSid(), submission.getModuleName()), new SubmissionFetchResponseHandler<>(module, readonly, submission));
+    }
+
+    public void closed() {
+        removeStudentAssignment(this);
+    }
+
+    private static class SubmissionRefreshHandler implements ResponseHandler<SubmissionRefresh> {
+
+        private final HashMap<Integer, TreeItem<Submission>> subs;
+
+        SubmissionRefreshHandler(HashMap<Integer, TreeItem<Submission>> subs) {
+            this.subs = subs;
+        }
+
+        @Override
+        public void response(SubmissionRefresh message) {
+            Platform.runLater(() -> {
+                userInfo.finishLoading();
+                message.getInfo().forEach((id, info) -> {
+                    TreeItem<Submission> item = subs.get(id);
+                    if (item != null)
+                        item.getValue().updateInfo(info, item);
+                });
+            });
+        }
+
+        @Override
+        public void onError(boolean suggestRetry, SubmissionRefresh msg) {
+            if (!suggestRetry) {
+                synchronized (StudentAssignment.class) {
+                    submissionGradedCheck.shutdownNow();
+                    submissionGradedCheck = null;
+                }
+            }
+            Platform.runLater(userInfo::finishLoading);
+        }
+
+        @Override
+        public ReentrantLock getLock() {
+            return lock;
+        }
     }
 
     private class ProblemFetchResponseHandler<T extends ArisModule> implements ResponseHandler<ProblemFetchMsg<T>> {
@@ -410,8 +505,9 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
                             insert.setString(2, this.problem.getName());
                             insert.setString(3, message.getModuleName());
                             insert.setString(4, message.getProblemHash());
-                            module.getProblemConverter().convertProblem(problem, pos, false);
-                            pos.close();
+
+                            LibAssign.convertProblem(pos, problem, module, false);
+
                             insert.setBinaryStream(5, pis);
                             insert.executeUpdate();
                         } catch (Exception e) {
@@ -501,7 +597,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         @Override
         public void response(SubmissionCreateMsg<T> message) {
             Platform.runLater(() -> {
-                Submission sub = new Submission(info.getPid(), message.getSid(), info.getName(), message.getSubmittedOn(), message.getStatus(), message.getStatusStr(), info.getModuleName());
+                Submission sub = new Submission(info.getPid(), message.getSid(), message.getGrade(), info.getName(), message.getSubmittedOn(), message.getStatus(), message.getStatusStr(), info.getModuleName());
                 ObservableList<TreeItem<Submission>> subs = null;
                 for (TreeItem<Submission> s : problems) {
                     if (s.getValue() instanceof AssignedProblem && s.getValue().getPid() == info.getPid())
@@ -516,6 +612,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
 
         @Override
         public void onError(boolean suggestRetry, SubmissionCreateMsg<T> msg) {
+            Platform.runLater(userInfo::finishLoading);
             if (suggestRetry)
                 uploadAttempt(info, msg.getProblem());
             else {
@@ -524,7 +621,6 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
                     saveAttempt(new Attempt(info), msg.getProblem(), module, false);
                 }
             }
-            Platform.runLater(userInfo::finishLoading);
         }
 
         @Override
@@ -543,9 +639,10 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         private final SimpleStringProperty statusStr;
         private final SimpleObjectProperty<Node> controlNode;
         private final SimpleObjectProperty<GradingStatus> status;
+        private final SimpleDoubleProperty grade;
         private final String moduleName;
 
-        public Submission(int pid, int sid, String name, ZonedDateTime submittedOn, GradingStatus status, String statusStr, String moduleName) {
+        public Submission(int pid, int sid, double grade, String name, ZonedDateTime submittedOn, GradingStatus status, String statusStr, String moduleName) {
             this.pid = pid;
             this.sid = sid;
             this.name = new SimpleStringProperty(name);
@@ -553,7 +650,8 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
             this.status = new SimpleObjectProperty<>(status);
             this.moduleName = moduleName;
             this.submittedOnStr.bind(Bindings.createStringBinding(() -> this.submittedOn.get() == null ? "Never" : AssignGui.DATE_FORMAT.format(new Date(NetUtil.UTCToMilli(this.submittedOn.get()))), this.submittedOn));
-            this.statusStr = new SimpleStringProperty(statusStr);
+            this.statusStr = new SimpleStringProperty(statusStr + " (" + (Math.round(grade * 100.0) / 100.0) + "/" + "1.0)");
+            this.grade = new SimpleDoubleProperty(grade);
             Button view = new Button("View");
             view.setOnAction(e -> viewSubmission(true));
             Button resubmit = new Button("Reattempt");
@@ -565,7 +663,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         }
 
         public Submission(MsgUtil.SubmissionInfo info, String moduleName) {
-            this(info.pid, info.sid, null, info.submissionTime, info.status, info.statusStr, moduleName);
+            this(info.pid, info.sid, info.grade, null, info.submissionTime, info.status, info.statusStr, moduleName);
         }
 
         private <T extends ArisModule> void viewSubmission(boolean readonly) {
@@ -640,6 +738,23 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
             return submittedOn;
         }
 
+        public SimpleDoubleProperty gradeProperty() {
+            return grade;
+        }
+
+        public double getGrade() {
+            return grade.get();
+        }
+
+        public void updateInfo(MsgUtil.SubmissionInfo info, TreeItem<Submission> thisItem) {
+            grade.set(info.grade);
+            submittedOn.set(info.submissionTime);
+            status.set(info.status);
+            statusStr.set(info.statusStr + " (" + (Math.round(info.grade * 100.0) / 100.0) + "/" + "1.0)");
+            TreeItem<Submission> parent = thisItem.getParent();
+            if (parent != null && parent.getValue() instanceof AssignedProblem)
+                updateProblemStatus(parent.getValue(), ((AssignedProblem) parent.getValue()).submissions);
+        }
     }
 
     public class AssignedProblem extends Submission implements Comparable<Submission> {
@@ -648,24 +763,29 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         private final String problemHash;
 
         public AssignedProblem(int pid, String name, String status, String moduleName, String problemHash) {
-            super(pid, -1, name, null, GradingStatus.NONE, status, moduleName);
+            super(pid, -1, 0, name, null, GradingStatus.NONE, status, moduleName);
             this.problemHash = problemHash;
             Button btn = new Button("Start Attempt");
             controlNodeProperty().set(btn);
             btn.setOnAction(e -> createPushed());
             statusStrProperty().bind(Bindings.createStringBinding(() -> {
+                String grade = " (" + Math.round(getGrade() * 100.0) / 100.0 + "/1.0)";
                 switch (getStatusProperty().get()) {
                     case GRADING:
-                        return "Grading problem";
+                        return "Grading problem" + grade;
                     case CORRECT:
-                        return "Correct";
+                        return "Correct" + grade;
                     case INCORRECT:
-                        return "Incorrect";
+                        return "Incorrect" + grade;
+                    case PARTIAL:
+                        return "Partial Credit" + grade;
+                    case ERROR:
+                        return "Error";
                     case NONE:
-                        return "No Submissions";
+                        return "No Submissions" + grade;
                 }
                 return null;
-            }, getStatusProperty()));
+            }, getStatusProperty(), gradeProperty()));
         }
 
         AssignedProblem(MsgUtil.ProblemInfo info) {

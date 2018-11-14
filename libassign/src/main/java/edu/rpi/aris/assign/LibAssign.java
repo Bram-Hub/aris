@@ -1,5 +1,6 @@
 package edu.rpi.aris.assign;
 
+import edu.rpi.aris.assign.spi.ArisModule;
 import org.apache.commons.cli.*;
 import org.apache.commons.io.monitor.FileAlterationListener;
 import org.apache.commons.io.monitor.FileAlterationListenerAdaptor;
@@ -19,6 +20,8 @@ import org.apache.logging.log4j.core.layout.PatternLayout;
 import java.io.*;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public class LibAssign implements Thread.UncaughtExceptionHandler {
 
@@ -31,6 +34,7 @@ public class LibAssign implements Thread.UncaughtExceptionHandler {
     private static final File ipcFileServer = new File(System.getProperty("java.io.tmpdir"), "aris_server.ipc");
     private static final Logger logger = LogManager.getLogger(LibAssign.class);
     private static final LibAssign instance = new LibAssign();
+    private static final ThreadPoolExecutor pipedStreamThreadPool = (ThreadPoolExecutor) Executors.newCachedThreadPool(new NamedThreadFactory("Piped Stream Thread", true));
     private static File lockFile, ipcFile;
     private static BufferedReader SYSTEM_IN = null;
     private static CommandLine cmd;
@@ -102,6 +106,32 @@ public class LibAssign implements Thread.UncaughtExceptionHandler {
 
     public static void showExceptionError(Throwable e) {
         instance.showExceptionError(Thread.currentThread(), e, false);
+    }
+
+    public static <T extends ArisModule> void convertProblem(PipedOutputStream pos, Problem<T> problem, ArisModule<T> module, boolean isProblemSolution) {
+        Thread parentThread = Thread.currentThread();
+        pipedStreamThreadPool.submit(() -> {
+            try {
+                module.getProblemConverter().convertProblem(problem, pos, isProblemSolution);
+                pos.close();
+            } catch (Exception e) {
+                logger.error("An exception occurred", e);
+                parentThread.interrupt();
+            }
+        });
+    }
+
+    public static <T extends ArisModule> void convertProblem(PipedOutputStream pos, Problem<T> problem, ProblemConverter<T> converter, boolean isProblemSolution) {
+        Thread parentThread = Thread.currentThread();
+        pipedStreamThreadPool.submit(() -> {
+            try {
+                converter.convertProblem(problem, pos, isProblemSolution);
+                pos.close();
+            } catch (Exception e) {
+                logger.error("An exception occurred", e);
+                parentThread.interrupt();
+            }
+        });
     }
 
     public void setArisExceptionHandler(ArisExceptionHandler exceptionHandler) {

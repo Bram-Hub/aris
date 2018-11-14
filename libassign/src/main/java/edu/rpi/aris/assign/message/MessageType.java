@@ -4,8 +4,6 @@ public enum MessageType {
 
     GET_USER_INFO(UserGetMsg.class),
     GET_ASSIGNMENTS(AssignmentsGetMsg.class),
-    GET_SUBMISSIONS_STUDENT(SubmissionGetStudentMsg.class),
-    GET_SUBMISSIONS_INST(SubmissionGetInstructorMsg.class),
     GET_PROBLEMS(ProblemsGetMsg.class),
     LIST_SUBMISSIONS(null),
     GET_SUBMISSION(null),
@@ -30,7 +28,8 @@ public enum MessageType {
     AUTH(AuthMessage.class),
     FETCH_SUBMISSION(SubmissionFetchMsg.class),
     ASSIGNMENT_GET_INSTRUCTOR(AssignmentGetInstructorMsg.class),
-    USER_EDIT(UserEditMsg.class);
+    USER_EDIT(UserEditMsg.class),
+    REFRESH_SUBMISSION(SubmissionRefresh.class);
 
     public final Class<? extends Message> msgClass;
 

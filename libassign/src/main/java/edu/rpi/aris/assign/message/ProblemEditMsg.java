@@ -56,8 +56,8 @@ public class ProblemEditMsg<T extends ArisModule> extends ProblemMessage<T> {
                  PipedOutputStream pos = new PipedOutputStream(pis);
                  ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
 
-                converter.convertProblem(getProblem(), pos, false);
-                pos.close();
+                LibAssign.convertProblem(pos, getProblem(), converter, false);
+
                 IOUtils.copy(pis, baos);
                 MessageDigest digest = MessageDigest.getInstance("MD5");
                 String hash = DatatypeConverter.printHexBinary(digest.digest(baos.toByteArray())).toLowerCase();
