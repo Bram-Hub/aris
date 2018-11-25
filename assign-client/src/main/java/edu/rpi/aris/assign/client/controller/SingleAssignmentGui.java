@@ -1,8 +1,9 @@
 package edu.rpi.aris.assign.client.controller;
 
 import edu.rpi.aris.assign.*;
+import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.model.CurrentUser;
-import edu.rpi.aris.assign.client.model.StudentAssignment;
+import edu.rpi.aris.assign.client.model.SingleAssignment;
 import edu.rpi.aris.assign.spi.ArisModule;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleStringProperty;
@@ -20,21 +21,22 @@ import javafx.stage.Window;
 import java.io.IOException;
 import java.util.Optional;
 
-public class StudentAssignmentGui implements TabGui {
+public class SingleAssignmentGui implements TabGui {
 
     private static final ModuleUIOptions SUBMIT_OPTIONS = new ModuleUIOptions(EditMode.RESTRICTED_EDIT, "Create Submission", true, false, true, true, false);
     private static final ModuleUIOptions READ_ONLY_OPTIONS = new ModuleUIOptions(EditMode.READ_ONLY, "View Submission", false, false, false, false, false);
-    private final StudentAssignment assignment;
+    private final SingleAssignment assignment;
+    private final boolean isInstructor;
     @FXML
-    private TreeTableView<StudentAssignment.Submission> treeTable;
+    private TreeTableView<SingleAssignment.Submission> treeTable;
     @FXML
-    private TreeTableColumn<StudentAssignment.Submission, String> nameColumn;
+    private TreeTableColumn<SingleAssignment.Submission, String> nameColumn;
     @FXML
-    private TreeTableColumn<StudentAssignment.Submission, String> submittedColumn;
+    private TreeTableColumn<SingleAssignment.Submission, String> submittedColumn;
     @FXML
-    private TreeTableColumn<StudentAssignment.Submission, String> statusColumn;
+    private TreeTableColumn<SingleAssignment.Submission, String> statusColumn;
     @FXML
-    private TreeTableColumn<StudentAssignment.Submission, Node> buttonColumn;
+    private TreeTableColumn<SingleAssignment.Submission, Node> buttonColumn;
     @FXML
     private Label name;
     @FXML
@@ -45,11 +47,12 @@ public class StudentAssignmentGui implements TabGui {
     private ImageView statusIcon;
     private CurrentUser userInfo = CurrentUser.getInstance();
     private Parent root;
-    private TreeItem<StudentAssignment.Submission> rootItem = new TreeItem<>();
+    private TreeItem<SingleAssignment.Submission> rootItem = new TreeItem<>();
 
-    public StudentAssignmentGui(String name, int cid, int aid) {
-        assignment = new StudentAssignment(this, name, cid, aid);
-        FXMLLoader loader = new FXMLLoader(ProblemsGui.class.getResource("/edu/rpi/aris/assign/client/view/student_assignment.fxml"));
+    SingleAssignmentGui(String name, int cid, int aid, boolean isInstructor) {
+        this.isInstructor = isInstructor;
+        assignment = new SingleAssignment(this, name, cid, aid, isInstructor);
+        FXMLLoader loader = new FXMLLoader(ProblemsGui.class.getResource("/edu/rpi/aris/assign/client/view/single_assignment.fxml"));
         loader.setController(this);
         try {
             root = loader.load();
@@ -95,8 +98,8 @@ public class StudentAssignmentGui implements TabGui {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof StudentAssignmentGui) {
-            StudentAssignment a = ((StudentAssignmentGui) obj).assignment;
+        if (obj instanceof SingleAssignmentGui) {
+            SingleAssignment a = ((SingleAssignmentGui) obj).assignment;
             return a.getCid() == assignment.getCid() && a.getAid() == assignment.getAid();
         } else
             return false;
@@ -116,7 +119,7 @@ public class StudentAssignmentGui implements TabGui {
         }, userInfo.loadingProperty(), assignment.loadErrorProperty()));
         treeTable.setRoot(rootItem);
         treeTable.setShowRoot(false);
-        assignment.getProblems().addListener((ListChangeListener<TreeItem<StudentAssignment.Submission>>) c -> {
+        assignment.getProblems().addListener((ListChangeListener<TreeItem<SingleAssignment.Submission>>) c -> {
             while (c.next()) {
                 if (c.wasAdded())
                     rootItem.getChildren().addAll(c.getAddedSubList());
@@ -127,6 +130,10 @@ public class StudentAssignmentGui implements TabGui {
         name.textProperty().bind(Bindings.createStringBinding(() -> assignment.getName() + ":", assignment.nameProperty()));
         dueDate.textProperty().bind(assignment.dueDateProperty());
         status.textProperty().bind(assignment.statusProperty());
+        status.setManaged(!isInstructor);
+        status.setVisible(!isInstructor);
+        statusIcon.setManaged(!isInstructor);
+        statusIcon.setVisible(!isInstructor);
         nameColumn.setCellValueFactory(param -> param.getValue().getValue().nameProperty());
         nameColumn.setStyle("-fx-alignment: CENTER-LEFT;");
         submittedColumn.setCellValueFactory(param -> param.getValue().getValue().submittedOnProperty());
@@ -137,8 +144,12 @@ public class StudentAssignmentGui implements TabGui {
         buttonColumn.setStyle("-fx-alignment: CENTER;");
     }
 
-    public <T extends ArisModule> void createAttempt(StudentAssignment.Attempt problemInfo, String problemName, Problem<T> problem, ArisModule<T> module) throws Exception {
+    public <T extends ArisModule> void createAttempt(SingleAssignment.Attempt problemInfo, String problemName, Problem<T> problem, ArisModule<T> module) throws Exception {
         ArisClientModule<T> clientModule = module.getClientModule();
+        if (clientModule == null) {
+            AssignClient.displayErrorMsg("Missing client module", "Client module is missing for the following module: \"" + module.getModuleName() + "\"");
+            return;
+        }
         ModuleUI<T> moduleUI = clientModule.createModuleGui(SUBMIT_OPTIONS, problem);
         moduleUI.setDescription("Modify attempt for problem: \"" + problemName + "\"");
         moduleUI.setModuleUIListener(new ModuleUIAdapter() {
@@ -199,8 +210,12 @@ public class StudentAssignmentGui implements TabGui {
         moduleUI.show();
     }
 
-    public <T extends ArisModule> void viewSubmission(StudentAssignment.Submission submission, String problemName, Problem<T> problem, ArisModule<T> module) throws Exception {
+    public <T extends ArisModule> void viewSubmission(SingleAssignment.Submission submission, String problemName, Problem<T> problem, ArisModule<T> module) throws Exception {
         ArisClientModule<T> clientModule = module.getClientModule();
+        if (clientModule == null) {
+            AssignClient.displayErrorMsg("Missing client module", "Client module is missing for the following module: \"" + module.getModuleName() + "\"");
+            return;
+        }
         ModuleUI<T> moduleUI = clientModule.createModuleGui(READ_ONLY_OPTIONS, problem);
         moduleUI.setDescription("Viewing " + submission.getName() + (problemName == null ? "" : " for problem: \"" + problemName + "\"") + " (read only)");
         moduleUI.setModal(Modality.WINDOW_MODAL, AssignGui.getInstance().getStage());

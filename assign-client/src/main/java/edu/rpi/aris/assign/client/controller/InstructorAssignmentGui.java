@@ -43,7 +43,7 @@ public class InstructorAssignmentGui implements TabGui {
     private TreeItem<InstructorAssignment.Submission> rootItem = new TreeItem<>();
 
     public InstructorAssignmentGui(String name, int cid, int aid) {
-        assignment = new InstructorAssignment(this, name, cid, aid);
+        assignment = new InstructorAssignment(null, name, cid, aid);
         FXMLLoader loader = new FXMLLoader(ProblemsGui.class.getResource("/edu/rpi/aris/assign/client/view/instructor_assignment.fxml"));
         loader.setController(this);
         try {

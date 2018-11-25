@@ -123,9 +123,9 @@ public class AssignmentsGui implements TabGui {
                     Assignments.Assignment assignment = row.getItem();
                     ServerPermissions permissions = ServerConfig.getPermissions();
                     if (permissions.hasPermission(userInfo.getClassRole(), Perm.ASSIGNMENT_GET_STUDENT) && permissions.getPermission(Perm.ASSIGNMENT_GET_STUDENT).getRollId() == userInfo.getClassRole().getId())
-                        AssignGui.getInstance().addTabGui(new StudentAssignmentGui(assignment.getName(), assignment.getCid(), assignment.getAid()));
+                        AssignGui.getInstance().addTabGui(new SingleAssignmentGui(assignment.getName(), assignment.getCid(), assignment.getAid(), false));
                     else if (permissions.hasPermission(userInfo.getClassRole(), Perm.ASSIGNMENT_GET_INSTRUCTOR))
-                        AssignGui.getInstance().addTabGui(new InstructorAssignmentGui(assignment.getName(), assignment.getCid(), assignment.getAid()));
+                        AssignGui.getInstance().addTabGui(new SingleAssignmentGui(assignment.getName(), assignment.getCid(), assignment.getAid(), true));
                 }
             });
             return row;

@@ -5,7 +5,8 @@ import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
 import edu.rpi.aris.assign.client.controller.AssignGui;
-import edu.rpi.aris.assign.client.controller.StudentAssignmentGui;
+import edu.rpi.aris.assign.client.controller.SingleAssignmentGui;
+import edu.rpi.aris.assign.client.handlers.SubmissionRefreshHandler;
 import edu.rpi.aris.assign.message.*;
 import edu.rpi.aris.assign.spi.ArisModule;
 import javafx.application.Platform;
@@ -47,11 +48,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMsg> {
+public class SingleAssignment {
 
     private static final Logger log = LogManager.getLogger();
     private static final CurrentUser userInfo = CurrentUser.getInstance();
-    private static final HashSet<StudentAssignment> assignmentsOpen = new HashSet<>();
+    private static final HashSet<SingleAssignment> assignmentsOpen = new HashSet<>();
     private static final ReentrantLock lock = new ReentrantLock(true);
     private static ScheduledExecutorService submissionGradedCheck = null;
     private final int cid;
@@ -63,11 +64,15 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
     private final SimpleStringProperty statusStr = new SimpleStringProperty();
     private final ObservableList<TreeItem<Submission>> problems = FXCollections.observableArrayList();
     private final SimpleBooleanProperty loadErrorProperty = new SimpleBooleanProperty(false);
-    private final StudentAssignmentGui gui;
+    private final ResponseHandler<AssignmentGetStudentMsg> studentHandler = new AssignmentGetStudentHandler();
+    private final ResponseHandler<AssignmentGetInstructorMsg> instructorHandler = new AssignmentGetInstructorHandler();
+    private final SingleAssignmentGui gui;
+    private final boolean isInstructor;
     private boolean loaded = false;
 
-    public StudentAssignment(StudentAssignmentGui gui, String name, int cid, int aid) {
+    public SingleAssignment(SingleAssignmentGui gui, String name, int cid, int aid, boolean isInstructor) {
         this.gui = gui;
+        this.isInstructor = isInstructor;
         this.name.set(name);
         this.cid = cid;
         this.aid = aid;
@@ -95,7 +100,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
 
     private synchronized static void updateGradingSubmissions() {
         HashMap<Integer, TreeItem<Submission>> subs = new HashMap<>();
-        for (StudentAssignment assignment : assignmentsOpen) {
+        for (SingleAssignment assignment : assignmentsOpen) {
             for (TreeItem<Submission> item : assignment.problems) {
                 AssignedProblem problem = (AssignedProblem) item.getValue();
                 if (problem.getStatusProperty().get() == GradingStatus.GRADING) {
@@ -111,20 +116,20 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
             log.info(subs.size() + " Submissions to refresh");
             Platform.runLater(() -> {
                 userInfo.startLoading();
-                Client.getInstance().processMessage(new SubmissionRefresh(subs.keySet()), new SubmissionRefreshHandler(subs));
+                Client.getInstance().processMessage(new SubmissionRefresh(subs.keySet()), new SubmissionRefreshHandler(subs, lock));
             });
         }
     }
 
-    public static synchronized void addStudentAssignment(StudentAssignment assignment) {
+    public static synchronized void addStudentAssignment(SingleAssignment assignment) {
         assignmentsOpen.add(assignment);
         if (submissionGradedCheck == null) {
             submissionGradedCheck = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("Student Submission Refresh", true));
-            submissionGradedCheck.scheduleAtFixedRate(StudentAssignment::updateGradingSubmissions, 5, 5, TimeUnit.SECONDS);
+            submissionGradedCheck.scheduleAtFixedRate(SingleAssignment::updateGradingSubmissions, 5, 5, TimeUnit.SECONDS);
         }
     }
 
-    public static synchronized void removeStudentAssignment(StudentAssignment assignment) {
+    public static synchronized void removeStudentAssignment(SingleAssignment assignment) {
         assignmentsOpen.remove(assignment);
         if (assignmentsOpen.size() == 0 && submissionGradedCheck != null) {
             submissionGradedCheck.shutdown();
@@ -132,11 +137,19 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         }
     }
 
+    public static synchronized void cancelGradeCheck() {
+        submissionGradedCheck.shutdownNow();
+        submissionGradedCheck = null;
+    }
+
     public synchronized void loadAssignment(boolean reload) {
         if (reload || !loaded) {
             userInfo.startLoading();
             clear();
-            Client.getInstance().processMessage(new AssignmentGetStudentMsg(cid, aid), this);
+            if (isInstructor) {
+                Client.getInstance().processMessage(new AssignmentGetInstructorMsg(cid, aid), instructorHandler);
+            } else
+                Client.getInstance().processMessage(new AssignmentGetStudentMsg(cid, aid), studentHandler);
         }
     }
 
@@ -259,70 +272,6 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         });
     }
 
-    @Override
-    public void response(AssignmentGetStudentMsg message) {
-        Platform.runLater(() -> {
-            name.set(message.getName());
-            dueDate.set(AssignGui.DATE_FORMAT.format(new Date(NetUtil.UTCToMilli(message.getDueDate()))));
-            ArrayList<MsgUtil.ProblemInfo> problemInfos = new ArrayList<>(message.getProblems());
-            problemInfos.sort(Comparator.comparing(o -> o.name));
-            for (MsgUtil.ProblemInfo problemInfo : problemInfos) {
-                AssignedProblem assignedProblem = new AssignedProblem(problemInfo);
-                TreeItem<Submission> p = new TreeItem<>(assignedProblem);
-                ObservableList<TreeItem<Submission>> subs = assignedProblem.submissions;
-                subs.addListener((ListChangeListener<TreeItem<Submission>>) c -> {
-                    while (c.next()) {
-                        if (c.wasRemoved())
-                            p.getChildren().removeAll(c.getRemoved());
-                        if (c.wasAdded())
-                            p.getChildren().addAll(c.getFrom(), c.getAddedSubList());
-                        p.getChildren().sorted(Comparator.comparing(TreeItem::getValue));
-                        AtomicInteger i = new AtomicInteger((int) c.getList().stream().map(TreeItem::getValue).filter(item -> !(item instanceof Attempt)).count());
-                        p.getChildren().forEach(item -> {
-                            if (!(item.getValue() instanceof Attempt))
-                                item.getValue().name.set("Submission " + (i.getAndDecrement()));
-                        });
-                        updateProblemStatus(assignedProblem, p.getChildren());
-                    }
-                });
-                HashSet<MsgUtil.SubmissionInfo> tmp = message.getSubmissions().get(problemInfo.pid);
-                if (tmp != null) {
-                    ArrayList<MsgUtil.SubmissionInfo> submissionInfos = new ArrayList<>(tmp);
-                    submissionInfos.sort((o1, o2) -> o2.submissionTime.compareTo(o1.submissionTime));
-                    for (MsgUtil.SubmissionInfo submissionInfo : submissionInfos) {
-                        Submission submission = new Submission(submissionInfo, assignedProblem.getModuleName());
-                        TreeItem<Submission> sub = new TreeItem<>(submission);
-                        subs.add(sub);
-                    }
-                }
-                problems.add(p);
-                updateProblemStatus(assignedProblem, p.getChildren());
-                cacheProblem(assignedProblem, false);
-            }
-            problems.sort(Comparator.comparing(TreeItem::getValue));
-            loadAttempts();
-            loaded = true;
-            loadErrorProperty.set(false);
-            userInfo.finishLoading();
-        });
-    }
-
-    @Override
-    public void onError(boolean suggestRetry, AssignmentGetStudentMsg msg) {
-        Platform.runLater(() -> {
-            clear();
-            userInfo.finishLoading();
-            loadErrorProperty.set(true);
-            if (suggestRetry)
-                loadAssignment(true);
-        });
-    }
-
-    @Override
-    public ReentrantLock getLock() {
-        return lock;
-    }
-
     private void updateProblemStatus(Submission parent, Collection<TreeItem<Submission>> children) {
         Submission best = null;
         boolean grading = false;
@@ -342,10 +291,13 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
             parent.status.set(grading ? GradingStatus.GRADING : best.status.get());
             parent.grade.set(best.grade.get());
         }
-        updateAssignmentStatus();
+        if (!isInstructor)
+            updateAssignmentStatus();
     }
 
     private void updateAssignmentStatus() {
+        if (isInstructor)
+            return;
         double grade = 0;
         for (TreeItem<Submission> item : problems) {
             Submission prob = item.getValue();
@@ -431,41 +383,132 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         removeStudentAssignment(this);
     }
 
-    private static class SubmissionRefreshHandler implements ResponseHandler<SubmissionRefresh> {
-
-        private final HashMap<Integer, TreeItem<Submission>> subs;
-
-        SubmissionRefreshHandler(HashMap<Integer, TreeItem<Submission>> subs) {
-            this.subs = subs;
-        }
+    public class AssignmentGetInstructorHandler implements ResponseHandler<AssignmentGetInstructorMsg> {
 
         @Override
-        public void response(SubmissionRefresh message) {
+        public void response(AssignmentGetInstructorMsg message) {
             Platform.runLater(() -> {
-                userInfo.finishLoading();
-                message.getInfo().forEach((id, info) -> {
-                    TreeItem<Submission> item = subs.get(id);
-                    if (item != null)
-                        item.getValue().updateInfo(info, item);
+                name.set(message.getName());
+                dueDate.set(AssignGui.DATE_FORMAT.format(new Date(NetUtil.UTCToMilli(message.getDueDate()))));
+                message.getUsers().entrySet().stream().filter(e -> e.getValue() != null && e.getValue().getLeft() != null).sorted(Comparator.comparing(o -> o.getValue().getLeft())).forEachOrdered(entry -> {
+                    Student student = new Student(entry.getKey(), entry.getValue().getLeft() + " (" + entry.getValue().getRight() + ")", "Unknown", null);
+                    TreeItem<Submission> s = new TreeItem<>(student);
+                    problems.add(s);
+                    message.getProblems().stream().sorted(Comparator.comparing(p -> p.name == null ? "" : p.name)).forEachOrdered(pInfo -> {
+                        AssignedProblem problem = new AssignedProblem(pInfo);
+                        TreeItem<Submission> p = new TreeItem<>(problem);
+                        student.problems.add(p);
+                        HashMap<Integer, HashSet<MsgUtil.SubmissionInfo>> probs = message.getSubmissions().get(student.getUid());
+                        HashSet<MsgUtil.SubmissionInfo> subs;
+                        if (probs != null && (subs = probs.get(pInfo.pid)) != null) {
+                            AtomicInteger i = new AtomicInteger(subs.size());
+                            subs.stream().sorted((o1, o2) -> o2.submissionTime.compareTo(o1.submissionTime)).forEachOrdered(sInfo -> {
+                                Submission submission = new Submission(sInfo, pInfo.moduleName);
+                                submission.name.set("Submission " + i.getAndDecrement());
+                                TreeItem<Submission> sub = new TreeItem<>(submission);
+                                problem.submissions.add(sub);
+                            });
+                        }
+                        updateProblemStatus(problem, problem.submissions);
+                        p.getChildren().addAll(problem.submissions);
+                    });
+                    updateProblemStatus(student, student.problems);
+                    s.getChildren().addAll(student.problems);
                 });
+                loaded = true;
+                loadErrorProperty.set(false);
+                userInfo.finishLoading();
             });
         }
 
         @Override
-        public void onError(boolean suggestRetry, SubmissionRefresh msg) {
-            if (!suggestRetry) {
-                synchronized (StudentAssignment.class) {
-                    submissionGradedCheck.shutdownNow();
-                    submissionGradedCheck = null;
-                }
-            }
-            Platform.runLater(userInfo::finishLoading);
+        public void onError(boolean suggestRetry, AssignmentGetInstructorMsg msg) {
+            Platform.runLater(() -> {
+                clear();
+                userInfo.finishLoading();
+                loadErrorProperty.set(true);
+                if (suggestRetry)
+                    loadAssignment(true);
+            });
         }
 
         @Override
         public ReentrantLock getLock() {
             return lock;
         }
+
+    }
+
+    public class AssignmentGetStudentHandler implements ResponseHandler<AssignmentGetStudentMsg> {
+
+        @Override
+        public void response(AssignmentGetStudentMsg message) {
+            Platform.runLater(() -> {
+                name.set(message.getName());
+                dueDate.set(AssignGui.DATE_FORMAT.format(new Date(NetUtil.UTCToMilli(message.getDueDate()))));
+                ArrayList<MsgUtil.ProblemInfo> problemInfos = new ArrayList<>(message.getProblems());
+                problemInfos.sort(Comparator.comparing(o -> o.name));
+                for (MsgUtil.ProblemInfo problemInfo : problemInfos) {
+                    AssignedProblem assignedProblem = new AssignedProblem(problemInfo);
+                    TreeItem<Submission> p = new TreeItem<>(assignedProblem);
+                    ObservableList<TreeItem<Submission>> subs = assignedProblem.submissions;
+                    subs.addListener((ListChangeListener<TreeItem<Submission>>) c -> {
+                        while (c.next()) {
+                            if (c.wasRemoved())
+                                p.getChildren().removeAll(c.getRemoved());
+                            if (c.wasAdded())
+                                p.getChildren().addAll(c.getFrom(), c.getAddedSubList());
+                            p.getChildren().sorted(Comparator.comparing(TreeItem::getValue));
+                            AtomicInteger i = new AtomicInteger((int) c.getList().stream().map(TreeItem::getValue).filter(item -> !(item instanceof Attempt)).count());
+                            p.getChildren().forEach(item -> {
+                                if (!(item.getValue() instanceof Attempt))
+                                    item.getValue().name.set("Submission " + (i.getAndDecrement()));
+                            });
+                            updateProblemStatus(assignedProblem, p.getChildren());
+                        }
+                    });
+                    HashSet<MsgUtil.SubmissionInfo> tmp = message.getSubmissions().get(problemInfo.pid);
+                    if (tmp != null) {
+                        ArrayList<MsgUtil.SubmissionInfo> submissionInfos = new ArrayList<>(tmp);
+                        submissionInfos.sort((o1, o2) -> {
+                            if (o1.submissionTime == null || o2.submissionTime == null)
+                                return 0;
+                            return o2.submissionTime.compareTo(o1.submissionTime);
+                        });
+                        for (MsgUtil.SubmissionInfo submissionInfo : submissionInfos) {
+                            Submission submission = new Submission(submissionInfo, assignedProblem.getModuleName());
+                            TreeItem<Submission> sub = new TreeItem<>(submission);
+                            subs.add(sub);
+                        }
+                    }
+                    problems.add(p);
+                    updateProblemStatus(assignedProblem, p.getChildren());
+                    cacheProblem(assignedProblem, false);
+                }
+                problems.sort(Comparator.comparing(TreeItem::getValue));
+                loadAttempts();
+                loaded = true;
+                loadErrorProperty.set(false);
+                userInfo.finishLoading();
+            });
+        }
+
+        @Override
+        public void onError(boolean suggestRetry, AssignmentGetStudentMsg msg) {
+            Platform.runLater(() -> {
+                clear();
+                userInfo.finishLoading();
+                loadErrorProperty.set(true);
+                if (suggestRetry)
+                    loadAssignment(true);
+            });
+        }
+
+        @Override
+        public ReentrantLock getLock() {
+            return lock;
+        }
+
     }
 
     private class ProblemFetchResponseHandler<T extends ArisModule> implements ResponseHandler<ProblemFetchMsg<T>> {
@@ -597,7 +640,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         @Override
         public void response(SubmissionCreateMsg<T> message) {
             Platform.runLater(() -> {
-                Submission sub = new Submission(info.getPid(), message.getSid(), message.getGrade(), info.getName(), message.getSubmittedOn(), message.getStatus(), message.getStatusStr(), info.getModuleName());
+                Submission sub = new Submission(info.getPid(), userInfo.getUser().uid, message.getSid(), message.getGrade(), info.getName(), message.getSubmittedOn(), message.getStatus(), message.getStatusStr(), info.getModuleName());
                 ObservableList<TreeItem<Submission>> subs = null;
                 for (TreeItem<Submission> s : problems) {
                     if (s.getValue() instanceof AssignedProblem && s.getValue().getPid() == info.getPid())
@@ -632,6 +675,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
     public class Submission implements Comparable<Submission> {
 
         private final int pid;
+        private final int uid;
         private final int sid;
         private final SimpleStringProperty name;
         private final SimpleObjectProperty<ZonedDateTime> submittedOn;
@@ -642,8 +686,9 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         private final SimpleDoubleProperty grade;
         private final String moduleName;
 
-        public Submission(int pid, int sid, double grade, String name, ZonedDateTime submittedOn, GradingStatus status, String statusStr, String moduleName) {
+        public Submission(int pid, int uid, int sid, double grade, String name, ZonedDateTime submittedOn, GradingStatus status, String statusStr, String moduleName) {
             this.pid = pid;
+            this.uid = uid;
             this.sid = sid;
             this.name = new SimpleStringProperty(name);
             this.submittedOn = new SimpleObjectProperty<>(submittedOn);
@@ -663,7 +708,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         }
 
         public Submission(MsgUtil.SubmissionInfo info, String moduleName) {
-            this(info.pid, info.sid, info.grade, null, info.submissionTime, info.status, info.statusStr, moduleName);
+            this(info.pid, info.uid, info.sid, info.grade, null, info.submissionTime, info.status, info.statusStr, moduleName);
         }
 
         private <T extends ArisModule> void viewSubmission(boolean readonly) {
@@ -755,6 +800,10 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
             if (parent != null && parent.getValue() instanceof AssignedProblem)
                 updateProblemStatus(parent.getValue(), ((AssignedProblem) parent.getValue()).submissions);
         }
+
+        public int getUid() {
+            return uid;
+        }
     }
 
     public class AssignedProblem extends Submission implements Comparable<Submission> {
@@ -763,7 +812,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         private final String problemHash;
 
         public AssignedProblem(int pid, String name, String status, String moduleName, String problemHash) {
-            super(pid, -1, 0, name, null, GradingStatus.NONE, status, moduleName);
+            super(pid, -1, -1, 0, name, null, GradingStatus.NONE, status, moduleName);
             this.problemHash = problemHash;
             Button btn = new Button("Start Attempt");
             controlNodeProperty().set(btn);
@@ -804,6 +853,23 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
         @Override
         public int compareTo(@NotNull Submission o) {
             if (o instanceof AssignedProblem)
+                return getName().compareTo(o.getName());
+            return super.compareTo(o);
+        }
+    }
+
+    public class Student extends Submission implements Comparable<Submission> {
+
+        private final ObservableList<TreeItem<Submission>> problems = FXCollections.observableArrayList();
+
+        public Student(int uid, String name, String statusStr, String moduleName) {
+            super(-1, uid, -1, 0, name, null, GradingStatus.NONE, statusStr, moduleName);
+            super.controlNode.set(null);
+        }
+
+        @Override
+        public int compareTo(@NotNull Submission o) {
+            if (o instanceof Student)
                 return getName().compareTo(o.getName());
             return super.compareTo(o);
         }
@@ -863,7 +929,7 @@ public class StudentAssignment implements ResponseHandler<AssignmentGetStudentMs
                     }
                     if (problem != null) {
                         Problem<T> finalProblem = problem;
-                        Platform.runLater(() -> StudentAssignment.this.uploadAttempt(this, finalProblem));
+                        Platform.runLater(() -> SingleAssignment.this.uploadAttempt(this, finalProblem));
                     }
                 } else {
                     log.error("Upload failed: No connection available to offline database");

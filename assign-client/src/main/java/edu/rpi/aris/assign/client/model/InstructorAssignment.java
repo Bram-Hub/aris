@@ -5,7 +5,7 @@ import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
 import edu.rpi.aris.assign.client.controller.AssignGui;
-import edu.rpi.aris.assign.client.controller.InstructorAssignmentGui;
+import edu.rpi.aris.assign.client.controller.SingleAssignmentGui;
 import edu.rpi.aris.assign.message.AssignmentGetInstructorMsg;
 import edu.rpi.aris.assign.message.MsgUtil;
 import edu.rpi.aris.assign.message.ProblemFetchMsg;
@@ -39,11 +39,11 @@ public class InstructorAssignment implements ResponseHandler<AssignmentGetInstru
     private final SimpleStringProperty dueDate = new SimpleStringProperty();
     private final SimpleBooleanProperty loadErrorProperty = new SimpleBooleanProperty(false);
     private final ObservableList<TreeItem<Submission>> students = FXCollections.observableArrayList();
-    private final InstructorAssignmentGui gui;
+    private final SingleAssignmentGui gui;
     private final ReentrantLock lock = new ReentrantLock(true);
     private boolean loaded = false;
 
-    public InstructorAssignment(InstructorAssignmentGui gui, String name, int cid, int aid) {
+    public InstructorAssignment(SingleAssignmentGui gui, String name, int cid, int aid) {
         this.gui = gui;
         this.name.set(name);
         this.cid = cid;
@@ -219,7 +219,7 @@ public class InstructorAssignment implements ResponseHandler<AssignmentGetInstru
                 if (problemInfo != null) {
                     Problem<T> problem = message.getProblem();
                     try {
-                        gui.viewProblem(problemInfo.getName(), problem, module);
+//                        gui.viewProblem(problemInfo.getName(), problem, module);
                     } catch (Exception e) {
                         LibAssign.showExceptionError(e);
                     }
@@ -264,7 +264,7 @@ public class InstructorAssignment implements ResponseHandler<AssignmentGetInstru
                 }
                 Problem<T> problem = message.getProblem();
                 try {
-                    gui.viewProblem(submission.getName() + (problemInfo == null ? "" : " for " + problemInfo.getName()), problem, module);
+//                    gui.viewProblem(submission.getName() + (problemInfo == null ? "" : " for " + problemInfo.getName()), problem, module);
                 } catch (Exception e) {
                     LibAssign.showExceptionError(e);
                 }
