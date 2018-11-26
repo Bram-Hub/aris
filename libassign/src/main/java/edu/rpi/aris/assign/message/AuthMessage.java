@@ -59,7 +59,7 @@ public class AuthMessage extends Message {
                     try {
                         userRole = permissions.getRole(rs.getInt(5));
                     } catch (IllegalArgumentException e) {
-                        log.error("Failed to parse User Role", e);
+                        log.error("Failed to parse UserInfo Role", e);
                         userRole = permissions.getLowestRole();
                         try (PreparedStatement updateUserType = connection.prepareStatement("UPDATE users SET default_role = ? WHERE username = ?;")) {
                             updateUserType.setInt(1, userRole.getId());

@@ -10,7 +10,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
-public class SubmissionFetchMsg<T extends ArisModule> extends ProblemMessage<T> {
+public class SubmissionFetchMsg<T extends ArisModule> extends ProblemMessage<T> implements ClassMessage {
 
     private final int pid;
     private final int cid;
@@ -73,4 +73,8 @@ public class SubmissionFetchMsg<T extends ArisModule> extends ProblemMessage<T> 
         return MessageType.FETCH_SUBMISSION;
     }
 
+    @Override
+    public int getClassId() {
+        return cid;
+    }
 }

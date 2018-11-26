@@ -57,8 +57,6 @@ public class AssignGui {
     @FXML
     private MenuItem loginMenu;
     @FXML
-    private Menu classMenu;
-    @FXML
     private Label noClasses;
 
     private AssignmentsGui assignmentsGui;
@@ -200,10 +198,6 @@ public class AssignGui {
         userInfo.classRoleProperty().addListener(((observable, oldValue, newValue) -> setTabs(userInfo.getDefaultRole(), newValue)));
         setTabs(null, null);
 
-        classMenu.visibleProperty().bind(Bindings.createBooleanBinding(() -> {
-            ServerPermissions permissions = ServerConfig.getPermissions();
-            return permissions != null && permissions.hasPermission(userInfo.getDefaultRole(), Perm.CLASS_CREATE_DELETE);
-        }, userInfo.defaultRoleProperty()));
     }
 
     private void setTabs(ServerRole defaultRole, ServerRole classRole) {
@@ -260,46 +254,6 @@ public class AssignGui {
             if (gui != null)
                 gui.load(true);
         });
-    }
-
-    @FXML
-    public void createClass() {
-        TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("Create Class");
-        dialog.setHeaderText("Create a new class");
-        dialog.setContentText("Class Name:");
-        dialog.initOwner(stage);
-        dialog.initModality(Modality.WINDOW_MODAL);
-        Optional<String> result = dialog.showAndWait();
-        result.ifPresent(name -> userInfo.createClass(name));
-    }
-
-    @FXML
-    public void deleteClass() {
-        ClassInfo info = userInfo.getSelectedClass();
-        if (info == null)
-            return;
-        TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("Delete Class");
-        dialog.setContentText("Class Name:");
-        dialog.setHeaderText("To delete the class, type the class name below exactly as follows: \"" + info.getClassName() + "\"");
-        dialog.initModality(Modality.WINDOW_MODAL);
-        dialog.initOwner(stage);
-        ButtonType delete = new ButtonType("Delete");
-        dialog.getDialogPane().getButtonTypes().setAll(delete, ButtonType.CANCEL);
-        dialog.setOnShowing(event -> {
-            Button deleteBtn = (Button) dialog.getDialogPane().lookupButton(delete);
-            deleteBtn.disableProperty().bind(dialog.getEditor().textProperty().isNotEqualTo(info.getClassName()));
-            deleteBtn.setDefaultButton(true);
-        });
-        dialog.setResultConverter(buttonType -> {
-            if (buttonType == delete)
-                return dialog.getEditor().getText();
-            return null;
-        });
-        Optional<String> result = dialog.showAndWait();
-        if (result.isPresent() && result.get().equals(info.getClassName()))
-            userInfo.deleteClass(info.getClassId());
     }
 
     public Window getStage() {

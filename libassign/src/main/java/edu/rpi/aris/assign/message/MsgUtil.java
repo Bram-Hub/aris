@@ -3,6 +3,8 @@ package edu.rpi.aris.assign.message;
 import edu.rpi.aris.assign.GradingStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 
 import java.time.ZonedDateTime;
 import java.util.Collection;
@@ -117,4 +119,45 @@ public class MsgUtil {
         }
 
     }
+
+    public static class UserInfo implements Comparable<UserInfo> {
+
+        public final int uid;
+        @NotNull
+        public final String username;
+        @NotNull
+        public final String fullName;
+        public final int defaultRole;
+
+        public UserInfo(int uid, @NotNull String username, @NotNull String fullName, int defaultRole) {
+            this.uid = uid;
+            this.username = username;
+            this.fullName = fullName;
+            this.defaultRole = defaultRole;
+        }
+
+        private UserInfo() {
+            uid = 0;
+            username = "";
+            fullName = "";
+            defaultRole = 0;
+        }
+
+        @Contract(value = "null -> false", pure = true)
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof UserInfo && uid == ((UserInfo) obj).uid;
+        }
+
+        @Override
+        public int hashCode() {
+            return uid;
+        }
+
+        @Override
+        public int compareTo(@NotNull MsgUtil.UserInfo o) {
+            return username.compareTo(o.username);
+        }
+    }
+
 }

@@ -430,10 +430,10 @@ public class Client implements MessageCommunication {
         }
     }
 
-    public void connect() throws Exception {
+    private void connect() throws Exception {
         connectionLock.lock();
         try {
-            if (!ping()) {
+            if (!connected()) {
                 disconnect(false);
                 String server = LocalConfig.SERVER_ADDRESS.getValue();
                 if (server == null || server.length() == 0) {
@@ -677,16 +677,8 @@ public class Client implements MessageCommunication {
         }
     }
 
-    public synchronized boolean ping() throws IOException {
-        if (socket != null && out != null && in != null) {
-            out.writeUTF("PING");
-            out.flush();
-            try {
-                return in.readUTF().equals("PONG");
-            } catch (IOException ignored) {
-            }
-        }
-        return false;
+    private synchronized boolean connected() {
+        return socket != null && out != null && in != null;
     }
 
     @Override

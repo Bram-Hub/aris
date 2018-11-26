@@ -29,7 +29,8 @@ public enum MessageType {
     FETCH_SUBMISSION(SubmissionFetchMsg.class),
     ASSIGNMENT_GET_INSTRUCTOR(AssignmentGetInstructorMsg.class),
     USER_EDIT(UserEditMsg.class),
-    REFRESH_SUBMISSION(SubmissionRefresh.class);
+    REFRESH_SUBMISSION(SubmissionRefresh.class),
+    CLASS_USER_LIST(ClassUserListMsg.class);
 
     public final Class<? extends Message> msgClass;
 

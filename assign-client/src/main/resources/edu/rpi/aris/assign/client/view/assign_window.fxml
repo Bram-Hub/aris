@@ -1,11 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.*?>
-<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ChoiceBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.ProgressIndicator?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.*?>
-<VBox xmlns="http://javafx.com/javafx/8.0.172-ea" xmlns:fx="http://javafx.com/fxml/1" stylesheets="@assign_window.css">
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox stylesheets="@assign_window.css" xmlns="http://javafx.com/javafx/8.0.152-ea" xmlns:fx="http://javafx.com/fxml/1">
    <children>
       <MenuBar>
          <menus>
@@ -13,12 +24,6 @@
                <items>
                   <MenuItem fx:id="loginMenu" mnemonicParsing="false" onAction="#loginOut" text="Login" />
                </items>
-            </Menu>
-            <Menu fx:id="classMenu" mnemonicParsing="false" text="Class">
-              <items>
-                <MenuItem mnemonicParsing="false" onAction="#createClass" text="Create Class" />
-                  <MenuItem mnemonicParsing="false" onAction="#deleteClass" text="Delete Class" />
-              </items>
             </Menu>
          </menus>
       </MenuBar>
@@ -30,7 +35,7 @@
                           <Insets />
                       </HBox.margin>
                   </Label>
-                   <Label fx:id="noClasses" text="No classes available"/>
+                   <Label fx:id="noClasses" text="No classes available" />
                   <ChoiceBox fx:id="classes" />
                   <Button fx:id="refreshButton" graphicTextGap="0.0" mnemonicParsing="false" onAction="#refresh">
                       <graphic>
@@ -60,10 +65,10 @@
               </HBox>
                <TabPane fx:id="tabPane" tabClosingPolicy="ALL_TABS" VBox.vgrow="ALWAYS">
                   <Tab fx:id="userTab" closable="false" text="Users" />
-                   <Tab fx:id="classTab" closable="false" text="Classes"/>
-                   <Tab fx:id="permissionTab" closable="false" text="Permissions"/>
+                   <Tab fx:id="classTab" closable="false" text="Classes" />
+                   <Tab fx:id="permissionTab" closable="false" text="Permissions" />
                   <Tab fx:id="problemTab" closable="false" text="Problems" />
-                   <Tab fx:id="assignmentTab" closable="false" text="Assignments"/>
+                   <Tab fx:id="assignmentTab" closable="false" text="Assignments" />
               </TabPane>
            </children>
        </VBox>

@@ -12,7 +12,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.time.ZonedDateTime;
 
-public class SubmissionCreateMsg<T extends ArisModule> extends ProblemMessage<T> {
+public class SubmissionCreateMsg<T extends ArisModule> extends ProblemMessage<T> implements ClassMessage {
 
     private final int cid, aid, pid;
     private int sid;
@@ -91,5 +91,10 @@ public class SubmissionCreateMsg<T extends ArisModule> extends ProblemMessage<T>
 
     public double getGrade() {
         return grade;
+    }
+
+    @Override
+    public int getClassId() {
+        return cid;
     }
 }

@@ -4,6 +4,7 @@ import edu.rpi.aris.assign.ServerRole;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
 import edu.rpi.aris.assign.client.controller.UsersGui;
+import edu.rpi.aris.assign.message.MsgUtil;
 import edu.rpi.aris.assign.message.UserChangePasswordMsg;
 import edu.rpi.aris.assign.message.UserEditMsg;
 import edu.rpi.aris.assign.message.UserListMsg;
@@ -191,7 +192,7 @@ public class Users implements ResponseHandler<UserListMsg> {
             this.defaultRole = new SimpleObjectProperty<>(defaultRole == null ? ServerConfig.getPermissions().getLowestRole() : defaultRole);
         }
 
-        public UserInfo(UserListMsg.User user) {
+        public UserInfo(MsgUtil.UserInfo user) {
             this(user.uid, user.username, user.fullName, ServerConfig.getPermissions().getRole(user.defaultRole));
         }
 

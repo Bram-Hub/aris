@@ -133,7 +133,7 @@ public class UsersGui implements TabGui {
         });
         deleteUser.setCellValueFactory(param -> {
             if (param.getValue().getUid() != userInfo.getUser().uid && param.getValue().getDefaultRole().getRollRank() >= userInfo.getDefaultRole().getRollRank()) {
-                Button btn = new Button("Delete User");
+                Button btn = new Button("Delete UserInfo");
                 btn.setOnAction(e -> deleteUser(param.getValue()));
                 return new SimpleObjectProperty<>(btn);
             } else
@@ -152,12 +152,12 @@ public class UsersGui implements TabGui {
     }
 
     private void deleteUser(Users.UserInfo info) {
-        AssignGui.getInstance().notImplemented("Delete User");
+        AssignGui.getInstance().notImplemented("Delete UserInfo");
     }
 
     @FXML
     public void addUser() {
-        AssignGui.getInstance().notImplemented("Add User");
+        AssignGui.getInstance().notImplemented("Add UserInfo");
     }
 
 }

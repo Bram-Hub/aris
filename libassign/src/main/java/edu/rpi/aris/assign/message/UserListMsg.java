@@ -2,7 +2,6 @@ package edu.rpi.aris.assign.message;
 
 import edu.rpi.aris.assign.Perm;
 import edu.rpi.aris.assign.ServerPermissions;
-import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -13,7 +12,7 @@ import java.util.HashSet;
 
 public class UserListMsg extends Message {
 
-    private final HashSet<User> users = new HashSet<>();
+    private final HashSet<MsgUtil.UserInfo> users = new HashSet<>();
 
     public UserListMsg() {
         super(Perm.USER_LIST);
@@ -29,7 +28,7 @@ public class UserListMsg extends Message {
                 String username = rs.getString(2);
                 String fullName = rs.getString(3);
                 int defaultRole = rs.getInt(4);
-                users.add(new User(id, username, fullName, defaultRole));
+                users.add(new MsgUtil.UserInfo(id, username, fullName, defaultRole));
             }
         }
         return null;
@@ -46,48 +45,8 @@ public class UserListMsg extends Message {
         return true;
     }
 
-    public HashSet<User> getUsers() {
+    public HashSet<MsgUtil.UserInfo> getUsers() {
         return users;
-    }
-
-    public static class User implements Comparable<User> {
-
-        public final int uid;
-        @NotNull
-        public final String username;
-        @NotNull
-        public final String fullName;
-        public final int defaultRole;
-
-        public User(int uid, @NotNull String username, @NotNull String fullName, int defaultRole) {
-            this.uid = uid;
-            this.username = username;
-            this.fullName = fullName;
-            this.defaultRole = defaultRole;
-        }
-
-        private User() {
-            uid = 0;
-            username = "";
-            fullName = "";
-            defaultRole = 0;
-        }
-
-        @Contract(value = "null -> false", pure = true)
-        @Override
-        public boolean equals(Object obj) {
-            return obj instanceof User && uid == ((User) obj).uid;
-        }
-
-        @Override
-        public int hashCode() {
-            return uid;
-        }
-
-        @Override
-        public int compareTo(@NotNull UserListMsg.User o) {
-            return username.compareTo(o.username);
-        }
     }
 
 }

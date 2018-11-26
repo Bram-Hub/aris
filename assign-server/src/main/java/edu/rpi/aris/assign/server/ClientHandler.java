@@ -170,7 +170,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
 //                        }
 //                        logger.info("Password expired reset required");
 //                        sendMessage((forceReset ? NetUtil.AUTH_RESET : NetUtil.AUTH_OK) + " " + URLEncoder.encode(access_token, "UTF-8"));
-//                        user = new User(userId, username, userRole, forceReset);
+//                        user = new UserInfo(userId, username, userRole, forceReset);
 //                        return false;
 //                    } else {
 //                        if (auth[1].equals(NetUtil.AUTH_PASS)) {
@@ -254,7 +254,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                                 msg.send(this);
                             else {
                                 if (error == ErrorType.UNAUTHORIZED) {
-                                    logger.warn("User does not have permission: " + perm);
+                                    logger.warn("UserInfo does not have permission: " + perm);
                                     new ErrorMsg(error, perm == null ? null : perm.name()).send(this);
                                 } else
                                     new ErrorMsg(error).send(this);
