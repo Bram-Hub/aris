@@ -318,7 +318,16 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
         cut.acceleratorProperty().bind(configuration.cutKey);
         paste.acceleratorProperty().bind(configuration.pasteKey);
 
-        edit.getItems().addAll(undo, redo, copy, cut, paste, settings);
+        edit.getItems().addAll(undo, redo, copy, cut, paste);
+
+        if (editMode == EditMode.READ_ONLY) {
+            edit.getItems().forEach(item -> {
+                item.disableProperty().unbind();
+                item.setDisable(true);
+            });
+        }
+
+        edit.getItems().add(settings);
 
         // Proof menu items
 
@@ -370,7 +379,19 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
         verifyLine.acceleratorProperty().bind(configuration.verifyLineKey);
         verifyProof.acceleratorProperty().bind(configuration.verifyProofKey);
 
-        proof.getItems().addAll(addLine, deleteLine, startSubProof, endSubProof, newPremise, addGoal, verifyLine, verifyProof);
+        proof.getItems().addAll(addLine, deleteLine, startSubProof, endSubProof, newPremise, addGoal);
+
+        if (editMode == EditMode.READ_ONLY) {
+            proof.getItems().forEach(item -> {
+                item.disableProperty().unbind();
+                item.setDisable(true);
+            });
+        } else if (editMode == EditMode.RESTRICTED_EDIT) {
+            newPremise.setDisable(true);
+            addGoal.setDisable(true);
+        }
+
+        proof.getItems().addAll(verifyLine, verifyProof);
 
         // Submit menu items
 
@@ -795,6 +816,8 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     }
 
     public synchronized void deleteLine(int lineNum) {
+        if (editMode == EditMode.RESTRICTED_EDIT && lineNum < proof.getNumPremises())
+            return;
         if (lineNum > 0 || (proof.getNumPremises() > 1 && lineNum >= 0)) {
             TreeMap<Integer, Line> deleted = new TreeMap<>();
             if (lineNum >= proof.getNumPremises()) {
