@@ -95,7 +95,7 @@ public class SingleAssignment {
                     return "Unknown" + grade;
             }
         }, status, grade, problems));
-        addStudentAssignment(this);
+        addAssignment(this);
     }
 
     private synchronized static void updateGradingSubmissions() {
@@ -121,7 +121,7 @@ public class SingleAssignment {
         }
     }
 
-    public static synchronized void addStudentAssignment(SingleAssignment assignment) {
+    public static synchronized void addAssignment(SingleAssignment assignment) {
         assignmentsOpen.add(assignment);
         if (submissionGradedCheck == null) {
             submissionGradedCheck = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("Student Submission Refresh", true));
@@ -129,7 +129,7 @@ public class SingleAssignment {
         }
     }
 
-    public static synchronized void removeStudentAssignment(SingleAssignment assignment) {
+    public static synchronized void removeAssignment(SingleAssignment assignment) {
         assignmentsOpen.remove(assignment);
         if (assignmentsOpen.size() == 0 && submissionGradedCheck != null) {
             submissionGradedCheck.shutdown();
@@ -153,7 +153,7 @@ public class SingleAssignment {
         }
     }
 
-    private <T extends ArisModule> void cacheProblem(AssignedProblem problem, boolean open) {
+    private <T extends ArisModule> void cacheProblem(AssignedProblem problem, boolean open, boolean readOnly) {
         OfflineDB.submit(connection -> {
             ArisModule<T> module = ModuleService.getService().getModule(problem.getModuleName());
             if (module == null) {
@@ -169,12 +169,16 @@ public class SingleAssignment {
                         if ((cached = rs.next() && rs.getString(2).equals(problem.problemHash)) && open) {
                             try {
                                 ProblemConverter<T> converter = module.getProblemConverter();
-                                gui.createAttempt(new Attempt(problem), problem.getName(), converter.loadProblem(rs.getBinaryStream(1), false), module);
+                                Problem<T> prob = converter.loadProblem(rs.getBinaryStream(1), false);
+                                if (readOnly)
+                                    gui.viewProblem("Viewing Problem: " + problem.getName() + " (read only)", prob, module);
+                                else
+                                    gui.createAttempt(new Attempt(problem), problem.getName(), prob, module);
                             } catch (Exception e) {
                                 log.error("Error loading problem from database", e);
                                 deleteProblem.setInt(1, problem.getPid());
                                 deleteProblem.executeUpdate();
-                                cacheProblem(problem, true);
+                                cacheProblem(problem, true, readOnly);
                             }
                         }
                     }
@@ -183,7 +187,7 @@ public class SingleAssignment {
                 }
             if (!cached) {
                 Platform.runLater(userInfo::startLoading);
-                Client.getInstance().processMessage(new ProblemFetchMsg<>(problem.getPid(), problem.getModuleName()), new ProblemFetchResponseHandler<>(problem, open, module));
+                Client.getInstance().processMessage(new ProblemFetchMsg<>(problem.getPid(), problem.getModuleName()), new ProblemFetchResponseHandler<>(problem, open, readOnly, module));
             }
         });
     }
@@ -270,6 +274,17 @@ public class SingleAssignment {
                 }
             });
         });
+    }
+
+    private void updateStudentStatus(Student parent, Collection<TreeItem<Submission>> children) {
+        double grade = 0;
+        for (TreeItem<Submission> item : children) {
+            Submission prob = item.getValue();
+            grade += prob.getGrade();
+        }
+        int numProb = children.size();
+        parent.gradeProperty().set(grade);
+        parent.getStatusProperty().set(numProb == grade ? GradingStatus.CORRECT : (grade == 0 ? GradingStatus.INCORRECT : GradingStatus.PARTIAL));
     }
 
     private void updateProblemStatus(Submission parent, Collection<TreeItem<Submission>> children) {
@@ -376,11 +391,16 @@ public class SingleAssignment {
 
     public <T extends ArisModule> void fetchSubmission(Submission submission, ArisModule<T> module, boolean readonly) {
         userInfo.startLoading();
-        Client.getInstance().processMessage(new SubmissionFetchMsg<>(cid, aid, submission.getPid(), submission.getSid(), submission.getModuleName()), new SubmissionFetchResponseHandler<>(module, readonly, submission));
+        SubmissionFetchMsg<T> msg;
+        if (isInstructor)
+            msg = new SubmissionFetchMsg<>(cid, aid, submission.getPid(), submission.getSid(), submission.getUid(), submission.getModuleName());
+        else
+            msg = new SubmissionFetchMsg<>(cid, aid, submission.getPid(), submission.getSid(), submission.getModuleName());
+        Client.getInstance().processMessage(msg, new SubmissionFetchResponseHandler<>(module, readonly, submission));
     }
 
     public void closed() {
-        removeStudentAssignment(this);
+        removeAssignment(this);
     }
 
     public class AssignmentGetInstructorHandler implements ResponseHandler<AssignmentGetInstructorMsg> {
@@ -412,7 +432,7 @@ public class SingleAssignment {
                         updateProblemStatus(problem, problem.submissions);
                         p.getChildren().addAll(problem.submissions);
                     });
-                    updateProblemStatus(student, student.problems);
+                    updateStudentStatus(student, student.problems);
                     s.getChildren().addAll(student.problems);
                 });
                 loaded = true;
@@ -483,7 +503,7 @@ public class SingleAssignment {
                     }
                     problems.add(p);
                     updateProblemStatus(assignedProblem, p.getChildren());
-                    cacheProblem(assignedProblem, false);
+                    cacheProblem(assignedProblem, false, false);
                 }
                 problems.sort(Comparator.comparing(TreeItem::getValue));
                 loadAttempts();
@@ -515,11 +535,13 @@ public class SingleAssignment {
 
         private final AssignedProblem problem;
         private final boolean open;
+        private final boolean readOnly;
         private final ArisModule<T> module;
 
-        ProblemFetchResponseHandler(AssignedProblem problem, boolean open, ArisModule<T> module) {
+        ProblemFetchResponseHandler(AssignedProblem problem, boolean open, boolean readOnly, ArisModule<T> module) {
             this.problem = problem;
             this.open = open;
+            this.readOnly = readOnly;
             this.module = module;
         }
 
@@ -563,7 +585,10 @@ public class SingleAssignment {
             });
             if (open) {
                 try {
-                    gui.createAttempt(new Attempt(this.problem), this.problem.getName(), problem, module);
+                    if (readOnly)
+                        gui.viewProblem("Viewing Problem: " + this.problem.getName() + " (read only)", problem, module);
+                    else
+                        gui.createAttempt(new Attempt(this.problem), this.problem.getName(), problem, module);
                 } catch (Exception e) {
                     LibAssign.showExceptionError(e);
                 }
@@ -574,7 +599,7 @@ public class SingleAssignment {
         @Override
         public void onError(boolean suggestRetry, ProblemFetchMsg msg) {
             if (suggestRetry)
-                cacheProblem(problem, open);
+                cacheProblem(problem, open, readOnly);
             Platform.runLater(userInfo::finishLoading);
         }
 
@@ -697,12 +722,15 @@ public class SingleAssignment {
             this.submittedOnStr.bind(Bindings.createStringBinding(() -> this.submittedOn.get() == null ? "Never" : AssignGui.DATE_FORMAT.format(new Date(NetUtil.UTCToMilli(this.submittedOn.get()))), this.submittedOn));
             this.statusStr = new SimpleStringProperty(statusStr + " (" + (Math.round(grade * 100.0) / 100.0) + "/" + "1.0)");
             this.grade = new SimpleDoubleProperty(grade);
+            HBox box = new HBox(5);
             Button view = new Button("View");
             view.setOnAction(e -> viewSubmission(true));
-            Button resubmit = new Button("Reattempt");
-            resubmit.setOnAction(e -> viewSubmission(false));
-            HBox box = new HBox(5);
-            box.getChildren().addAll(view, resubmit);
+            box.getChildren().add(view);
+            if (!isInstructor) {
+                Button reattempt = new Button("Reattempt");
+                reattempt.setOnAction(e -> viewSubmission(false));
+                box.getChildren().add(reattempt);
+            }
             box.setAlignment(Pos.CENTER);
             controlNode = new SimpleObjectProperty<>(box);
         }
@@ -814,9 +842,14 @@ public class SingleAssignment {
         public AssignedProblem(int pid, String name, String status, String moduleName, String problemHash) {
             super(pid, -1, -1, 0, name, null, GradingStatus.NONE, status, moduleName);
             this.problemHash = problemHash;
-            Button btn = new Button("Start Attempt");
+            Button btn = new Button(isInstructor ? "View Problem" : "Start Attempt");
             controlNodeProperty().set(btn);
-            btn.setOnAction(e -> createPushed());
+            btn.setOnAction(e -> {
+                if (isInstructor)
+                    viewProblem();
+                else
+                    createPushed();
+            });
             statusStrProperty().bind(Bindings.createStringBinding(() -> {
                 String grade = " (" + Math.round(getGrade() * 100.0) / 100.0 + "/1.0)";
                 switch (getStatusProperty().get()) {
@@ -847,7 +880,16 @@ public class SingleAssignment {
                 AssignClient.displayErrorMsg("Missing Module", "Client is missing \"" + getModuleName() + "\" module");
                 return;
             }
-            cacheProblem(this, true);
+            cacheProblem(this, true, false);
+        }
+
+        private <T extends ArisModule> void viewProblem() {
+            ArisModule<T> module = ModuleService.getService().getModule(super.moduleName);
+            if (module == null) {
+                AssignClient.displayErrorMsg("Missing Module", "Client is missing \"" + super.moduleName + "\" module");
+                return;
+            }
+            cacheProblem(this, true, true);
         }
 
         @Override
@@ -865,6 +907,29 @@ public class SingleAssignment {
         public Student(int uid, String name, String statusStr, String moduleName) {
             super(-1, uid, -1, 0, name, null, GradingStatus.NONE, statusStr, moduleName);
             super.controlNode.set(null);
+            this.statusStrProperty().bind(Bindings.createStringBinding(() -> {
+                String status;
+                switch (getStatusProperty().get()) {
+                    case CORRECT:
+                        status = "Complete";
+                        break;
+                    case INCORRECT:
+                        status = "Incomplete";
+                        break;
+                    case PARTIAL:
+                        status = "Partially Complete";
+                        break;
+                    case GRADING:
+                        status = "Grading";
+                        break;
+                    case ERROR:
+                        status = "An error has occurred";
+                        break;
+                    default:
+                        status = "Unknown";
+                }
+                return status + " (" + (Math.round(getGrade() * 100.0) / 100.0) + "/" + problems.size() + ".0)";
+            }, gradeProperty(), getStatusProperty()));
         }
 
         @Override

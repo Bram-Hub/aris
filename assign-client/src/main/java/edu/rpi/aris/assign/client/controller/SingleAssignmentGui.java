@@ -210,16 +210,20 @@ public class SingleAssignmentGui implements TabGui {
         moduleUI.show();
     }
 
-    public <T extends ArisModule> void viewSubmission(SingleAssignment.Submission submission, String problemName, Problem<T> problem, ArisModule<T> module) throws Exception {
+    public <T extends ArisModule> void viewProblem(String description, Problem<T> problem, ArisModule<T> module) throws Exception {
         ArisClientModule<T> clientModule = module.getClientModule();
         if (clientModule == null) {
             AssignClient.displayErrorMsg("Missing client module", "Client module is missing for the following module: \"" + module.getModuleName() + "\"");
             return;
         }
         ModuleUI<T> moduleUI = clientModule.createModuleGui(READ_ONLY_OPTIONS, problem);
-        moduleUI.setDescription("Viewing " + submission.getName() + (problemName == null ? "" : " for problem: \"" + problemName + "\"") + " (read only)");
+        moduleUI.setDescription(description);
         moduleUI.setModal(Modality.WINDOW_MODAL, AssignGui.getInstance().getStage());
         moduleUI.show();
+    }
+
+    public <T extends ArisModule> void viewSubmission(SingleAssignment.Submission submission, String problemName, Problem<T> problem, ArisModule<T> module) throws Exception {
+        viewProblem("Viewing " + submission.getName() + (problemName == null ? "" : " for problem: \"" + problemName + "\"") + " (read only)", problem, module);
     }
 
 }
