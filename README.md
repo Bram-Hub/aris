@@ -14,6 +14,10 @@ For production installation it is recommended to use the latest packages availab
     3. Follow the installer's prompts
     4. Aris should now be installed and accessible from the Start Menu 
 
+* Debian/Ubuntu
+    1. Install gradle, the OpenJDK 8, and openjfx (e.g. via `sudo apt-get install gradle openjdk-8-jdk openjfx openjfx`)
+    2. Compile and run with `gradle proof-client:run`
+
 ### Server
 
 1. Download and install the server package for your system from the [Releases](https://github.com/cicchr/ARIS-Java/releases) section
