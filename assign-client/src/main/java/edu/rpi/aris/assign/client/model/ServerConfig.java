@@ -19,7 +19,7 @@ public class ServerConfig {
     private static StringConverter<ServerRole> roleStringConverter = new StringConverter<ServerRole>() {
         @Override
         public String toString(ServerRole object) {
-            return object.getName();
+            return object == null ? null : object.getName();
         }
 
         @Override

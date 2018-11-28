@@ -9,14 +9,12 @@ import edu.rpi.aris.assign.client.model.ServerConfig;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.ChoiceBoxTableCell;
+import javafx.scene.control.cell.ComboBoxTableCell;
 import javafx.scene.layout.Region;
 import javafx.stage.Modality;
 
@@ -95,10 +93,7 @@ public class ClassGui implements TabGui {
             ClassModel.User u = param.getValue();
             return Bindings.createStringBinding(() -> u.getFullName() + " (" + u.getUsername() + ")", u.fullNameProperty(), u.usernameProperty());
         });
-        roleColumn.setCellFactory(param -> {
-            ObservableList<ServerRole> roles = FXCollections.observableArrayList(ServerConfig.getPermissions().getRoles().toArray(new ServerRole[0]));
-            return new ChoiceBoxTableCell<>(ServerConfig.getRoleStringConverter(), roles);
-        });
+        roleColumn.setCellFactory(param -> new ComboBoxTableCell<>(ServerConfig.getRoleStringConverter(), ServerConfig.getPermissions().getRoles().toArray(new ServerRole[0])));
         roleColumn.setCellValueFactory(param -> param.getValue().classRoleProperty());
         roleColumn.setOnEditCommit(event -> {
             ServerRole old = event.getOldValue();

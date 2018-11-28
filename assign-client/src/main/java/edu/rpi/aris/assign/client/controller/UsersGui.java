@@ -17,7 +17,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
-import javafx.scene.control.cell.ChoiceBoxTableCell;
+import javafx.scene.control.cell.ComboBoxTableCell;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.util.Pair;
 import javafx.util.converter.DefaultStringConverter;
@@ -117,7 +117,7 @@ public class UsersGui implements TabGui {
             users.fullNameChanged(event.getRowValue(), old, event.getNewValue());
         });
         defaultRole.setCellValueFactory(param -> param.getValue().defaultRoleProperty());
-        defaultRole.setCellFactory(param -> new ChoiceBoxTableCell<>(ServerConfig.getRoleStringConverter(), ServerConfig.getPermissions().getRoles().toArray(new ServerRole[0])));
+        defaultRole.setCellFactory(param -> new ComboBoxTableCell<>(ServerConfig.getRoleStringConverter(), ServerConfig.getPermissions().getRoles().toArray(new ServerRole[0])));
         defaultRole.setOnEditCommit(event -> {
             ServerRole old = event.getOldValue();
             event.getRowValue().defaultRoleProperty().set(event.getNewValue());
@@ -133,7 +133,7 @@ public class UsersGui implements TabGui {
         });
         deleteUser.setCellValueFactory(param -> {
             if (param.getValue().getUid() != userInfo.getUser().uid && param.getValue().getDefaultRole().getRollRank() >= userInfo.getDefaultRole().getRollRank()) {
-                Button btn = new Button("Delete UserInfo");
+                Button btn = new Button("Delete User");
                 btn.setOnAction(e -> deleteUser(param.getValue()));
                 return new SimpleObjectProperty<>(btn);
             } else
@@ -152,12 +152,12 @@ public class UsersGui implements TabGui {
     }
 
     private void deleteUser(Users.UserInfo info) {
-        AssignGui.getInstance().notImplemented("Delete UserInfo");
+        AssignGui.getInstance().notImplemented("Delete User");
     }
 
     @FXML
     public void addUser() {
-        AssignGui.getInstance().notImplemented("Add UserInfo");
+        AssignGui.getInstance().notImplemented("Add User");
     }
 
 }
