@@ -8,6 +8,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -22,9 +23,6 @@ public class DBUtils {
 
     public static final String COMPLEXITY_RULES = "Password Complexity Requirements:\n" +
             "\tat least 8 characters\n" +
-            "\t1 upper case letter (A-Z)\n" +
-            "\t1 lower case letter (a-z)\n" +
-            "\t1 number(0-9)\n" +
             "\tCannot contain your username\n" +
             "\tCannot be your old password";
     private static final Logger logger = LogManager.getLogger(DBUtils.class);
@@ -62,10 +60,8 @@ public class DBUtils {
         }
     }
 
-    public static boolean checkPasswordComplexity(String username, @NotNull String password) {
-        if (password.length() < 8 || password.toLowerCase().contains(username.toLowerCase()))
-            return false;
-        return password.matches(".*[a-z].*") && password.matches(".*[A-Z].*") && password.matches(".*[0-9].*");
+    public static boolean checkPasswordComplexity(String username, @NotNull String password, @Nullable String oldPass) {
+        return password.length() >= 8 && !password.toLowerCase().contains(username.toLowerCase()) && !password.equalsIgnoreCase(oldPass);
     }
 
     @NotNull

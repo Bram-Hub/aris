@@ -48,7 +48,7 @@ public class UserChangePasswordMsg extends Message {
                     }
                 }
             }
-            if (newPass == null || (user.username.equals(username) && (newPass.equals(oldPass) || !DBUtils.checkPasswordComplexity(username, newPass))))
+            if (newPass == null || (user.username.equals(username) && !DBUtils.checkPasswordComplexity(username, newPass, oldPass)))
                 return ErrorType.AUTH_WEAK_PASS;
             Pair<String, ErrorType> pair = DBUtils.setPassword(connection, username, newPass);
             if (pair.getRight() == null) {

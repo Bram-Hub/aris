@@ -53,7 +53,8 @@ public class PasswordResetDialog extends Dialog<Pair<String, String>> {
                     (currentPass.textProperty().isEqualTo(newPassword.textProperty()));
         }
         if (useStrictRules) {
-            binding = binding.or(Bindings.createBooleanBinding(() -> !DBUtils.checkPasswordComplexity(LocalConfig.USERNAME.getValue(), newPassword.getText()), newPassword.textProperty()));
+            PasswordField finalCurrentPass1 = currentPass;
+            binding = binding.or(Bindings.createBooleanBinding(() -> !DBUtils.checkPasswordComplexity(LocalConfig.USERNAME.getValue(), newPassword.getText(), requireCurrentPass ? finalCurrentPass1.getText() : null), newPassword.textProperty()));
         }
         loginButton.disableProperty().bind(binding);
         getDialogPane().setContent(grid);
