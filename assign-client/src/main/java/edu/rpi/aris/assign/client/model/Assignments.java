@@ -44,7 +44,6 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
         if (userInfo.getSelectedClass() == null)
             return;
         if (reload || loaded != userInfo.getSelectedClass().getClassId()) {
-            userInfo.startLoading();
             Client.getInstance().processMessage(new AssignmentsGetMsg(userInfo.getSelectedClass().getClassId()), this);
         }
     }
@@ -67,7 +66,6 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
                 assignments.add(new Assignment(message.getClassId(), data));
             Collections.sort(assignments);
             loaded = message.getClassId();
-            userInfo.finishLoading();
         });
     }
 
@@ -76,7 +74,6 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
         Platform.runLater(() -> {
             clear();
             loadError.set(true);
-            userInfo.finishLoading();
             if (suggestRetry)
                 loadAssignments(true);
         });
@@ -96,19 +93,16 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
     }
 
     public void createAssignment(int cid, String name, ZonedDateTime date, Collection<Integer> pids) {
-        userInfo.startLoading();
         AssignmentCreateMsg msg = new AssignmentCreateMsg(cid, name, date);
         msg.addProofs(pids);
         Client.getInstance().processMessage(msg, createHandler);
     }
 
     public void delete(int cid, int aid) {
-        userInfo.startLoading();
         Client.getInstance().processMessage(new AssignmentDeleteMsg(cid, aid), deleteHandler);
     }
 
     public void modifyAssignment(Assignment assignment, String name, ZonedDateTime due, Set<Integer> problems) {
-        userInfo.startLoading();
         AssignmentEditMsg editMsg = new AssignmentEditMsg(assignment.getCid(), assignment.getAid());
         if (!name.equals(assignment.getName()))
             editMsg.setName(name);
@@ -235,7 +229,6 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
                     Assignment assignment = new Assignment(message.getClassId(), message.getAid(), message.getName(), "Unknown", new Date(NetUtil.UTCToMilli(message.getDueDate())), message.getProblems());
                     assignments.add(assignment);
                 }
-                userInfo.finishLoading();
             });
         }
 
@@ -243,7 +236,6 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
         public void onError(boolean suggestRetry, AssignmentCreateMsg msg) {
             if (suggestRetry)
                 createAssignment(msg.getClassId(), msg.getName(), msg.getDueDate(), msg.getProblems());
-            Platform.runLater(() -> userInfo.finishLoading());
         }
 
         @Override
@@ -268,19 +260,16 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
                         break;
                     }
                 }
-                userInfo.finishLoading();
             });
         }
 
         @Override
         public void onError(boolean suggestRetry, AssignmentEditMsg msg) {
             if (suggestRetry) {
-                userInfo.startLoading();
                 Client.getInstance().processMessage(msg, this);
             } else {
                 loadAssignments(true);
             }
-            Platform.runLater(() -> userInfo.finishLoading());
         }
 
         @Override
@@ -293,17 +282,13 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
 
         @Override
         public void response(AssignmentDeleteMsg message) {
-            Platform.runLater(() -> {
-                assignments.removeIf(assignment -> assignment.getCid() == message.getClassId() && assignment.getAid() == message.getAid());
-                userInfo.finishLoading();
-            });
+            Platform.runLater(() -> assignments.removeIf(assignment -> assignment.getCid() == message.getClassId() && assignment.getAid() == message.getAid()));
         }
 
         @Override
         public void onError(boolean suggestRetry, AssignmentDeleteMsg msg) {
             if (suggestRetry)
                 delete(msg.getClassId(), msg.getAid());
-            Platform.runLater(() -> userInfo.finishLoading());
         }
 
         @Override

@@ -7,6 +7,7 @@ import edu.rpi.aris.assign.MessageCommunication;
 import edu.rpi.aris.assign.NetUtil;
 import edu.rpi.aris.assign.client.dialog.PasswordResetDialog;
 import edu.rpi.aris.assign.client.exceptions.*;
+import edu.rpi.aris.assign.client.model.CurrentUser;
 import edu.rpi.aris.assign.client.model.LocalConfig;
 import edu.rpi.aris.assign.message.AuthMessage;
 import edu.rpi.aris.assign.message.ErrorMsg;
@@ -463,6 +464,7 @@ public class Client implements MessageCommunication {
         processPool.submit(() -> {
             ReentrantLock lock = null;
             try {
+                CurrentUser.getInstance().startLoading();
                 lock = responseHandler.getLock();
                 if (lock != null)
                     lock.lock();
@@ -488,6 +490,7 @@ public class Client implements MessageCommunication {
                 logger.error("Error sending message", e);
                 responseHandler.onError(false, message);
             } finally {
+                CurrentUser.getInstance().finishLoading();
                 disconnect();
                 if (lock != null)
                     lock.unlock();

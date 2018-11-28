@@ -159,8 +159,10 @@ public class AssignGui {
         classes.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> userInfo.selectedClassProperty().set(newValue));
         userInfo.selectedClassProperty().addListener((observable, oldValue, newValue) -> {
             classes.getSelectionModel().select(newValue);
+            if (newValue != null)
+                setTabs(userInfo.getDefaultRole(), newValue.getUserRole());
             TabGui gui = tabGuis.get(tabPane.getSelectionModel().getSelectedItem());
-            if (gui == assignmentsGui)
+            if (gui == assignmentsGui || gui == classGui)
                 gui.load(false);
         });
 
@@ -208,7 +210,7 @@ public class AssignGui {
             return;
         }
         int tabIndex = conditionalAddTab(defaultRole, Perm.USER_LIST, userTab, 0);
-        tabIndex = conditionalAddTab(defaultRole, Perm.CLASS_EDIT, classTab, tabIndex);
+        tabIndex = conditionalAddTab(classRole, Perm.CLASS_EDIT, classTab, tabIndex);
         tabIndex = conditionalAddTab(defaultRole, Perm.PERMISSIONS_EDIT, permissionTab, tabIndex);
         tabIndex = conditionalAddTab(defaultRole, Perm.PROBLEMS_GET, problemTab, tabIndex);
         conditionalAddTab(classRole, Perm.ASSIGNMENT_GET, assignmentTab, tabIndex);

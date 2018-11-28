@@ -22,8 +22,7 @@ public enum Perm {
     ASSIGNMENT_GET_STUDENT(3, new Perm[]{SUB_GRADE_REFRESH}),
     SUBMISSION_CREATE(3),
     SUBMISSION_FETCH(3),
-    ASSIGNMENT_GET_INSTRUCTOR(2, new Perm[]{SUB_GRADE_REFRESH}),
-    CLASS_USER_LIST(1, new Perm[]{USER_LIST});
+    ASSIGNMENT_GET_INSTRUCTOR(2, new Perm[]{SUB_GRADE_REFRESH});
 
     public static final Perm[][] mutuallyExclusivePerms = new Perm[][]{};
 

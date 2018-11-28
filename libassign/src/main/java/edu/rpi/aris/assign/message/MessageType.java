@@ -30,7 +30,9 @@ public enum MessageType {
     ASSIGNMENT_GET_INSTRUCTOR(AssignmentGetInstructorMsg.class),
     USER_EDIT(UserEditMsg.class),
     REFRESH_SUBMISSION(SubmissionRefresh.class),
-    CLASS_USER_LIST(ClassUserListMsg.class);
+    CLASS_USER_LIST(ClassUserListMsg.class),
+    USER_CLASS_ADD(UserClassAddMsg.class),
+    USER_CLASS_REMOVE(UserClassRemoveMsg.class);
 
     public final Class<? extends Message> msgClass;
 

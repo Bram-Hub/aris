@@ -54,7 +54,6 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
 
     public synchronized void loadProblems(boolean reload) {
         if (reload || !loaded) {
-            userInfo.startLoading();
             clear();
             Client.getInstance().processMessage(new ProblemsGetMsg(), this);
         }
@@ -79,7 +78,6 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
             }
             Collections.sort(problems);
             loaded = true;
-            userInfo.finishLoading();
             onLoadComplete.forEach(c -> c.accept(true));
         });
     }
@@ -89,7 +87,6 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         Platform.runLater(() -> {
             clear();
             loadError.set(true);
-            userInfo.finishLoading();
             if (suggestRetry)
                 loadProblems(true);
             else
@@ -121,17 +118,14 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
     }
 
     public <T extends ArisModule> void createProblem(String name, String moduleName, edu.rpi.aris.assign.Problem<T> problem) {
-        userInfo.startLoading();
         Client.getInstance().processMessage(new ProblemCreateMsg<>(name, moduleName, problem), new ProblemCreateResponseHandler<>());
     }
 
     public void renamed(Problem problem) {
-        userInfo.startLoading();
         Client.getInstance().processMessage(new ProblemEditMsg(problem.getPid(), problem.getName()), renameHandler);
     }
 
     public void delete(Problem problem) {
-        userInfo.startLoading();
         Client.getInstance().processMessage(new ProblemDeleteMsg(problem.getPid()), deleteHandler);
     }
 
@@ -159,12 +153,10 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
     }
 
     public <T extends ArisModule> void uploadModifiedProblem(Problem problemInfo, edu.rpi.aris.assign.Problem<T> problem) {
-        userInfo.startLoading();
         Client.getInstance().processMessage(new ProblemEditMsg<>(problemInfo.getPid(), problemInfo.getModule(), problem), new ProblemModifyResponseHandler<>(problemInfo));
     }
 
     private <T extends ArisModule> void fetchAndModify(int pid, ArisModule<T> module) {
-        userInfo.startLoading();
         Client.getInstance().processMessage(new ProblemFetchMsg<>(pid, module.getModuleName()), new ProblemFetchResponseHandler<>(module));
     }
 
@@ -183,7 +175,6 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
                 Problem problem = new Problem(message.getPid(), message.getName(), message.getModuleName(), LocalConfig.USERNAME.getValue(), new Date());
                 problems.add(problem);
                 problemMap.put(problem.getPid(), problem);
-                userInfo.finishLoading();
             });
         }
 
@@ -191,7 +182,6 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         public void onError(boolean suggestRetry, ProblemCreateMsg<T> msg) {
             if (suggestRetry)
                 createProblem(msg.getName(), msg.getModuleName(), msg.getProblem());
-            Platform.runLater(userInfo::finishLoading);
         }
 
         @Override
@@ -204,7 +194,6 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
 
         @Override
         public void response(ProblemEditMsg message) {
-            Platform.runLater(() -> userInfo.finishLoading());
         }
 
         @Override
@@ -214,7 +203,6 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
             else {
                 loadProblems(true);
             }
-            Platform.runLater(userInfo::finishLoading);
         }
 
         @Override
@@ -233,7 +221,6 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
 
         @Override
         public void response(ProblemEditMsg<T> message) {
-            Platform.runLater(() -> userInfo.finishLoading());
             File saveFile = new File(problemStorageDir, String.valueOf(problemInfo.getPid()));
             if (saveFile.exists())
                 if (!saveFile.delete())
@@ -255,7 +242,6 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
                 } else
                     AssignClient.displayErrorMsg("Missing module", "Unable to find module \"" + msg.getModuleName() + "\"");
             }
-            Platform.runLater(() -> userInfo.finishLoading());
         }
 
         @Override
@@ -271,7 +257,6 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
             Platform.runLater(() -> {
                 Problem prob = problemMap.remove(message.getPid());
                 problems.remove(prob);
-                userInfo.finishLoading();
             });
         }
 
@@ -279,7 +264,6 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
         public void onError(boolean suggestRetry, ProblemDeleteMsg msg) {
             if (suggestRetry)
                 delete(problemMap.get(msg.getPid()));
-            Platform.runLater(() -> userInfo.finishLoading());
         }
 
         @Override
@@ -306,14 +290,12 @@ public class Problems implements ResponseHandler<ProblemsGetMsg> {
                     LibAssign.showExceptionError(e);
                 }
             }
-            Platform.runLater(userInfo::finishLoading);
         }
 
         @Override
         public void onError(boolean suggestRetry, ProblemFetchMsg<T> msg) {
             if (suggestRetry)
                 fetchAndModify(msg.getPid(), module);
-            Platform.runLater(userInfo::finishLoading);
         }
 
         @Override

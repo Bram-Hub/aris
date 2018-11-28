@@ -6,7 +6,6 @@ import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
 import edu.rpi.aris.assign.client.controller.AssignGui;
 import edu.rpi.aris.assign.client.controller.SingleAssignmentGui;
-import edu.rpi.aris.assign.client.handlers.SubmissionRefreshHandler;
 import edu.rpi.aris.assign.message.*;
 import edu.rpi.aris.assign.spi.ArisModule;
 import javafx.application.Platform;
@@ -115,8 +114,7 @@ public class SingleAssignment {
         if (subs.size() > 0) {
             log.info(subs.size() + " Submissions to refresh");
             Platform.runLater(() -> {
-                userInfo.startLoading();
-                Client.getInstance().processMessage(new SubmissionRefresh(subs.keySet()), new SubmissionRefreshHandler(subs, lock));
+                Client.getInstance().processMessage(new SubmissionRefresh(subs.keySet()), new SubmissionRefreshHandler(subs));
             });
         }
     }
@@ -144,7 +142,6 @@ public class SingleAssignment {
 
     public synchronized void loadAssignment(boolean reload) {
         if (reload || !loaded) {
-            userInfo.startLoading();
             clear();
             if (isInstructor) {
                 Client.getInstance().processMessage(new AssignmentGetInstructorMsg(cid, aid), instructorHandler);
@@ -186,7 +183,6 @@ public class SingleAssignment {
                     log.error("Failed to cache problem", e);
                 }
             if (!cached) {
-                Platform.runLater(userInfo::startLoading);
                 Client.getInstance().processMessage(new ProblemFetchMsg<>(problem.getPid(), problem.getModuleName()), new ProblemFetchResponseHandler<>(problem, open, readOnly, module));
             }
         });
@@ -385,12 +381,10 @@ public class SingleAssignment {
     }
 
     public <T extends ArisModule> void uploadAttempt(Attempt problemInfo, Problem<T> problem) {
-        Platform.runLater(userInfo::startLoading);
         Client.getInstance().processMessage(new SubmissionCreateMsg<>(cid, aid, problemInfo.getPid(), problemInfo.getModuleName(), problem), new SubmissionCreateResponseHandler<>(problemInfo));
     }
 
     public <T extends ArisModule> void fetchSubmission(Submission submission, ArisModule<T> module, boolean readonly) {
-        userInfo.startLoading();
         SubmissionFetchMsg<T> msg;
         if (isInstructor)
             msg = new SubmissionFetchMsg<>(cid, aid, submission.getPid(), submission.getSid(), submission.getUid(), submission.getModuleName());
@@ -401,6 +395,35 @@ public class SingleAssignment {
 
     public void closed() {
         removeAssignment(this);
+    }
+
+    public static class SubmissionRefreshHandler implements ResponseHandler<SubmissionRefresh> {
+
+        private final HashMap<Integer, TreeItem<Submission>> subs;
+
+        public SubmissionRefreshHandler(HashMap<Integer, TreeItem<Submission>> subs) {
+            this.subs = subs;
+        }
+
+        @Override
+        public void response(SubmissionRefresh message) {
+            Platform.runLater(() -> message.getInfo().forEach((id, info) -> {
+                TreeItem<Submission> item = subs.get(id);
+                if (item != null)
+                    item.getValue().updateInfo(info, item);
+            }));
+        }
+
+        @Override
+        public void onError(boolean suggestRetry, SubmissionRefresh msg) {
+            if (!suggestRetry)
+                cancelGradeCheck();
+        }
+
+        @Override
+        public ReentrantLock getLock() {
+            return lock;
+        }
     }
 
     public class AssignmentGetInstructorHandler implements ResponseHandler<AssignmentGetInstructorMsg> {
@@ -437,7 +460,6 @@ public class SingleAssignment {
                 });
                 loaded = true;
                 loadErrorProperty.set(false);
-                userInfo.finishLoading();
             });
         }
 
@@ -445,7 +467,6 @@ public class SingleAssignment {
         public void onError(boolean suggestRetry, AssignmentGetInstructorMsg msg) {
             Platform.runLater(() -> {
                 clear();
-                userInfo.finishLoading();
                 loadErrorProperty.set(true);
                 if (suggestRetry)
                     loadAssignment(true);
@@ -509,7 +530,6 @@ public class SingleAssignment {
                 loadAttempts();
                 loaded = true;
                 loadErrorProperty.set(false);
-                userInfo.finishLoading();
             });
         }
 
@@ -517,7 +537,6 @@ public class SingleAssignment {
         public void onError(boolean suggestRetry, AssignmentGetStudentMsg msg) {
             Platform.runLater(() -> {
                 clear();
-                userInfo.finishLoading();
                 loadErrorProperty.set(true);
                 if (suggestRetry)
                     loadAssignment(true);
@@ -593,14 +612,12 @@ public class SingleAssignment {
                     LibAssign.showExceptionError(e);
                 }
             }
-            Platform.runLater(userInfo::finishLoading);
         }
 
         @Override
         public void onError(boolean suggestRetry, ProblemFetchMsg msg) {
             if (suggestRetry)
                 cacheProblem(problem, open, readOnly);
-            Platform.runLater(userInfo::finishLoading);
         }
 
         @Override
@@ -638,14 +655,12 @@ public class SingleAssignment {
             } catch (Exception e) {
                 LibAssign.showExceptionError(e);
             }
-            Platform.runLater(userInfo::finishLoading);
         }
 
         @Override
         public void onError(boolean suggestRetry, SubmissionFetchMsg<T> msg) {
             if (suggestRetry)
                 fetchSubmission(submission, module, readonly);
-            Platform.runLater(userInfo::finishLoading);
         }
 
         @Override
@@ -674,13 +689,11 @@ public class SingleAssignment {
                 if (subs != null)
                     subs.add((int) subs.stream().filter(i -> i.getValue() instanceof Attempt).count(), new TreeItem<>(sub));
                 info.deleteAttempt();
-                userInfo.finishLoading();
             });
         }
 
         @Override
         public void onError(boolean suggestRetry, SubmissionCreateMsg<T> msg) {
-            Platform.runLater(userInfo::finishLoading);
             if (suggestRetry)
                 uploadAttempt(info, msg.getProblem());
             else {
@@ -1094,5 +1107,4 @@ public class SingleAssignment {
             problemName = name;
         }
     }
-
 }

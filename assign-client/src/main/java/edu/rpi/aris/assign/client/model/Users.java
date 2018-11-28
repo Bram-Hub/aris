@@ -33,14 +33,12 @@ public class Users implements ResponseHandler<UserListMsg> {
 
     public synchronized void loadUsers(boolean reload) {
         if (reload || !loaded) {
-            userInfo.startLoading();
             clear();
             Client.getInstance().processMessage(new UserListMsg(), this);
         }
     }
 
     public void fullNameChanged(UserInfo info, String oldName, String newName) {
-        userInfo.startLoading();
         Client.getInstance().processMessage(new UserEditMsg(info.uid, newName), new UserRenameResponseHandler(info, oldName));
     }
 
@@ -49,12 +47,10 @@ public class Users implements ResponseHandler<UserListMsg> {
     }
 
     private void roleChanged(UserInfo info, ServerRole oldRole, int newRole) {
-        userInfo.startLoading();
         Client.getInstance().processMessage(new UserEditMsg(info.uid, newRole), new UserRoleChangeResponseHandler(info, oldRole));
     }
 
     public void resetPassword(String username, String oldPass, String newPass) {
-        userInfo.startLoading();
         Client.getInstance().processMessage(new UserChangePasswordMsg(username, newPass, oldPass), new PasswordChangeResponseHandler());
     }
 
@@ -81,7 +77,6 @@ public class Users implements ResponseHandler<UserListMsg> {
             loadError.set(false);
             message.getUsers().stream().sorted().forEachOrdered(user -> users.add(new UserInfo(user)));
             loaded = true;
-            userInfo.finishLoading();
         });
     }
 
@@ -90,7 +85,6 @@ public class Users implements ResponseHandler<UserListMsg> {
         Platform.runLater(() -> {
             clear();
             loadError.set(true);
-            userInfo.finishLoading();
             if (suggestRetry)
                 loadUsers(true);
         });
@@ -113,7 +107,6 @@ public class Users implements ResponseHandler<UserListMsg> {
 
         @Override
         public void response(UserEditMsg message) {
-            Platform.runLater(userInfo::finishLoading);
         }
 
         @Override
@@ -122,7 +115,6 @@ public class Users implements ResponseHandler<UserListMsg> {
                 fullNameChanged(info, oldName, msg.getNewName());
             else
                 Platform.runLater(() -> info.fullName.set(oldName));
-            Platform.runLater(userInfo::finishLoading);
         }
 
         @Override
@@ -143,7 +135,6 @@ public class Users implements ResponseHandler<UserListMsg> {
 
         @Override
         public void response(UserEditMsg message) {
-            Platform.runLater(userInfo::finishLoading);
         }
 
         @Override
@@ -152,7 +143,6 @@ public class Users implements ResponseHandler<UserListMsg> {
                 roleChanged(info, oldRole, msg.getNewDefaultRole());
             else
                 Platform.runLater(() -> info.defaultRole.set(oldRole));
-            Platform.runLater(userInfo::finishLoading);
         }
 
         @Override
@@ -165,12 +155,10 @@ public class Users implements ResponseHandler<UserListMsg> {
 
         @Override
         public void response(UserChangePasswordMsg message) {
-            Platform.runLater(userInfo::finishLoading);
         }
 
         @Override
         public void onError(boolean suggestRetry, UserChangePasswordMsg msg) {
-            Platform.runLater(userInfo::finishLoading);
         }
 
         @Override

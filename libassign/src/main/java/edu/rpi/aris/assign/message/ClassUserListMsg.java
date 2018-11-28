@@ -19,7 +19,7 @@ public class ClassUserListMsg extends Message implements ClassMessage {
     private final HashMap<Integer, MsgUtil.UserInfo> userInClass = new HashMap<>();
 
     public ClassUserListMsg(int cid) {
-        super(Perm.CLASS_USER_LIST);
+        super(Perm.CLASS_EDIT);
         this.cid = cid;
     }
 

@@ -86,11 +86,11 @@ public class CurrentUser implements ResponseHandler<UserGetMsg> {
     }
 
     public void startLoading() {
-        loading.set(loading.get() + 1);
+        Platform.runLater(() -> loading.set(loading.get() + 1));
     }
 
     public void finishLoading() {
-        loading.set(loading.get() - 1);
+        Platform.runLater(() -> loading.set(loading.get() - 1));
     }
 
     public ServerRole getDefaultRole() {
@@ -102,7 +102,6 @@ public class CurrentUser implements ResponseHandler<UserGetMsg> {
             if (lock.isLocked())
                 return;
             this.onLoad = onLoad;
-            startLoading();
             Client.getInstance().processMessage(new UserGetMsg(), this);
         }
     }
@@ -117,12 +116,10 @@ public class CurrentUser implements ResponseHandler<UserGetMsg> {
     }
 
     public void createClass(String name) {
-        startLoading();
         Client.getInstance().processMessage(new ClassCreateMsg(name), createHandler);
     }
 
     public void deleteClass(int classId) {
-        startLoading();
         Client.getInstance().processMessage(new ClassDeleteMsg(classId), deleteHandler);
     }
 
@@ -148,7 +145,6 @@ public class CurrentUser implements ResponseHandler<UserGetMsg> {
             if (selectedClass.get() == null && classes.size() > 0)
                 selectedClass.set(classes.get(0));
             loggedIn.set(true);
-            finishLoading();
             if (onLoad != null)
                 onLoad.run();
             onLoad = null;
@@ -159,7 +155,6 @@ public class CurrentUser implements ResponseHandler<UserGetMsg> {
     public void onError(boolean suggestRetry, UserGetMsg msg) {
         Platform.runLater(() -> {
             loggedIn.set(false);
-            finishLoading();
             classes.clear();
             classMap.clear();
             if (suggestRetry)
@@ -207,7 +202,6 @@ public class CurrentUser implements ResponseHandler<UserGetMsg> {
                 classes.remove(info);
                 if (classes.size() > 0)
                     selectedClass.set(classes.get(0));
-                finishLoading();
             });
         }
 
@@ -215,7 +209,6 @@ public class CurrentUser implements ResponseHandler<UserGetMsg> {
         public void onError(boolean suggestRetry, ClassDeleteMsg msg) {
             if (suggestRetry)
                 Client.getInstance().processMessage(msg, this);
-            Platform.runLater(CurrentUser.this::finishLoading);
         }
 
         @Override
@@ -234,7 +227,6 @@ public class CurrentUser implements ResponseHandler<UserGetMsg> {
                 classes.add(info);
                 Collections.sort(classes);
                 selectedClass.set(info);
-                finishLoading();
             });
         }
 
@@ -242,7 +234,6 @@ public class CurrentUser implements ResponseHandler<UserGetMsg> {
         public void onError(boolean suggestRetry, ClassCreateMsg msg) {
             if (suggestRetry)
                 Client.getInstance().processMessage(msg, this);
-            Platform.runLater(CurrentUser.this::finishLoading);
         }
 
         @Override

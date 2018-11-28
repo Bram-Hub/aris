@@ -254,7 +254,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                                 msg.send(this);
                             else {
                                 if (error == ErrorType.UNAUTHORIZED) {
-                                    logger.warn("UserInfo does not have permission: " + perm);
+                                    logger.warn("User does not have permission: " + perm);
                                     new ErrorMsg(error, perm == null ? null : perm.name()).send(this);
                                 } else
                                     new ErrorMsg(error).send(this);
