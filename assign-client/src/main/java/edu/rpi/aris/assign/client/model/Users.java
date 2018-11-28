@@ -95,6 +95,56 @@ public class Users implements ResponseHandler<UserListMsg> {
         return lock;
     }
 
+    public void addUser(UserInfo userInfo) {
+        users.add(userInfo);
+    }
+
+    public static class UserInfo {
+
+        private final int uid;
+        private final SimpleStringProperty username, fullName;
+        private final SimpleObjectProperty<ServerRole> defaultRole;
+
+        public UserInfo(int uid, @NotNull String username, @NotNull String fullName, ServerRole defaultRole) {
+            this.uid = uid;
+            this.username = new SimpleStringProperty(username);
+            this.fullName = new SimpleStringProperty(fullName);
+            this.defaultRole = new SimpleObjectProperty<>(defaultRole == null ? ServerConfig.getPermissions().getLowestRole() : defaultRole);
+        }
+
+        public UserInfo(MsgUtil.UserInfo user) {
+            this(user.uid, user.username, user.fullName, ServerConfig.getPermissions().getRole(user.defaultRole));
+        }
+
+        public String getUsername() {
+            return username.get();
+        }
+
+        public SimpleStringProperty usernameProperty() {
+            return username;
+        }
+
+        public String getFullName() {
+            return fullName.get();
+        }
+
+        public SimpleStringProperty fullNameProperty() {
+            return fullName;
+        }
+
+        public ServerRole getDefaultRole() {
+            return defaultRole.get();
+        }
+
+        public SimpleObjectProperty<ServerRole> defaultRoleProperty() {
+            return defaultRole;
+        }
+
+        public int getUid() {
+            return uid;
+        }
+    }
+
     private class UserRenameResponseHandler implements ResponseHandler<UserEditMsg> {
 
         private final UserInfo info;
@@ -164,52 +214,6 @@ public class Users implements ResponseHandler<UserListMsg> {
         @Override
         public ReentrantLock getLock() {
             return lock;
-        }
-    }
-
-    public class UserInfo {
-
-        private final int uid;
-        private final SimpleStringProperty username, fullName;
-        private final SimpleObjectProperty<ServerRole> defaultRole;
-
-        public UserInfo(int uid, @NotNull String username, @NotNull String fullName, ServerRole defaultRole) {
-            this.uid = uid;
-            this.username = new SimpleStringProperty(username);
-            this.fullName = new SimpleStringProperty(fullName);
-            this.defaultRole = new SimpleObjectProperty<>(defaultRole == null ? ServerConfig.getPermissions().getLowestRole() : defaultRole);
-        }
-
-        public UserInfo(MsgUtil.UserInfo user) {
-            this(user.uid, user.username, user.fullName, ServerConfig.getPermissions().getRole(user.defaultRole));
-        }
-
-        public String getUsername() {
-            return username.get();
-        }
-
-        public SimpleStringProperty usernameProperty() {
-            return username;
-        }
-
-        public String getFullName() {
-            return fullName.get();
-        }
-
-        public SimpleStringProperty fullNameProperty() {
-            return fullName;
-        }
-
-        public ServerRole getDefaultRole() {
-            return defaultRole.get();
-        }
-
-        public SimpleObjectProperty<ServerRole> defaultRoleProperty() {
-            return defaultRole;
-        }
-
-        public int getUid() {
-            return uid;
         }
     }
 

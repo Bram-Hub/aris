@@ -3,6 +3,7 @@ package edu.rpi.aris.assign.client.controller;
 import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.Perm;
 import edu.rpi.aris.assign.ServerRole;
+import edu.rpi.aris.assign.client.dialog.CreateUserDialog;
 import edu.rpi.aris.assign.client.dialog.PasswordResetDialog;
 import edu.rpi.aris.assign.client.model.CurrentUser;
 import edu.rpi.aris.assign.client.model.ServerConfig;
@@ -157,7 +158,13 @@ public class UsersGui implements TabGui {
 
     @FXML
     public void addUser() {
-        AssignGui.getInstance().notImplemented("Add User");
+        try {
+            CreateUserDialog dialog = new CreateUserDialog(AssignGui.getInstance().getStage());
+            Optional<Users.UserInfo> result = dialog.showAndWait();
+            result.ifPresent(users::addUser);
+        } catch (IOException e) {
+            LibAssign.showExceptionError(e);
+        }
     }
 
 }

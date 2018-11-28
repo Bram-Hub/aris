@@ -16,6 +16,7 @@ import java.security.NoSuchProviderException;
 import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Base64;
 
@@ -74,5 +75,52 @@ public class DBUtils {
         digest.update(saltBytes);
         String hash = Base64.getEncoder().encodeToString(digest.digest(password.getBytes()));
         return new ImmutablePair<>(salt, hash);
+    }
+
+    public static Pair<String, Integer> createUser(Connection connection, String username, String password, String fullName, int roleId, boolean forceReset) throws SQLException {
+        if (username == null || username.length() == 0)
+            return new ImmutablePair<>(null, -1);
+        boolean passProvided = true;
+        if (password == null) {
+            passProvided = false;
+            password = RandomStringUtils.randomAlphabetic(16);
+        }
+        try (PreparedStatement count = connection.prepareStatement("SELECT count(*) FROM users WHERE username = ?;");
+             PreparedStatement statement = connection.prepareStatement("INSERT INTO users (username, salt, password_hash, force_reset, default_role, full_name) VALUES(?, ?, ?, ?, ?, ?) RETURNING id;")) {
+            count.setString(1, username);
+            try (ResultSet rs = count.executeQuery()) {
+                if (rs.next() && rs.getInt(1) > 0)
+                    return new ImmutablePair<>(null, -1);
+            }
+            Pair<String, String> sh = getSaltAndHash(password);
+            if (passProvided)
+                password = null;
+            statement.setString(1, username);
+            statement.setString(2, sh.getKey());
+            statement.setString(3, sh.getValue());
+            statement.setBoolean(4, forceReset);
+            statement.setInt(5, roleId);
+            statement.setString(6, fullName);
+            int uid = -1;
+            try (ResultSet rs = statement.executeQuery()) {
+                if (rs.next())
+                    uid = rs.getInt(1);
+            }
+            return new ImmutablePair<>(password, uid);
+        }
+    }
+
+    public static ServerRole createRole(String name, int rank, Connection connection) throws SQLException {
+        if (name == null)
+            return null;
+        try (PreparedStatement createRole = connection.prepareStatement("INSERT INTO role (name, role_rank) VALUES (?, ?) RETURNING id;")) {
+            createRole.setString(1, name);
+            createRole.setInt(2, rank);
+            try (ResultSet rs = createRole.executeQuery()) {
+                if (rs.next())
+                    return new ServerRole(rs.getInt(1), name, rank);
+            }
+        }
+        return null;
     }
 }

@@ -3,8 +3,6 @@ package edu.rpi.aris.assign.server;
 import com.mchange.v2.c3p0.ComboPooledDataSource;
 import edu.rpi.aris.assign.DBUtils;
 import edu.rpi.aris.assign.GradingStatus;
-import edu.rpi.aris.assign.ServerRole;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -54,7 +52,7 @@ public class DatabaseManager {
         if (defaultRoleName.length != defaultRoleRank.length)
             throw new IndexOutOfBoundsException("Default role names/ranks do not match");
         for (int i = 0; i < defaultRoleName.length; ++i)
-            createRole(defaultRoleName[i], defaultRoleRank[i], connection);
+            DBUtils.createRole(defaultRoleName[i], defaultRoleRank[i], connection);
     }
 
     private void verifyDatabase(Connection connection) throws SQLException, IOException {
@@ -167,7 +165,7 @@ public class DatabaseManager {
                     "role_id integer NOT NULL," +
                     "constraint perm_rfk foreign key (role_id) references role(id) on delete restrict);");
             createDefaultRoles(connection);
-            createUser(connection, "admin", DEFAULT_ADMIN_PASS, "Admin", 1, true);
+            DBUtils.createUser(connection, "admin", DEFAULT_ADMIN_PASS, "Admin", 1, true);
             connection.commit();
         } catch (Throwable e) {
             connection.rollback();
@@ -479,48 +477,10 @@ public class DatabaseManager {
         }
     }
 
-    public Pair<String, Boolean> createUser(String username, String password, String fullName, int roleId, boolean forceReset) throws SQLException {
+    public Pair<String, Integer> createUser(String username, String password, String fullName, int roleId, boolean forceReset) throws SQLException {
         try (Connection connection = getConnection()) {
-            return createUser(connection, username, password, fullName, roleId, forceReset);
+            return DBUtils.createUser(connection, username, password, fullName, roleId, forceReset);
         }
-    }
-
-    public Pair<String, Boolean> createUser(Connection connection, String username, String password, String fullName, int roleId, boolean forceReset) throws SQLException {
-        if (username == null || username.length() == 0)
-            return new ImmutablePair<>(null, false);
-        if (password == null)
-            password = RandomStringUtils.randomAlphabetic(16);
-        try (PreparedStatement count = connection.prepareStatement("SELECT count(*) FROM users WHERE username = ?;");
-             PreparedStatement statement = connection.prepareStatement("INSERT INTO users (username, salt, password_hash, force_reset, default_role, full_name) VALUES(?, ?, ?, ?, ?, ?);")) {
-            count.setString(1, username);
-            try (ResultSet rs = count.executeQuery()) {
-                if (rs.next() && rs.getInt(1) > 0)
-                    return new ImmutablePair<>(null, false);
-            }
-            Pair<String, String> sh = DBUtils.getSaltAndHash(password);
-            statement.setString(1, username);
-            statement.setString(2, sh.getKey());
-            statement.setString(3, sh.getValue());
-            statement.setBoolean(4, forceReset);
-            statement.setInt(5, roleId);
-            statement.setString(6, fullName);
-            statement.executeUpdate();
-            return new ImmutablePair<>(password, true);
-        }
-    }
-
-    public ServerRole createRole(String name, int rank, Connection connection) throws SQLException {
-        if (name == null)
-            return null;
-        try (PreparedStatement createRole = connection.prepareStatement("INSERT INTO role (name, role_rank) VALUES (?, ?) RETURNING id;")) {
-            createRole.setString(1, name);
-            createRole.setInt(2, rank);
-            try (ResultSet rs = createRole.executeQuery()) {
-                if (rs.next())
-                    return new ServerRole(rs.getInt(1), name, rank);
-            }
-        }
-        return null;
     }
 
     public ArrayList<Pair<String, String>> getUsers() throws SQLException {

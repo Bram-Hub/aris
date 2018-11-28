@@ -32,7 +32,8 @@ public enum MessageType {
     REFRESH_SUBMISSION(SubmissionRefresh.class),
     CLASS_USER_LIST(ClassUserListMsg.class),
     USER_CLASS_ADD(UserClassAddMsg.class),
-    USER_CLASS_REMOVE(UserClassRemoveMsg.class);
+    USER_CLASS_REMOVE(UserClassRemoveMsg.class),
+    USER_CREATE(UserCreateMsg.class);
 
     public final Class<? extends Message> msgClass;
 

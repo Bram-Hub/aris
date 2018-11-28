@@ -144,8 +144,10 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
         try {
             try {
                 Message msg = Message.get(this);
-                if (msg == null)
+                if (msg == null) {
+                    new ErrorMsg(ErrorType.PARSE_ERR, "Server failed to parse message").send(this);
                     return;
+                }
                 try (Connection connection = dbManager.getConnection()) {
                     try {
                         connection.setAutoCommit(false);
@@ -203,7 +205,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                 new ErrorMsg(ErrorType.SQL_ERR, e.getMessage()).send(this);
             }
         } catch (IOException ignored) {
-            // ignored so we don't print an exception whenever client disconnects
+            // ignored so we don't log an exception whenever client disconnects
         } catch (Throwable e) {
             logger.error("Unexpected error occurred", e);
         }
@@ -233,7 +235,6 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
     public void handleErrorMsg(ErrorMsg msg) {
         System.out.println(msg);
         //TODO: implement
-        throw new RuntimeException("Not implemented");
     }
 
     public void disconnect() {

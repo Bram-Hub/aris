@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.VBox?>
+<VBox fx:id="box" prefWidth="200.0" spacing="5.0" xmlns="http://javafx.com/javafx/8.0.152-ea"
+      xmlns:fx="http://javafx.com/fxml/1">
+    <children>
+        <TextField fx:id="username" promptText="User Name"/>
+        <TextField fx:id="fullName" promptText="Full Name"/>
+        <PasswordField fx:id="password" promptText="Password"/>
+        <ComboBox fx:id="defaultRole" maxWidth="1.7976931348623157E308" promptText="Default Role"/>
+    </children>
+    <padding>
+        <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
+    </padding>
+</VBox>
