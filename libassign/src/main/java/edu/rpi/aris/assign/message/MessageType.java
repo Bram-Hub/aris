@@ -33,7 +33,8 @@ public enum MessageType {
     CLASS_USER_LIST(ClassUserListMsg.class),
     USER_CLASS_ADD(UserClassAddMsg.class),
     USER_CLASS_REMOVE(UserClassRemoveMsg.class),
-    USER_CREATE(UserCreateMsg.class);
+    USER_CREATE(UserCreateMsg.class),
+    USER_DELETE(UserDeleteMsg.class);
 
     public final Class<? extends Message> msgClass;
 

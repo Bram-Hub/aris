@@ -24,7 +24,7 @@ public class ArisMessageAdapter implements JsonSerializer<Message>, JsonDeserial
         } catch (IllegalStateException e) {
             throw new JsonParseException("json root element is not an object", e);
         } catch (IllegalArgumentException e) {
-            throw new JsonParseException("json does message type missing or invalid", e);
+            throw new JsonParseException("json message type missing or invalid", e);
         }
     }
 

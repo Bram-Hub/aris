@@ -14,12 +14,10 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
+import javafx.scene.control.*;
 import javafx.scene.control.cell.ComboBoxTableCell;
 import javafx.scene.control.cell.TextFieldTableCell;
+import javafx.scene.layout.Region;
 import javafx.util.Pair;
 import javafx.util.converter.DefaultStringConverter;
 
@@ -41,7 +39,7 @@ public class UsersGui implements TabGui {
     private TableColumn<Users.UserInfo, Button> resetPassword;
     @FXML
     private TableColumn<Users.UserInfo, Button> deleteUser;
-    private Users users = new Users(this);
+    private Users users = new Users();
     private Parent root;
 
     public UsersGui() {
@@ -153,7 +151,17 @@ public class UsersGui implements TabGui {
     }
 
     private void deleteUser(Users.UserInfo info) {
-        AssignGui.getInstance().notImplemented("Delete User");
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("Delete User");
+        alert.setHeaderText("Delete " + info.getFullName() + " (" + info.getUsername() + ") from the system?");
+        alert.setContentText("All data pertaining to the user will be lost.\nTHIS CANNOT BE UNDONE!");
+        alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+        alert.getDialogPane().getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
+        ((Button) alert.getDialogPane().lookupButton(ButtonType.YES)).setDefaultButton(false);
+        ((Button) alert.getDialogPane().lookupButton(ButtonType.NO)).setDefaultButton(true);
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.YES)
+            users.deleteUser(info.getUid());
     }
 
     @FXML

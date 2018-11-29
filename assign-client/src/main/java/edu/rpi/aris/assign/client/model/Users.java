@@ -3,11 +3,7 @@ package edu.rpi.aris.assign.client.model;
 import edu.rpi.aris.assign.ServerRole;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
-import edu.rpi.aris.assign.client.controller.UsersGui;
-import edu.rpi.aris.assign.message.MsgUtil;
-import edu.rpi.aris.assign.message.UserChangePasswordMsg;
-import edu.rpi.aris.assign.message.UserEditMsg;
-import edu.rpi.aris.assign.message.UserListMsg;
+import edu.rpi.aris.assign.message.*;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -21,15 +17,11 @@ import java.util.concurrent.locks.ReentrantLock;
 public class Users implements ResponseHandler<UserListMsg> {
 
     private final ObservableList<UserInfo> users = FXCollections.observableArrayList();
-    private final CurrentUser userInfo = CurrentUser.getInstance();
-    private final UsersGui gui;
     private final ReentrantLock lock = new ReentrantLock(true);
     private final SimpleBooleanProperty loadError = new SimpleBooleanProperty(false);
+    private final PasswordChangeResponseHandler passwordChangeHandler = new PasswordChangeResponseHandler();
     private boolean loaded = false;
-
-    public Users(UsersGui gui) {
-        this.gui = gui;
-    }
+    private ResponseHandler<UserDeleteMsg> userDeleteHandler = new UserDeleteHandler();
 
     public synchronized void loadUsers(boolean reload) {
         if (reload || !loaded) {
@@ -51,7 +43,7 @@ public class Users implements ResponseHandler<UserListMsg> {
     }
 
     public void resetPassword(String username, String oldPass, String newPass) {
-        Client.getInstance().processMessage(new UserChangePasswordMsg(username, newPass, oldPass), new PasswordChangeResponseHandler());
+        Client.getInstance().processMessage(new UserChangePasswordMsg(username, newPass, oldPass), passwordChangeHandler);
     }
 
     public synchronized void clear() {
@@ -97,6 +89,10 @@ public class Users implements ResponseHandler<UserListMsg> {
 
     public void addUser(UserInfo userInfo) {
         users.add(userInfo);
+    }
+
+    public void deleteUser(int uid) {
+        Client.getInstance().processMessage(new UserDeleteMsg(uid), userDeleteHandler);
     }
 
     public static class UserInfo {
@@ -193,6 +189,25 @@ public class Users implements ResponseHandler<UserListMsg> {
                 roleChanged(info, oldRole, msg.getNewDefaultRole());
             else
                 Platform.runLater(() -> info.defaultRole.set(oldRole));
+        }
+
+        @Override
+        public ReentrantLock getLock() {
+            return lock;
+        }
+    }
+
+    private class UserDeleteHandler implements ResponseHandler<UserDeleteMsg> {
+
+        @Override
+        public void response(UserDeleteMsg message) {
+            Platform.runLater(() -> users.removeIf(info -> info.getUid() == message.getUid()));
+        }
+
+        @Override
+        public void onError(boolean suggestRetry, UserDeleteMsg msg) {
+            if (suggestRetry)
+                deleteUser(msg.getUid());
         }
 
         @Override

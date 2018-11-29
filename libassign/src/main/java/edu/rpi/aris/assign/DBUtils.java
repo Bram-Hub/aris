@@ -44,8 +44,6 @@ public class DBUtils {
         MessageDigest digest = getDigest();
         digest.update(Base64.getDecoder().decode(salt));
         String hash = Base64.getEncoder().encodeToString(digest.digest(pass.getBytes()));
-        System.out.println(hash);
-        System.out.println(savedHash);
         return hash.equals(savedHash);
     }
 

@@ -409,7 +409,6 @@ public class Client implements MessageCommunication {
         LocalConfig.ACCESS_TOKEN.setValue(null);
         Platform.runLater(() -> LocalConfig.USERNAME.setValue(user));
         logger.info("Auth status: " + msg.getStatus());
-        System.out.println("Access Token: " + msg.getPassAccessToken());
         switch (msg.getStatus()) {
             case UNSUPPORTED_VERSION:
                 throw new IOException("The server does not support this version of the Assign client");
