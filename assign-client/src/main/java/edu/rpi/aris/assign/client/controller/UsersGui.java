@@ -165,7 +165,7 @@ public class UsersGui implements TabGui {
     }
 
     @FXML
-    public void addUser() {
+    private void addUser() {
         try {
             CreateUserDialog dialog = new CreateUserDialog(AssignGui.getInstance().getStage());
             Optional<Users.UserInfo> result = dialog.showAndWait();
@@ -173,6 +173,11 @@ public class UsersGui implements TabGui {
         } catch (IOException e) {
             LibAssign.showExceptionError(e);
         }
+    }
+
+    @FXML
+    private void importUsers() {
+
     }
 
 }
