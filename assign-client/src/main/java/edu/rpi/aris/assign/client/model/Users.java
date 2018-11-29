@@ -205,6 +205,8 @@ public class Users implements ResponseHandler<UserListMsg> {
 
         @Override
         public void response(UserChangePasswordMsg message) {
+            if (message.getUsername() != null && message.getUsername().equals(LocalConfig.USERNAME.getValue()))
+                LocalConfig.ACCESS_TOKEN.setValue(message.getAccessToken());
         }
 
         @Override

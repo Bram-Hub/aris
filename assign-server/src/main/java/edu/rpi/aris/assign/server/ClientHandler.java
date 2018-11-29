@@ -242,21 +242,21 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
             if (in != null) {
                 try {
                     in.close();
-                } catch (IOException e) {
-                    logger.error("Failed to close input stream", e);
+                } catch (IOException ignored) {
+                    // don't throw an exception if things are already closed
                 }
             }
             if (out != null) {
                 try {
                     out.close();
-                } catch (IOException e) {
-                    logger.error("Failed to close output stream", e);
+                } catch (IOException ignored) {
+                    // don't throw an exception if things are already closed
                 }
             }
             try {
                 socket.close();
-            } catch (IOException e) {
-                logger.error("Failed to close socket");
+            } catch (IOException ignored) {
+                // don't throw an exception if things are already closed
             }
             logger.info("Disconnected");
         } finally {

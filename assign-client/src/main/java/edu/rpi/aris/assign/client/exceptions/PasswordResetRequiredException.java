@@ -15,8 +15,8 @@ public class PasswordResetRequiredException extends ArisCommunicationException {
 
     @Override
     public <T extends Message> void handleError(ResponseHandler<T> handler, T message) {
-        AssignClient.displayErrorMsg("Password Reset", getMessage(), true);
         Client.getInstance().disconnect();
+        AssignClient.displayErrorMsg("Password Reset", getMessage(), true);
         boolean retry = false;
         do {
             try {

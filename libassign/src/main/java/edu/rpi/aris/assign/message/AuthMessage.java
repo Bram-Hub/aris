@@ -7,7 +7,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.security.MessageDigest;
-import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -16,7 +15,6 @@ import java.util.Base64;
 
 public class AuthMessage extends Message {
 
-    private static final SecureRandom random = new SecureRandom();
     private static final Logger log = LogManager.getLogger();
 
     private final String username;
@@ -48,6 +46,7 @@ public class AuthMessage extends Message {
         }
         Thread.currentThread().setName(Thread.currentThread().getName() + "/" + username);
         log.info("Authenticating user: " + username);
+        log.info("Authentication method: " + (isAccessToken ? "Acess Token" : "Password"));
         try (PreparedStatement statement = connection.prepareStatement("SELECT salt, password_hash, access_token, id, default_role, force_reset FROM users WHERE username = ?;")) {
             statement.setString(1, username);
             try (ResultSet rs = statement.executeQuery()) {
@@ -70,7 +69,7 @@ public class AuthMessage extends Message {
                     boolean forceReset = rs.getBoolean(6);
                     if (DBUtils.checkPass(pass, salt, savedHash)) {
                         isAccessToken = true;
-                        passAccessToken = generateAccessToken();
+                        passAccessToken = DBUtils.generateAccessToken();
                         MessageDigest digest = DBUtils.getDigest();
                         digest.update(Base64.getDecoder().decode(salt));
                         String hashed = Base64.getEncoder().encodeToString(digest.digest(passAccessToken.getBytes()));
@@ -87,6 +86,7 @@ public class AuthMessage extends Message {
                             status = Auth.OK;
                         return user;
                     } else {
+                        log.info("invalid " + (isAccessToken ? "access token" : "password"));
                         status = Auth.FAIL;
                         return null;
                     }
@@ -96,12 +96,6 @@ public class AuthMessage extends Message {
                 }
             }
         }
-    }
-
-    private String generateAccessToken() {
-        byte[] tokenBytes = new byte[256];
-        random.nextBytes(tokenBytes);
-        return Base64.getEncoder().encodeToString(tokenBytes);
     }
 
     @Nullable

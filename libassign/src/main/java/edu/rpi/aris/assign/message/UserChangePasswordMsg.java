@@ -4,20 +4,23 @@ import edu.rpi.aris.assign.DBUtils;
 import edu.rpi.aris.assign.Perm;
 import edu.rpi.aris.assign.ServerPermissions;
 import edu.rpi.aris.assign.User;
-import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Base64;
 
 public class UserChangePasswordMsg extends Message {
 
     private final String username;
     private String newPass;
     private String oldPass;
+    private String accessToken = null;
 
     public UserChangePasswordMsg(String username, String newPass, String oldPass) {
         super(Perm.USER_CHANGE_PASS, true);
@@ -50,14 +53,21 @@ public class UserChangePasswordMsg extends Message {
             }
             if (newPass == null || (user.username.equals(username) && !DBUtils.checkPasswordComplexity(username, newPass, oldPass)))
                 return ErrorType.AUTH_WEAK_PASS;
-            Pair<String, ErrorType> pair = DBUtils.setPassword(connection, username, newPass);
+            Triple<String, String, ErrorType> pair = DBUtils.setPassword(connection, username, newPass);
             if (pair.getRight() == null) {
-                if (user.username.equals(username))
+                String hashedAccessToken = "";
+                if (user.username.equals(username)) {
                     user.resetPass();
-                try (PreparedStatement forceOff = connection.prepareStatement("UPDATE users SET force_reset = ? WHERE username = ?;")) {
-                    forceOff.setBoolean(1, !user.username.equals(username));
-                    forceOff.setString(2, username);
-                    forceOff.executeUpdate();
+                    accessToken = DBUtils.generateAccessToken();
+                    MessageDigest digest = DBUtils.getDigest();
+                    digest.update(Base64.getDecoder().decode(pair.getMiddle()));
+                    hashedAccessToken = Base64.getEncoder().encodeToString(digest.digest(accessToken.getBytes()));
+                }
+                try (PreparedStatement updateAccessToken = connection.prepareStatement("UPDATE users SET force_reset = ?, access_token = ? WHERE username = ?;")) {
+                    updateAccessToken.setBoolean(1, !user.username.equals(username));
+                    updateAccessToken.setString(2, hashedAccessToken);
+                    updateAccessToken.setString(3, username);
+                    updateAccessToken.executeUpdate();
                 }
             }
             return pair.getRight();
@@ -80,5 +90,9 @@ public class UserChangePasswordMsg extends Message {
 
     public String getUsername() {
         return username;
+    }
+
+    public String getAccessToken() {
+        return accessToken;
     }
 }

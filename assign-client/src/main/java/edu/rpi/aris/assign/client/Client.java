@@ -406,8 +406,10 @@ public class Client implements MessageCommunication {
         msg = (AuthMessage) msg.sendAndGet(this);
         if (msg == null)
             throw new IOException("The server failed to respond to the authentication request");
-        LocalConfig.ACCESS_TOKEN.setValue(msg.getPassAccessToken());
+        LocalConfig.ACCESS_TOKEN.setValue(null);
         Platform.runLater(() -> LocalConfig.USERNAME.setValue(user));
+        logger.info("Auth status: " + msg.getStatus());
+        System.out.println("Access Token: " + msg.getPassAccessToken());
         switch (msg.getStatus()) {
             case UNSUPPORTED_VERSION:
                 throw new IOException("The server does not support this version of the Assign client");
@@ -421,10 +423,12 @@ public class Client implements MessageCommunication {
             case ERROR:
                 throw new IOException("The server encountered an error while attempting to authenticate this connection");
             case RESET:
+                LocalConfig.ACCESS_TOKEN.setValue(msg.getPassAccessToken());
                 throw new PasswordResetRequiredException();
             case INVALID:
                 throw new IOException("Client sent invalid auth format");
             case OK:
+                LocalConfig.ACCESS_TOKEN.setValue(msg.getPassAccessToken());
                 break;
             default:
                 throw new IOException("Unknown Auth status: " + msg.getStatus().name());
@@ -449,6 +453,7 @@ public class Client implements MessageCommunication {
                     setupConnection(credentials.getLeft(), credentials.getMiddle(), credentials.getRight());
                 } catch (InvalidAccessTokenException e) {
                     LocalConfig.ACCESS_TOKEN.setValue(null);
+                    disconnect(false);
                     connect();
                     if (connectionLock.isHeldByCurrentThread())
                         connectionLock.unlock();
@@ -642,7 +647,10 @@ public class Client implements MessageCommunication {
             } finally {
                 disconnect();
             }
-            if (!(res instanceof UserChangePasswordMsg))
+            if (res instanceof UserChangePasswordMsg) {
+                UserChangePasswordMsg resMsg = (UserChangePasswordMsg) res;
+                LocalConfig.ACCESS_TOKEN.setValue(resMsg.getAccessToken());
+            } else
                 resetPassword();
         } else
             throw new CancellationException();

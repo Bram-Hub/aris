@@ -3,7 +3,9 @@ package edu.rpi.aris.assign;
 import edu.rpi.aris.assign.message.ErrorType;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Contract;
@@ -41,23 +43,26 @@ public class DBUtils {
     public static boolean checkPass(@NotNull String pass, String salt, String savedHash) {
         MessageDigest digest = getDigest();
         digest.update(Base64.getDecoder().decode(salt));
-        return Base64.getEncoder().encodeToString(digest.digest(pass.getBytes())).equals(savedHash);
+        String hash = Base64.getEncoder().encodeToString(digest.digest(pass.getBytes()));
+        System.out.println(hash);
+        System.out.println(savedHash);
+        return hash.equals(savedHash);
     }
 
     @NotNull
     @Contract("_, null, _ -> new")
-    public static Pair<String, ErrorType> setPassword(Connection connection, String username, String password) throws SQLException {
+    public static Triple<String, String, ErrorType> setPassword(Connection connection, String username, String password) throws SQLException {
         if (username == null || username.length() == 0)
-            return new ImmutablePair<>(null, ErrorType.INVALID_PASSWORD);
+            return new ImmutableTriple<>(null, null, ErrorType.INVALID_PASSWORD);
         if (password == null)
             password = RandomStringUtils.randomAlphabetic(16);
-        try (PreparedStatement statement = connection.prepareStatement("UPDATE users SET salt = ?, password_hash = ? WHERE username = ?;");) {
+        try (PreparedStatement statement = connection.prepareStatement("UPDATE users SET salt = ?, password_hash = ? WHERE username = ?;")) {
             Pair<String, String> sh = getSaltAndHash(password);
             statement.setString(1, sh.getKey());
             statement.setString(2, sh.getValue());
             statement.setString(3, username);
             statement.executeUpdate();
-            return new ImmutablePair<>(password, null);
+            return new ImmutableTriple<>(password, sh.getKey(), null);
         }
     }
 
@@ -122,5 +127,11 @@ public class DBUtils {
             }
         }
         return null;
+    }
+
+    public static String generateAccessToken() {
+        byte[] tokenBytes = new byte[256];
+        random.nextBytes(tokenBytes);
+        return Base64.getEncoder().encodeToString(tokenBytes);
     }
 }
