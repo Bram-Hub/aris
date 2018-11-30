@@ -11,6 +11,7 @@ import java.util.prefs.Preferences;
 public class ServerConfig {
 
     public static final String DEFAULT_ASSIGNMENT_DUE_TIME = "default_assignment_due_time";
+    public static final String SERVER_AUTH_USES_DB = "server_auth_uses_db";
     private static final Preferences preferences = Preferences.userNodeForPackage(ServerConfig.class);
     private static final HashMap<String, ConfigProp<String>> stringProps = new HashMap<>();
     private static final HashMap<String, ConfigProp<Integer>> intProps = new HashMap<>();
@@ -40,6 +41,7 @@ public class ServerConfig {
 
     private static void setDefaults() {
         stringProps.put(DEFAULT_ASSIGNMENT_DUE_TIME, new ConfigProp<>(preferences, DEFAULT_ASSIGNMENT_DUE_TIME, preferences.get(DEFAULT_ASSIGNMENT_DUE_TIME, "11:59 pm")));
+        boolProps.put(SERVER_AUTH_USES_DB, new ConfigProp<>(preferences, SERVER_AUTH_USES_DB, Boolean.parseBoolean(preferences.get(SERVER_AUTH_USES_DB, "true"))));
     }
 
     public static Integer getIntProp(String key) {

@@ -18,13 +18,18 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.ComboBoxTableCell;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.Region;
+import javafx.stage.FileChooser;
 import javafx.util.Pair;
 import javafx.util.converter.DefaultStringConverter;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Optional;
 
 public class UsersGui implements TabGui {
+
+    private final FileChooser.ExtensionFilter csvFilter = new FileChooser.ExtensionFilter("CSV File (*.csv)", "*.csv");
+    private final FileChooser.ExtensionFilter allFilter = new FileChooser.ExtensionFilter("All Files", "*");
 
     private final CurrentUser userInfo = CurrentUser.getInstance();
     @FXML
@@ -177,7 +182,23 @@ public class UsersGui implements TabGui {
 
     @FXML
     private void importUsers() {
-
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Import Users");
+        Boolean needPass = ServerConfig.getBoolProp(ServerConfig.SERVER_AUTH_USES_DB);
+        if (needPass == null)
+            needPass = true;
+        alert.setContentText("Select a CSV file with the following columns: username, fullname" + (needPass ? ", password" : ""));
+        alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+        alert.showAndWait();
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.getExtensionFilters().setAll(csvFilter, allFilter);
+        fileChooser.setSelectedExtensionFilter(csvFilter);
+        fileChooser.setInitialDirectory(new File(System.getProperty("user.home")));
+        fileChooser.setTitle("Import Users From CSV");
+        File csvFile = fileChooser.showOpenDialog(AssignGui.getInstance().getStage());
+        if (csvFile != null && csvFile.exists()) {
+            users.importUsers(csvFile, -1, needPass);
+        }
     }
 
 }

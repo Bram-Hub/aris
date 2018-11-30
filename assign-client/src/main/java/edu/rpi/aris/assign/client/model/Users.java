@@ -1,6 +1,7 @@
 package edu.rpi.aris.assign.client.model;
 
 import edu.rpi.aris.assign.ServerRole;
+import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
 import edu.rpi.aris.assign.message.*;
@@ -12,6 +13,10 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Users implements ResponseHandler<UserListMsg> {
@@ -44,6 +49,48 @@ public class Users implements ResponseHandler<UserListMsg> {
 
     public void resetPassword(String username, String oldPass, String newPass) {
         Client.getInstance().processMessage(new UserChangePasswordMsg(username, newPass, oldPass), passwordChangeHandler);
+    }
+
+    public void importUsers(File csvFile, int classId, boolean needPass) {
+        new Thread(() -> {
+            try (BufferedReader reader = new BufferedReader(new FileReader(csvFile))) {
+                int usernameCol = -1;
+                int fullnameCol = -1;
+                int passCol = -1;
+                String[] headers = reader.readLine().toLowerCase().replaceAll("\\s", "").split(",");
+                for (int i = 0; i < headers.length; ++i) {
+                    switch (headers[i]) {
+                        case "username":
+                            usernameCol = i;
+                            break;
+                        case "fullname":
+                            fullnameCol = i;
+                            break;
+                        case "password":
+                            passCol = i;
+                            break;
+                    }
+                }
+                if (usernameCol == -1 || fullnameCol == -1 || (needPass && passCol == -1)) {
+                    AssignClient.displayErrorMsg("Import Users Error", "CSV File missing required columns");
+                    return;
+                }
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String[] split = line.split(",");
+                    if (split.length != headers.length) {
+                        AssignClient.displayErrorMsg("Import Users Error", "Improperly Formatted CSV file");
+                        return;
+                    }
+                    String username = split[usernameCol];
+                    String fullname = split[fullnameCol];
+                    String pass = needPass ? split[passCol] : null;
+
+                }
+            } catch (IOException e) {
+                AssignClient.displayErrorMsg("Failed to parse csv file: " + csvFile.getName(), e.getMessage());
+            }
+        }, "User Import Parse").start();
     }
 
     public synchronized void clear() {
