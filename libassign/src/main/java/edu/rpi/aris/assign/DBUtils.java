@@ -88,17 +88,11 @@ public class DBUtils {
             passProvided = false;
             password = RandomStringUtils.randomAlphabetic(16);
         }
-        try (PreparedStatement count = connection.prepareStatement("SELECT count(*) FROM users WHERE username = ?;");
-             PreparedStatement statement = connection.prepareStatement("INSERT INTO users (username, salt, password_hash, force_reset, default_role, full_name) VALUES(?, ?, ?, ?, ?, ?) RETURNING id;")) {
-            count.setString(1, username);
-            try (ResultSet rs = count.executeQuery()) {
-                if (rs.next() && rs.getInt(1) > 0)
-                    return new ImmutablePair<>(null, -1);
-            }
+        try (PreparedStatement statement = connection.prepareStatement("INSERT INTO users (username, salt, password_hash, force_reset, default_role, full_name) VALUES(?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING RETURNING id;")) {
             Pair<String, String> sh = getSaltAndHash(password);
             if (passProvided)
                 password = null;
-            statement.setString(1, username);
+            statement.setString(1, username.toLowerCase());
             statement.setString(2, sh.getKey());
             statement.setString(3, sh.getValue());
             statement.setBoolean(4, forceReset);
@@ -108,6 +102,8 @@ public class DBUtils {
             try (ResultSet rs = statement.executeQuery()) {
                 if (rs.next())
                     uid = rs.getInt(1);
+                else
+                    password = null;
             }
             return new ImmutablePair<>(password, uid);
         }

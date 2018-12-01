@@ -10,6 +10,10 @@ public class Pair<T, S> {
         this.second = second;
     }
 
+    private Pair() {
+        this(null, null);
+    }
+
     public T getFirst() {
         return first;
     }

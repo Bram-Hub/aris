@@ -5,6 +5,7 @@ import edu.rpi.aris.assign.Perm;
 import edu.rpi.aris.assign.ServerRole;
 import edu.rpi.aris.assign.client.dialog.CreateUserDialog;
 import edu.rpi.aris.assign.client.dialog.PasswordResetDialog;
+import edu.rpi.aris.assign.client.model.ClassInfo;
 import edu.rpi.aris.assign.client.model.CurrentUser;
 import edu.rpi.aris.assign.client.model.ServerConfig;
 import edu.rpi.aris.assign.client.model.Users;
@@ -17,9 +18,12 @@ import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.ComboBoxTableCell;
 import javafx.scene.control.cell.TextFieldTableCell;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.stage.FileChooser;
 import javafx.util.Pair;
+import javafx.util.StringConverter;
 import javafx.util.converter.DefaultStringConverter;
 
 import java.io.File;
@@ -196,8 +200,32 @@ public class UsersGui implements TabGui {
         fileChooser.setInitialDirectory(new File(System.getProperty("user.home")));
         fileChooser.setTitle("Import Users From CSV");
         File csvFile = fileChooser.showOpenDialog(AssignGui.getInstance().getStage());
-        if (csvFile != null && csvFile.exists()) {
-            users.importUsers(csvFile, -1, needPass);
+        Alert classAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        classAlert.setTitle("Add Users To Class");
+        classAlert.setHeaderText("Select the class to add these users to");
+        ComboBox<ClassInfo> classes = new ComboBox<>();
+        ClassInfo info = new ClassInfo(-1, "None", null);
+        classes.getItems().add(info);
+        classes.getItems().addAll(userInfo.classesProperty());
+        classes.getSelectionModel().select(info);
+        classes.setConverter(new StringConverter<ClassInfo>() {
+            @Override
+            public String toString(ClassInfo object) {
+                return object.getClassName();
+            }
+
+            @Override
+            public ClassInfo fromString(String string) {
+                return null;
+            }
+        });
+        classes.setMaxWidth(Double.MAX_VALUE);
+        HBox box = new HBox(classes);
+        HBox.setHgrow(classes, Priority.ALWAYS);
+        classAlert.getDialogPane().setContent(box);
+        Optional<ButtonType> result = classAlert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK && csvFile != null && csvFile.exists()) {
+            users.importUsers(csvFile, classes.getSelectionModel().getSelectedItem().getClassId(), needPass);
         }
     }
 

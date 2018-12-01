@@ -43,6 +43,7 @@ import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.jetbrains.annotations.NotNull;
 
 import javax.net.ssl.*;
 import javax.security.auth.x500.X500Principal;
@@ -81,7 +82,7 @@ public class Client implements MessageCommunication {
         private int i;
 
         @Override
-        public Thread newThread(Runnable r) {
+        public Thread newThread(@NotNull Runnable r) {
             synchronized (this) {
                 Thread t = new Thread(r, "ClientMsgProcess - Thread " + i++);
                 t.setDaemon(true);

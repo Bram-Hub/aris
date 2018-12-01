@@ -25,6 +25,7 @@ public class Users implements ResponseHandler<UserListMsg> {
     private final ReentrantLock lock = new ReentrantLock(true);
     private final SimpleBooleanProperty loadError = new SimpleBooleanProperty(false);
     private final PasswordChangeResponseHandler passwordChangeHandler = new PasswordChangeResponseHandler();
+    private final BatchImportHandler batchImportHandler = new BatchImportHandler();
     private boolean loaded = false;
     private ResponseHandler<UserDeleteMsg> userDeleteHandler = new UserDeleteHandler();
 
@@ -53,6 +54,7 @@ public class Users implements ResponseHandler<UserListMsg> {
 
     public void importUsers(File csvFile, int classId, boolean needPass) {
         new Thread(() -> {
+            BatchUserImportMsg msg = new BatchUserImportMsg(classId);
             try (BufferedReader reader = new BufferedReader(new FileReader(csvFile))) {
                 int usernameCol = -1;
                 int fullnameCol = -1;
@@ -85,11 +87,14 @@ public class Users implements ResponseHandler<UserListMsg> {
                     String username = split[usernameCol];
                     String fullname = split[fullnameCol];
                     String pass = needPass ? split[passCol] : null;
-
+                    msg.addUser(username, fullname, pass);
                 }
+                if (msg.getToAdd().size() == 0)
+                    return;
             } catch (IOException e) {
                 AssignClient.displayErrorMsg("Failed to parse csv file: " + csvFile.getName(), e.getMessage());
             }
+            Client.getInstance().processMessage(msg, batchImportHandler);
         }, "User Import Parse").start();
     }
 
@@ -255,6 +260,25 @@ public class Users implements ResponseHandler<UserListMsg> {
         public void onError(boolean suggestRetry, UserDeleteMsg msg) {
             if (suggestRetry)
                 deleteUser(msg.getUid());
+        }
+
+        @Override
+        public ReentrantLock getLock() {
+            return lock;
+        }
+    }
+
+    private class BatchImportHandler implements ResponseHandler<BatchUserImportMsg> {
+
+        @Override
+        public void response(BatchUserImportMsg message) {
+            Platform.runLater(() -> message.getAdded().forEach(added -> users.add(new UserInfo(added))));
+        }
+
+        @Override
+        public void onError(boolean suggestRetry, BatchUserImportMsg msg) {
+            if (suggestRetry)
+                Client.getInstance().processMessage(msg, this);
         }
 
         @Override
