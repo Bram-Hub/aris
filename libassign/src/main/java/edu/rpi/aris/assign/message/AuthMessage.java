@@ -1,17 +1,14 @@
 package edu.rpi.aris.assign.message;
 
-import edu.rpi.aris.assign.*;
+import edu.rpi.aris.assign.LibAssign;
+import edu.rpi.aris.assign.ServerPermissions;
+import edu.rpi.aris.assign.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.security.MessageDigest;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.Base64;
 
 public class AuthMessage extends Message {
 
@@ -34,68 +31,6 @@ public class AuthMessage extends Message {
     public AuthMessage(Auth status) {
         this(null, null, false);
         this.status = status;
-    }
-
-    public User checkAuth(Connection connection, ServerPermissions permissions) throws SQLException {
-        String pass = passAccessToken;
-        passAccessToken = null;
-        if (username == null) {
-            log.info("Username is null");
-            status = Auth.FAIL;
-            return null;
-        }
-        Thread.currentThread().setName(Thread.currentThread().getName() + "/" + username);
-        log.info("Authenticating user: " + username);
-        log.info("Authentication method: " + (isAccessToken ? "Acess Token" : "Password"));
-        try (PreparedStatement statement = connection.prepareStatement("SELECT salt, password_hash, access_token, id, default_role, force_reset FROM users WHERE username = ?;")) {
-            statement.setString(1, username);
-            try (ResultSet rs = statement.executeQuery()) {
-                if (rs.next()) {
-                    String salt = rs.getString(1);
-                    String savedHash = rs.getString(isAccessToken ? 3 : 2);
-                    int userId = rs.getInt(4);
-                    ServerRole userRole;
-                    try {
-                        userRole = permissions.getRole(rs.getInt(5));
-                    } catch (IllegalArgumentException e) {
-                        log.error("Failed to parse User Role", e);
-                        userRole = permissions.getLowestRole();
-                        try (PreparedStatement updateUserType = connection.prepareStatement("UPDATE users SET default_role = ? WHERE username = ?;")) {
-                            updateUserType.setInt(1, userRole.getId());
-                            updateUserType.setString(2, username);
-                            updateUserType.executeUpdate();
-                        }
-                    }
-                    boolean forceReset = rs.getBoolean(6);
-                    if (DBUtils.checkPass(pass, salt, savedHash)) {
-                        isAccessToken = true;
-                        passAccessToken = DBUtils.generateAccessToken();
-                        MessageDigest digest = DBUtils.getDigest();
-                        digest.update(Base64.getDecoder().decode(salt));
-                        String hashed = Base64.getEncoder().encodeToString(digest.digest(passAccessToken.getBytes()));
-                        try (PreparedStatement updateAccessToken = connection.prepareStatement("UPDATE users SET access_token = ? WHERE username = ?;")) {
-                            updateAccessToken.setString(1, hashed);
-                            updateAccessToken.setString(2, username);
-                            updateAccessToken.executeUpdate();
-                        }
-                        User user = new User(userId, username, userRole, forceReset);
-                        if (forceReset) {
-                            log.info("Password expired reset required");
-                            status = Auth.RESET;
-                        } else
-                            status = Auth.OK;
-                        return user;
-                    } else {
-                        log.info("invalid " + (isAccessToken ? "access token" : "password"));
-                        status = Auth.FAIL;
-                        return null;
-                    }
-                } else {
-                    status = Auth.FAIL;
-                    return null;
-                }
-            }
-        }
     }
 
     @Nullable
@@ -141,6 +76,10 @@ public class AuthMessage extends Message {
 
     public void setStatus(Auth status) {
         this.status = status;
+    }
+
+    public void setIsAccessToken(boolean isAccessToken) {
+        this.isAccessToken = isAccessToken;
     }
 
     public enum Auth {

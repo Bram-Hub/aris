@@ -3,6 +3,7 @@ package edu.rpi.aris.assign.server;
 import com.mchange.v2.c3p0.ComboPooledDataSource;
 import edu.rpi.aris.assign.DBUtils;
 import edu.rpi.aris.assign.GradingStatus;
+import edu.rpi.aris.assign.server.auth.LoginAuth;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -25,7 +26,7 @@ public class DatabaseManager {
     public static final String DEFAULT_ADMIN_PASS = "ArisAdmin1";
     private static final String[] defaultRoleName = new String[]{"Admin", "Instructor", "TA", "Student"};
     private static final int[] defaultRoleRank = new int[]{0, 1, 2, 3};
-    private static final int DB_SCHEMA_VERSION = 13;
+    private static final int DB_SCHEMA_VERSION = 14;
     private static Logger logger = LogManager.getLogger(DatabaseManager.class);
 
     static {
@@ -467,6 +468,26 @@ public class DatabaseManager {
             statement.execute("ALTER TABLE submission DROP CONSTRAINT submission_short_status_check;");
             statement.execute("ALTER TABLE submission ADD CONSTRAINT submission_short_status_check check (short_status in ('" + GradingStatus.CORRECT.name() + "', '" + GradingStatus.INCORRECT.name() + "', '" + GradingStatus.GRADING.name() + "', '" + GradingStatus.PARTIAL.name() + "', '" + GradingStatus.ERROR.name() + "'));");
             statement.execute("UPDATE version SET version=13;");
+            connection.commit();
+        } catch (Throwable e) {
+            connection.rollback();
+            logger.error("An error occurred while updating the database schema and the changes were rolled back");
+            throw e;
+        } finally {
+            connection.setAutoCommit(autoCommit);
+        }
+        updateSchema13(connection);
+    }
+
+    private void updateSchema13(Connection connection) throws SQLException {
+        logger.info("Updating database schema to version 14");
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE users ADD COLUMN auth_type text;");
+            statement.execute("UPDATE users SET auth_type='" + LoginAuth.Type.LOCAL.name() + "';");
+            statement.execute("ALTER TABLE users ALTER COLUMN auth_type SET NOT NULL;");
+            statement.execute("UPDATE version SET version=14;");
             connection.commit();
         } catch (Throwable e) {
             connection.rollback();
