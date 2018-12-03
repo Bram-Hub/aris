@@ -1,9 +1,9 @@
 package edu.rpi.aris.assign.server;
 
 import com.mchange.v2.c3p0.ComboPooledDataSource;
+import edu.rpi.aris.assign.AuthType;
 import edu.rpi.aris.assign.DBUtils;
 import edu.rpi.aris.assign.GradingStatus;
-import edu.rpi.aris.assign.server.auth.LoginAuth;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -485,7 +485,7 @@ public class DatabaseManager {
         connection.setAutoCommit(false);
         try (Statement statement = connection.createStatement()) {
             statement.execute("ALTER TABLE users ADD COLUMN auth_type text;");
-            statement.execute("UPDATE users SET auth_type='" + LoginAuth.Type.LOCAL.name() + "';");
+            statement.execute("UPDATE users SET auth_type='" + AuthType.LOCAL.name() + "';");
             statement.execute("ALTER TABLE users ALTER COLUMN auth_type SET NOT NULL;");
             statement.execute("UPDATE version SET version=14;");
             connection.commit();

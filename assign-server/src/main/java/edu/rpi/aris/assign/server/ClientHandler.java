@@ -4,7 +4,7 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import edu.rpi.aris.assign.*;
 import edu.rpi.aris.assign.message.*;
-import edu.rpi.aris.assign.server.auth.LoginAuth;
+import edu.rpi.aris.assign.server.auth.LoginUtil;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -92,7 +92,7 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
             user = null;
             logger.info("Checking client auth");
             try (Connection connection = dbManager.getConnection()) {
-                user = LoginAuth.verifyAuth(authMsg, connection, permissions);
+                user = LoginUtil.verifyAuth(authMsg, connection, permissions);
                 if (authMsg.getStatus() == AuthMessage.Auth.FAIL) {
                     if (!authMsg.isAccessToken() && updateBanList()) {
                         logger.info("Auth banned");

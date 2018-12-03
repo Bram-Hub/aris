@@ -1,9 +1,12 @@
 package edu.rpi.aris.assign.server.auth;
 
+import edu.rpi.aris.assign.AuthType;
+import edu.rpi.aris.assign.LoginAuth;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -13,6 +16,7 @@ import java.io.InputStream;
 public class PAMLoginAuth extends LoginAuth {
 
     private static final String LIB_NAME = "libassign_pam";
+    private static final String LIB_FILE = LIB_NAME + ".so";
     private static final Logger log = LogManager.getLogger();
     private static final PAMLoginAuth instance = new PAMLoginAuth();
     private static boolean loaded = false;
@@ -24,6 +28,10 @@ public class PAMLoginAuth extends LoginAuth {
     private PAMLoginAuth() {
     }
 
+    static void register() {
+        LoginAuth.registerLoginAuth(instance);
+    }
+
     private static void loadLib() {
         if (!SystemUtils.IS_OS_LINUX) {
             log.info("PAM authentication is only available on linux and has been disabled");
@@ -31,12 +39,12 @@ public class PAMLoginAuth extends LoginAuth {
         }
         log.info("Loading libassign_pam.so native library");
 
-        File tmpFile = new File(System.getProperty("java.io.tmpdir"), LIB_NAME + ".so");
+        File tmpFile = new File(System.getProperty("java.io.tmpdir"), LIB_FILE);
         int i = 0;
         while (tmpFile.exists() && !tmpFile.delete())
             tmpFile = new File(System.getProperty("java.io.tmpdir"), LIB_NAME + (i++) + ".so");
         boolean copied = false;
-        try (InputStream in = ClassLoader.getSystemResourceAsStream(LIB_NAME + ".so");
+        try (InputStream in = ClassLoader.getSystemResourceAsStream(LIB_FILE);
              FileOutputStream out = new FileOutputStream(tmpFile)) {
             if (in != null) {
                 IOUtils.copy(in, out);
@@ -44,14 +52,14 @@ public class PAMLoginAuth extends LoginAuth {
             }
         } catch (IOException e) {
             copied = false;
-            log.error("Failed to extract libassign_pam to temp directory", e);
+            log.error("Failed to extract " + LIB_NAME + " to temp directory", e);
         }
         if (copied) {
             try {
                 System.load(tmpFile.getCanonicalPath());
                 loaded = true;
             } catch (Exception e) {
-                log.error("Failed to load native libassign_pam library", e);
+                log.error("Failed to load native " + LIB_NAME + " library", e);
             }
         }
     }
@@ -63,7 +71,7 @@ public class PAMLoginAuth extends LoginAuth {
     private static native PAMResponse pam_authenticate(String user, String pass);
 
     @Override
-    protected String checkAuth(String user, String pass, String salt, String savedHash) {
+    public String checkAuth(String user, String pass, String salt, String savedHash) {
         PAMResponse response = pam_authenticate(user, pass);
         if (response == null)
             return "PAM library returned no response";
@@ -75,6 +83,17 @@ public class PAMLoginAuth extends LoginAuth {
     @Override
     public boolean isSupported() {
         return loaded;
+    }
+
+    @Override
+    public boolean canReset() {
+        return false;
+    }
+
+    @NotNull
+    @Override
+    public AuthType[] handlesTypes() {
+        return new AuthType[]{AuthType.PAM};
     }
 
 }

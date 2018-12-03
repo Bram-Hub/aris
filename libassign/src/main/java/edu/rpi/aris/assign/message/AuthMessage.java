@@ -18,6 +18,7 @@ public class AuthMessage extends Message {
     private boolean isAccessToken;
     private String version;
     private String passAccessToken;
+    private String errorMsg;
     private Auth status;
 
     public AuthMessage(String username, String passAccessToken, boolean isAccessToken) {
@@ -80,6 +81,10 @@ public class AuthMessage extends Message {
 
     public void setIsAccessToken(boolean isAccessToken) {
         this.isAccessToken = isAccessToken;
+    }
+
+    public void setErrorMsg(String error) {
+        errorMsg = error;
     }
 
     public enum Auth {
