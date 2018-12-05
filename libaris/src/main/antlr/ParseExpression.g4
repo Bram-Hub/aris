@@ -14,7 +14,7 @@ predicate:
 arg_list: SPACE? VARIABLE SPACE? | SPACE? VARIABLE SPACE? ',' arg_list ;
 
 quantifier: 'forall ' | '∀' | 'exists ' | '∃' ;
-binder: quantifier SPACE? VARIABLE SPACE? ',' SPACE? expr ;
+binder: SPACE? quantifier SPACE? VARIABLE SPACE? ',' SPACE? paren_expr;
 
 andrepr: '&' | '∧' | '/\\' ;
 andterm: SPACE? paren_expr SPACE? andrepr SPACE? andterm SPACE?
@@ -37,10 +37,9 @@ notterm: '~' paren_expr;
 
 bottom: '_|_' ;
 
-paren_expr: bottom | predicate | notterm | SPACE? '(' SPACE? expr SPACE? ')' SPACE? ;
+paren_expr: bottom | predicate | notterm | binder | SPACE? '(' SPACE? expr SPACE? ')' SPACE? ;
 
 expr:
-    | SPACE? binder
     | assocterm
     | binopterm
     | paren_expr
