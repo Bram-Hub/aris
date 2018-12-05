@@ -1,3 +1,9 @@
+plugins {
+    id 'java'
+    id 'java-library'
+    id 'antlr'
+}
+
 allprojects {
     group = 'edu.rpi.aris'
     version = new File('libaris/src/main/resources/edu/rpi/aris/VERSION').text.trim()
@@ -6,8 +12,8 @@ allprojects {
 }
 
 subprojects {
-
     apply plugin: 'java'
+    apply plugin: 'antlr'
 
     compileJava.options.encoding = 'UTF-8'
     compileTestJava.options.encoding = 'UTF-8'
@@ -28,6 +34,8 @@ subprojects {
     
     dependencies {
         compile 'org.jetbrains:annotations:16.0.3'
+        implementation 'org.antlr:antlr4-runtime:4.7.1'
+        antlr 'org.antlr:antlr4:4.7.1'
     }
 
     build.doLast {
