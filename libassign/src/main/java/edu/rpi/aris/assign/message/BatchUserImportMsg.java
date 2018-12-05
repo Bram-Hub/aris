@@ -13,16 +13,18 @@ import java.util.ArrayList;
 public class BatchUserImportMsg extends Message {
 
     private final int addToClass;
+    private final AuthType authType;
     private final ArrayList<Triple<String, String, String>> toAdd = new ArrayList<>();
     private final ArrayList<MsgUtil.UserInfo> added = new ArrayList<>();
 
-    public BatchUserImportMsg(int addToClass) {
+    public BatchUserImportMsg(int addToClass, AuthType authType) {
         super(Perm.BATCH_USER_IMPORT, true);
         this.addToClass = addToClass;
+        this.authType = authType;
     }
 
     public BatchUserImportMsg() {
-        this(-1);
+        this(-1, null);
     }
 
     @Override
@@ -33,7 +35,7 @@ public class BatchUserImportMsg extends Message {
             if (addToClass > 0 && !permissions.hasClassPermission(user, addToClass, Perm.CLASS_EDIT, connection))
                 return ErrorType.UNAUTHORIZED;
             int roleId = permissions.getLowestRole().getId();
-            try (PreparedStatement addUser = connection.prepareStatement("INSERT INTO users (username, salt, password_hash, force_reset, default_role, full_name) VALUES(?, ?, ?, ?, ?, ?) ON CONFLICT (username) DO NOTHING RETURNING id;");
+            try (PreparedStatement addUser = connection.prepareStatement("INSERT INTO users (username, salt, password_hash, force_reset, default_role, full_name, auth_type) VALUES(?, ?, ?, ?, ?, ?, ?) ON CONFLICT (username) DO NOTHING RETURNING id;");
                  PreparedStatement addToClass = connection.prepareStatement("INSERT INTO user_class (user_id, class_id, role_id) VALUES (?, ?, ?) ON CONFLICT (user_id, class_id) DO NOTHING;")) {
                 for (Triple<String, String, String> t : toAdd) {
                     String uname = t.getLeft();
@@ -51,7 +53,8 @@ public class BatchUserImportMsg extends Message {
                         try (ResultSet rs = addUser.executeQuery()) {
                             if (rs.next()) {
                                 int uid = rs.getInt(1);
-                                added.add(new MsgUtil.UserInfo(uid, uname, fullName, roleId));
+                                LoginAuth auth = LoginAuth.getAuthForType(authType);
+                                added.add(new MsgUtil.UserInfo(uid, uname, fullName, roleId, authType, auth != null && auth.canReset()));
                                 if (this.addToClass > 0) {
                                     addToClass.setInt(1, uid);
                                     addToClass.setInt(2, this.addToClass);

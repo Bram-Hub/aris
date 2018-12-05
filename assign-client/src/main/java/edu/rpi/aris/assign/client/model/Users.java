@@ -1,5 +1,6 @@
 package edu.rpi.aris.assign.client.model;
 
+import edu.rpi.aris.assign.AuthType;
 import edu.rpi.aris.assign.ServerRole;
 import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.client.Client;
@@ -54,7 +55,7 @@ public class Users implements ResponseHandler<UserListMsg> {
 
     public void importUsers(File csvFile, int classId, boolean needPass) {
         new Thread(() -> {
-            BatchUserImportMsg msg = new BatchUserImportMsg(classId);
+            BatchUserImportMsg msg = new BatchUserImportMsg(classId, AuthType.LOCAL);
             try (BufferedReader reader = new BufferedReader(new FileReader(csvFile))) {
                 int usernameCol = -1;
                 int fullnameCol = -1;

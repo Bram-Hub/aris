@@ -1,9 +1,6 @@
 package edu.rpi.aris.assign.message;
 
-import edu.rpi.aris.assign.Perm;
-import edu.rpi.aris.assign.ServerPermissions;
-import edu.rpi.aris.assign.ServerRole;
-import edu.rpi.aris.assign.User;
+import edu.rpi.aris.assign.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -18,6 +15,8 @@ public class UserGetMsg extends Message {
 
     private int userId;
     private int defaultRole;
+    private boolean canChangePassword;
+    private AuthType authType;
     private ServerPermissions permissions;
     private HashMap<Integer, String> classNames = new HashMap<>();
     private HashMap<Integer, Integer> classRoles = new HashMap<>();
@@ -63,6 +62,8 @@ public class UserGetMsg extends Message {
                 }
             }
         }
+        authType = user.authType;
+        canChangePassword = LoginAuth.getAuthForType(authType).canReset();
         return null;
     }
 
@@ -80,4 +81,11 @@ public class UserGetMsg extends Message {
         return true;
     }
 
+    public boolean canChangePassword() {
+        return canChangePassword;
+    }
+
+    public AuthType getAuthType() {
+        return authType;
+    }
 }

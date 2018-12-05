@@ -1,5 +1,6 @@
 package edu.rpi.aris.assign.message;
 
+import edu.rpi.aris.assign.AuthType;
 import edu.rpi.aris.assign.GradingStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -128,12 +129,17 @@ public class MsgUtil {
         @NotNull
         public final String fullName;
         public final int defaultRole;
+        @NotNull
+        public final AuthType authType;
+        public final boolean canChangePassword;
 
-        public UserInfo(int uid, @NotNull String username, @NotNull String fullName, int defaultRole) {
+        public UserInfo(int uid, @NotNull String username, @NotNull String fullName, int defaultRole, @NotNull AuthType authType, boolean canChangePassword) {
             this.uid = uid;
             this.username = username;
             this.fullName = fullName;
             this.defaultRole = defaultRole;
+            this.authType = authType;
+            this.canChangePassword = canChangePassword;
         }
 
         private UserInfo() {
@@ -141,6 +147,8 @@ public class MsgUtil {
             username = "";
             fullName = "";
             defaultRole = 0;
+            authType = AuthType.LOCAL;
+            canChangePassword = true;
         }
 
         @Contract(value = "null -> false", pure = true)

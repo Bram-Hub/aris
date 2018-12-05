@@ -39,15 +39,15 @@ public class LoginUtil {
                     String salt = rs.getString(1);
                     String savedHash = rs.getString(authMessage.isAccessToken() ? 3 : 2);
 
-                    LoginAuth auth = getAuth(rs.getString(7), authMessage);
+                    Pair<LoginAuth, AuthType> auth = getAuth(rs.getString(7), authMessage);
                     if (auth == null)
                         return null;
 
-                    boolean forceReset = auth.canReset() && rs.getBoolean(6);
+                    boolean forceReset = auth.getFirst().canReset() && rs.getBoolean(6);
 
-                    if (verifyAuth(auth, authMessage, pass, salt, savedHash)) {
+                    if (verifyAuth(auth.getFirst(), authMessage, pass, salt, savedHash)) {
                         ServerRole userRole = getUserRole(rs.getInt(5), authMessage.getUsername(), connection, permissions);
-                        return handleAuthSuccess(authMessage, rs.getInt(4), userRole, forceReset, salt, connection);
+                        return handleAuthSuccess(authMessage, rs.getInt(4), userRole, auth.getSecond(), forceReset, auth.getFirst().canReset(), salt, connection);
                     } else {
                         log.info("Invalid " + (authMessage.isAccessToken() ? "access token" : "password"));
                         authMessage.setStatus(AuthMessage.Auth.FAIL);
@@ -69,7 +69,7 @@ public class LoginUtil {
         return response == null;
     }
 
-    private static User handleAuthSuccess(AuthMessage msg, int userId, ServerRole userRole, boolean forceReset, String salt, Connection connection) throws SQLException {
+    private static User handleAuthSuccess(AuthMessage msg, int userId, ServerRole userRole, AuthType authType, boolean forceReset, boolean canChangePassword, String salt, Connection connection) throws SQLException {
         msg.setIsAccessToken(true);
         msg.setPassAccessToken(DBUtils.generateAccessToken());
         MessageDigest digest = DBUtils.getDigest();
@@ -80,7 +80,7 @@ public class LoginUtil {
             updateAccessToken.setString(2, msg.getUsername());
             updateAccessToken.executeUpdate();
         }
-        User user = new User(userId, msg.getUsername(), userRole, forceReset);
+        User user = new User(userId, msg.getUsername(), userRole, authType, forceReset, canChangePassword);
         if (forceReset) {
             log.info("Password expired reset required");
             msg.setStatus(AuthMessage.Auth.RESET);
@@ -105,30 +105,31 @@ public class LoginUtil {
         return userRole;
     }
 
-    private static LoginAuth getAuth(String authStr, AuthMessage msg) {
-        AuthType authType;
+    private static Pair<LoginAuth, AuthType> getAuth(String authStr, AuthMessage msg) {
+        AuthType authTypeUse, authType;
         try {
-            authType = msg.isAccessToken() ? AuthType.ACCESS_TOKEN : AuthType.valueOf(authStr);
+            authType = AuthType.valueOf(authStr);
+            authTypeUse = msg.isAccessToken() ? AuthType.ACCESS_TOKEN : authType;
         } catch (IllegalArgumentException e) {
             log.error("Failed to parse AuthType: " + authStr, e);
             msg.setStatus(AuthMessage.Auth.ERROR);
             msg.setErrorMsg("Unknown AuthType: " + authStr);
             return null;
         }
-        LoginAuth auth = LoginAuth.getAuthForType(authType);
+        LoginAuth auth = LoginAuth.getAuthForType(authTypeUse);
         if (auth == null) {
-            log.error("Failed to get LoginAuth instance for AuthType: " + authType);
+            log.error("Failed to get LoginAuth instance for AuthType: " + authTypeUse);
             msg.setStatus(AuthMessage.Auth.ERROR);
             msg.setErrorMsg("Unknown AuthType: " + authStr);
             return null;
         }
         if (!auth.isSupported()) {
-            log.error("AuthType: " + authType + " is unsupported on this system");
+            log.error("AuthType: " + authTypeUse + " is unsupported on this system");
             msg.setStatus(AuthMessage.Auth.ERROR);
             msg.setErrorMsg("Authentication type not supported by server");
             return null;
         }
-        return auth;
+        return new Pair<>(auth, authType);
     }
 
 }

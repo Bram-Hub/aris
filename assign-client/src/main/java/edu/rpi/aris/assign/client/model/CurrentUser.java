@@ -131,7 +131,7 @@ public class CurrentUser implements ResponseHandler<UserGetMsg> {
     public void response(UserGetMsg message) {
         Platform.runLater(() -> {
             ServerConfig.setPermissions(message.getPermissions());
-            user = new User(message.getUserId(), LocalConfig.USERNAME.getValue(), message.getDefaultRole(), false);
+            user = new User(message, LocalConfig.USERNAME.getValue());
             defaultRole.set(message.getDefaultRole());
             classes.clear();
             classMap.clear();
