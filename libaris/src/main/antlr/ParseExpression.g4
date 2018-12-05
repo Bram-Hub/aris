@@ -1,6 +1,6 @@
 grammar ParseExpression;
 
-main: expr;
+main: expr EOF;
 
 SPACE: [ \n\r\t]+ ;
 NUMBER: [0-9]+ ;
