@@ -43,11 +43,11 @@ public class LoginUtil {
                     if (auth == null)
                         return null;
 
-                    boolean forceReset = auth.getFirst().canReset() && rs.getBoolean(6);
+                    boolean forceReset = auth.getFirst().isLocalAuth() && rs.getBoolean(6);
 
                     if (verifyAuth(auth.getFirst(), authMessage, pass, salt, savedHash)) {
                         ServerRole userRole = getUserRole(rs.getInt(5), authMessage.getUsername(), connection, permissions);
-                        return handleAuthSuccess(authMessage, rs.getInt(4), userRole, auth.getSecond(), forceReset, auth.getFirst().canReset(), salt, connection);
+                        return handleAuthSuccess(authMessage, rs.getInt(4), userRole, auth.getSecond(), forceReset, auth.getFirst().isLocalAuth(), salt, connection);
                     } else {
                         log.info("Invalid " + (authMessage.isAccessToken() ? "access token" : "password"));
                         authMessage.setStatus(AuthMessage.Auth.FAIL);

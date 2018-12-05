@@ -6,7 +6,7 @@ import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
 import edu.rpi.aris.assign.message.ClassCreateMsg;
 import edu.rpi.aris.assign.message.ClassDeleteMsg;
-import edu.rpi.aris.assign.message.UserGetMsg;
+import edu.rpi.aris.assign.message.ConnectionInitMsg;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
@@ -22,7 +22,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class CurrentUser implements ResponseHandler<UserGetMsg> {
+public class CurrentUser implements ResponseHandler<ConnectionInitMsg> {
 
     private static final CurrentUser instance = new CurrentUser();
 
@@ -97,12 +97,14 @@ public class CurrentUser implements ResponseHandler<UserGetMsg> {
         return defaultRole.get();
     }
 
-    public synchronized void getUserInfo(boolean refresh, Runnable onLoad) {
-        if (refresh || !loggedIn.get()) {
+    public synchronized void connectionInit(Runnable onLoad) {
+        if (loggedIn.get())
+            onLoad.run();
+        else {
             if (lock.isLocked())
                 return;
             this.onLoad = onLoad;
-            Client.getInstance().processMessage(new UserGetMsg(), this);
+            Client.getInstance().processMessage(new ConnectionInitMsg(), this);
         }
     }
 
@@ -128,7 +130,7 @@ public class CurrentUser implements ResponseHandler<UserGetMsg> {
     }
 
     @Override
-    public void response(UserGetMsg message) {
+    public void response(ConnectionInitMsg message) {
         Platform.runLater(() -> {
             ServerConfig.setPermissions(message.getPermissions());
             user = new User(message, LocalConfig.USERNAME.getValue());
@@ -152,13 +154,13 @@ public class CurrentUser implements ResponseHandler<UserGetMsg> {
     }
 
     @Override
-    public void onError(boolean suggestRetry, UserGetMsg msg) {
+    public void onError(boolean suggestRetry, ConnectionInitMsg msg) {
         Platform.runLater(() -> {
             loggedIn.set(false);
             classes.clear();
             classMap.clear();
             if (suggestRetry)
-                getUserInfo(false, onLoad);
+                connectionInit(onLoad);
             else
                 onLoad = null;
         });

@@ -11,20 +11,22 @@ public class UserCreateMsg extends Message {
     private final String username;
     private final String fullName;
     private final int defaultRole;
+    private final AuthType authType;
     private String password;
     private int uid;
 
-    public UserCreateMsg(String username, String fullName, String password, int defaultRole) {
+    public UserCreateMsg(String username, String fullName, String password, int defaultRole, AuthType authType) {
         super(Perm.USER_CREATE);
         this.username = username;
         this.fullName = fullName;
         this.password = password;
         this.defaultRole = defaultRole;
+        this.authType = authType;
     }
 
     // DO NOT REMOVE
     private UserCreateMsg() {
-        this(null, null, null, -1);
+        this(null, null, null, -1, null);
     }
 
     @Override
@@ -37,7 +39,7 @@ public class UserCreateMsg extends Message {
                 return ErrorType.UNAUTHORIZED;
             if (password == null || password.length() == 0)
                 return ErrorType.AUTH_WEAK_PASS;
-            uid = DBUtils.createUser(connection, username, password, fullName, defaultRole, true).getValue();
+            uid = DBUtils.createUser(connection, username, password, fullName, defaultRole, true, authType).getValue();
             if (uid <= 0)
                 return ErrorType.USER_EXISTS;
             return null;

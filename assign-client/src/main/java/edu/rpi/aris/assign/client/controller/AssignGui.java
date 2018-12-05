@@ -116,7 +116,7 @@ public class AssignGui {
                 return;
             }
         }
-        userInfo.getUserInfo(false, null);
+        userInfo.connectionInit(null);
     }
 
     @FXML
@@ -243,13 +243,13 @@ public class AssignGui {
         } else {
             for (TabGui gui : tabGuis.values())
                 gui.unload();
-            userInfo.getUserInfo(true, null);
+            userInfo.connectionInit(null);
         }
     }
 
     @FXML
     public void refresh() {
-        userInfo.getUserInfo(true, () -> {
+        userInfo.connectionInit(() -> {
             for (TabGui gui : tabGuis.values())
                 gui.unload();
             TabGui gui = tabGuis.get(tabPane.getSelectionModel().getSelectedItem());

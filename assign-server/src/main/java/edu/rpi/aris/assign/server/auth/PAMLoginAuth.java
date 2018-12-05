@@ -86,8 +86,21 @@ public class PAMLoginAuth extends LoginAuth {
     }
 
     @Override
-    public boolean canReset() {
+    public boolean isLocalAuth() {
         return false;
+    }
+
+    @Override
+    public boolean isValidUsername(String username) {
+        if (username == null || username.trim().length() == 0)
+            return false;
+        try {
+            Process process = Runtime.getRuntime().exec("id -u \"" + username + "\"");
+            return process.waitFor() == 0;
+        } catch (IOException | InterruptedException e) {
+            log.error("Failed to check if user \"" + username + "\" exists", e);
+            return false;
+        }
     }
 
     @NotNull

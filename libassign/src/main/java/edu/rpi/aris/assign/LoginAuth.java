@@ -35,7 +35,9 @@ public abstract class LoginAuth {
 
     public abstract boolean isSupported();
 
-    public abstract boolean canReset();
+    public abstract boolean isLocalAuth();
+
+    public abstract boolean isValidUsername(String username);
 
     @NotNull
     public abstract AuthType[] handlesTypes();

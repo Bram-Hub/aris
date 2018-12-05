@@ -188,7 +188,7 @@ public class UsersGui implements TabGui {
     private void importUsers() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Import Users");
-        Boolean needPass = ServerConfig.getBoolProp(ServerConfig.SERVER_AUTH_USES_DB);
+        Boolean needPass = true;//ServerConfig.getBoolProp(ServerConfig.SERVER_AUTH_USES_DB);
         if (needPass == null)
             needPass = true;
         alert.setContentText("Select a CSV file with the following columns: username, fullname" + (needPass ? ", password" : ""));

@@ -1,5 +1,6 @@
 package edu.rpi.aris.assign.server;
 
+import edu.rpi.aris.assign.AuthType;
 import edu.rpi.aris.assign.LibAssign;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -50,7 +51,7 @@ public class ServerCLI {
                             log.error("Usage: useradd <username>");
                         else {
                             try {
-                                if (AssignServerMain.getServer().addUser(args.get(0), DatabaseManager.DEFAULT_ADMIN_PASS, args.get(0), AssignServerMain.getServer().getPermissions().getAdminRole(), true))
+                                if (AssignServerMain.getServer().addUser(args.get(0), DatabaseManager.DEFAULT_ADMIN_PASS, args.get(0), AssignServerMain.getServer().getPermissions().getAdminRole(), true, AuthType.LOCAL))
                                     log.info("User Added with password \"" + DatabaseManager.DEFAULT_ADMIN_PASS + "\"");
                                 else
                                     log.error("Failed to add user");

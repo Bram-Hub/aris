@@ -16,6 +16,7 @@ public class BatchUserImportMsg extends Message {
     private final AuthType authType;
     private final ArrayList<Triple<String, String, String>> toAdd = new ArrayList<>();
     private final ArrayList<MsgUtil.UserInfo> added = new ArrayList<>();
+    private transient LoginAuth auth;
 
     public BatchUserImportMsg(int addToClass, AuthType authType) {
         super(Perm.BATCH_USER_IMPORT, true);
@@ -34,6 +35,7 @@ public class BatchUserImportMsg extends Message {
                 return ErrorType.UNAUTHORIZED;
             if (addToClass > 0 && !permissions.hasClassPermission(user, addToClass, Perm.CLASS_EDIT, connection))
                 return ErrorType.UNAUTHORIZED;
+            auth = LoginAuth.getAuthForType(authType);
             int roleId = permissions.getLowestRole().getId();
             try (PreparedStatement addUser = connection.prepareStatement("INSERT INTO users (username, salt, password_hash, force_reset, default_role, full_name, auth_type) VALUES(?, ?, ?, ?, ?, ?, ?) ON CONFLICT (username) DO NOTHING RETURNING id;");
                  PreparedStatement addToClass = connection.prepareStatement("INSERT INTO user_class (user_id, class_id, role_id) VALUES (?, ?, ?) ON CONFLICT (user_id, class_id) DO NOTHING;")) {
@@ -43,18 +45,19 @@ public class BatchUserImportMsg extends Message {
                     String pass = t.getRight();
                     if (isValidUser(uname, fullName, pass)) {
                         uname = uname.toLowerCase();
-                        Pair<String, String> sh = DBUtils.getSaltAndHash(pass);
+                        Pair<String, String> sh = DBUtils.getSaltAndHash(pass == null ? "" : pass);
                         addUser.setString(1, uname);
                         addUser.setString(2, sh.getKey());
-                        addUser.setString(3, sh.getValue());
-                        addUser.setBoolean(4, true);
+                        addUser.setString(3, auth.isLocalAuth() ? sh.getValue() : "");
+                        addUser.setBoolean(4, auth.isLocalAuth());
                         addUser.setInt(5, roleId);
                         addUser.setString(6, fullName);
+                        addUser.setString(7, authType.name());
                         try (ResultSet rs = addUser.executeQuery()) {
                             if (rs.next()) {
                                 int uid = rs.getInt(1);
                                 LoginAuth auth = LoginAuth.getAuthForType(authType);
-                                added.add(new MsgUtil.UserInfo(uid, uname, fullName, roleId, authType, auth != null && auth.canReset()));
+                                added.add(new MsgUtil.UserInfo(uid, uname, fullName, roleId, authType, auth != null && auth.isLocalAuth()));
                                 if (this.addToClass > 0) {
                                     addToClass.setInt(1, uid);
                                     addToClass.setInt(2, this.addToClass);
@@ -84,12 +87,16 @@ public class BatchUserImportMsg extends Message {
         return true;
     }
 
+    public void addUser(String username, String fullName) {
+        addUser(username, fullName, null);
+    }
+
     public void addUser(String username, String fullName, String password) {
         toAdd.add(new Triple<>(username, fullName, password));
     }
 
-    private boolean isEmpty(String str) {
-        return str == null || str.length() == 0;
+    private boolean notEmpty(String str) {
+        return str != null && str.length() != 0;
     }
 
     public ArrayList<MsgUtil.UserInfo> getAdded() {
@@ -105,7 +112,7 @@ public class BatchUserImportMsg extends Message {
     }
 
     private boolean isValidUser(String username, String fullName, String password) {
-        return !isEmpty(username) && !isEmpty(fullName) && !isEmpty(password);
+        return auth.isValidUsername(username) && notEmpty(fullName) && (!auth.isLocalAuth() || notEmpty(password));
     }
 
 }

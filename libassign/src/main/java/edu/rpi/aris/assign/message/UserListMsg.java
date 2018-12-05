@@ -41,7 +41,7 @@ public class UserListMsg extends Message {
                     return ErrorType.UNKNOWN_ERROR;
                 }
                 LoginAuth auth = LoginAuth.getAuthForType(authType);
-                users.add(new MsgUtil.UserInfo(id, username, fullName, defaultRole, authType, auth != null && auth.canReset()));
+                users.add(new MsgUtil.UserInfo(id, username, fullName, defaultRole, authType, auth != null && auth.isLocalAuth()));
             }
         }
         return null;

@@ -11,18 +11,17 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
-public class UserGetMsg extends Message {
+public class ConnectionInitMsg extends Message {
 
     private int userId;
     private int defaultRole;
-    private boolean canChangePassword;
-    private AuthType authType;
+    private AuthType userAuthType;
     private ServerPermissions permissions;
     private HashMap<Integer, String> classNames = new HashMap<>();
     private HashMap<Integer, Integer> classRoles = new HashMap<>();
 
-    public UserGetMsg() {
-        super(Perm.USER_GET);
+    public ConnectionInitMsg() {
+        super(Perm.CONNECTION_INIT);
     }
 
     public ServerRole getDefaultRole() {
@@ -62,8 +61,7 @@ public class UserGetMsg extends Message {
                 }
             }
         }
-        authType = user.authType;
-        canChangePassword = LoginAuth.getAuthForType(authType).canReset();
+        userAuthType = user.authType;
         return null;
     }
 
@@ -81,11 +79,7 @@ public class UserGetMsg extends Message {
         return true;
     }
 
-    public boolean canChangePassword() {
-        return canChangePassword;
-    }
-
-    public AuthType getAuthType() {
-        return authType;
+    public AuthType getUserAuthType() {
+        return userAuthType;
     }
 }

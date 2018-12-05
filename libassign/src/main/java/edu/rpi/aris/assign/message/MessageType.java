@@ -2,7 +2,7 @@ package edu.rpi.aris.assign.message;
 
 public enum MessageType {
 
-    GET_USER_INFO(UserGetMsg.class),
+    GET_USER_INFO(ConnectionInitMsg.class),
     GET_ASSIGNMENTS(AssignmentsGetMsg.class),
     GET_PROBLEMS(ProblemsGetMsg.class),
     LIST_SUBMISSIONS(null),

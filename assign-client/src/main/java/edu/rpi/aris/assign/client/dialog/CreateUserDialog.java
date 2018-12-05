@@ -1,5 +1,6 @@
 package edu.rpi.aris.assign.client.dialog;
 
+import edu.rpi.aris.assign.AuthType;
 import edu.rpi.aris.assign.ServerRole;
 import edu.rpi.aris.assign.client.Client;
 import edu.rpi.aris.assign.client.ResponseHandler;
@@ -71,7 +72,7 @@ public class CreateUserDialog extends Dialog<Users.UserInfo> implements EventHan
         if (event != null)
             event.consume();
         loading.set(true);
-        Client.getInstance().processMessage(new UserCreateMsg(username.getText(), fullName.getText(), password.getText(), defaultRole.getSelectionModel().getSelectedItem().getId()), this);
+        Client.getInstance().processMessage(new UserCreateMsg(username.getText(), fullName.getText(), password.getText(), defaultRole.getSelectionModel().getSelectedItem().getId(), AuthType.LOCAL), this);
     }
 
     @Override

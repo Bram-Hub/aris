@@ -115,6 +115,7 @@ public class DatabaseManager {
                     "access_token text NOT NULL," +
                     "force_reset boolean NOT NULL," +
                     "default_role integer NOT NULL," +
+                    "auth_type text NOT NULL," +
                     "constraint u_rfk foreign key (default_role) references role(id) on delete restrict);");
             statement.execute("CREATE TABLE IF NOT EXISTS class" +
                     "(id serial NOT NULL PRIMARY KEY," +
@@ -165,8 +166,11 @@ public class DatabaseManager {
                     "(name text NOT NULL PRIMARY KEY," +
                     "role_id integer NOT NULL," +
                     "constraint perm_rfk foreign key (role_id) references role(id) on delete restrict);");
+            statement.execute("CREATE TABLE IF NOT EXISTS property" +
+                    "(key text NOT NULL PRIMARY KEY," +
+                    "value text);");
             createDefaultRoles(connection);
-            DBUtils.createUser(connection, "admin", DEFAULT_ADMIN_PASS, "Admin", 1, true);
+            DBUtils.createUser(connection, "admin", DEFAULT_ADMIN_PASS, "Admin", 1, true, AuthType.LOCAL);
             connection.commit();
         } catch (Throwable e) {
             connection.rollback();
@@ -496,11 +500,31 @@ public class DatabaseManager {
         } finally {
             connection.setAutoCommit(autoCommit);
         }
+        updateSchema14(connection);
     }
 
-    public Pair<String, Integer> createUser(String username, String password, String fullName, int roleId, boolean forceReset) throws SQLException {
+    private void updateSchema14(Connection connection) throws SQLException {
+        logger.info("Updating database schema to version 15");
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("CREATE TABLE IF NOT EXISTS property" +
+                    "(key text NOT NULL PRIMARY KEY," +
+                    "value text);");
+            statement.execute("UPDATE version SET version=15;");
+            connection.commit();
+        } catch (Throwable e) {
+            connection.rollback();
+            logger.error("An error occurred while updating the database schema and the changes were rolled back");
+            throw e;
+        } finally {
+            connection.setAutoCommit(autoCommit);
+        }
+    }
+
+    public Pair<String, Integer> createUser(String username, String password, String fullName, int roleId, boolean forceReset, AuthType authType) throws SQLException {
         try (Connection connection = getConnection()) {
-            return DBUtils.createUser(connection, username, password, fullName, roleId, forceReset);
+            return DBUtils.createUser(connection, username, password, fullName, roleId, forceReset, authType);
         }
     }
 

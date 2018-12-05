@@ -80,24 +80,29 @@ public class DBUtils {
         return new ImmutablePair<>(salt, hash);
     }
 
-    public static Pair<String, Integer> createUser(Connection connection, String username, String password, String fullName, int roleId, boolean forceReset) throws SQLException {
+    public static Pair<String, Integer> createUser(Connection connection, String username, String password, String fullName, int roleId, boolean forceReset, AuthType authType) throws SQLException {
         if (username == null || username.length() == 0)
             return new ImmutablePair<>(null, -1);
+        LoginAuth auth = LoginAuth.getAuthForType(authType);
+        if (!auth.isValidUsername(username))
+            return new ImmutablePair<>(null, -1);
+        boolean needPassword = auth.isLocalAuth();
         boolean passProvided = true;
         if (password == null) {
             passProvided = false;
             password = RandomStringUtils.randomAlphabetic(16);
         }
-        try (PreparedStatement statement = connection.prepareStatement("INSERT INTO users (username, salt, password_hash, force_reset, default_role, full_name) VALUES(?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING RETURNING id;")) {
+        try (PreparedStatement statement = connection.prepareStatement("INSERT INTO users (username, salt, password_hash, force_reset, default_role, full_name, auth_type) VALUES(?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING RETURNING id;")) {
             Pair<String, String> sh = getSaltAndHash(password);
-            if (passProvided)
+            if (passProvided || !needPassword)
                 password = null;
             statement.setString(1, username.toLowerCase());
             statement.setString(2, sh.getKey());
-            statement.setString(3, sh.getValue());
-            statement.setBoolean(4, forceReset);
+            statement.setString(3, needPassword ? sh.getValue() : "");
+            statement.setBoolean(4, auth.isLocalAuth() && forceReset);
             statement.setInt(5, roleId);
             statement.setString(6, fullName);
+            statement.setString(7, authType.name());
             int uid = -1;
             try (ResultSet rs = statement.executeQuery()) {
                 if (rs.next())

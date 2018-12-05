@@ -31,8 +31,13 @@ public class LocalLoginAuth extends LoginAuth {
     }
 
     @Override
-    public boolean canReset() {
+    public boolean isLocalAuth() {
         return true;
+    }
+
+    @Override
+    public boolean isValidUsername(String username) {
+        return username != null && username.trim().length() > 0;
     }
 
     @NotNull

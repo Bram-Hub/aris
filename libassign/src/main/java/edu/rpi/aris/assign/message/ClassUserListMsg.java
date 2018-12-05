@@ -60,7 +60,7 @@ public class ClassUserListMsg extends Message implements ClassMessage {
                         return ErrorType.UNKNOWN_ERROR;
                     }
                     LoginAuth auth = LoginAuth.getAuthForType(authType);
-                    userInClass.put(uid, new MsgUtil.UserInfo(uid, username, fullName, classRole, authType, auth != null && auth.canReset()));
+                    userInClass.put(uid, new MsgUtil.UserInfo(uid, username, fullName, classRole, authType, auth != null && auth.isLocalAuth()));
                     usersNotInClass.remove(uid);
                 }
             }

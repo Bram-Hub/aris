@@ -1,6 +1,6 @@
 package edu.rpi.aris.assign;
 
-import edu.rpi.aris.assign.message.UserGetMsg;
+import edu.rpi.aris.assign.message.ConnectionInitMsg;
 
 public class User {
 
@@ -20,8 +20,8 @@ public class User {
         this.canChangePassword = canChangePassword;
     }
 
-    public User(UserGetMsg msg, String username) {
-        this(msg.getUserId(), username, msg.getDefaultRole(), msg.getAuthType(), false, msg.canChangePassword());
+    public User(ConnectionInitMsg msg, String username) {
+        this(msg.getUserId(), username, msg.getDefaultRole(), msg.getUserAuthType(), false, true);//msg.canChangePassword());
     }
 
     public boolean requireReset() {
