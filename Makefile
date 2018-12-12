@@ -4,6 +4,7 @@ RM = rm -f  # rm command
 TARGET_LIB = assign-server/src/main/resources/libassign_pam.so # target lib
 
 INC = $(JAVA_HOME)/include $(JAVA_HOME)/include/linux ./include
+INC += /usr/lib/jvm/java-8-openjdk-amd64/include /usr/lib/jvm/java-8-openjdk-amd64/include/linux/
 INCDIRS = $(INC:%=-I%)
 
 CFLAGS = ${INCDIRS} -Wall -Wextra -fPIC -O2 -g

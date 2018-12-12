@@ -12,6 +12,7 @@ dependencies {
     compile 'org.apache.commons:commons-lang3:3.7'
     compile 'org.apache.logging.log4j:log4j-api:2.10.0'
     compile 'org.apache.logging.log4j:log4j-core:2.10.0'
+    compile group: 'commons-io', name: 'commons-io', version: '2.6'
 
     implementation 'org.antlr:antlr4-runtime:4.7.1'
     antlr 'org.antlr:antlr4:4.7.1'
@@ -22,4 +23,31 @@ dependencies {
     }
 
     testCompile group: 'junit', name: 'junit', version: '4.12'
+}
+
+build { dependsOn "rust-build" }
+test { dependsOn "rust-build" }
+
+task "rust-build" {
+    dependsOn "compileJava"
+    doFirst {
+        exec {
+            workingDir './src/main/rust'
+            commandLine 'cargo', 'build', '--release'
+        }
+        copy {
+            into './build/resources/main'
+            from './src/main/rust/target/release/liblibaris_rs.so'
+        }
+    }
+}
+
+task "get-runtime-classpath" {
+    doFirst {
+        def classpath = ''
+        sourceSets.main.runtimeClasspath.each {
+            classpath += ':' + it
+        }
+        println classpath
+    }
 }

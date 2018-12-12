@@ -1,0 +1,10 @@
+[package]
+name = "libaris-rs"
+version = "0.1.0"
+authors = ["Avi Weinstock <aweinstock314@gmail.com>"]
+
+[dependencies]
+jni = "0.10.2"
+
+[lib]
+crate_type = ["cdylib"]

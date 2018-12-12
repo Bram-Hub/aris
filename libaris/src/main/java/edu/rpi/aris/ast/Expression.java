@@ -25,16 +25,16 @@ public class Expression {
         }
     }
 
-    public static class UnaryExpression extends Expression {
-        Expression operand;
+    public static abstract class UnaryExpression extends Expression {
+        public Expression operand;
         UnaryExpression() { operand = null; }
     }
     public static class NotExpression extends Expression.UnaryExpression {
         @Override public String toString() { return "~" + operand.toString(); }
     }
 
-    public static class BinaryExpression extends Expression {
-        Expression l; Expression r;
+    public static abstract class BinaryExpression extends Expression {
+        public Expression l; public Expression r;
         BinaryExpression() { l = null; r = null; }
     }
     public static class ImplicationExpression extends Expression.BinaryExpression {
@@ -73,7 +73,7 @@ public class Expression {
     }
 
     public static abstract class QuantifierExpression extends Expression {
-        String boundvar; Expression body;
+        public String boundvar; public Expression body;
         protected abstract String canonicalRepr();
         QuantifierExpression() { boundvar = null; body = null; }
         @Override public String toString() { return canonicalRepr() + boundvar + ", (" + (body != null ? body.toString() : "null") + ")"; }

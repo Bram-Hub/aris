@@ -1,12 +1,54 @@
 package edu.rpi.aris.ast;
 
 import edu.rpi.aris.ast.Expression.*;
+import java.io.*;
 import java.util.*;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.*;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.SystemUtils;
+import org.apache.logging.log4j.*;
 
 public class ASTConstructor extends ParseExpressionBaseVisitor<Expression> implements ParseExpressionVisitor<Expression> {
+    // TODO: deduplicate with edu.rpi.aris.assign.server.auth.PAMLoginAuth and put into a common util class
+    private static final Logger log = LogManager.getLogger();
+    private static final Set<String> loaded = new HashSet();
+    static { loadLib("liblibaris_rs"); }
+    private static void loadLib(String LIB_NAME) {
+        if (!SystemUtils.IS_OS_LINUX) {
+            // TODO: drop a dll on windows, a .so on mac
+            return;
+        }
+        String LIB_FILE = LIB_NAME + ".so";
+        log.info("Loading " + LIB_FILE + " native library");
+
+        File tmpFile = new File(System.getProperty("java.io.tmpdir"), LIB_FILE);
+        int i = 0;
+        while (tmpFile.exists() && !tmpFile.delete())
+            tmpFile = new File(System.getProperty("java.io.tmpdir"), LIB_NAME + (i++) + ".so");
+        boolean copied = false;
+        try (InputStream in = ClassLoader.getSystemResourceAsStream(LIB_FILE);
+             FileOutputStream out = new FileOutputStream(tmpFile)) {
+            if (in != null) {
+                IOUtils.copy(in, out);
+                copied = true;
+            }
+        } catch (IOException e) {
+            copied = false;
+            log.error("Failed to extract " + LIB_NAME + " to temp directory", e);
+        }
+        if (copied) {
+            try {
+                System.load(tmpFile.getCanonicalPath());
+                loaded.add(LIB_NAME);
+            } catch (Exception e) {
+                log.error("Failed to load native " + LIB_NAME + " library", e);
+            }
+        }
+    }
+
+    public static native Expression parseViaRust(String s);
     public static Expression parse(String s) {
         ASTConstructor x = new ASTConstructor();
         CharStream cs = new ANTLRInputStream(s);
