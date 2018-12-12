@@ -42,7 +42,7 @@ public class ASTConstructor extends ParseExpressionBaseVisitor<Expression> imple
 	//@Override public Expression visitMain(ParseExpressionParser.MainContext ctx) { return null; }
 	@Override public Expression visitPredicate(ParseExpressionParser.PredicateContext ctx) {
         // System.out.printf("visitPredicate %d\n", ctx.getAltNumber());
-        PredicateExpression pe = new PredicateExpression(null);
+        PredicateExpression pe = new PredicateExpression();
         pe.name = ctx.VARIABLE().getText();
         assert(pred_args == null); // this shouldn't be reentrantly invoked
         if(ctx.getAltNumber() == 2) {
@@ -61,10 +61,10 @@ public class ASTConstructor extends ParseExpressionBaseVisitor<Expression> imple
         return null;
     }
 	@Override public Expression visitForallQuantifier(ParseExpressionParser.ForallQuantifierContext ctx) {
-        return new ForallExpression(null);
+        return new ForallExpression();
     }
 	@Override public Expression visitExistsQuantifier(ParseExpressionParser.ExistsQuantifierContext ctx) {
-        return new ExistsExpression(null);
+        return new ExistsExpression();
     }
 	@Override public Expression visitQuantifier(ParseExpressionParser.QuantifierContext ctx) {
         return visitChildren(ctx);
@@ -80,7 +80,7 @@ public class ASTConstructor extends ParseExpressionBaseVisitor<Expression> imple
 	//@Override public Expression visitAndrepr(ParseExpressionParser.AndreprContext ctx) { return null; }
 	@Override public Expression visitAndterm(ParseExpressionParser.AndtermContext ctx) {
         // System.out.printf("visitAndTerm %d\n", ctx.getAltNumber());
-        AssociativeBinopExpression abe = ctx.getAltNumber() == 2 ?  new AndExpression(null) : (AndExpression)ctx.andterm().accept(this);
+        AssociativeBinopExpression abe = ctx.getAltNumber() == 2 ?  new AndExpression() : (AndExpression)ctx.andterm().accept(this);
         abe.addOperand(ctx.paren_expr().accept(this));
         // System.out.printf("visitAndTerm returning %s\n", abe);
         return abe;
@@ -88,7 +88,7 @@ public class ASTConstructor extends ParseExpressionBaseVisitor<Expression> imple
 	//@Override public Expression visitOrrepr(ParseExpressionParser.OrreprContext ctx) { return null; }
 	@Override public Expression visitOrterm(ParseExpressionParser.OrtermContext ctx) {
         // System.out.printf("visitOrTerm %d\n", ctx.getAltNumber());
-        AssociativeBinopExpression abe = ctx.getAltNumber() == 2 ? new OrExpression(null) : (OrExpression)ctx.orterm().accept(this);
+        AssociativeBinopExpression abe = ctx.getAltNumber() == 2 ? new OrExpression() : (OrExpression)ctx.orterm().accept(this);
         abe.addOperand(ctx.paren_expr().accept(this));
         // System.out.printf("visitOrTerm returning %s\n", abe);
         return abe;
@@ -96,7 +96,7 @@ public class ASTConstructor extends ParseExpressionBaseVisitor<Expression> imple
 	//@Override public Expression visitBiconrepr(ParseExpressionParser.BiconreprContext ctx) { return null; }
 	@Override public Expression visitBiconterm(ParseExpressionParser.BicontermContext ctx) {
         // System.out.printf("visitBiconTerm %d\n", ctx.getAltNumber());
-        AssociativeBinopExpression abe = ctx.getAltNumber() == 2 ? new BiconExpression(null) : (BiconExpression)ctx.biconterm().accept(this);
+        AssociativeBinopExpression abe = ctx.getAltNumber() == 2 ? new BiconExpression() : (BiconExpression)ctx.biconterm().accept(this);
         abe.addOperand(ctx.paren_expr().accept(this));
         // System.out.printf("visitBiconTerm returning %s\n", abe);
         return abe;
@@ -105,22 +105,22 @@ public class ASTConstructor extends ParseExpressionBaseVisitor<Expression> imple
 	//@Override public Expression visitBinop(ParseExpressionParser.BinopContext ctx) { return null; }
 	@Override public Expression visitBinopterm(ParseExpressionParser.BinoptermContext ctx) {
         BinaryExpression be = null;
-        if(ctx.BINOP().getText().equals("->")) { be = new ImplicationExpression(null); }
-        if(ctx.BINOP().getText().equals("+")) { be = new AddExpression(null); }
-        if(ctx.BINOP().getText().equals("*")) { be = new MultExpression(null); }
+        if(ctx.BINOP().getText().equals("->")) { be = new ImplicationExpression(); }
+        if(ctx.BINOP().getText().equals("+")) { be = new AddExpression(); }
+        if(ctx.BINOP().getText().equals("*")) { be = new MultExpression(); }
         assert(be != null);
         be.l = ctx.paren_expr(0).accept(this);
         be.r = ctx.paren_expr(1).accept(this);
         return be;
     }
 	@Override public Expression visitNotterm(ParseExpressionParser.NottermContext ctx) {
-        UnaryExpression ue = new NotExpression(null);
+        UnaryExpression ue = new NotExpression();
         ue.operand = ctx.paren_expr().accept(this);
         // System.out.printf("visitNotterm returning %s\n", ue);
         return ue;
     }
 	@Override public Expression visitBottom(ParseExpressionParser.BottomContext ctx) {
-        return new BottomExpression(null);
+        return new BottomExpression();
     }
 	@Override public Expression visitParen_expr(ParseExpressionParser.Paren_exprContext ctx) {
         Expression e = visitChildren(ctx);
