@@ -20,6 +20,7 @@ $(TARGET_LIB): $(OBJS) include/edu_rpi_aris_assign_server_auth_PAMLoginAuth.h
 include/edu_rpi_aris_assign_server_auth_PAMLoginAuth.h: gradle
 	cd assign-server/build/classes/java/main; javah -classpath ../../../../../assign-server/jars/\* -jni -v -d ../../../../../include edu.rpi.aris.assign.server.auth.PAMLoginAuth
 
+.PHONY: gradle
 gradle:
 	./gradlew build
 
