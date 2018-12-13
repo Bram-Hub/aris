@@ -7,9 +7,6 @@ import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.*;
 
 public class ASTConstructor extends ParseExpressionBaseVisitor<Expression> implements ParseExpressionVisitor<Expression> {
-    static { edu.rpi.aris.util.SharedObjectLoader.loadLib("liblibaris_rs"); }
-
-    public static native Expression parseViaRust(String s);
     public static Expression parse(String s) {
         ASTConstructor x = new ASTConstructor();
         CharStream cs = new ANTLRInputStream(s);

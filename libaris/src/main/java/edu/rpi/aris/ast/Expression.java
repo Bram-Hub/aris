@@ -3,6 +3,10 @@ package edu.rpi.aris.ast;
 import java.util.*;
 
 public class Expression {
+    static { edu.rpi.aris.util.SharedObjectLoader.loadLib("liblibaris_rs"); }
+
+    public static native Expression parseViaRust(String s);
+
     public static class BottomExpression extends Expression {
         @Override public String toString() {
             return "_|_";

@@ -28,7 +28,7 @@ public class ParserTest {
     void test_cases_rust(String[] toParse, boolean test_for_null) {
         for(String s : toParse) {
             System.out.printf("Attempting to parse \"%s\"\n", s);
-            Expression e = ASTConstructor.parseViaRust(s);
+            Expression e = Expression.parseViaRust(s);
             //assert(test_for_null ^ (e == null)); // TODO: implement expression parsing in Rust
             System.out.printf("Parsed version of \"%s\" is \"%s\"\n", s, e);
         }
