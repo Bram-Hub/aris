@@ -5,6 +5,7 @@ authors = ["Avi Weinstock <aweinstock314@gmail.com>"]
 
 [dependencies]
 jni = "0.10.2"
+nom = "4.1.1"
 
 [lib]
 crate_type = ["cdylib"]

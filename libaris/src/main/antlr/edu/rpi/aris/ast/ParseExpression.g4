@@ -27,7 +27,7 @@ andterm: SPACE? paren_expr SPACE? andrepr SPACE? andterm SPACE?
     | paren_expr ;
 
 orrepr: '|' | '∨' | '\\/' ;
-orterm: SPACE? paren_expr SPACE? '|' SPACE? orterm SPACE?
+orterm: SPACE? paren_expr SPACE? orrepr SPACE? orterm SPACE?
     | paren_expr ;
 
 biconrepr: '<->' | '↔' ;

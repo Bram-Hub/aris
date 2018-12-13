@@ -1,12 +1,16 @@
+#[macro_use] extern crate nom;
 extern crate jni;
 
+pub mod parser;
+
 use jni::JNIEnv;
-use jni::objects::{JClass, JString, JObject};
+use jni::strings::JavaStr;
+use jni::objects::{JClass, JString, JValue, JObject};
 use jni::sys::jobject;
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern "system" fn Java_edu_rpi_aris_ast_Expression_parseViaRust(env: JNIEnv, cls: JClass, e: JString) -> jobject {
+pub extern "system" fn Java_edu_rpi_aris_ast_Expression_parseViaRust(env: JNIEnv, _cls: JClass, e: JString) -> jobject {
     let dummy_expr = {
         use expression_builders::*;
         exists("a", forall("x", assocbinop(ASymbol::And, &[
@@ -14,100 +18,63 @@ pub extern "system" fn Java_edu_rpi_aris_ast_Expression_parseViaRust(env: JNIEnv
             Expr::Bottom,
         ])))
     };
-    let r = expr_to_jobject(&env, dummy_expr);
-    //println!("{:?}", r);
-    r.unwrap_or(std::ptr::null_mut())
+    (|| -> jni::errors::Result<jobject> {
+        if let Ok(e) = JavaStr::from_env(&env, e)?.to_str() {
+            println!("received {:?}", e);
+            let mut e = String::from(e);
+            e += "\n";
+            println!("parse: {:?}", parser::expr(&e));
+            let r = expr_to_jobject(&env, dummy_expr)?;
+            Ok(r.into_inner())
+        } else {
+            Ok(std::ptr::null_mut())
+        }
+    })().unwrap_or(std::ptr::null_mut())
 }
 
-pub fn expr_to_jobject(env: &JNIEnv, e: Expr) -> jni::errors::Result<jobject> {
+pub fn expr_to_jobject<'a>(env: &'a JNIEnv, e: Expr) -> jni::errors::Result<JObject<'a>> {
+    let obj = env.new_object(e.get_class(), "()V", &[])?;
+    let jv = |s: &str| -> jni::errors::Result<JValue> { Ok(JObject::from(env.new_string(s)?).into()) };
+    let rec = |e: Expr| -> jni::errors::Result<JValue> { Ok(JObject::from(expr_to_jobject(env, e)?).into()) };
     match e {
-        Expr::Bottom => Ok(env.new_object("edu/rpi/aris/ast/Expression$BottomExpression", "()V", &[])?.into_inner()),
+        Expr::Bottom => (),
         Expr::Predicate { name, args } => {
-            let obj = env.new_object("edu/rpi/aris/ast/Expression$PredicateExpression", "()V", &[])?;
-            env.set_field(obj, "name", "Ljava/lang/String;", JObject::from(env.new_string(name)?).into())?;
+            env.set_field(obj, "name", "Ljava/lang/String;", jv(&name)?)?;
             let list = env.get_field(obj, "args", "Ljava/util/List;")?.l()?;
             for arg in args {
-                env.call_method(list, "add", "(Ljava/lang/Object;)Z", &[JObject::from(env.new_string(arg)?).into()])?;
+                env.call_method(list, "add", "(Ljava/lang/Object;)Z", &[jv(&arg)?])?;
             }
-            Ok(obj.into_inner())
         },
-        Expr::Unop { symbol, operand } => {
-            let obj = env.new_object(symbol.get_class(), "()V", &[])?;
-            env.set_field(obj, "operand", "Ledu/rpi/aris/ast/Expression;", JObject::from(expr_to_jobject(env, *operand)?).into())?;
-            Ok(obj.into_inner())
+        Expr::Unop { symbol: _, operand } => {
+            env.set_field(obj, "operand", "Ledu/rpi/aris/ast/Expression;", rec(*operand)?)?;
         },
-        Expr::Binop { symbol, left, right } => {
-            let obj = env.new_object(symbol.get_class(), "()V", &[])?;
-            env.set_field(obj, "l", "Ledu/rpi/aris/ast/Expression;", JObject::from(expr_to_jobject(env, *left)?).into())?;
-            env.set_field(obj, "r", "Ledu/rpi/aris/ast/Expression;", JObject::from(expr_to_jobject(env, *right)?).into())?;
-            Ok(obj.into_inner())
+        Expr::Binop { symbol: _, left, right } => {
+            env.set_field(obj, "l", "Ledu/rpi/aris/ast/Expression;", rec(*left)?)?;
+            env.set_field(obj, "r", "Ledu/rpi/aris/ast/Expression;", rec(*right)?)?;
         },
-        Expr::AssocBinop { symbol, exprs } => {
-            let obj = env.new_object(symbol.get_class(), "()V", &[])?;
+        Expr::AssocBinop { symbol: _, exprs } => {
             let list = env.get_field(obj, "exprs", "Ljava/util/ArrayList;")?.l()?;
             for expr in exprs {
-                env.call_method(list, "add", "(Ljava/lang/Object;)Z", &[JObject::from(expr_to_jobject(env, expr)?).into()])?;
+                env.call_method(list, "add", "(Ljava/lang/Object;)Z", &[rec(expr)?])?;
             }
-            Ok(obj.into_inner())
         }
-        Expr::Quantifier { symbol, name, body } => {
-            let obj = env.new_object(symbol.get_class(), "()V", &[])?;
-            env.set_field(obj, "boundvar", "Ljava/lang/String;", JObject::from(env.new_string(name)?).into())?;
-            env.set_field(obj, "body", "Ledu/rpi/aris/ast/Expression;", JObject::from(expr_to_jobject(env, *body)?).into())?;
-            Ok(obj.into_inner())
+        Expr::Quantifier { symbol: _, name, body } => {
+            env.set_field(obj, "boundvar", "Ljava/lang/String;", jv(&name)?)?;
+            env.set_field(obj, "body", "Ledu/rpi/aris/ast/Expression;", rec(*body)?)?;
         }
     }
+    Ok(obj)
 }
 
-
-trait HasClass {
-    fn get_class(&self) -> &'static str;
-}
 
 #[derive(Clone, Debug)]
 pub enum USymbol { Not }
-impl HasClass for USymbol {
-    fn get_class(&self) -> &'static str {
-        match self {
-            USymbol::Not => "Ledu/rpi/aris/ast/Expression$NotExpression;",
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub enum BSymbol { Implies, Plus, Mult }
-impl HasClass for BSymbol {
-    fn get_class(&self) -> &'static str {
-        match self {
-            BSymbol::Implies => "Ledu/rpi/aris/ast/Expression$ImplicationExpression;",
-            BSymbol::Plus => "Ledu/rpi/aris/ast/Expression$AddExpression;",
-            BSymbol::Mult => "Ledu/rpi/aris/ast/Expression$MultExpression;",
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub enum ASymbol { And, Or, Bicon }
-impl HasClass for ASymbol {
-    fn get_class(&self) -> &'static str {
-        match self {
-            ASymbol::And => "Ledu/rpi/aris/ast/Expression$AndExpression;",
-            ASymbol::Or => "Ledu/rpi/aris/ast/Expression$OrExpression;",
-            ASymbol::Bicon => "Ledu/rpi/aris/ast/Expression$BiconExpression;",
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub enum QSymbol { Forall, Exists }
-impl HasClass for QSymbol {
-    fn get_class(&self) -> &'static str {
-        match self {
-            QSymbol::Forall => "Ledu/rpi/aris/ast/Expression$ForallExpression;",
-            QSymbol::Exists => "Ledu/rpi/aris/ast/Expression$ExistsExpression;",
-        }
-    }
-}
 
 #[derive(Clone, Debug)]
 pub enum Expr {
@@ -117,6 +84,55 @@ pub enum Expr {
     Binop { symbol: BSymbol, left: Box<Expr>, right: Box<Expr> },
     AssocBinop { symbol: ASymbol, exprs: Vec<Expr> },
     Quantifier { symbol: QSymbol, name: String, body: Box<Expr> },
+}
+
+trait HasClass {
+    fn get_class(&self) -> &'static str;
+}
+impl HasClass for USymbol {
+    fn get_class(&self) -> &'static str {
+        match self {
+            USymbol::Not => "Ledu/rpi/aris/ast/Expression$NotExpression;",
+        }
+    }
+}
+impl HasClass for BSymbol {
+    fn get_class(&self) -> &'static str {
+        match self {
+            BSymbol::Implies => "Ledu/rpi/aris/ast/Expression$ImplicationExpression;",
+            BSymbol::Plus => "Ledu/rpi/aris/ast/Expression$AddExpression;",
+            BSymbol::Mult => "Ledu/rpi/aris/ast/Expression$MultExpression;",
+        }
+    }
+}
+impl HasClass for ASymbol {
+    fn get_class(&self) -> &'static str {
+        match self {
+            ASymbol::And => "Ledu/rpi/aris/ast/Expression$AndExpression;",
+            ASymbol::Or => "Ledu/rpi/aris/ast/Expression$OrExpression;",
+            ASymbol::Bicon => "Ledu/rpi/aris/ast/Expression$BiconExpression;",
+        }
+    }
+}
+impl HasClass for QSymbol {
+    fn get_class(&self) -> &'static str {
+        match self {
+            QSymbol::Forall => "Ledu/rpi/aris/ast/Expression$ForallExpression;",
+            QSymbol::Exists => "Ledu/rpi/aris/ast/Expression$ExistsExpression;",
+        }
+    }
+}
+impl HasClass for Expr {
+    fn get_class(&self) -> &'static str {
+        match self {
+            Expr::Bottom => "Ledu/rpi/aris/ast/Expression$BottomExpression;",
+            Expr::Predicate { .. } => "Ledu/rpi/aris/ast/Expression$PredicateExpression;",
+            Expr::Unop { symbol, .. } => symbol.get_class(),
+            Expr::Binop { symbol, .. } => symbol.get_class(),
+            Expr::AssocBinop { symbol, .. } => symbol.get_class(),
+            Expr::Quantifier { symbol, .. } => symbol.get_class(),
+        }
+    }
 }
 
 pub mod expression_builders {
