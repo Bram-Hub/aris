@@ -6,7 +6,74 @@ pub mod parser;
 use jni::JNIEnv;
 use jni::strings::JavaStr;
 use jni::objects::{JClass, JString, JValue, JObject};
-use jni::sys::jobject;
+use jni::sys::{jobject, jstring};
+
+fn jobject_to_string(env: &JNIEnv, obj: JObject) -> jni::errors::Result<String> {
+    Ok(String::from(env.get_string(JString::from(obj))?))
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern "system" fn Java_edu_rpi_aris_ast_Expression_toStringViaRust(env: JNIEnv, obj: JObject) -> jstring {
+    (|| -> jni::errors::Result<jstring> {
+        let expr = jobject_to_expr(&env, obj);
+        //println!("toStringViaRust, expr: {:?}", expr);
+        Ok(env.new_string(format!("{:?}", expr?))?.into_inner())
+    })().unwrap_or(std::ptr::null_mut())
+}
+
+pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> {
+    let cls = env.call_method(obj, "getClass", "()Ljava/lang/Class;", &[])?.l()?;
+    let name = String::from(env.get_string(JString::from(env.call_method(cls, "getName", "()Ljava/lang/String;", &[])?.l()?))?);
+    use expression_builders::*;
+    let handle_binop = |symbol: BSymbol| -> jni::errors::Result<Expr> {
+        let left = env.get_field(obj, "l", "Ledu/rpi/aris/ast/Expression;")?.l()?;
+        let right = env.get_field(obj, "r", "Ledu/rpi/aris/ast/Expression;")?.l()?;
+        Ok(binop(symbol, jobject_to_expr(env, left)?, jobject_to_expr(env, right)?))
+    };
+    let handle_abe = |symbol: ASymbol| -> jni::errors::Result<Expr> {
+        let exprs_ = env.get_field(obj, "exprs", "Ljava/util/ArrayList;")?.l()?;
+        let iter = env.call_method(exprs_, "iterator", "()Ljava/util/Iterator;", &[])?.l()?;
+        let mut exprs = vec![];
+        while env.call_method(iter, "hasNext", "()Z", &[])?.z()? {
+            let expr = jobject_to_expr(env, env.call_method(iter, "next", "()Ljava/lang/Object;", &[])?.l()?)?;
+            exprs.push(expr);
+        }
+        Ok(Expr::AssocBinop { symbol, exprs })
+    };
+    let handle_quantifier = |symbol: QSymbol| -> jni::errors::Result<Expr> {
+        let name = jobject_to_string(env, env.get_field(obj, "boundvar", "Ljava/lang/String;")?.l()?)?;
+        let body = env.get_field(obj, "body", "Ledu/rpi/aris/ast/Expression;")?.l()?;
+        Ok(Expr::Quantifier { symbol, name, body: Box::new(jobject_to_expr(env, body)?) })
+    };
+    match &*name {
+        "edu.rpi.aris.ast.Expression$NotExpression" => {
+            let operand = env.get_field(obj, "operand", "Ledu/rpi/aris/ast/Expression;")?.l()?;
+            Ok(notexp(jobject_to_expr(env, operand)?))
+        },
+        "edu.rpi.aris.ast.Expression$ImplicationExpression" => handle_binop(BSymbol::Implies),
+        "edu.rpi.aris.ast.Expression$AddExpression" => handle_binop(BSymbol::Plus),
+        "edu.rpi.aris.ast.Expression$MultExpression" => handle_binop(BSymbol::Mult),
+        "edu.rpi.aris.ast.Expression$AndExpression" => handle_abe(ASymbol::And),
+        "edu.rpi.aris.ast.Expression$OrExpression" => handle_abe(ASymbol::Or),
+        "edu.rpi.aris.ast.Expression$BiconExpression" => handle_abe(ASymbol::Bicon),
+        "edu.rpi.aris.ast.Expression$ForallExpression" => handle_quantifier(QSymbol::Forall),
+        "edu.rpi.aris.ast.Expression$ExistsExpression" => handle_quantifier(QSymbol::Exists),
+        "edu.rpi.aris.ast.Expression$BottomExpression" => Ok(Expr::Bottom),
+        "edu.rpi.aris.ast.Expression$PredicateExpression" => {
+            let name = jobject_to_string(env, env.get_field(obj, "name", "Ljava/lang/String;")?.l()?)?;
+            let args_ = env.get_field(obj, "args", "Ljava/util/List;")?.l()?;
+            let iter = env.call_method(args_, "iterator", "()Ljava/util/Iterator;", &[])?.l()?;
+            let mut args = vec![];
+            while env.call_method(iter, "hasNext", "()Z", &[])?.z()? {
+                let arg = jobject_to_string(env, env.call_method(iter, "next", "()Ljava/lang/Object;", &[])?.l()?)?;
+                args.push(arg);
+            }
+            Ok(Expr::Predicate { name, args })
+        },
+        _ => Err(jni::errors::Error::from_kind(jni::errors::ErrorKind::Msg(format!("jobject_to_expr: unknown class {}", name)))),
+    }
+}
 
 #[no_mangle]
 #[allow(non_snake_case)]
@@ -135,7 +202,7 @@ impl HasClass for Expr {
 pub mod expression_builders {
     use super::{Expr, USymbol, BSymbol, ASymbol, QSymbol};
     pub fn predicate(name: &str, args: &[&str]) -> Expr { Expr::Predicate { name: name.into(), args: args.iter().map(|&x| x.into()).collect() } }
-    pub fn not(expr: Expr) -> Expr { Expr::Unop { symbol: USymbol::Not, operand: Box::new(expr) } }
+    pub fn notexp(expr: Expr) -> Expr { Expr::Unop { symbol: USymbol::Not, operand: Box::new(expr) } }
     pub fn binop(symbol: BSymbol, l: Expr, r: Expr) -> Expr { Expr::Binop { symbol, left: Box::new(l), right: Box::new(r) } }
     pub fn assocbinop(symbol: ASymbol, exprs: &[Expr]) -> Expr { Expr::AssocBinop { symbol, exprs: exprs.iter().cloned().collect() } }
     pub fn forall(name: &str, body: Expr) -> Expr { Expr::Quantifier { symbol: QSymbol::Forall, name: name.into(), body: Box::new(body) } }

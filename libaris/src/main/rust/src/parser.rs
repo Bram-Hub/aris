@@ -50,7 +50,7 @@ fn assocterm(s: &str) -> nom::IResult<&str, Expr> {
     if exprs.len() == 1 {
         return custom_error(rest, 0);
     }
-    let mut symbol = syms[0].clone();
+    let symbol = syms[0].clone();
     if !syms.iter().all(|x| x == &symbol) {
         return custom_error(rest, 0);
     }

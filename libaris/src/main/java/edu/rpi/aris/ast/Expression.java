@@ -5,6 +5,7 @@ import java.util.*;
 public class Expression {
     static { edu.rpi.aris.util.SharedObjectLoader.loadLib("liblibaris_rs"); }
 
+    public native String toStringViaRust();
     public static native Expression parseViaRust(String s);
 
     public static class BottomExpression extends Expression {
