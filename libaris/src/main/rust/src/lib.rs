@@ -22,6 +22,15 @@ pub extern "system" fn Java_edu_rpi_aris_ast_Expression_toStringViaRust(env: JNI
     })().unwrap_or(std::ptr::null_mut())
 }
 
+pub fn java_iterator_for_each<F: FnMut(JObject) -> jni::errors::Result<()>>(env: &JNIEnv, iterable: JObject, mut f: F) -> jni::errors::Result<()> {
+    let iter = env.call_method(iterable, "iterator", "()Ljava/util/Iterator;", &[])?.l()?;
+    while env.call_method(iter, "hasNext", "()Z", &[])?.z()? {
+        let obj = env.call_method(iter, "next", "()Ljava/lang/Object;", &[])?.l()?;
+        f(obj)?
+    }
+    Ok(())
+}
+
 pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> {
     let cls = env.call_method(obj, "getClass", "()Ljava/lang/Class;", &[])?.l()?;
     let name = String::from(env.get_string(JString::from(env.call_method(cls, "getName", "()Ljava/lang/String;", &[])?.l()?))?);
@@ -32,13 +41,8 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
         Ok(binop(symbol, jobject_to_expr(env, left)?, jobject_to_expr(env, right)?))
     };
     let handle_abe = |symbol: ASymbol| -> jni::errors::Result<Expr> {
-        let exprs_ = env.get_field(obj, "exprs", "Ljava/util/ArrayList;")?.l()?;
-        let iter = env.call_method(exprs_, "iterator", "()Ljava/util/Iterator;", &[])?.l()?;
         let mut exprs = vec![];
-        while env.call_method(iter, "hasNext", "()Z", &[])?.z()? {
-            let expr = jobject_to_expr(env, env.call_method(iter, "next", "()Ljava/lang/Object;", &[])?.l()?)?;
-            exprs.push(expr);
-        }
+        java_iterator_for_each(env, env.get_field(obj, "exprs", "Ljava/util/ArrayList;")?.l()?, |expr| { Ok(exprs.push(jobject_to_expr(env, expr)?)) })?;
         Ok(Expr::AssocBinop { symbol, exprs })
     };
     let handle_quantifier = |symbol: QSymbol| -> jni::errors::Result<Expr> {
@@ -62,13 +66,8 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
         "edu.rpi.aris.ast.Expression$BottomExpression" => Ok(Expr::Bottom),
         "edu.rpi.aris.ast.Expression$PredicateExpression" => {
             let name = jobject_to_string(env, env.get_field(obj, "name", "Ljava/lang/String;")?.l()?)?;
-            let args_ = env.get_field(obj, "args", "Ljava/util/List;")?.l()?;
-            let iter = env.call_method(args_, "iterator", "()Ljava/util/Iterator;", &[])?.l()?;
             let mut args = vec![];
-            while env.call_method(iter, "hasNext", "()Z", &[])?.z()? {
-                let arg = jobject_to_string(env, env.call_method(iter, "next", "()Ljava/lang/Object;", &[])?.l()?)?;
-                args.push(arg);
-            }
+            java_iterator_for_each(env, env.get_field(obj, "args", "Ljava/util/List;")?.l()?, |arg| { Ok(args.push(jobject_to_string(env, arg)?)) })?;
             Ok(Expr::Predicate { name, args })
         },
         _ => Err(jni::errors::Error::from_kind(jni::errors::ErrorKind::Msg(format!("jobject_to_expr: unknown class {}", name)))),
