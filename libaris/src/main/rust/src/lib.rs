@@ -11,21 +11,18 @@ use jni::sys::jobject;
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern "system" fn Java_edu_rpi_aris_ast_Expression_parseViaRust(env: JNIEnv, _cls: JClass, e: JString) -> jobject {
-    let dummy_expr = {
-        use expression_builders::*;
-        exists("a", forall("x", assocbinop(ASymbol::And, &[
-            not(predicate("y", &["z"])),
-            Expr::Bottom,
-        ])))
-    };
     (|| -> jni::errors::Result<jobject> {
         if let Ok(e) = JavaStr::from_env(&env, e)?.to_str() {
-            println!("received {:?}", e);
-            let mut e = String::from(e);
-            e += "\n";
-            println!("parse: {:?}", parser::expr(&e));
-            let r = expr_to_jobject(&env, dummy_expr)?;
-            Ok(r.into_inner())
+            //println!("received {:?}", e);
+            let e = format!("{}\n", e);
+            let parsed = parser::main(&e);
+            //println!("parse: {:?}", parsed);
+            if let Ok(("", expr)) = parsed {
+                let r = expr_to_jobject(&env, expr)?;
+                Ok(r.into_inner())
+            } else {
+                Ok(std::ptr::null_mut())
+            }
         } else {
             Ok(std::ptr::null_mut())
         }
@@ -67,16 +64,16 @@ pub fn expr_to_jobject<'a>(env: &'a JNIEnv, e: Expr) -> jni::errors::Result<JObj
 }
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum USymbol { Not }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BSymbol { Implies, Plus, Mult }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ASymbol { And, Or, Bicon }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum QSymbol { Forall, Exists }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Expr {
     Bottom,
     Predicate { name: String, args: Vec<String> },
