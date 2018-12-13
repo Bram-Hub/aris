@@ -93,7 +93,7 @@ This repository contains several modules for the Aris platform which are as foll
 * **packaging** - Contains files for building distribution packages
 * **proof-client** - Contains the client side module of the Aris Proof system
 * **proof-server** - Contains the server side module of the Aris Proof system
-* **service** - Contains the ServiceLoader interfaces required to add new programs to the Aris platform
+* **service** - Contains the ServiceLoader interfaces required to add new programs to the Aris platform, and utilities common to all Aris programs
 
 ## Authors
 
