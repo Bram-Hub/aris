@@ -26,7 +26,10 @@ dependencies {
 }
 
 build { dependsOn "rust-build" }
-test { dependsOn "rust-build" }
+test {
+    dependsOn "rust-build"
+    dependsOn "rust-test"
+ }
 
 task "rust-build" {
     dependsOn "compileJava"
@@ -38,6 +41,15 @@ task "rust-build" {
         copy {
             into './build/resources/main'
             from './src/main/rust/target/release/liblibaris_rs.so'
+        }
+    }
+}
+
+task "rust-test" {
+    doFirst {
+        exec {
+            workingDir './src/main/rust'
+            commandLine 'cargo', 'test', '--release', '--', '--nocapture'
         }
     }
 }
