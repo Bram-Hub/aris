@@ -1,21 +1,39 @@
 use super::*;
 
-#[derive(Clone, Debug)]
-pub struct Proof<T, U> {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TreeProof<T, U> {
     pub premises: Vec<(T, Expr)>,
     pub lines: Vec<Line<T, U>>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Line<T, U> {
     Direct(T, Justification<Range<usize>>),
-    Subproof(U, Proof<T, U>),
+    Subproof(U, TreeProof<T, U>),
+}
+
+impl TreeProof<(), ()> {
+    fn count_lines(&self) -> usize {
+        let prf = decorate_subproof_sizes(self.clone());
+        prf.premises.len() + prf.lines.iter().map(|line| if let Line::Subproof((SubproofSize(n), ()), _) = line { *n } else { 1 }).sum::<usize>()
+    }
+}
+
+impl Proof for TreeProof<(), ()> {
+    type Reference = Range<usize>;
+    fn new() -> Self { TreeProof { premises: vec![], lines: vec![] } }
+    fn lookup(&self, r: Self::Reference) -> Coprod!(Expr, Justification<Self::Reference>, Self) {
+        unimplemented!();
+    }
+    fn add_premise(&mut self, e: Expr) -> Self::Reference { self.premises.push(((), e)); let i = self.premises.len(); i..i }
+    fn add_subproof(&mut self, sub: Self) -> Self::Reference { let i = self.count_lines(); self.lines.push(Line::Subproof((), sub)); let j = self.count_lines(); (i+1)..j }
+    fn add_step(&mut self, just: Justification<Self::Reference>) -> Self::Reference { self.lines.push(Line::Direct((), just)); let i = self.count_lines(); i..i }
 }
 
 
-impl<A, B> /* Bifunctor for */ Proof<A, B> {
-    pub fn bimap<C, D, F: FnMut(A) -> C, G: FnMut(B) -> D>(mut self, f: &mut F, g: &mut G) -> Proof<C, D> {
-        Proof {
+impl<A, B> /* Bifunctor for */ TreeProof<A, B> {
+    pub fn bimap<C, D, F: FnMut(A) -> C, G: FnMut(B) -> D>(mut self, f: &mut F, g: &mut G) -> TreeProof<C, D> {
+        TreeProof {
             premises: self.premises.drain(..).map(|(data, premise)| (f(data), premise)).collect(),
             lines: self.lines.drain(..).map(|line| line.bimap(f, g)).collect(),
         }
@@ -41,11 +59,11 @@ impl<T> PremiseOrLine<T> {
     }
 }
 
-impl Display for Proof<(),()> {
+impl Display for TreeProof<(),()> {
     fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> { self.display_indented(fmt, 1, &mut 1) }
 }
 
-impl DisplayIndented for Proof<(),()> {
+impl DisplayIndented for TreeProof<(),()> {
     fn display_indented(&self, fmt: &mut Formatter, indent: usize, linecount: &mut usize) -> std::result::Result<(), std::fmt::Error> {
         for (_, premise) in self.premises.iter() {
             write!(fmt, "{}:\t", linecount)?;
@@ -87,9 +105,9 @@ impl DisplayIndented for Line<(), ()> {
     }
 }
 
-pub fn decorate_line_and_indent<T, U>(prf: Proof<T, U>) -> Proof<(LineAndIndent, T), U> {
-    fn aux<T, U>(mut prf: Proof<T, U>, li: &mut LineAndIndent) -> Proof<(LineAndIndent, T), U> {
-        let mut result = Proof { premises: vec![], lines: vec![] };
+pub fn decorate_line_and_indent<T, U>(prf: TreeProof<T, U>) -> TreeProof<(LineAndIndent, T), U> {
+    fn aux<T, U>(mut prf: TreeProof<T, U>, li: &mut LineAndIndent) -> TreeProof<(LineAndIndent, T), U> {
+        let mut result = TreeProof { premises: vec![], lines: vec![] };
         for (data, premise) in prf.premises.drain(..) {
             result.premises.push(((li.clone(), data), premise));
             li.line += 1;
@@ -107,10 +125,10 @@ pub fn decorate_line_and_indent<T, U>(prf: Proof<T, U>) -> Proof<(LineAndIndent,
 
 #[derive(Clone, Copy, Debug)]
 pub struct SubproofSize(usize);
-pub fn decorate_subproof_sizes<T, U>(prf: Proof<T, U>) -> Proof<T, (SubproofSize, U)> {
-    fn aux<T, U>(mut prf: Proof<T, U>) -> (usize, Proof<T, (SubproofSize, U)>) {
-        let mut result = Proof { premises: prf.premises, lines: vec![] };
-        let mut size = 0;
+pub fn decorate_subproof_sizes<T, U>(prf: TreeProof<T, U>) -> TreeProof<T, (SubproofSize, U)> {
+    fn aux<T, U>(mut prf: TreeProof<T, U>) -> (usize, TreeProof<T, (SubproofSize, U)>) {
+        let mut size = prf.premises.len();
+        let mut result = TreeProof { premises: prf.premises, lines: vec![] };
         for line in prf.lines.drain(..) {
             match line {
                 Line::Direct(data, just) => { result.lines.push(Line::Direct(data, just)); size += 1; },
@@ -123,7 +141,7 @@ pub fn decorate_subproof_sizes<T, U>(prf: Proof<T, U>) -> Proof<T, (SubproofSize
 }
 
 // This is O(n) lookup for LineAndIndent line lookups, TODO: O(log(n)) line lookups via SubproofSize decorations
-pub fn lookup_by_decoration<T: Clone, F: Fn(&T) -> bool, U>(prf: &Proof<T, U>, f: &F) -> Option<PremiseOrLine<T>> {
+pub fn lookup_by_decoration<T: Clone, F: Fn(&T) -> bool, U>(prf: &TreeProof<T, U>, f: &F) -> Option<PremiseOrLine<T>> {
     for (data, premise) in prf.premises.iter() {
         if f(data) {
             return Some(PremiseOrLine::Premise(data.clone(), premise.clone()));
@@ -146,7 +164,7 @@ pub fn lookup_by_decoration<T: Clone, F: Fn(&T) -> bool, U>(prf: &Proof<T, U>, f
     None
 }
 
-pub fn check_rule_at_line(prf: &Proof<LineAndIndent, ()>, i: usize) -> Result<(), ProofCheckError> {
+pub fn check_rule_at_line(prf: &TreeProof<LineAndIndent, ()>, i: usize) -> Result<(), ProofCheckError> {
     if let Some(pol) = lookup_by_decoration(prf, &|li| li.line == i) {
         match pol {
             PremiseOrLine::Premise(_, _) => Ok(()), // Premises are always valid
@@ -156,7 +174,7 @@ pub fn check_rule_at_line(prf: &Proof<LineAndIndent, ()>, i: usize) -> Result<()
         Err(ProofCheckError::LineDoesNotExist(i))
     }
 }
-fn check_rule(prf: &Proof<LineAndIndent, ()>, li: LineAndIndent, Justification(expr, rule, deps): Justification<Range<usize>>) -> Result<(), ProofCheckError> {
+fn check_rule(prf: &TreeProof<LineAndIndent, ()>, li: LineAndIndent, Justification(expr, rule, deps): Justification<Range<usize>>) -> Result<(), ProofCheckError> {
     use ProofCheckError::*;
     for &Range { start, end } in deps.iter() {
         assert!(start <= end); // this should be enforced by the GUI, and hence not a user-facing error message

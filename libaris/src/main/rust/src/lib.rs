@@ -1,3 +1,4 @@
+#[macro_use] extern crate frunk;
 #[macro_use] extern crate nom;
 extern crate jni;
 

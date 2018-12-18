@@ -5,19 +5,25 @@ use std::collections::HashMap;
 /// since Vec's have O(1) insert/remove at the end, ZipperVec's have O(1) insert/removal around the edit cursor, while being way more cache/memory efficient than a doubly-linked list
 /// the cursor can be moved from position i to position j in O(|i-j|) time by shuffling elements between the prefix and the suffix
 // TODO: should ZipperVec have a seperate module?
+#[derive(Clone, Debug)]
 pub struct ZipperVec<T> {
     prefix: Vec<T>,
     suffix_r: Vec<T>,
 }
 
+#[derive(Clone, Debug)]
 pub enum LineTag { Justification(usize), Subproof(usize) }
 
+#[derive(Clone, Debug)]
 pub struct PooledProof {
     premise_map: HashMap<usize, Expr>,
     just_map: HashMap<usize, Justification<usize>>,
-    subproof_map: HashMap<usize, PooledProof>,
+    subproof_map: HashMap<usize, Subproof>,
+    proof: Subproof,
+}
 
+#[derive(Clone, Debug)]
+pub struct Subproof {
     premise_list: ZipperVec<usize>,
     line_list: ZipperVec<LineTag>,
 }
-    

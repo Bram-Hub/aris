@@ -1,4 +1,5 @@
 use super::*;
+use frunk::coproduct::*;
 use std::ops::Range;
 use std::fmt::{Display, Formatter};
 
@@ -33,7 +34,16 @@ pub trait DisplayIndented {
     fn display_indented(&self, fmt: &mut Formatter, indent: usize, linecount: &mut usize) -> Result<(), std::fmt::Error>;
 }
 
-#[derive(Clone, Copy, Debug)]
+pub trait Proof: Sized {
+    type Reference: Clone;
+    fn new() -> Self;
+    fn lookup(&self, r: Self::Reference) -> Coprod!(Expr, Justification<Self::Reference>, Self);
+    fn add_premise(&mut self, e: Expr) -> Self::Reference;
+    fn add_subproof(&mut self, sub: Self) -> Self::Reference;
+    fn add_step(&mut self, just: Justification<Self::Reference>) -> Self::Reference;
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Rule {
     AndIntro, AndElim,
     OrIntro, OrElim,
@@ -58,7 +68,7 @@ impl Rule {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Justification<R>(Expr, Rule, Vec<R>);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
