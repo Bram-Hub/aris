@@ -4,8 +4,8 @@ extern crate jni;
 pub mod parser;
 pub mod expression;
 use expression::*;
-pub mod lineproof;
-use lineproof::*;
+pub mod proofs;
+use proofs::*;
 
 use jni::JNIEnv;
 use jni::strings::JavaStr;
