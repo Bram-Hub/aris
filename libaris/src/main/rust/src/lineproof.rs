@@ -7,15 +7,15 @@ pub trait DisplayIndented {
 }
 
 #[derive(Clone, Debug)]
-pub struct Proof<T> {
+pub struct Proof<T, U> {
     premises: Vec<(T, Expr)>,
-    lines: Vec<Line<T>>,
+    lines: Vec<Line<T, U>>,
 }
 
 #[derive(Clone, Debug)]
-pub enum Line<T> {
+pub enum Line<T, U> {
     Direct(T, Expr, Rule, Vec<Range<usize>>),
-    Subproof(Proof<T>),
+    Subproof(U, Proof<T, U>),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -44,6 +44,25 @@ impl Rule {
     }
 }
 
+impl<A, B> /* Bifunctor for */ Proof<A, B> {
+    fn bimap<C, D, F: FnMut(A) -> C, G: FnMut(B) -> D>(mut self, f: &mut F, g: &mut G) -> Proof<C, D> {
+        Proof {
+            premises: self.premises.drain(..).map(|(data, premise)| (f(data), premise)).collect(),
+            lines: self.lines.drain(..).map(|line| line.bimap(f, g)).collect(),
+        }
+    }
+}
+
+impl<A, B> /* Bifunctor for */ Line<A, B> {
+    fn bimap<C, D, F: FnMut(A) -> C, G: FnMut(B) -> D>(self, f: &mut F, g: &mut G) -> Line<C, D> {
+        match self {
+            Line::Direct(data, expr, rule, deps) => Line::Direct(f(data), expr, rule, deps),
+            Line::Subproof(data, sub) => Line::Subproof(g(data), sub.bimap(f, g)),
+        }
+    }
+}
+
+
 pub enum PremiseOrLine<T> { Premise(T, Expr), Line(T, Expr, Rule, Vec<Range<usize>>) }
 impl<T> PremiseOrLine<T> {
     fn get_expr(&self) -> &Expr {
@@ -54,11 +73,11 @@ impl<T> PremiseOrLine<T> {
     }
 }
 
-impl Display for Proof<()> {
+impl Display for Proof<(),()> {
     fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> { self.display_indented(fmt, 1, &mut 1) }
 }
 
-impl DisplayIndented for Proof<()> {
+impl DisplayIndented for Proof<(),()> {
     fn display_indented(&self, fmt: &mut Formatter, indent: usize, linecount: &mut usize) -> std::result::Result<(), std::fmt::Error> {
         for (_, premise) in self.premises.iter() {
             write!(fmt, "{}:\t", linecount)?;
@@ -77,7 +96,7 @@ impl DisplayIndented for Proof<()> {
     }
 }
 
-impl DisplayIndented for Line<()> {
+impl DisplayIndented for Line<(), ()> {
     fn display_indented(&self, fmt: &mut Formatter, indent: usize, linecount: &mut usize) -> std::result::Result<(), std::fmt::Error> {
         match self {
             Line::Direct(_, expr, rule, deps) => {
@@ -95,7 +114,7 @@ impl DisplayIndented for Line<()> {
                 }
                 write!(fmt, "\n")
             }
-            Line::Subproof(prf) => (*prf).display_indented(fmt, indent+1, linecount),
+            Line::Subproof(_, prf) => (*prf).display_indented(fmt, indent+1, linecount),
         }
     }
 }
@@ -103,8 +122,8 @@ impl DisplayIndented for Line<()> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LineAndIndent { line: usize, indent: usize }
 
-pub fn decorate_line_and_indent<T>(prf: Proof<T>) -> Proof<(LineAndIndent, T)> {
-    fn aux<T>(mut prf: Proof<T>, li: &mut LineAndIndent) -> Proof<(LineAndIndent, T)> {
+pub fn decorate_line_and_indent<T, U>(prf: Proof<T, U>) -> Proof<(LineAndIndent, T), U> {
+    fn aux<T, U>(mut prf: Proof<T, U>, li: &mut LineAndIndent) -> Proof<(LineAndIndent, T), U> {
         let mut result = Proof { premises: vec![], lines: vec![] };
         for (data, premise) in prf.premises.drain(..) {
             result.premises.push(((li.clone(), data), premise));
@@ -113,7 +132,7 @@ pub fn decorate_line_and_indent<T>(prf: Proof<T>) -> Proof<(LineAndIndent, T)> {
         for line in prf.lines.drain(..) {
             match line {
                 Line::Direct(data, expr, rule, deps) => { result.lines.push(Line::Direct((li.clone(), data), expr, rule, deps)); li.line += 1; },
-                Line::Subproof(sub) => { li.indent += 1; result.lines.push(Line::Subproof(aux(sub, li))); li.indent -= 1; },
+                Line::Subproof(data, sub) => { li.indent += 1; result.lines.push(Line::Subproof(data, aux(sub, li))); li.indent -= 1; },
             }
         }
         result
@@ -121,19 +140,25 @@ pub fn decorate_line_and_indent<T>(prf: Proof<T>) -> Proof<(LineAndIndent, T)> {
     aux(prf, &mut LineAndIndent { line: 1, indent: 1 })
 }
 
-pub fn map_decoration<T, U, F: FnMut(T) -> U>(mut prf: Proof<T>, f: &mut F) -> Proof<U> {
-    let mut result = Proof { premises: vec![], lines: vec![] };
-    for (data, premise) in prf.premises.drain(..) { result.premises.push((f(data), premise)); }
-    for line in prf.lines.drain(..) {
-        match line {
-            Line::Direct(data, expr, rule, deps) => result.lines.push(Line::Direct(f(data), expr, rule, deps)),
-            Line::Subproof(sub) => result.lines.push(Line::Subproof(map_decoration(sub, f))),
+#[derive(Clone, Copy, Debug)]
+pub struct SubproofSize(usize);
+pub fn decorate_subproof_sizes<T, U>(prf: Proof<T, U>) -> Proof<T, (SubproofSize, U)> {
+    fn aux<T, U>(mut prf: Proof<T, U>) -> (usize, Proof<T, (SubproofSize, U)>) {
+        let mut result = Proof { premises: prf.premises, lines: vec![] };
+        let mut size = 0;
+        for line in prf.lines.drain(..) {
+            match line {
+                Line::Direct(data, expr, rule, deps) => { result.lines.push(Line::Direct(data, expr, rule, deps)); size += 1; },
+                Line::Subproof(data, sub) => { let (sz, sp) = aux(sub); size += sz; result.lines.push(Line::Subproof((SubproofSize(sz), data), sp)); }
+            }
         }
+        (size, result)
     }
-    result
+    aux(prf).1
 }
 
-fn lookup_by_decoration<T: Clone, F: Fn(&T) -> bool>(prf: &Proof<T>, f: &F) -> Option<PremiseOrLine<T>> {
+// This is O(n) lookup for LineAndIndent line lookups, TODO: O(log(n)) line lookups via SubproofSize decorations
+fn lookup_by_decoration<T: Clone, F: Fn(&T) -> bool, U>(prf: &Proof<T, U>, f: &F) -> Option<PremiseOrLine<T>> {
     for (data, premise) in prf.premises.iter() {
         if f(data) {
             return Some(PremiseOrLine::Premise(data.clone(), premise.clone()));
@@ -146,7 +171,7 @@ fn lookup_by_decoration<T: Clone, F: Fn(&T) -> bool>(prf: &Proof<T>, f: &F) -> O
                     return Some(PremiseOrLine::Line(data.clone(), expr.clone(), *rule, deps.clone()));
                 }
             },
-            Line::Subproof(sub) => {
+            Line::Subproof(_, sub) => {
                 if let Some(ret) = lookup_by_decoration(sub, f) {
                     return Some(ret);
                 }
@@ -165,7 +190,7 @@ pub enum ProofCheckError {
     DoesNotOccur(Expr, Expr),
 }
 
-pub fn check_rule_at_line(prf: &Proof<LineAndIndent>, i: usize) -> Result<(), ProofCheckError> {
+pub fn check_rule_at_line(prf: &Proof<LineAndIndent, ()>, i: usize) -> Result<(), ProofCheckError> {
     if let Some(pol) = lookup_by_decoration(prf, &|li| li.line == i) {
         match pol {
             PremiseOrLine::Premise(_, _) => Ok(()), // Premises are always valid
@@ -175,7 +200,7 @@ pub fn check_rule_at_line(prf: &Proof<LineAndIndent>, i: usize) -> Result<(), Pr
         Err(ProofCheckError::LineDoesNotExist(i))
     }
 }
-fn check_rule(prf: &Proof<LineAndIndent>, li: LineAndIndent, expr: Expr, rule: Rule, deps: Vec<Range<usize>>) -> Result<(), ProofCheckError> {
+fn check_rule(prf: &Proof<LineAndIndent, ()>, li: LineAndIndent, expr: Expr, rule: Rule, deps: Vec<Range<usize>>) -> Result<(), ProofCheckError> {
     use ProofCheckError::*;
     for &Range { start, end } in deps.iter() {
         assert!(start <= end); // this should be enforced by the GUI, and hence not a user-facing error message
@@ -195,7 +220,7 @@ fn check_rule(prf: &Proof<LineAndIndent>, li: LineAndIndent, expr: Expr, rule: R
     match rule {
         Rule::AndIntro => unimplemented!(),
         Rule::AndElim => {
-            let Range { start, end } = deps[0];
+            let Range { start, end: _ } = deps[0];
             if let Some(prem) = lookup_by_decoration(prf, &|li| li.line == start) {
                 if let Expr::AssocBinop { symbol: ASymbol::And, exprs } = prem.get_expr() {
                     for e in exprs.iter() {
@@ -243,7 +268,7 @@ fn test_andelim() {
         ],
     };
     println!("{}", prf);
-    let prf = map_decoration(decorate_line_and_indent(prf), &mut |(li, ())| li);
+    let prf = decorate_line_and_indent(prf).bimap(&mut |(li, ())| li, &mut |_| ());
     use ProofCheckError::*;
     assert_eq!(check_rule_at_line(&prf, 3), Ok(()));
     assert_eq!(check_rule_at_line(&prf, 4), Err(DoesNotOccur(p("E"), p("A & B & C & D"))));
@@ -258,7 +283,7 @@ fn demo_prettyprinting() {
         premises: vec![((),p("A")), ((),p("B"))],
         lines: vec![
             Line::Direct((), p("A & B"), Rule::AndIntro, vec![1..1, 2..2]),
-            Line::Subproof(Proof {
+            Line::Subproof((), Proof {
                 premises: vec![((),p("C"))],
                 lines: vec![Line::Direct((), p("A & B"), Rule::Reit, vec![3..3])],
             }),
