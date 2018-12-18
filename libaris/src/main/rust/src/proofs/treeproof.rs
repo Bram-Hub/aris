@@ -22,7 +22,7 @@ impl TreeProof<(), ()> {
 impl Proof for TreeProof<(), ()> {
     type Reference = Range<usize>;
     fn new() -> Self { TreeProof { premises: vec![], lines: vec![] } }
-    fn lookup(&self, r: Self::Reference) -> Coprod!(Expr, Justification<Self::Reference>, Self) {
+    fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Self::Reference>, Self)> {
         unimplemented!();
     }
     fn add_premise(&mut self, e: Expr) -> Self::Reference { self.premises.push(((), e)); let i = self.premises.len(); i..i }

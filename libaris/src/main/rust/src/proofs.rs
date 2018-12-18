@@ -3,6 +3,8 @@ use frunk::coproduct::*;
 use std::ops::Range;
 use std::fmt::{Display, Formatter};
 
+#[cfg(test)]
+mod proof_tests;
 /// This module houses different proof representations with different performance/simplicity tradeoffs
 /// The intent is that once experimentation is done data-structure-wise, these can be packaged up as java objects
 
@@ -37,7 +39,7 @@ pub trait DisplayIndented {
 pub trait Proof: Sized {
     type Reference: Clone;
     fn new() -> Self;
-    fn lookup(&self, r: Self::Reference) -> Coprod!(Expr, Justification<Self::Reference>, Self);
+    fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Self::Reference>, Self)>;
     fn add_premise(&mut self, e: Expr) -> Self::Reference;
     fn add_subproof(&mut self, sub: Self) -> Self::Reference;
     fn add_step(&mut self, just: Justification<Self::Reference>) -> Self::Reference;
