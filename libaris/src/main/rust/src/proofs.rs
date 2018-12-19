@@ -73,14 +73,29 @@ impl Rule {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Justification<R>(Expr, Rule, Vec<R>);
 
+impl<R: std::fmt::Debug> DisplayIndented for Justification<R> {
+    fn display_indented(&self, fmt: &mut Formatter, indent: usize, linecount: &mut usize) -> std::result::Result<(), std::fmt::Error> {
+        let &Justification(expr, rule, deps) = &self;
+        write!(fmt, "{}:\t", linecount)?;
+        *linecount += 1;
+        for _ in 0..indent { write!(fmt, "| ")?; }
+        write!(fmt, "{:?}; {:?}; ", expr, rule)?;
+        for (i, dep) in deps.iter().enumerate() {
+            write!(fmt, "{:?}", dep)?;
+            if i != deps.len()-1 { write!(fmt, ", ")?; }
+        }
+        write!(fmt, "\n")
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LineAndIndent { pub line: usize, pub indent: usize }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum ProofCheckError {
+pub enum ProofCheckError<R> {
     LineDoesNotExist(usize),
     ReferencesLaterLine(LineAndIndent, usize),
-    IncorrectDepCount(Vec<Range<usize>>, usize, usize),
+    IncorrectDepCount(Vec<R>, usize, usize),
     DepOfWrongForm(String),
     DoesNotOccur(Expr, Expr),
 }

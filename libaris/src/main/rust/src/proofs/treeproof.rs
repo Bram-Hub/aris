@@ -1,5 +1,18 @@
 use super::*;
 
+#[derive(Clone, PartialEq, Eq)]
+pub struct LineDep(pub Range<usize>);
+impl std::fmt::Debug for LineDep {
+    fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> {
+        let &LineDep(Range { start, end }) = self;
+        if start == end {
+            write!(fmt, "{}", start)
+        } else {
+            write!(fmt, "{}-{}", start, end)
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TreeProof<T, U> {
     pub premises: Vec<(T, Expr)>,
@@ -8,7 +21,7 @@ pub struct TreeProof<T, U> {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Line<T, U> {
-    Direct(T, Justification<Range<usize>>),
+    Direct(T, Justification<LineDep>),
     Subproof(U, TreeProof<T, U>),
 }
 
@@ -20,14 +33,14 @@ impl TreeProof<(), ()> {
 }
 
 impl Proof for TreeProof<(), ()> {
-    type Reference = Range<usize>;
+    type Reference = LineDep;
     fn new() -> Self { TreeProof { premises: vec![], lines: vec![] } }
     fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Self::Reference>, Self)> {
         unimplemented!();
     }
-    fn add_premise(&mut self, e: Expr) -> Self::Reference { self.premises.push(((), e)); let i = self.premises.len(); i..i }
-    fn add_subproof(&mut self, sub: Self) -> Self::Reference { let i = self.count_lines(); self.lines.push(Line::Subproof((), sub)); let j = self.count_lines(); (i+1)..j }
-    fn add_step(&mut self, just: Justification<Self::Reference>) -> Self::Reference { self.lines.push(Line::Direct((), just)); let i = self.count_lines(); i..i }
+    fn add_premise(&mut self, e: Expr) -> Self::Reference { self.premises.push(((), e)); let i = self.premises.len(); LineDep(i..i) }
+    fn add_subproof(&mut self, sub: Self) -> Self::Reference { let i = self.count_lines(); self.lines.push(Line::Subproof((), sub)); let j = self.count_lines(); LineDep((i+1)..j) }
+    fn add_step(&mut self, just: Justification<Self::Reference>) -> Self::Reference { self.lines.push(Line::Direct((), just)); let i = self.count_lines(); LineDep(i..i) }
 }
 
 
@@ -49,7 +62,7 @@ impl<A, B> /* Bifunctor for */ Line<A, B> {
     }
 }
 
-pub enum PremiseOrLine<T> { Premise(T, Expr), Line(T, Justification<Range<usize>>) }
+pub enum PremiseOrLine<T> { Premise(T, Expr), Line(T, Justification<LineDep>) }
 impl<T> PremiseOrLine<T> {
     fn get_expr(&self) -> &Expr {
         match self {
@@ -85,21 +98,7 @@ impl DisplayIndented for TreeProof<(),()> {
 impl DisplayIndented for Line<(), ()> {
     fn display_indented(&self, fmt: &mut Formatter, indent: usize, linecount: &mut usize) -> std::result::Result<(), std::fmt::Error> {
         match self {
-            Line::Direct(_, Justification(expr, rule, deps)) => {
-                write!(fmt, "{}:\t", linecount)?;
-                *linecount += 1;
-                for _ in 0..indent { write!(fmt, "| ")?; }
-                write!(fmt, "{:?}; {:?}; ", expr, rule)?;
-                for (i, &Range { start, end }) in deps.iter().enumerate() {
-                    if start == end {
-                        write!(fmt, "{}", start)?;
-                    } else {
-                        write!(fmt, "{}-{}", start, end)?;
-                    }
-                    if i != deps.len()-1 { write!(fmt, ", ")?; }
-                }
-                write!(fmt, "\n")
-            }
+            Line::Direct(_, just) => just.display_indented(fmt, indent, linecount),
             Line::Subproof(_, prf) => (*prf).display_indented(fmt, indent+1, linecount),
         }
     }
@@ -164,7 +163,7 @@ pub fn lookup_by_decoration<T: Clone, F: Fn(&T) -> bool, U>(prf: &TreeProof<T, U
     None
 }
 
-pub fn check_rule_at_line(prf: &TreeProof<LineAndIndent, ()>, i: usize) -> Result<(), ProofCheckError> {
+pub fn check_rule_at_line(prf: &TreeProof<LineAndIndent, ()>, i: usize) -> Result<(), ProofCheckError<LineDep>> {
     if let Some(pol) = lookup_by_decoration(prf, &|li| li.line == i) {
         match pol {
             PremiseOrLine::Premise(_, _) => Ok(()), // Premises are always valid
@@ -174,9 +173,9 @@ pub fn check_rule_at_line(prf: &TreeProof<LineAndIndent, ()>, i: usize) -> Resul
         Err(ProofCheckError::LineDoesNotExist(i))
     }
 }
-fn check_rule(prf: &TreeProof<LineAndIndent, ()>, li: LineAndIndent, Justification(expr, rule, deps): Justification<Range<usize>>) -> Result<(), ProofCheckError> {
+fn check_rule(prf: &TreeProof<LineAndIndent, ()>, li: LineAndIndent, Justification(expr, rule, deps): Justification<LineDep>) -> Result<(), ProofCheckError<LineDep>> {
     use ProofCheckError::*;
-    for &Range { start, end } in deps.iter() {
+    for &LineDep(Range { start, end }) in deps.iter() {
         assert!(start <= end); // this should be enforced by the GUI, and hence not a user-facing error message
         if end >= li.line {
             return Err(ReferencesLaterLine(li, end))
@@ -184,7 +183,7 @@ fn check_rule(prf: &TreeProof<LineAndIndent, ()>, li: LineAndIndent, Justificati
     }
     if let Some((directs, subs)) = rule.get_depcount() {
         let (mut d, mut s) = (0, 0);
-        for &Range { start, end } in deps.iter() {
+        for &LineDep(Range { start, end }) in deps.iter() {
             if start == end { d += 1 } else { s += 1 }
         }
         if d != directs || s != subs {
@@ -194,7 +193,7 @@ fn check_rule(prf: &TreeProof<LineAndIndent, ()>, li: LineAndIndent, Justificati
     match rule {
         Rule::AndIntro => unimplemented!(),
         Rule::AndElim => {
-            let Range { start, end: _ } = deps[0];
+            let LineDep(Range { start, end: _ }) = deps[0];
             if let Some(prem) = lookup_by_decoration(prf, &|li| li.line == start) {
                 if let Expr::AssocBinop { symbol: ASymbol::And, exprs } = prem.get_expr() {
                     for e in exprs.iter() {

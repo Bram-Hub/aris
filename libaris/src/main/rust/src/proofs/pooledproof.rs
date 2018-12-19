@@ -12,6 +12,7 @@ pub struct ZipperVec<T> {
 }
 impl<T> ZipperVec<T> {
     pub fn new() -> Self { ZipperVec { prefix: Vec::new(), suffix_r: Vec::new() } }
+    pub fn from_vec(v: Vec<T>) -> Self { ZipperVec { prefix: v, suffix_r: Vec::new() } }
     pub fn cursor_pos(&self) -> usize { self.prefix.len() }
     pub fn len(&self) -> usize { self.prefix.len() + self.suffix_r.len() }
     pub fn move_cursor(&mut self, mut to: usize) {
@@ -23,10 +24,10 @@ impl<T> ZipperVec<T> {
         self.move_cursor(len);
         self.prefix.push(x);
     }
+    pub fn iter(&self) -> impl Iterator<Item=&T> {
+        self.prefix.iter().chain(self.suffix_r.iter().rev())
+    }
 }
-
-#[derive(Clone, Debug)]
-pub enum LineTag { Justification(usize), Subproof(usize) }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)] pub struct PremKey(usize);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)] pub struct JustKey(usize);
@@ -48,17 +49,37 @@ pub struct Subproof {
 
 impl Subproof {
     pub fn new() -> Self { Subproof { premise_list: ZipperVec::new(), line_list: ZipperVec::new() } }
+    fn increment_indices(&mut self, i: PremKey, j: JustKey, k: SubKey) {
+        let newprems = self.premise_list.iter().map(|x| PremKey(x.0+i.0)).collect();
+        self.premise_list = ZipperVec::from_vec(newprems);
+        let newlines = self.line_list.iter().map(|x| x.fold(hlist![|y: JustKey| Coproduct::inject(JustKey(y.0+j.0)), |y: SubKey| Coproduct::inject(SubKey(y.0+k.0))])).collect();
+        self.line_list = ZipperVec::from_vec(newlines);
+    }
 }
 
 impl PooledProof {
     pub fn next_premkey(&self) -> PremKey { PremKey(self.prem_map.range(..).next_back().map(|(k, _)| k.0+1).unwrap_or(0)) }
     pub fn next_justkey(&self) -> JustKey { JustKey(self.just_map.range(..).next_back().map(|(k, _)| k.0+1).unwrap_or(0)) }
     pub fn next_subkey(&self) -> SubKey { SubKey(self.sub_map.range(..).next_back().map(|(k, _)| k.0+1).unwrap_or(0)) }
-    fn add_pools(&mut self, other: &PooledProof) {
+    fn add_pools(&mut self, other: &PooledProof) -> (PremKey, JustKey, SubKey) {
         // TODO: deduplicate values for efficiency on joining subproofs with copies of the same expression multiple times
-        let premkey = self.next_premkey(); for (k, v) in other.prem_map.iter() { self.prem_map.insert(PremKey(premkey.0 + k.0), v.clone()); }
-        let justkey = self.next_justkey(); for (k, v) in other.just_map.iter() { self.just_map.insert(JustKey(justkey.0 + k.0), v.clone()); }
-        let subkey = self.next_subkey(); for (k, v) in other.sub_map.iter() { self.sub_map.insert(SubKey(subkey.0 + k.0), v.clone()); }
+        let premkey = self.next_premkey(); let justkey = self.next_justkey(); let subkey = self.next_subkey();
+        for (k, v) in other.prem_map.iter() { self.prem_map.insert(PremKey(premkey.0 + k.0), v.clone()); }
+        for (k, v) in other.just_map.iter() {
+            self.just_map.insert(JustKey(justkey.0 + k.0),
+                Justification(v.0.clone(), v.1, v.2.iter().map(|x| x.fold(hlist![
+                    |x: PremKey| Coproduct::inject(PremKey(x.0+premkey.0)),
+                    |x: JustKey| Coproduct::inject(JustKey(x.0+justkey.0)),
+                    |x: SubKey| Coproduct::inject(SubKey(x.0+subkey.0)),
+                ])).collect())
+            );
+        }
+        for (k, v) in other.sub_map.iter() {
+            let mut w = v.clone();
+            w.increment_indices(premkey, justkey, subkey);
+            self.sub_map.insert(SubKey(subkey.0 + k.0), w);
+        }
+        (premkey, justkey, subkey)
     }
 }
 
@@ -79,9 +100,10 @@ impl Proof for PooledProof {
         self.proof.premise_list.push(idx);
         Self::Reference::inject(idx)
     }
-    fn add_subproof(&mut self, sub: Self) -> Self::Reference {
-        self.add_pools(&sub);
+    fn add_subproof(&mut self, mut sub: Self) -> Self::Reference {
+        let (i, j, k) = self.add_pools(&sub);
         let idx = self.next_subkey();
+        sub.proof.increment_indices(i, j, k);
         self.sub_map.insert(idx, sub.proof);
         self.proof.line_list.push(Coproduct::inject(idx));
         Self::Reference::inject(idx)
@@ -97,5 +119,34 @@ impl Proof for PooledProof {
 #[test]
 fn prettyprint_pool() {
     let prf: PooledProof = super::proof_tests::demo_proof_1();
-    println!("{:?}", prf)
+    println!("{:?}\n{}\n", prf, prf)
+}
+
+impl DisplayIndented for PooledProof {
+    fn display_indented(&self, fmt: &mut Formatter, indent: usize, linecount: &mut usize) -> std::result::Result<(), std::fmt::Error> {
+        fn aux(p: &PooledProof, fmt: &mut Formatter, indent: usize, linecount: &mut usize, sub: &Subproof) -> std::result::Result<(), std::fmt::Error> {
+            for idx in sub.premise_list.iter() {
+                let premise = p.prem_map.get(idx).unwrap();
+                write!(fmt, "{}:\t", linecount)?;
+                for _ in 0..indent { write!(fmt, "| ")?; }
+                write!(fmt, "{:?}\n", premise)?; // TODO Display for Expr
+                *linecount += 1;
+            }
+            write!(fmt, "\t")?;
+            for _ in 0..indent { write!(fmt, "| ")?; }
+            for _ in 0..10 { write!(fmt, "-")?; }
+            write!(fmt, "\n")?;
+            for line in sub.line_list.iter() {
+                match line.uninject() {
+                    Ok(justkey) => p.just_map.get(&justkey).unwrap().display_indented(fmt, indent, linecount)?,
+                    Err(line) => aux(p, fmt, indent+1, linecount, p.sub_map.get(&line.uninject::<SubKey, _>().unwrap()).unwrap())?,
+                }
+            }
+            Ok(())
+        }
+        aux(&self, fmt, indent, linecount, &self.proof)
+    }
+}
+impl Display for PooledProof {
+    fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> { self.display_indented(fmt, 1, &mut 1) }
 }
