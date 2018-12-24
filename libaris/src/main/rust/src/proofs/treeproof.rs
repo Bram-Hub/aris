@@ -30,13 +30,31 @@ impl TreeProof<(), ()> {
         let prf = decorate_subproof_sizes(self.clone());
         prf.premises.len() + prf.lines.iter().map(|line| if let Line::Subproof((SubproofSize(n), ()), _) = line { *n } else { 1 }).sum::<usize>()
     }
+    fn lookup_line(&self, i: usize) -> Option<Coprod!(Expr, Justification<<Self as Proof>::Reference>, Self)> {
+        if i < self.premises.len() {
+            return self.premises.get(i).map(|x| Coproduct::inject(x.1.clone()));
+        }
+        let mut j = self.premises.len();
+        for line in self.lines.iter() {
+            match line {
+                Line::Direct((), just) => { if j == i { return Some(Coproduct::inject(just.clone())); } else { j += 1; } },
+                Line::Subproof((), sub) => { if let Some(x) = sub.lookup_line(i-j) { return Some(x); } else { j += sub.count_lines(); } }
+            }
+        }
+        assert!(j >= i);
+        None
+    }
+    fn lookup_subproof(&self, i: usize, j: usize) -> Option<Coprod!(Expr, Justification<<Self as Proof>::Reference>, Self)> {
+        None // TODO: implement
+    }
 }
 
 impl Proof for TreeProof<(), ()> {
     type Reference = LineDep;
     fn new() -> Self { TreeProof { premises: vec![], lines: vec![] } }
     fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Self::Reference>, Self)> {
-        unimplemented!();
+        let LineDep(Range { start, end }) = r;
+        if start == end { self.lookup_line(start-1) } else { self.lookup_subproof(start-1, end-1) }
     }
     fn add_premise(&mut self, e: Expr) -> Self::Reference { self.premises.push(((), e)); let i = self.premises.len(); LineDep(i..i) }
     fn add_subproof(&mut self, sub: Self) -> Self::Reference { let i = self.count_lines(); self.lines.push(Line::Subproof((), sub)); let j = self.count_lines(); LineDep((i+1)..j) }
