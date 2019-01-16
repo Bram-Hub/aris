@@ -30,7 +30,7 @@ named!(predicate<&str, Expr>, alt!(
 named!(forallQuantifier<&str, QSymbol>, do_parse!(alt!(tag!("forall ") | tag!("∀")) >> (QSymbol::Forall)));
 named!(existsQuantifier<&str, QSymbol>, do_parse!(alt!(tag!("exists ") | tag!("∃")) >> (QSymbol::Exists)));
 named!(quantifier<&str, QSymbol>, alt!(forallQuantifier | existsQuantifier));
-named!(binder<&str, Expr>, do_parse!(space >> symbol: quantifier >> space >> name: variable >> space >> tag!(",") >> space >> body: paren_expr >> (Expr::Quantifier { symbol, name, body: Box::new(body) })));
+named!(binder<&str, Expr>, do_parse!(space >> symbol: quantifier >> space >> name: variable >> space >> tag!(",") >> space >> body: expr >> (Expr::Quantifier { symbol, name, body: Box::new(body) })));
 
 named!(binop<&str, BSymbol>, alt!(do_parse!(tag!("->") >> (BSymbol::Implies)) | do_parse!(tag!("+") >> (BSymbol::Plus)) | do_parse!(tag!("*") >> (BSymbol::Mult))));
 named!(binopterm<&str, Expr>, do_parse!(left: paren_expr >> space >> symbol: binop >> space >> right: paren_expr >> (Expr::Binop { symbol, left: Box::new(left), right: Box::new(right) })));
@@ -63,11 +63,18 @@ named!(pub expr<&str, Expr>, alt!(assocterm | binopterm | paren_expr));
 named!(pub main<&str, Expr>, do_parse!(e: expr >> tag!("\n") >> (e)));
 
 #[test]
-fn test() {
+fn test_parser() {
+    use super::freevars;
     println!("{:?}", predicate("a(   b, c)"));
     println!("{:?}", expr("a & b & c(x,y)\n"));
     println!("{:?}", expr("forall a, (b & c)\n"));
-    println!("{:?}", expr("exists x, (Tet(x) & SameCol(x, b)) -> ~forall x, (Tet(x) -> LeftOf(x, b))\n"));
+    let e = expr("exists x, (Tet(x) & SameCol(x, b)) -> ~forall x, (Tet(x) -> LeftOf(x, b))\n");
+    let fv = e.clone().map(|x| freevars(&x.1));
+    println!("{:?} {:?}", e, fv);
+    let e = expr("forall a, forall b, ((forall x, in(x,a) <-> in(x,b)) -> eq(a,b))\n");
+    let fv = e.clone().map(|x| freevars(&x.1));
+    assert_eq!(fv, Ok(["eq", "in"].iter().map(|x| String::from(*x)).collect()));
+    println!("{:?} {:?}", e, fv);
     named!(f<&str, Vec<&str>>, many1!(tag!("a")));
     println!("{:?}", f("aa\n"));
 }

@@ -1,4 +1,5 @@
 use super::*;
+use std::collections::HashSet;
 
 #[no_mangle]
 #[allow(non_snake_case)]
@@ -176,6 +177,20 @@ impl HasClass for Expr {
         }
     }
 }
+
+pub fn freevars(e: &Expr) -> HashSet<String> {
+    let mut r = HashSet::new();
+    match e {
+        Expr::Bottom => (),
+        Expr::Predicate { name, args } => { r.insert(name.clone()); r.extend(args.iter().cloned()); },
+        Expr::Unop { operand, .. } => { r.extend(freevars(operand)); },
+        Expr::Binop { left, right, .. } => { r.extend(freevars(left)); r.extend(freevars(right)); },
+        Expr::AssocBinop { exprs, .. } => { for expr in exprs.iter() { r.extend(freevars(expr)); } }
+        Expr::Quantifier { name, body, .. } => { r.extend(freevars(body)); r.remove(name); }
+    }
+    r
+}
+
 
 pub mod expression_builders {
     use super::{Expr, USymbol, BSymbol, ASymbol, QSymbol};
