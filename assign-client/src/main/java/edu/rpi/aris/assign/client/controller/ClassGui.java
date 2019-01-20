@@ -175,4 +175,9 @@ public class ClassGui implements TabGui {
     public SimpleStringProperty nameProperty() {
         return new SimpleStringProperty(getName());
     }
+
+    @Override
+    public boolean requiresOnline() {
+        return true;
+    }
 }

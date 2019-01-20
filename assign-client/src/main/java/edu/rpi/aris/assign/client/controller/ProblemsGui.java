@@ -90,6 +90,11 @@ public class ProblemsGui implements TabGui {
     }
 
     @Override
+    public boolean requiresOnline() {
+        return true;
+    }
+
+    @Override
     public void load(boolean reload) {
         problems.loadProblems(reload);
     }

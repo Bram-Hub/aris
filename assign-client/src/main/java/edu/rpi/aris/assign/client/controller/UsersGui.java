@@ -96,6 +96,11 @@ public class UsersGui implements TabGui {
         return new SimpleStringProperty(getName());
     }
 
+    @Override
+    public boolean requiresOnline() {
+        return true;
+    }
+
     @FXML
     public void initialize() {
         Label placeHolderLbl = new Label();

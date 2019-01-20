@@ -21,6 +21,9 @@ public class LoginUtil {
         PAMLoginAuth.register();
     }
 
+    public static void register() {
+    }
+
     public static User verifyAuth(AuthMessage authMessage, Connection connection, ServerPermissions permissions) throws SQLException {
         String pass = authMessage.getPassAccessToken();
         authMessage.setPassAccessToken(null);

@@ -107,8 +107,16 @@ public class AssignmentGetStudentMsg extends Message implements ClassMessage {
         return dueDate;
     }
 
+    public void setDueDate(ZonedDateTime dueDate) {
+        this.dueDate = dueDate;
+    }
+
     public String getName() {
         return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public HashSet<MsgUtil.ProblemInfo> getProblems() {

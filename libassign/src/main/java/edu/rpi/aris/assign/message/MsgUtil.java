@@ -56,7 +56,7 @@ public class MsgUtil {
         public final String statusStr;
         public final ZonedDateTime submissionTime;
 
-        SubmissionInfo(int uid, int sid, int pid, int cid, int aid, double grade, GradingStatus status, String statusStr, ZonedDateTime submissionTime) {
+        public SubmissionInfo(int uid, int sid, int pid, int cid, int aid, double grade, GradingStatus status, String statusStr, ZonedDateTime submissionTime) {
             this.uid = uid;
             this.sid = sid;
             this.pid = pid;
@@ -96,7 +96,7 @@ public class MsgUtil {
         public final ZonedDateTime createdDateUTC;
         public final String problemHash;
 
-        ProblemInfo(int pid, String name, String createdBy, ZonedDateTime createdDateUTC, String moduleName, String problemHash) {
+        public ProblemInfo(int pid, String name, String createdBy, ZonedDateTime createdDateUTC, String moduleName, String problemHash) {
             this.pid = pid;
             this.name = name;
             this.createdBy = createdBy;
@@ -119,6 +119,15 @@ public class MsgUtil {
             return pid > 0 && name != null && createdBy != null && createdDateUTC != null && moduleName != null && problemHash != null;
         }
 
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof ProblemInfo && ((ProblemInfo) obj).pid == pid;
+        }
+
+        @Override
+        public int hashCode() {
+            return pid;
+        }
     }
 
     public static class UserInfo implements Comparable<UserInfo> {

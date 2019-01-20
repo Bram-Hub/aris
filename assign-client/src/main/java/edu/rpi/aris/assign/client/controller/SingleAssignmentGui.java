@@ -97,6 +97,11 @@ public class SingleAssignmentGui implements TabGui {
     }
 
     @Override
+    public boolean requiresOnline() {
+        return !assignment.isCached();
+    }
+
+    @Override
     public boolean equals(Object obj) {
         if (obj instanceof SingleAssignmentGui) {
             SingleAssignment a = ((SingleAssignmentGui) obj).assignment;

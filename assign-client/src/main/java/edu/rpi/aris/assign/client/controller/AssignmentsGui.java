@@ -81,6 +81,11 @@ public class AssignmentsGui implements TabGui {
     }
 
     @Override
+    public boolean requiresOnline() {
+        return false;
+    }
+
+    @Override
     public void load(boolean reload) {
         assignments.loadAssignments(reload);
     }

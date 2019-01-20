@@ -41,11 +41,18 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
     }
 
     public synchronized void loadAssignments(boolean reload) {
-        if (userInfo.getSelectedClass() == null)
+        if (userInfo.getSelectedClass() == null) {
+            if (!userInfo.isLoggedIn())
+                loadOffline();
             return;
+        }
         if (reload || loaded != userInfo.getSelectedClass().getClassId()) {
             Client.getInstance().processMessage(new AssignmentsGetMsg(userInfo.getSelectedClass().getClassId()), this);
         }
+    }
+
+    private void loadOffline() {
+        //TODO
     }
 
     public ObservableList<Assignment> getAssignments() {

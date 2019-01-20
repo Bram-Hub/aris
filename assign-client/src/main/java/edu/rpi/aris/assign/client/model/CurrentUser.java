@@ -126,7 +126,7 @@ public class CurrentUser implements ResponseHandler<ConnectionInitMsg> {
     }
 
     public User getUser() {
-        return loggedIn.get() ? user : null;
+        return user;
     }
 
     @Override

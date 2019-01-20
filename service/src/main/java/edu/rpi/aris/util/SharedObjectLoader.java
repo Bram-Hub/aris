@@ -8,7 +8,7 @@ import org.apache.logging.log4j.*;
 
 public class SharedObjectLoader {
     private static final Logger log = LogManager.getLogger();
-    private static final Set<String> loaded = new HashSet();
+    private static final Set<String> loaded = new HashSet<>();
 
     public static boolean isLoaded(String LIB_NAME) {
         return loaded.contains(LIB_NAME);

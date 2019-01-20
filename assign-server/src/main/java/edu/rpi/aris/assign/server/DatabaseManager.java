@@ -4,6 +4,7 @@ import com.mchange.v2.c3p0.ComboPooledDataSource;
 import edu.rpi.aris.assign.AuthType;
 import edu.rpi.aris.assign.DBUtils;
 import edu.rpi.aris.assign.GradingStatus;
+import edu.rpi.aris.assign.server.auth.LoginUtil;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -26,12 +27,13 @@ public class DatabaseManager {
     public static final String DEFAULT_ADMIN_PASS = "ArisAdmin1";
     private static final String[] defaultRoleName = new String[]{"Admin", "Instructor", "TA", "Student"};
     private static final int[] defaultRoleRank = new int[]{0, 1, 2, 3};
-    private static final int DB_SCHEMA_VERSION = 14;
+    private static final int DB_SCHEMA_VERSION = 15;
     private static Logger logger = LogManager.getLogger(DatabaseManager.class);
 
     static {
         if (Security.getProvider("BC") == null)
             Security.addProvider(new BouncyCastleProvider());
+        LoginUtil.register();
     }
 
     private ComboPooledDataSource dataSource;

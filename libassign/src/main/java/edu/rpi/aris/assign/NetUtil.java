@@ -102,6 +102,10 @@ public class NetUtil {
         return new Timestamp(UTCToMilli(zoneToUTC(zdt)));
     }
 
+    public static ZonedDateTime timestampToZDT(Timestamp timestamp) {
+        return timestamp.toInstant().atZone(ZoneId.systemDefault());
+    }
+
     public static ZonedDateTime zoneToLocal(ZonedDateTime dateTime) {
         return dateTime.withZoneSameInstant(ZoneOffset.systemDefault());
     }

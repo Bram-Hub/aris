@@ -19,4 +19,5 @@ public interface TabGui {
 
     SimpleStringProperty nameProperty();
 
+    boolean requiresOnline();
 }

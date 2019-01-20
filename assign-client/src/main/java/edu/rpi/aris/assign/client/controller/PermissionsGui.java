@@ -38,4 +38,9 @@ public class PermissionsGui implements TabGui {
     public SimpleStringProperty nameProperty() {
         return null;
     }
+
+    @Override
+    public boolean requiresOnline() {
+        return true;
+    }
 }

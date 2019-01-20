@@ -135,14 +135,12 @@ public class AssignGui {
 
         tabPane.getTabs().addListener((ListChangeListener<Tab>) c -> {
             while (c.next()) {
-                if (c.wasRemoved()) {
-                    for (Tab t : c.getRemoved()) {
-                        TabGui gui = tabGuis.get(t);
-                        if (gui != null) {
-                            gui.closed();
-                            if (!gui.isPermanentTab())
-                                tabGuis.remove(t);
-                        }
+                for (Tab t : c.getRemoved()) {
+                    TabGui gui = tabGuis.get(t);
+                    if (gui != null) {
+                        gui.closed();
+                        if (!gui.isPermanentTab())
+                            tabGuis.remove(t);
                     }
                 }
             }
@@ -205,8 +203,10 @@ public class AssignGui {
     private void setTabs(ServerRole defaultRole, ServerRole classRole) {
         ServerPermissions permissions = ServerConfig.getPermissions();
         if (permissions == null || defaultRole == null) {
-            tabPane.getTabs().clear();
-            tabGuis.values().removeIf(gui -> !gui.isPermanentTab());
+            tabPane.getTabs().removeIf(tab -> tabGuis.get(tab).requiresOnline());
+            tabGuis.values().removeIf(gui -> !gui.isPermanentTab() && gui.requiresOnline());
+            if (!tabPane.getTabs().contains(assignmentTab))
+                tabPane.getTabs().add(0, assignmentTab);
             return;
         }
         int tabIndex = conditionalAddTab(defaultRole, Perm.USER_LIST, userTab, 0);

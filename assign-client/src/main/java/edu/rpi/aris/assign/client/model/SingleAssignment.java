@@ -45,6 +45,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class SingleAssignment {
@@ -143,11 +144,58 @@ public class SingleAssignment {
     public synchronized void loadAssignment(boolean reload) {
         if (reload || !loaded) {
             clear();
-            if (isInstructor) {
+            if (isInstructor)
                 Client.getInstance().processMessage(new AssignmentGetInstructorMsg(cid, aid), instructorHandler);
-            } else
+            else if (userInfo.isLoggedIn())
                 Client.getInstance().processMessage(new AssignmentGetStudentMsg(cid, aid), studentHandler);
+            else
+                loadOfflineProblems();
         }
+    }
+
+    private void loadOfflineProblems() {
+        AtomicReference<AssignmentGetStudentMsg> ref = new AtomicReference<>();
+        OfflineDB.submit(con -> {
+            if (con == null)
+                return;
+            AssignmentGetStudentMsg msg = new AssignmentGetStudentMsg(cid, aid);
+            try (PreparedStatement selectAssign = con.prepareStatement("SELECT a.name, a.due_date, a.pid, p.name, p.module_name, p.problem_hash FROM assignments a, problems p WHERE a.aid = ? AND a.cid = ? AND a.pid = p.id;");
+                 PreparedStatement selectSub = con.prepareStatement("SELECT sid, submitted_on FROM submissions WHERE pid = ? AND aid = ? AND cid = ?;")) {
+                selectAssign.setInt(1, aid);
+                selectAssign.setInt(2, cid);
+                try (ResultSet rs = selectAssign.executeQuery()) {
+                    boolean first = true;
+                    while (rs.next()) {
+                        if (first) {
+                            first = false;
+                            msg.setName(rs.getString(1));
+                            msg.setDueDate(NetUtil.timestampToZDT(rs.getTimestamp(2)));
+                        }
+                        MsgUtil.ProblemInfo info = new MsgUtil.ProblemInfo(rs.getInt(3), rs.getString(4), null, null, rs.getString(5), rs.getString(6));
+                        msg.getProblems().add(info);
+                    }
+                    if (!first) {
+                        ref.set(msg);
+                        return;
+                    }
+                }
+                selectSub.setInt(2, aid);
+                selectSub.setInt(3, cid);
+                for (MsgUtil.ProblemInfo info : msg.getProblems()) {
+                    selectSub.setInt(1, info.pid);
+                    try (ResultSet rs = selectSub.executeQuery()) {
+                        while (rs.next()) {
+                            MsgUtil.SubmissionInfo sInfo = new MsgUtil.SubmissionInfo(-1, rs.getInt(1), info.pid, cid, aid, 0, GradingStatus.NONE, "Offline", NetUtil.timestampToZDT(rs.getTimestamp(2)));
+                            msg.getSubmissions().computeIfAbsent(sInfo.pid, id -> new HashSet<>()).add(sInfo);
+                        }
+                    }
+                }
+            } catch (SQLException e) {
+                log.error("Failed to load offline assignment", e);
+            }
+        }, true);
+        if (ref.get() != null)
+            studentHandler.response(ref.get());
     }
 
     private <T extends ArisModule> void cacheProblem(AssignedProblem problem, boolean open, boolean readOnly) {
@@ -242,6 +290,8 @@ public class SingleAssignment {
 
     private void loadAttempts() {
         OfflineDB.submit(connection -> {
+            if (connection == null)
+                return;
             HashMap<Integer, HashSet<Attempt>> attempts = new HashMap<>();
             try (PreparedStatement statement = connection.prepareStatement("SELECT pid, created_time, module_name FROM attempts WHERE aid=? AND cid=?;")) {
                 statement.setInt(1, aid);
@@ -397,6 +447,53 @@ public class SingleAssignment {
         removeAssignment(this);
     }
 
+    public boolean isCached() {
+        if (isInstructor)
+            return false;
+        AtomicBoolean cached = new AtomicBoolean(true);
+        OfflineDB.submit(con -> {
+            if (con == null) {
+                cached.set(false);
+                return;
+            }
+            try (PreparedStatement select = con.prepareStatement("SELECT count(*) FROM assignments WHERE aid = ? AND cid = ?;")) {
+                select.setInt(1, aid);
+                select.setInt(2, cid);
+                try (ResultSet rs = select.executeQuery()) {
+                    if (!rs.next() || rs.getInt(1) == 0)
+                        cached.set(false);
+                }
+            } catch (SQLException e) {
+                log.error("An error occurred reading the offline database", e);
+                cached.set(false);
+            }
+        }, true);
+        if (!cached.get())
+            return false;
+        for (TreeItem<Submission> s : problems) {
+            int pid = s.getValue().getPid();
+            OfflineDB.submit(con -> {
+                if (con == null) {
+                    cached.set(false);
+                    return;
+                }
+                try (PreparedStatement select = con.prepareStatement("SELECT count(*) FROM problems WHERE id = ?;")) {
+                    select.setInt(1, pid);
+                    try (ResultSet rs = select.executeQuery()) {
+                        if (!rs.next() || rs.getInt(1) == 0)
+                            cached.set(false);
+                    }
+                } catch (Exception e) {
+                    log.error("An error occurred reading the offline database", e);
+                    cached.set(false);
+                }
+            }, true);
+            if (!cached.get())
+                return false;
+        }
+        return cached.get();
+    }
+
     public static class SubmissionRefreshHandler implements ResponseHandler<SubmissionRefresh> {
 
         private final HashMap<Integer, TreeItem<Submission>> subs;
@@ -487,6 +584,29 @@ public class SingleAssignment {
             Platform.runLater(() -> {
                 name.set(message.getName());
                 dueDate.set(AssignGui.DATE_FORMAT.format(new Date(NetUtil.UTCToMilli(message.getDueDate()))));
+                if (userInfo.isLoggedIn()) {
+                    OfflineDB.submit(con -> {
+                        try (PreparedStatement insert = con.prepareStatement("INSERT INTO assignments (aid, cid, name, due_date, pid) VALUES (?, ?, ?, ?, ?) ON CONFLICT DO UPDATE SET name = ?, due_date = ? WHERE aid = ? AND cid = ? AND pid = ?;")) {
+                            insert.setInt(1, aid);
+                            insert.setInt(2, cid);
+                            insert.setString(3, message.getName());
+                            Timestamp ts = NetUtil.ZDTToTimestamp(message.getDueDate());
+                            insert.setTimestamp(4, ts);
+                            insert.setString(6, message.getName());
+                            insert.setTimestamp(7, ts);
+                            insert.setInt(8, aid);
+                            insert.setInt(9, cid);
+                            for (MsgUtil.ProblemInfo info : message.getProblems()) {
+                                insert.setInt(5, info.pid);
+                                insert.setInt(10, info.pid);
+                                insert.addBatch();
+                            }
+                            insert.executeBatch();
+                        } catch (SQLException e) {
+                            log.error("An error occurred storing the assignment in the offline database", e);
+                        }
+                    });
+                }
                 ArrayList<MsgUtil.ProblemInfo> problemInfos = new ArrayList<>(message.getProblems());
                 problemInfos.sort(Comparator.comparing(o -> o.name));
                 for (MsgUtil.ProblemInfo problemInfo : problemInfos) {
@@ -524,7 +644,8 @@ public class SingleAssignment {
                     }
                     problems.add(p);
                     updateProblemStatus(assignedProblem, p.getChildren());
-                    cacheProblem(assignedProblem, false, false);
+                    if (userInfo.isLoggedIn())
+                        cacheProblem(assignedProblem, false, false);
                 }
                 problems.sort(Comparator.comparing(TreeItem::getValue));
                 loadAttempts();
@@ -688,7 +809,7 @@ public class SingleAssignment {
                 }
                 if (subs != null)
                     subs.add((int) subs.stream().filter(i -> i.getValue() instanceof Attempt).count(), new TreeItem<>(sub));
-                info.deleteAttempt();
+                info.makeSubmission(message.getSid(), message.getSubmittedOn());
             });
         }
 
@@ -1059,6 +1180,28 @@ public class SingleAssignment {
             });
         }
 
+        public void makeSubmission(int sid, ZonedDateTime submittedOn) {
+            OfflineDB.submit(connection -> {
+                if (connection == null)
+                    return;
+                try (PreparedStatement stmt = connection.prepareStatement("INSERT INTO submission (sid, pid, aid, cid, submitted_on, module_name, data) VALUES (?, ?, ?, ?, ?, a.module_name, a.data) SELECT a.module_name, a.data FROM attempts a WHERE aid = ? AND cid = ? AND pid = ? AND created_time = ?;")) {
+                    stmt.setInt(1, sid);
+                    stmt.setInt(2, getPid());
+                    stmt.setInt(3, aid);
+                    stmt.setInt(4, cid);
+                    stmt.setTimestamp(5, NetUtil.ZDTToTimestamp(submittedOn));
+                    stmt.setInt(6, aid);
+                    stmt.setInt(7, cid);
+                    stmt.setInt(8, getPid());
+                    stmt.setTimestamp(9, NetUtil.ZDTToTimestamp(submittedOn));
+                    stmt.execute();
+                    deleteAttempt();
+                } catch (SQLException e) {
+                    log.error("An error occurred while trying to save submission", e);
+                }
+            });
+        }
+
         private <T extends ArisModule> void editAttempt() {
             ArisModule<T> module = ModuleService.getService().getModule(getModuleName());
             if (module == null) {
@@ -1106,5 +1249,6 @@ public class SingleAssignment {
         void setProblemName(String name) {
             problemName = name;
         }
+
     }
 }
