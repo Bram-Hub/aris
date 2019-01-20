@@ -21,7 +21,7 @@ subprojects {
         manifest {
             attributes("Implementation-Title": "Aris",
                     "Implementation-Version": version,
-                    'Class-Path': configurations.runtime.collect { it.name }.join(' '))
+                    'Class-Path': project.name + ".jar libs/" + configurations.runtime.collect { it.name }.join(' libs/'))
         }
     }
 

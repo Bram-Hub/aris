@@ -10,6 +10,9 @@ OPTIND=1
 
 compile() {
     echo Compiling gradle and native libraries
+    rm -rf build/
+    make clean
+    ./gradlew clean
     make all
     if [ "$?" -ne "0" ]; then
         echo An error occurred during compiling
