@@ -35,8 +35,13 @@ subprojects {
 
     build.doLast {
         copy {
+            into 'jars/libs'
+            from configurations.runtime
+        }
+        copy {
             into 'jars'
-            from configurations.runtime, jar
+            from jar
+            rename (jar.archiveName, project.name + ".jar")
         }
     }
 

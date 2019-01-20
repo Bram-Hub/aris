@@ -9,11 +9,11 @@ run_aris() {
     shopt -s globstar
     RC=52
     while [ $RC -eq 52 ]; do
-        if [ ! pgrep -x "aris-server" &> /dev/null ]; then
+        if [ ! pgrep -x "assign-server" &> /dev/null ]; then
             rm /tmp/aris*
         fi
         TMP=$(dirname $(mktemp -u))
-        java -Djava.io.tmpdir="$TMP" -jar /usr/lib/aris/aris-server.jar
+        java -Djava.io.tmpdir="$TMP" -jar /usr/lib/aris/assign-server.jar
         RC=$?
         if [ $RC -eq 52 ]; then
             echo -n Updating aris ...

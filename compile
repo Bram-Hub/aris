@@ -2,97 +2,48 @@
 
 unset CDPATH
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$( dirname "${BASH_SOURCE[0]}" )" || exit 1
 
-COMPILE=0
-RPM=0
-DEB=0
-WIN=0
-EXTRA=0
-
-MAVEN="http://central.maven.org/maven2/"
-VERSION=$(cat libaris/res/edu/rpi/aris/VERSION)
+VERSION=$(cat libaris/src/main/resources/edu/rpi/aris/VERSION)
 
 OPTIND=1
 
-get_libs() {
-    if [ -z "$1" ]; then
-        return
-    fi
-    command -v wget &> /dev/null
-    if [ "$?" -ne "0" ]; then
-        echo "wget is required to download libraries and does not appear to be present"
-        exit 1
-    fi
-    echo Checking $1 libraries
-    mkdir -p build/lib
-    for lib in $(cat $1/$1.iml| grep type=\"library\" |awk '{split($0,a,"name=\""); split(a[2],b,"\""); print b[1]}'); do
-        IFS=':' read -r -a split <<< "$lib"
-        group="${split[0]}"
-        artifact="${split[1]}"
-        version="${split[2]}"
-        group="${group//.//}"
-        name=$artifact-$version.jar
-        if [ ! -f build/lib/$name ]; then
-            echo -n "Downloading $artifact Version $version ... "
-            wget -q -O "build/lib/$name" "$MAVEN$group/$artifact/$version/$name"
-            echo Done
-        fi
-    done
-}
-
 compile() {
-    command -v javac &> /dev/null
+    echo Compiling gradle and native libraries
+    make all
     if [ "$?" -ne "0" ]; then
-        echo "javac is required to compile the java classes and does not appear to be present"
+        echo An error occurred during compiling
         exit 1
     fi
-    command -v zip &> /dev/null
-    if [ "$?" -ne "0" ]; then
-        echo "zip is required to create the jar file and does not appear to be present"
-        exit 1
-    fi
-    get_libs libaris
-    get_libs client
-    get_libs server
-    mkdir -p build/classes/client
-    mkdir -p build/classes/server
-    shopt -s globstar
-    echo -n Compiling java classes ...
-    javac -d build/classes/client -cp "build/lib/*" libaris/src/**/*.java client/src/**/*.java
-    javac -d build/classes/server -cp "build/lib/*" libaris/src/**/*.java server/src/**/*.java
-    cp -r libaris/res/* build/classes/client
-    cp -r client/res/* build/classes/client
-    cp -r libaris/res/* build/classes/server
-    echo " Done"
-    echo -n Building jar files ...
-    mkdir -p build/classes/client/META-INF
-    mkdir -p build/classes/server/META-INF
-    cp client/src/META-INF/MANIFEST.MF build/classes/client/META-INF
-    cp server/src/META-INF/MANIFEST.MF build/classes/server/META-INF
-    cd build/classes/client
-    zip -r ../../aris-client.jar * &> /dev/null
-    cd ../server
-    zip -r ../../aris-server.jar * &> /dev/null
-    cd ../../..
-    echo " Done"
+    echo Rebuilding jars
+    ./gradlew jar
+    echo Compiliation complete
 }
 
-build_extra() {
+build_update() {
     if [ "$?" -ne "0" ]; then
         echo "zip is required to build packages and does not appear to be present"
         exit 1
     fi
     rm build/server-update.zip &> /dev/null
-    echo -n Building extras zip files ...
-    cd packaging/extra/server
-    zip -r ../../../build/server-update.zip * > /dev/null
-    cd ../../..
+    echo -n Building update zip files ...
+    mkdir -p build/server-update
+    cp -r packaging/extra/server/* build/server-update
+    cp -r assign-server/jars/* build/server-update
+    cd build/server-update || exit 1
+    zip -r ../server-update.zip * > /dev/null
+    cd ../.. || exit 1
+    mkdir -p build/client-update
+    # cp -r packaging/extra/client/* build/client-update
+    cp -r assign-client/jars/* build/client-update
+    cd build/client-update || exit 1
+    zip -r ../client-update.zip * > /dev/null
+    cd ../.. || exit 1
     echo " Done"
 }
 
 build_rpm() {
-    echo Hi
+    echo TODO: build_rpm
 }
 
 build_deb() {
@@ -110,41 +61,42 @@ build_deb() {
     rm -rf build/deb
     mkdir -p build/deb
     cp -r packaging/deb/* build/deb
-    cd build/deb
+    cd build/deb || exit 1
     sed -i -e "s/__version__/$VERSION/g" server/DEBIAN/control
     mkdir -p server/usr/lib/aris
-    cp -r ../aris-server.jar ../lib server/usr/lib/aris
+    cp -r ../../assign-server/jars/* server/usr/lib/aris
     cp -r ../../packaging/extra/server/* server/usr/lib/aris
     dpkg --build server > /dev/null
-    mv server.deb ../aris-server-$VERSION.deb
-    cd ../..
+    mv server.deb ../aris-assign-server-$VERSION.deb
+    cd ../.. || exit 1
     echo " Done"
 }
 
 build_win() {
-    mkdir -p build/win
-    if [ ! -e build/win/launch4j/launch4j ]; then
-        echo -n Downloading launch4j ...
-        wget -O build/win/launch4j.tgz https://cytranet.dl.sourceforge.net/project/launch4j/launch4j-3/3.11/launch4j-3.11-linux-x64.tgz &> /dev/null
-        tar -xzf build/win/launch4j.tgz -C build/win > /dev/null
-        echo " Done"
-    fi
-    echo -n Building windows package ...
-    cp packaging/win/launch4j.xml build/win
-    cp logo.ico build/win
-    cd build/win
-    launch4j/launch4j launch4j.xml > /dev/null
-    cp aris.exe ..
-    cd ..
-    zip -r aris-win.zip aris.exe aris-client.jar lib > /dev/null
-    echo " Done"
-    echo -n Preparing installer files for NSIS ...
-    mkdir -p win-installer
-    cp -r aris.exe aris-client.jar lib ../logo.ico ../packaging/win/installscript.nsi win-installer
-    cp ../LICENSE win-installer/LICENSE.txt
-    cd ..
-    echo " Done"
-    echo To create the installer please use NSIS to run the script located in build/win-installer
+    echo TODO build_win
+    # mkdir -p build/win
+    # if [ ! -e build/win/launch4j/launch4j ]; then
+    #     echo -n Downloading launch4j ...
+    #     wget -O build/win/launch4j.tgz https://cytranet.dl.sourceforge.net/project/launch4j/launch4j-3/3.11/launch4j-3.11-linux-x64.tgz &> /dev/null
+    #     tar -xzf build/win/launch4j.tgz -C build/win > /dev/null
+    #     echo " Done"
+    # fi
+    # echo -n Building windows package ...
+    # cp packaging/win/launch4j.xml build/win
+    # cp logo.ico build/win
+    # cd build/win
+    # launch4j/launch4j launch4j.xml > /dev/null
+    # cp aris.exe ..
+    # cd ..
+    # zip -r aris-win.zip aris.exe aris-client.jar lib > /dev/null
+    # echo " Done"
+    # echo -n Preparing installer files for NSIS ...
+    # mkdir -p win-installer
+    # cp -r aris.exe aris-client.jar lib ../logo.ico ../packaging/win/installscript.nsi win-installer
+    # cp ../LICENSE win-installer/LICENSE.txt
+    # cd ..
+    # echo " Done"
+    # echo To create the installer please use NSIS to run the script located in build/win-installer
 }
 
 usage() {
@@ -166,22 +118,22 @@ while getopts "crdwah" opt; do
         ;;
     r)
         compile
-        build_extra
+        build_update
         build_rpm
         ;;
     d)
         compile
-        build_extra
+        build_update
         build_deb
         ;;
     w)
         compile
-        build_extra
+        build_update
         build_win
         ;;
     a)
         compile
-        build_extra
+        build_update
         build_rpm
         build_deb
         build_win

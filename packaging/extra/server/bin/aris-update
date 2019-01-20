@@ -7,11 +7,11 @@ fi
 
 update_aris() {
     shopt -s globstar
-    if [ ! pgrep -x "aris-server" &> /dev/null ]; then
+    if [ ! pgrep -x "assign-server" &> /dev/null ]; then
         rm /tmp/aris*
     fi
     TMP=$(dirname $(mktemp -u))
-    java -Djava.io.tmpdir="$TMP" -jar /usr/lib/aris/aris-server.jar -u
+    java -Djava.io.tmpdir="$TMP" -jar /usr/lib/aris/assign-server.jar -u
     RC=$?
     if [ $RC -eq 52 ]; then
         echo -n Updating aris ...

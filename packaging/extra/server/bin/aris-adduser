@@ -26,11 +26,11 @@ add_user() {
         exit 1
     fi
     unset REPASS
-    if [ ! pgrep -x "aris-server" &> /dev/null ]; then
+    if [ ! pgrep -x "assign-server" &> /dev/null ]; then
         rm /tmp/aris*
     fi
     TMP=$(dirname $(mktemp -u))
-    java -Djava.io.tmpdir="$TMP" -jar /usr/lib/aris/aris-server.jar --add-user "$USER" --password "$PASS"
+    java -Djava.io.tmpdir="$TMP" -jar /usr/lib/aris/assign-server.jar --add-user "$USER" --password "$PASS"
 }
 
 if [ "$USER" = "aris" ]; then

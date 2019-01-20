@@ -12,11 +12,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.*;
 import java.net.URL;
 import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -24,12 +20,12 @@ public class Update {
 
     private static final String RELEASE_CHECK_URL = "https://api.github.com/repos/cicchr/ARIS-Java/releases/latest";
     private static final String REPO_BASE_URL = "https://raw.githubusercontent.com/cicchr/ARIS-Java/";
-    private static final String MAVEN_BASE_URL = "http://central.maven.org/maven2/";
-    private static final String LIB_ARIS_LIBS_LOC = "/libaris/libaris.iml";
-    private static final String CLIENT_LIBS_LOC = "/client/client.iml";
-    private static final String SERVER_LIBS_LOC = "/server/server.iml";
-    private static final String LIBRARY_LINE_ID = "type=\"library\"";
-    private static final Pattern LIB_PATTERN = Pattern.compile("(?<=name=\").*?(?=\")");
+    //    private static final String MAVEN_BASE_URL = "http://central.maven.org/maven2/";
+//    private static final String LIB_ARIS_LIBS_LOC = "/libaris/libaris.iml";
+//    private static final String CLIENT_LIBS_LOC = "/client/client.iml";
+//    private static final String SERVER_LIBS_LOC = "/server/server.iml";
+//    private static final String LIBRARY_LINE_ID = "type=\"library\"";
+//    private static final Pattern LIB_PATTERN = Pattern.compile("(?<=name=\").*?(?=\")");
     private static final int UPDATE_EXIT_CODE = 52;
     private static final Logger logger = LogManager.getLogger(Update.class);
     private File downloadDir;
@@ -90,37 +86,37 @@ public class Update {
         return null;
     }
 
-    private void getLibs(String urlStr, HashMap<String, String> set) throws IOException {
-        URL url = new URL(urlStr);
-        try (InputStream is = url.openStream();
-             InputStreamReader isr = new InputStreamReader(is);
-             BufferedReader reader = new BufferedReader(isr)) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (!line.contains(LIBRARY_LINE_ID))
-                    continue;
-                Matcher m = LIB_PATTERN.matcher(line);
-                if (!m.find())
-                    continue;
-                line = m.group();
-                String[] split = line.split(":");
-                if (split.length != 3)
-                    throw new IOException("Invalid library list in remote repository");
-                String groupId = split[0].replaceAll("\\.", "/");
-                String artifactId = split[1];
-                String version = split[2];
-                String name = artifactId + "-" + version + ".jar";
-                set.put(name, MAVEN_BASE_URL + groupId + "/" + artifactId + "/" + version + "/" + name);
-            }
-        }
-    }
+//    private void getLibs(String urlStr, HashMap<String, String> set) throws IOException {
+//        URL url = new URL(urlStr);
+//        try (InputStream is = url.openStream();
+//             InputStreamReader isr = new InputStreamReader(is);
+//             BufferedReader reader = new BufferedReader(isr)) {
+//            String line;
+//            while ((line = reader.readLine()) != null) {
+//                if (!line.contains(LIBRARY_LINE_ID))
+//                    continue;
+//                Matcher m = LIB_PATTERN.matcher(line);
+//                if (!m.find())
+//                    continue;
+//                line = m.group();
+//                String[] split = line.split(":");
+//                if (split.length != 3)
+//                    throw new IOException("Invalid library list in remote repository");
+//                String groupId = split[0].replaceAll("\\.", "/");
+//                String artifactId = split[1];
+//                String version = split[2];
+//                String name = artifactId + "-" + version + ".jar";
+//                set.put(name, MAVEN_BASE_URL + groupId + "/" + artifactId + "/" + version + "/" + name);
+//            }
+//        }
+//    }
 
-    private HashMap<String, String> getLibs() throws IOException {
-        HashMap<String, String> libs = new HashMap<>();
-        getLibs(REPO_BASE_URL + updateVersion + LIB_ARIS_LIBS_LOC, libs);
-        getLibs(REPO_BASE_URL + updateVersion + (updateStream == Stream.CLIENT ? CLIENT_LIBS_LOC : SERVER_LIBS_LOC), libs);
-        return libs;
-    }
+//    private HashMap<String, String> getLibs() throws IOException {
+//        HashMap<String, String> libs = new HashMap<>();
+//        getLibs(REPO_BASE_URL + updateVersion + LIB_ARIS_LIBS_LOC, libs);
+//        getLibs(REPO_BASE_URL + updateVersion + (updateStream == Stream.CLIENT ? CLIENT_LIBS_LOC : SERVER_LIBS_LOC), libs);
+//        return libs;
+//    }
 
     private boolean guessDevEnvironment() {
         return !Update.class.getResource(Update.class.getSimpleName() + ".class").toString().toLowerCase().startsWith("jar:");
@@ -145,46 +141,48 @@ public class Update {
             progress.setTotalDownloads(-1);
             progress.setDescription("Starting update");
         }
-        String jarUrl = getAssetUrl(updateStream.assetName);
-        String extraUrl = getAssetUrl(updateStream.extraName);
-        if (jarUrl == null)
+        String assetUrl = getAssetUrl(updateStream.assetName);
+//        String extraUrl = getAssetUrl(updateStream.extraName);
+        if (assetUrl == null)
             return false;
         try {
-            HashMap<String, String> libs = getLibs();
+//            HashMap<String, String> libs = getLibs();
             if (!downloadDir.exists() && !downloadDir.mkdirs()) {
                 logger.error("Failed to create temporary download directory");
                 return false;
             }
             int current = 0;
             if (progress != null) {
-                progress.setTotalDownloads(libs.size() + (extraUrl == null ? 1 : 2));
+                progress.setTotalDownloads(1);
                 progress.setCurrentDownload(current);
                 progress.setDescription("Downloading " + updateStream.assetName);
             }
-            downloadFile(jarUrl, new File(downloadDir, updateStream.assetName));
+            File assetFile = new File(downloadDir, updateStream.assetName);
+            downloadFile(assetUrl, assetFile);
+            unzipFile(assetFile);
             current++;
-            if (extraUrl != null) {
-                if (progress != null) {
-                    progress.setCurrentDownload(current);
-                    progress.setDescription("Downloading " + updateStream.extraName);
-                }
-                File extraZip = new File(downloadDir, updateStream.extraName);
-                downloadFile(extraUrl, extraZip);
-                current++;
-                if (!extraZip.exists())
-                    throw new IOException("Failed to download extras zip");
-                unzipFile(extraZip);
-            }
-            File libDir = new File(downloadDir, "lib");
-            for (Map.Entry<String, String> lib : libs.entrySet()) {
-                if (progress != null) {
-                    progress.setCurrentDownload(current);
-                    progress.setDescription("Downloading " + lib.getKey());
-                }
-                downloadFile(lib.getValue(), new File(libDir, lib.getKey()));
-                current++;
-            }
-            if(progress != null) {
+//            if (extraUrl != null) {
+//                if (progress != null) {
+//                    progress.setCurrentDownload(current);
+//                    progress.setDescription("Downloading " + updateStream.extraName);
+//                }
+//                File extraZip = new File(downloadDir, updateStream.extraName);
+//                downloadFile(extraUrl, extraZip);
+//                current++;
+//                if (!extraZip.exists())
+//                    throw new IOException("Failed to download extras zip");
+//                unzipFile(extraZip);
+//            }
+//            File libDir = new File(downloadDir, "lib");
+//            for (Map.Entry<String, String> lib : libs.entrySet()) {
+//                if (progress != null) {
+//                    progress.setCurrentDownload(current);
+//                    progress.setDescription("Downloading " + lib.getKey());
+//                }
+//                downloadFile(lib.getValue(), new File(libDir, lib.getKey()));
+//                current++;
+//            }
+            if (progress != null) {
                 progress.setCurrentDownload(current);
                 progress.setDescription("Download complete!");
             }
@@ -222,15 +220,13 @@ public class Update {
     }
 
     public enum Stream {
-        CLIENT("aris-client.jar", "client-update.zip"),
-        SERVER("aris-server.jar", "server-update.zip");
+        CLIENT("client-update.zip"),
+        SERVER("server-update.zip");
 
         public final String assetName;
-        public final String extraName;
 
-        Stream(String assetName, String extraName) {
+        Stream(String assetName) {
             this.assetName = assetName;
-            this.extraName = extraName;
         }
 
     }
