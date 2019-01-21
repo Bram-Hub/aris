@@ -39,7 +39,7 @@ public class ClassCreateMsg extends Message {
     public ErrorType processMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws SQLException {
         try (PreparedStatement insertClass = connection.prepareStatement("INSERT INTO class (name) VALUES(?);");
              PreparedStatement selectClassId = connection.prepareStatement("SELECT id FROM class ORDER BY id DESC LIMIT 1;");
-             PreparedStatement insertUserClass = connection.prepareStatement("INSERT INTO user_class VALUES(?, ?);")) {
+             PreparedStatement insertUserClass = connection.prepareStatement("INSERT INTO user_class VALUES(?, ?, ?);")) {
             insertClass.setString(1, name);
             insertClass.executeUpdate();
             try (ResultSet rs = selectClassId.executeQuery()) {
@@ -49,6 +49,7 @@ public class ClassCreateMsg extends Message {
             }
             insertUserClass.setInt(1, user.uid);
             insertUserClass.setInt(2, cid);
+            insertUserClass.setInt(3, user.defaultRole.getId());
             insertUserClass.executeUpdate();
         }
         return null;
