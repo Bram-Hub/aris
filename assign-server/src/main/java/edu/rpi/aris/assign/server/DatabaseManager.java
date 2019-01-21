@@ -113,8 +113,8 @@ public class DatabaseManager {
                     "username text NOT NULL UNIQUE," +
                     "full_name text NOT NULL," +
                     "salt text NOT NULL," +
-                    "password_hash text NOT NULL," +
-                    "access_token text NOT NULL," +
+                    "password_hash text," +
+                    "access_token text," +
                     "force_reset boolean NOT NULL," +
                     "default_role integer NOT NULL," +
                     "auth_type text NOT NULL," +
