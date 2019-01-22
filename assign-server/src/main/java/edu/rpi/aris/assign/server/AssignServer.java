@@ -50,6 +50,9 @@ public class AssignServer implements Runnable {
     private static final Logger logger = LogManager.getLogger(AssignServer.class);
     private static final File KEYSTORE_FILE;
     private static final File SELF_SIGNED_CERT;
+    //    private final File caCertificate;
+//    private final File privateKey;
+    private static final Update update = new Update(Update.Stream.SERVER, new File(System.getProperty("java.io.tmpdir"), "aris-update"));
 
     static {
         ServerConfig cfg = null;
@@ -72,9 +75,6 @@ public class AssignServer implements Runnable {
     }
 
     private final int port;
-    //    private final File caCertificate;
-//    private final File privateKey;
-    private final Update update = new Update(Update.Stream.SERVER, new File(System.getProperty("java.io.tmpdir"), "aris-update"));
     private boolean selfSign, stopServer, shutdown;
     private DatabaseManager dbManager;
     private Timer certExpireTimer = null;
@@ -420,10 +420,8 @@ public class AssignServer implements Runnable {
         return result != null && result.getRight() > 0;
     }
 
-    public synchronized boolean checkUpdate() {
+    public static synchronized boolean checkUpdate() {
         if (update.checkUpdate() && update.update()) {
-            Runtime.getRuntime().removeShutdownHook(shutdownHook);
-            shutdown();
             update.exit();
             return true;
         }

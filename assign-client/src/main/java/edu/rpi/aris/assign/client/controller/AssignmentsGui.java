@@ -146,6 +146,7 @@ public class AssignmentsGui implements TabGui {
             return permissions != null && permissions.hasPermission(userInfo.getClassRole(), Perm.ASSIGNMENT_CREATE);
         }, userInfo.classRoleProperty()));
         btnCreate.managedProperty().bind(btnCreate.visibleProperty());
+        btnCreate.disableProperty().bind(userInfo.selectedClassProperty().isNull());
 
         name.setCellValueFactory(param -> param.getValue().nameProperty());
 

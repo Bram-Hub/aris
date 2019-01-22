@@ -234,6 +234,7 @@ public class LibAssign implements Thread.UncaughtExceptionHandler {
     }
 
     private void parseCommandLineArgs(String[] args, boolean isServer) throws ParseException {
+        logger.info("Parsing command line options");
         Options options = new Options();
         options.addOption("h", "help", false, "Displays this help screen");
 
@@ -298,24 +299,21 @@ public class LibAssign implements Thread.UncaughtExceptionHandler {
         try {
             parseCommandLineArgs(args, isServer);
         } catch (Throwable e) {
-            System.err.println(e.getMessage());
+            logger.error("Failed to parse command line arguments", e);
             System.exit(1);
         }
-        update = cmd.hasOption("update");
-        if (!update) {
-            if (!tryLock()) {
-                logger.warn(NAME + " already running");
-                try {
-                    callbacks.processAlreadyRunning(cmd);
-                } catch (IOException e) {
-                    logger.catching(e);
-                }
-                System.exit(0);
+        if (!tryLock()) {
+            logger.warn(NAME + " already running");
+            try {
+                callbacks.processAlreadyRunning(cmd);
+            } catch (IOException e) {
+                logger.catching(e);
             }
-            Runtime.getRuntime().addShutdownHook(new Thread(this::unlockFile));
-            startIpcWatch();
-            callbacks.finishInit(cmd);
+            System.exit(0);
         }
+        Runtime.getRuntime().addShutdownHook(new Thread(this::unlockFile));
+        startIpcWatch();
+        callbacks.finishInit(cmd);
     }
 
     public void showExceptionError(Thread t, Throwable e, boolean fatal) {

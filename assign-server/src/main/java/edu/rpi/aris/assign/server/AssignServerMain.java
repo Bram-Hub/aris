@@ -59,11 +59,11 @@ public class AssignServerMain implements MainCallbackListener {
             throw new IOException("Private key specified without CA certificate");
         File caFile = ca == null ? null : new File(ca);
         File keyFile = key == null ? null : new File(key);
-        server = new AssignServer(port > 0 ? port : LibAssign.DEFAULT_PORT, caFile, keyFile);
         if (cmd.hasOption('u')) {
-            if (!server.checkUpdate())
-                System.exit(1);
+            if (!AssignServer.checkUpdate())
+                System.exit(0);
         } else {
+            server = new AssignServer(port > 0 ? port : LibAssign.DEFAULT_PORT, caFile, keyFile);
             new Thread(server, "ServerSocket-Listen").start();
             ServerCLI.startCliThread();
         }
@@ -71,7 +71,10 @@ public class AssignServerMain implements MainCallbackListener {
 
     @Override
     public void processIpcMessage(String msg) {
-        //TODO
+        if ("update".equals(msg)) {
+            logger.info("Received update IPC message");
+            AssignServer.checkUpdate();
+        }
     }
 
 }
