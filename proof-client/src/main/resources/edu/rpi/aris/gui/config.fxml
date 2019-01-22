@@ -47,7 +47,7 @@
                                 </ScrollPane>
                             </content>
                         </Tab>
-                        <Tab text="Miscillaneous">
+                        <Tab text="Miscellaneous">
                             <content>
                                 <VBox prefHeight="200.0" prefWidth="100.0" spacing="5.0">
                                     <padding>
