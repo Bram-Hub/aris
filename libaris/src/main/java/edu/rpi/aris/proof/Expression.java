@@ -162,6 +162,10 @@ public class Expression {
         return functionOperator;
     }
 
+    public String[] getParentVariables() {return parentVariables;}
+
+    public Expression getParent(){return parent;}
+
     public String getQuantifierVariable() {
         return quantifierVar;
     }
@@ -399,6 +403,67 @@ public class Expression {
                 sb.append(" ").append(operator.rep).append(" ");
         }
         return sb.append(")").toString();
+    }
+
+    public void setOperator(Operator op){operator = op;}
+
+    public void setParent(Expression p){parent = p;}
+    public boolean setPolish(){
+        if(expressions.length > 0) {
+            if(polishRep.equals(SentenceUtil.toPolish(expressions, operator.rep))) return true;
+//            System.out.println("Polished Rep: " + toString());
+//            System.out.print("Should Be: ");
+//            System.out.print(operator + " ");
+//            for(int i = 0; i < expressions.length; i++){
+//                System.out.print(expressions[i] + " ");
+//            }
+//            System.out.print("\n");
+            polishRep = SentenceUtil.toPolish(expressions, operator.rep);
+//            System.out.println("Fixed Polish Rep? " + polishRep);
+//            System.out.print("\n\n\n");
+            return true;
+        }
+        return false;
+    }
+
+    public void setPolish(Expression expr){
+        polishRep = expr.toString();
+    }
+
+    public void set(Expression e){
+//        System.out.println("Parent: " + parent);
+//        System.out.println("In set, e.get: ");
+//        System.out.print(e.getOperator());
+//        for(int i = 0; i < e.getNumExpressions(); i++){
+//            System.out.print(e.getExpressions()[i]);
+//        }
+//        System.out.println("\nIn set, before expression: ");
+//        System.out.print(operator + " ");
+//        for(int i = 0; i < expressions.length; i++){
+//            System.out.print(expressions[i] + " ");
+//        }
+
+        expressions = e.getExpressions();
+        for(int i = 0; i < expressions.length; i++){
+            expressions[i].setParent(e);
+        }
+        operator = e.getOperator();
+
+        if(expressions.length > 0)
+            polishRep = SentenceUtil.toPolish(expressions, operator.rep);
+        else{
+            setPolish(e);
+        }
+//        expressions = new Expression[e.getNumExpressions()];
+//        for(int i = 0; i < expressions.length; i++){
+//            expressions[i] = e.getExpressions()[i];
+//        }
+//        System.out.println("\nIn set, end expression: ");
+//        System.out.print(operator + " ");
+//        for(int i = 0; i < expressions.length; i++){
+//            System.out.print(expressions[i] + " ");
+//        }
+//        System.out.print("\n");
     }
 
     @Override

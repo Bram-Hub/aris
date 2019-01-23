@@ -69,8 +69,8 @@ public abstract class Rule {
 
         INTRO("Introduction"),
         ELIM("Elimination"),
-        INFERENCE("Inference"),
         EQUIVALENCE("Equivalence"),
+        INFERENCE("Inference"),
         PREDICATE("Predicate");
 
         public final String name;

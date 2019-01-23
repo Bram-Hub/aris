@@ -1,6 +1,7 @@
 package edu.rpi.aris.rules;
 
 import edu.rpi.aris.proof.Expression;
+import edu.rpi.aris.proof.ExpressionParseException;
 import edu.rpi.aris.proof.Operator;
 import edu.rpi.aris.proof.Premise;
 
@@ -25,7 +26,7 @@ public class DoubleNegation extends Rule{
 
     @Override
     public Type[] getRuleType() {
-        return new Type[] {Type.INFERENCE};
+        return new Type[] {Type.EQUIVALENCE};
     }
 
     @Override
@@ -56,38 +57,57 @@ public class DoubleNegation extends Rule{
 
     @Override
     protected String verifyClaim(Expression conclusion, Premise[] premises) {
-        Expression premise = premises[0].getPremise();
+        Expression temp = premises[0].getPremise();
+
+        Expression premise;
+        Expression conc;
+        try {
+            premise=new Expression(temp.getExpressions(), temp.getOperator(), temp.getParent(), temp.getParentVariables());
+            conc = new Expression(conclusion.getExpressions(), conclusion.getOperator(),conclusion.getParent(),conclusion.getParentVariables());
+        }catch (Exception e){
+            return "Failed";
+        }
+
         if(premise.getNumExpressions() == 0) return "No Double Negation to be performed";
-        Expression premise_removed_dns;
-        try{
-            System.out.println(premise.withoutDNs().toLogicString());
-            premise_removed_dns = premise.withoutDNs();
-        }catch(Exception e){
-            return "Error reading premise";
-        }
 
-        try{
-            if(conclusion.equalswithoutDNs(premise_removed_dns)) return "Conclusion does not equal premise without double negations";
-        }catch(Exception e){
-            return "Problem Found";
-        }
+        remove_DN(premise);
+        remove_DN(conc);
 
-        for (Expression e : conclusion.getExpressions()) {
-            boolean found = false;
-            for (int i = 0; i < premises.length; ++i) {
-                System.out.println("Fiding " + e.toLogicString() + "in premise: " + premise_removed_dns.toLogicString());
-                if (premise_removed_dns.hasSubExpression(e)){
-                    found = true;
-                }
-            }
-            if (!found) {
-                return "The conjunct \"" + e.toLogicString() + "\" in the conclusion is not a premise";
-            }
-        }
-
-
+        if(!premise.equals(conc)) return "Improper Removal of Double Negations";
         return null;
     }
+
+    private void remove_DN(Expression expr){
+        if(expr.getNumExpressions() == 0) return;
+        if(expr.getOperator().equals(Operator.NOT) && expr.getExpressions()[0].getNumExpressions() > 0 && expr.getExpressions()[0].getOperator().equals(Operator.NOT)){
+            Expression new_expr = null;
+            try{
+                Expression[] feed = new Expression[1];
+                if(expr.getExpressions()[0].getExpressions()[0].getNumExpressions() == 0)
+                    feed[0] = expr.getExpressions()[0].getExpressions()[0];
+                else feed = expr.getExpressions()[0].getExpressions()[0].getExpressions();
+                new_expr = new Expression(feed, expr.getExpressions()[0].getExpressions()[0].getOperator(), expr.getExpressions()[0].getExpressions()[0].getParent(), expr.getExpressions()[0].getExpressions()[0].getParentVariables());
+            }catch(Exception e){
+                System.out.println(e);
+            }
+            expr.set(new_expr);
+            fix_ret(expr);
+        }
+        for(int i = 0; i < expr.getNumExpressions(); i++){
+            remove_DN(expr.getExpressions()[i]);
+        }
+        fix_ret(expr);
+    }
+
+    private void fix_ret(Expression express){
+        for(int i = 0; i < express.getNumExpressions(); i++){
+            fix_ret(express.getExpressions()[i]);
+        }
+        express.setPolish();
+    }
+
+
+
 
 
 

@@ -11,10 +11,12 @@ public enum RuleList {
     HYPOTHETICAL_SYLLOGISM(new HypotheticalSyllogism()),
     EXCLUDED_MIDDLE(new ExcludedMiddle()),
     CONSTRUCTIVE_DILEMMA(new ConstructiveDilemma()),
-    ASSOCIATION(new Association()),
+    Association(new Association()),
     COMMUTATION(new Commutation()),
-    DOUBLE_NEGATION(new DoubleNegation()),
-    IDEMPOTENCE(new Idempotence());
+    DOUBLENEGATION(new DoubleNegation()),
+    Idempotence (new Idempotence()),
+    DeMorgan(new DeMorgan()),
+    Distribution(new Distribution());
 
     public final String name, simpleName;
     public final Rule rule;

@@ -25,7 +25,7 @@ public class Commutation extends Rule{
 
     @Override
     public Rule.Type[] getRuleType() {
-        return new Rule.Type[] {Rule.Type.INFERENCE};
+        return new Rule.Type[] {Type.EQUIVALENCE};
     }
 
     @Override
