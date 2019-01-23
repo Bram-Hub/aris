@@ -71,12 +71,3 @@ impl<T: std::fmt::Debug, R: std::fmt::Debug> DisplayIndented for Justification<T
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LineAndIndent { pub line: usize, pub indent: usize }
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum ProofCheckError<R> {
-    LineDoesNotExist(R),
-    ReferencesLaterLine(LineAndIndent, usize),
-    IncorrectDepCount(Vec<R>, usize, usize),
-    DepOfWrongForm(String),
-    DoesNotOccur(Expr, Expr),
-}

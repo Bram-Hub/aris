@@ -16,6 +16,17 @@ fn test_andelim() {
 }
 
 #[test]
+fn test_contelim() {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let prf = demo_proof_3();
+    println!("{}", prf);
+    let prf = decorate_line_and_indent(prf).bimap(&mut |(li, ())| li, &mut |_| ());
+    use ProofCheckError::*;
+    assert_eq!(check_rule_at_line(&prf, 3), Ok(()));
+    assert!(if let Err(DepOfWrongForm(_)) = check_rule_at_line(&prf, 4) { true } else { false });
+}
+
+#[test]
 fn demo_prettyprinting() {
     let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
     let proof1 = TreeProof {
