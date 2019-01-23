@@ -87,6 +87,7 @@ public class DoubleNegation extends Rule{
                     feed[0] = expr.getExpressions()[0].getExpressions()[0];
                 else feed = expr.getExpressions()[0].getExpressions()[0].getExpressions();
                 new_expr = new Expression(feed, expr.getExpressions()[0].getExpressions()[0].getOperator(), expr.getExpressions()[0].getExpressions()[0].getParent(), expr.getExpressions()[0].getExpressions()[0].getParentVariables());
+//                new_expr.copy(expr.getExpressions()[0].getExpressions()[0]);
             }catch(Exception e){
                 System.out.println(e);
             }

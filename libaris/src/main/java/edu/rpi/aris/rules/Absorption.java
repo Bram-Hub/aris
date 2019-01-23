@@ -54,22 +54,22 @@ public class Absorption extends Rule{
 
     @Override
     protected String verifyClaim(Expression conclusion, Premise[] premises) {
-        Expression premise = premises[0].getPremise();
-        Expression conc;
-        try{
-            premise = premise.copy();
-            conc = conclusion.copy();
-        }catch(Exception e){
-            System.out.println(e);
-            return "Failed";
-        }
-
-        collapse(premise);
-
-        System.out.println("Collapsed Premise: " + premise);
-        System.out.println("Conclusion: " + conc);
-
-        if(!conc.equals(premise)) return "Invalid application of Absorption";
+//        Expression premise = premises[0].getPremise();
+//        Expression conc;
+//        try{
+////            premise = premise.copy();
+////            conc = conclusion.copy();
+//        }catch(Exception e){
+//            System.out.println(e);
+//            return "Failed";
+//        }
+//
+//        collapse(premise);
+//
+//        System.out.println("Collapsed Premise: " + premise);
+//        System.out.println("Conclusion: " + conc);
+//
+//        if(!conc.equals(premise)) return "Invalid application of Absorption";
         return null;
     }
 

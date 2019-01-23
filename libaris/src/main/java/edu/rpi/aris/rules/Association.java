@@ -67,25 +67,6 @@ public class Association extends Rule{
         remove_assoc(conclusion);
         System.out.println("Premise: " + premise);
         System.out.println("Conclusion: " + conclusion);
-//
-//        Expression prem_literals[] = get_lits(premise);
-//        Expression con_literals[] = get_lits(conclusion);
-//        Operator prem_ops[] = get_ops(premise);
-//        Operator con_ops[] = get_ops(conclusion);
-//        System.out.println(prem_literals.length);
-//        System.out.println(con_literals.length);
-//        if(prem_literals.length != con_literals.length) return "Not Valid";
-//        if(prem_ops.length != con_ops.length) return "Invalid Operators";
-//        for(int i = 0; i < prem_literals.length; i++){
-//            if(!prem_literals[i].equals(con_literals[i])) return "Could'nt find " + prem_literals[i] + " in conclusion";
-//        }
-////        System.out.println(prem_ops.length);
-////        System.out.println(con_ops.length);
-//        for(int i = 0; i < prem_ops.length; i++){
-//            if(!prem_ops[i].equals(con_ops[i])) return "Couldn't find " + con_ops[i] + " in conclusion";
-//            System.out.println("Prem Operator at " + i + " : " + prem_ops[i]);
-//            System.out.println("Con Operator at " + i + " : " + con_ops[i]);
-//        }
 
         return null;
     }
