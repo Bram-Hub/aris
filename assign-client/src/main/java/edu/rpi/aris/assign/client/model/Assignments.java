@@ -19,12 +19,18 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.layout.HBox;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
+
+    private static final Logger log = LogManager.getLogger();
 
     private final AssignmentCreateResponseHandler createHandler = new AssignmentCreateResponseHandler();
     private final AssignmentEditResponseHandler editHandler = new AssignmentEditResponseHandler();
@@ -41,9 +47,11 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
     }
 
     public synchronized void loadAssignments(boolean reload) {
+        if (!userInfo.isLoggedIn()) {
+            loadOffline();
+            return;
+        }
         if (userInfo.getSelectedClass() == null) {
-            if (!userInfo.isLoggedIn())
-                loadOffline();
             return;
         }
         if (reload || loaded != userInfo.getSelectedClass().getClassId()) {
@@ -52,7 +60,37 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
     }
 
     private void loadOffline() {
-        //TODO
+        clear();
+        OfflineDB.submit(con -> {
+            try (PreparedStatement selectAssign = con.prepareStatement("SELECT cid, aid, name, due_date FROM assignments GROUP BY cid, aid;");
+                 PreparedStatement selectProbs = con.prepareStatement("SELECT pid FROM assignments WHERE cid = ? AND aid = ?;");
+                 PreparedStatement selectClass = con.prepareStatement("SELECT name FROM classes WHERE cid = ?;");
+                 ResultSet rs = selectAssign.executeQuery()) {
+                while (rs.next()) {
+                    int cid = rs.getInt(1);
+                    int aid = rs.getInt(2);
+                    HashSet<Integer> problems = new HashSet<>();
+                    selectProbs.setInt(1, cid);
+                    selectProbs.setInt(2, aid);
+                    try (ResultSet rs2 = selectProbs.executeQuery()) {
+                        while (rs2.next())
+                            problems.add(rs2.getInt(1));
+                    }
+                    ZonedDateTime zdt = NetUtil.timestampToZDT(rs.getTimestamp(4));
+                    selectClass.setInt(1, cid);
+                    String className = "Unknown";
+                    try (ResultSet crs = selectClass.executeQuery()) {
+                        if (crs.next())
+                            className = crs.getString(1);
+                    }
+                    assignments.add(new Assignment(cid, aid, rs.getString(3), "Unknown", new Date(NetUtil.UTCToMilli(zdt)), className, problems));
+                }
+                Collections.sort(assignments);
+                loaded = -1;
+            } catch (Exception e) {
+                log.error("An error occurred loading the assignments from the offline database", e);
+            }
+        });
     }
 
     public ObservableList<Assignment> getAssignments() {
@@ -124,6 +162,7 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
 
         private final int aid;
         private final int cid;
+        private final SimpleStringProperty className = new SimpleStringProperty();
         private final SimpleStringProperty name = new SimpleStringProperty();
         private final SimpleStringProperty status = new SimpleStringProperty();
         private final SimpleObjectProperty<Date> dueDate = new SimpleObjectProperty<>();
@@ -131,12 +170,13 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
         private final SimpleObjectProperty<Node> modifyColumn = new SimpleObjectProperty<>();
         private final HashSet<Integer> problems = new HashSet<>();
 
-        public Assignment(int cid, int aid, String name, String status, Date dueDate, Collection<Integer> problems) {
+        public Assignment(int cid, int aid, String name, String status, Date dueDate, String className, Collection<Integer> problems) {
             this.cid = cid;
             this.aid = aid;
             this.name.set(name);
             this.status.set(status);
             this.dueDate.set(dueDate);
+            this.className.set(className);
             this.problems.addAll(problems);
             dueDateStr.bind(Bindings.createStringBinding(() -> this.dueDate.get() == null ? null : AssignGui.DATE_FORMAT.format(this.dueDate.get()), this.dueDate));
             HBox box = new HBox(5);
@@ -160,7 +200,7 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
         }
 
         public Assignment(int cid, MsgUtil.AssignmentData data) {
-            this(cid, data.id, data.name, "Unknown", new Date(NetUtil.UTCToMilli(data.dueDateUTC)), data.problems);
+            this(cid, data.id, data.name, "Unknown", new Date(NetUtil.UTCToMilli(data.dueDateUTC)), null, data.problems);
         }
 
         private void modify() {
@@ -225,6 +265,9 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
             return cid;
         }
 
+        public SimpleStringProperty classNameProperty() {
+            return className;
+        }
     }
 
     private class AssignmentCreateResponseHandler implements ResponseHandler<AssignmentCreateMsg> {
@@ -233,7 +276,7 @@ public class Assignments implements ResponseHandler<AssignmentsGetMsg> {
         public void response(AssignmentCreateMsg message) {
             Platform.runLater(() -> {
                 if (userInfo.getSelectedClass().getClassId() == message.getClassId()) {
-                    Assignment assignment = new Assignment(message.getClassId(), message.getAid(), message.getName(), "Unknown", new Date(NetUtil.UTCToMilli(message.getDueDate())), message.getProblems());
+                    Assignment assignment = new Assignment(message.getClassId(), message.getAid(), message.getName(), "Unknown", new Date(NetUtil.UTCToMilli(message.getDueDate())), null, message.getProblems());
                     assignments.add(assignment);
                 }
             });

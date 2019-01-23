@@ -104,6 +104,15 @@ public class OfflineDB {
 
     private void checkTables(Connection connection) throws SQLException {
         try (Statement stmt = connection.createStatement()) {
+            stmt.execute("CREATE TABLE IF NOT EXISTS classes" +
+                    "(cid integer NOT NULL PRIMARY KEY," +
+                    "name varchar NOT NULL);");
+            stmt.execute("CREATE TABLE IF NOT EXISTS problems" +
+                    "(id integer NOT NULL PRIMARY KEY," +
+                    "name varchar NOT NULL," +
+                    "module_name varchar NOT NULL," +
+                    "problem_hash varchar NOT NULL," +
+                    "data blob NOT NULL);");
             stmt.execute("CREATE TABLE IF NOT EXISTS assignments" +
                     "(aid integer NOT NULL," +
                     "cid integer NOT NULL," +
@@ -111,12 +120,6 @@ public class OfflineDB {
                     "due_date timestamp WITH TIME ZONE NOT NULL," +
                     "pid integer NOT NULL," +
                     "PRIMARY KEY (aid, cid, pid));");
-            stmt.execute("CREATE TABLE IF NOT EXISTS problems" +
-                    "(id integer NOT NULL PRIMARY KEY," +
-                    "name varchar NOT NULL," +
-                    "module_name varchar NOT NULL," +
-                    "problem_hash varchar NOT NULL," +
-                    "data blob NOT NULL);");
             stmt.execute("CREATE TABLE IF NOT EXISTS submissions" +
                     "(sid integer NOT NULL PRIMARY KEY," +
                     "pid integer NOT NULL," +
@@ -133,9 +136,6 @@ public class OfflineDB {
                     "module_name varchar NOT NULL," +
                     "data blob NOT NULL," +
                     "PRIMARY KEY (aid, cid, pid, created_time));");
-            stmt.execute("CREATE TABLE IF NOT EXISTS classes" +
-                    "(cid integer NOT NULL PRIMARY KEY," +
-                    "name varchar NOT NULL);");
         }
     }
 

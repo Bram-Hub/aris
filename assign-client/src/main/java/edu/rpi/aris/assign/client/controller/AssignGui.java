@@ -99,6 +99,7 @@ public class AssignGui {
     }
 
     public void checkServer() {
+        assignmentsGui.load(true);
         String server = LocalConfig.SERVER_ADDRESS.getValue();
         if (server == null || server.trim().length() == 0) {
             TextInputDialog serverDialog = new TextInputDialog();
@@ -148,7 +149,7 @@ public class AssignGui {
 
         tabPane.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
             TabGui gui = tabGuis.get(newValue);
-            if (gui != null)
+            if (gui != null && (userInfo.isLoggedIn() || !gui.requiresOnline()))
                 gui.load(false);
         });
 
@@ -156,6 +157,8 @@ public class AssignGui {
         classes.itemsProperty().set(userInfo.classesProperty());
         classes.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> userInfo.selectedClassProperty().set(newValue));
         userInfo.selectedClassProperty().addListener((observable, oldValue, newValue) -> {
+            if (!userInfo.isLoggedIn())
+                return;
             classes.getSelectionModel().select(newValue);
             if (newValue != null)
                 setTabs(userInfo.getDefaultRole(), newValue.getUserRole());
@@ -196,6 +199,12 @@ public class AssignGui {
 
         userInfo.defaultRoleProperty().addListener((observable, oldValue, newValue) -> setTabs(newValue, userInfo.getClassRole()));
         userInfo.classRoleProperty().addListener(((observable, oldValue, newValue) -> setTabs(userInfo.getDefaultRole(), newValue)));
+
+        userInfo.loginProperty().addListener((observable, oldValue, newValue) -> {
+            if (!newValue)
+                assignmentsGui.load(true);
+        });
+
         setTabs(null, null);
 
     }
@@ -242,7 +251,8 @@ public class AssignGui {
             userInfo.logout();
         } else {
             for (TabGui gui : tabGuis.values())
-                gui.unload();
+                if (gui != assignmentsGui)
+                    gui.unload();
             userInfo.connectionInit(null);
         }
     }

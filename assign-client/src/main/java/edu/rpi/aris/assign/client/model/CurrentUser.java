@@ -17,14 +17,20 @@ import javafx.beans.value.ObservableIntegerValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.util.StringConverter;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class CurrentUser implements ResponseHandler<ConnectionInitMsg> {
 
     private static final CurrentUser instance = new CurrentUser();
+    private static final Logger log = LogManager.getLogger();
 
     private SimpleObjectProperty<ServerRole> defaultRole = new SimpleObjectProperty<>();
     private SimpleObjectProperty<ServerRole> classRole = new SimpleObjectProperty<>();
@@ -135,6 +141,7 @@ public class CurrentUser implements ResponseHandler<ConnectionInitMsg> {
             ServerConfig.setPermissions(message.getPermissions());
             user = new User(message, LocalConfig.USERNAME.getValue());
             defaultRole.set(message.getDefaultRole());
+            loggedIn.set(true);
             classes.clear();
             classMap.clear();
             message.getClassNames().forEach((k, v) -> {
@@ -142,11 +149,32 @@ public class CurrentUser implements ResponseHandler<ConnectionInitMsg> {
                 classes.add(info);
                 classMap.put(k, info);
             });
+            OfflineDB.submit(con -> {
+                try (PreparedStatement select = con.prepareStatement("SELECT count(*) FROM classes WHERE cid = ?;");
+                     PreparedStatement insert = con.prepareStatement("INSERT INTO classes (cid, name) VALUES (?, ?);");
+                     PreparedStatement update = con.prepareStatement("UPDATE classes SET name = ? WHERE cid = ?;")) {
+                    for (Map.Entry<Integer, String> e : message.getClassNames().entrySet()) {
+                        select.setInt(1, e.getKey());
+                        try (ResultSet rs = select.executeQuery()) {
+                            if (rs.next() && rs.getInt(1) > 0) {
+                                update.setString(1, e.getValue());
+                                update.setInt(2, e.getKey());
+                                update.execute();
+                            } else {
+                                insert.setInt(1, e.getKey());
+                                insert.setString(2, e.getValue());
+                                insert.execute();
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    log.error("An error occurred updating the classes in the offline database", e);
+                }
+            });
             Collections.sort(classes);
             selectedClass.set(classMap.get(LocalConfig.SELECTED_COURSE_ID.getValue()));
             if (selectedClass.get() == null && classes.size() > 0)
                 selectedClass.set(classes.get(0));
-            loggedIn.set(true);
             if (onLoad != null)
                 onLoad.run();
             onLoad = null;

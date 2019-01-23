@@ -9,10 +9,7 @@ import edu.rpi.aris.assign.client.dialog.PasswordResetDialog;
 import edu.rpi.aris.assign.client.exceptions.*;
 import edu.rpi.aris.assign.client.model.CurrentUser;
 import edu.rpi.aris.assign.client.model.LocalConfig;
-import edu.rpi.aris.assign.message.AuthMessage;
-import edu.rpi.aris.assign.message.ErrorMsg;
-import edu.rpi.aris.assign.message.Message;
-import edu.rpi.aris.assign.message.UserChangePasswordMsg;
+import edu.rpi.aris.assign.message.*;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleObjectProperty;
@@ -466,6 +463,10 @@ public class Client implements MessageCommunication {
     }
 
     public <T extends Message> void processMessage(T message, ResponseHandler<T> responseHandler) {
+        if (!CurrentUser.getInstance().isLoggedIn() && !(message instanceof ConnectionInitMsg)) {
+            logger.error("Message being sent when not logged in: " + message.getMessageType());
+            throw new RuntimeException("Message being sent when not logged in: " + message.getMessageType());
+        }
         processPool.submit(() -> {
             ReentrantLock lock = null;
             try {

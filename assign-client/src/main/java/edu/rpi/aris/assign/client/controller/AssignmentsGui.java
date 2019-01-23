@@ -39,6 +39,8 @@ public class AssignmentsGui implements TabGui {
     @FXML
     private TableView<Assignments.Assignment> tblAssignments;
     @FXML
+    private TableColumn<Assignments.Assignment, String> classColumn;
+    @FXML
     private TableColumn<Assignments.Assignment, String> name;
     @FXML
     private TableColumn<Assignments.Assignment, String> dueDate;
@@ -117,7 +119,14 @@ public class AssignmentsGui implements TabGui {
         }, userInfo.loginProperty(), userInfo.selectedClassProperty(), userInfo.loadingProperty(), assignments.loadErrorProperty()));
         userInfo.classRoleProperty().addListener((observable, oldValue, newValue) -> {
             ServerPermissions permissions = ServerConfig.getPermissions();
-            modifyColumn.setVisible(permissions != null && permissions.hasPermission(newValue, Perm.ASSIGNMENT_EDIT));
+            modifyColumn.setVisible(userInfo.isLoggedIn() && permissions != null && permissions.hasPermission(newValue, Perm.ASSIGNMENT_EDIT));
+        });
+
+        userInfo.loginProperty().addListener((observable, oldValue, newValue) -> {
+            status.setVisible(newValue);
+            classColumn.setVisible(!newValue);
+            ServerPermissions permissions = ServerConfig.getPermissions();
+            modifyColumn.setVisible(newValue && permissions != null && permissions.hasPermission(userInfo.getClassRole(), Perm.ASSIGNMENT_EDIT));
         });
 
         tblAssignments.itemsProperty().set(assignments.getAssignments());
@@ -127,9 +136,9 @@ public class AssignmentsGui implements TabGui {
                 if (!row.isEmpty() && event.getButton() == MouseButton.PRIMARY) {
                     Assignments.Assignment assignment = row.getItem();
                     ServerPermissions permissions = ServerConfig.getPermissions();
-                    if (permissions.hasPermission(userInfo.getClassRole(), Perm.ASSIGNMENT_GET_STUDENT) && permissions.getPermission(Perm.ASSIGNMENT_GET_STUDENT).getRollId() == userInfo.getClassRole().getId())
+                    if (!userInfo.isLoggedIn() || (permissions != null && permissions.hasPermission(userInfo.getClassRole(), Perm.ASSIGNMENT_GET_STUDENT) && permissions.getPermission(Perm.ASSIGNMENT_GET_STUDENT).getRollId() == userInfo.getClassRole().getId()))
                         AssignGui.getInstance().addTabGui(new SingleAssignmentGui(assignment.getName(), assignment.getCid(), assignment.getAid(), false));
-                    else if (permissions.hasPermission(userInfo.getClassRole(), Perm.ASSIGNMENT_GET_INSTRUCTOR))
+                    else if (permissions != null && permissions.hasPermission(userInfo.getClassRole(), Perm.ASSIGNMENT_GET_INSTRUCTOR))
                         AssignGui.getInstance().addTabGui(new SingleAssignmentGui(assignment.getName(), assignment.getCid(), assignment.getAid(), true));
                 }
             });
@@ -155,6 +164,8 @@ public class AssignmentsGui implements TabGui {
         status.setCellValueFactory(param -> param.getValue().statusProperty());
 
         modifyColumn.setCellValueFactory(param -> param.getValue().modifyColumnProperty());
+
+        classColumn.setCellValueFactory(param -> param.getValue().classNameProperty());
 
     }
 

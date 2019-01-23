@@ -586,22 +586,32 @@ public class SingleAssignment {
                 dueDate.set(AssignGui.DATE_FORMAT.format(new Date(NetUtil.UTCToMilli(message.getDueDate()))));
                 if (userInfo.isLoggedIn()) {
                     OfflineDB.submit(con -> {
-                        try (PreparedStatement insert = con.prepareStatement("INSERT INTO assignments (aid, cid, name, due_date, pid) VALUES (?, ?, ?, ?, ?) ON CONFLICT DO UPDATE SET name = ?, due_date = ? WHERE aid = ? AND cid = ? AND pid = ?;")) {
+                        try (PreparedStatement select = con.prepareStatement("SELECT count(*) FROM assignments WHERE aid = ? AND cid = ? AND pid = ?;");
+                             PreparedStatement insert = con.prepareStatement("INSERT INTO assignments (aid, cid, name, due_date, pid) VALUES (?, ?, ?, ?, ?);");
+                             PreparedStatement update = con.prepareStatement("UPDATE assignments SET name = ?, due_date = ? WHERE aid = ? AND cid = ? AND pid = ?;")) {
+                            select.setInt(1, aid);
+                            select.setInt(2, cid);
                             insert.setInt(1, aid);
                             insert.setInt(2, cid);
-                            insert.setString(3, message.getName());
-                            Timestamp ts = NetUtil.ZDTToTimestamp(message.getDueDate());
-                            insert.setTimestamp(4, ts);
-                            insert.setString(6, message.getName());
-                            insert.setTimestamp(7, ts);
-                            insert.setInt(8, aid);
-                            insert.setInt(9, cid);
+                            update.setInt(3, aid);
+                            update.setInt(4, cid);
                             for (MsgUtil.ProblemInfo info : message.getProblems()) {
-                                insert.setInt(5, info.pid);
-                                insert.setInt(10, info.pid);
-                                insert.addBatch();
+                                select.setInt(3, info.pid);
+                                try (ResultSet rs = select.executeQuery()) {
+                                    Timestamp ts = NetUtil.ZDTToTimestamp(message.getDueDate());
+                                    if (rs.next() && rs.getInt(1) > 0) {
+                                        update.setString(1, message.getName());
+                                        update.setTimestamp(2, ts);
+                                        update.setInt(5, info.pid);
+                                        update.execute();
+                                    } else {
+                                        insert.setString(3, message.getName());
+                                        insert.setTimestamp(4, ts);
+                                        insert.setInt(5, info.pid);
+                                        insert.execute();
+                                    }
+                                }
                             }
-                            insert.executeBatch();
                         } catch (SQLException e) {
                             log.error("An error occurred storing the assignment in the offline database", e);
                         }

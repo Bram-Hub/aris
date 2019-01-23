@@ -9,10 +9,11 @@ VERSION=$(cat libaris/src/main/resources/edu/rpi/aris/VERSION)
 OPTIND=1
 
 compile() {
-    echo Compiling gradle and native libraries
+    echo Cleaning build directory before compiling
     rm -rf build/
     make clean
     ./gradlew clean
+    echo Compiling gradle and native libraries
     make all
     if [ "$?" -ne "0" ]; then
         echo An error occurred during compiling

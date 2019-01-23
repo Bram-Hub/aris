@@ -73,7 +73,7 @@ public class AssignServerMain implements MainCallbackListener {
     public void processIpcMessage(String msg) {
         if ("update".equals(msg)) {
             logger.info("Received update IPC message");
-            AssignServer.checkUpdate();
+            new Thread(AssignServer::checkUpdate, "Update Check Thread").start();
         }
     }
 
