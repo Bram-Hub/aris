@@ -26,6 +26,8 @@ pub mod treeproof;
 /// Cons:
 /// - potentially more implementation effort than treeproof
 /// - nontrivial mapping between references and line numbers might require some additional design
+/// Mixed:
+/// - splicing in a subproof is O(|subproof|), while in treeproof that's O(1), but forces an O(|wholeproof|) line recalculation
 pub mod pooledproof;
 
 /// DisplayIndented gives a convention for passing around state to pretty printers
@@ -39,41 +41,20 @@ pub trait DisplayIndented {
 pub trait Proof: Sized {
     type Reference: Clone;
     fn new() -> Self;
-    fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Self::Reference>, Self)>;
+    fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference>, Self)>;
     fn add_premise(&mut self, e: Expr) -> Self::Reference;
     fn add_subproof(&mut self, sub: Self) -> Self::Reference;
-    fn add_step(&mut self, just: Justification<Self::Reference>) -> Self::Reference;
-}
+    fn add_step(&mut self, just: Justification<Expr, Self::Reference>) -> Self::Reference;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Rule {
-    AndIntro, AndElim,
-    OrIntro, OrElim,
-    ImpIntro, ImpElim,
-    NotIntro, NotElim,
-    BotIntro, BotElim,
-    ForallIntro, ForallElim,
-    ExistsIntro, ExistsElim,
-    Reit,
-}
-
-impl Rule {
-    fn get_depcount(&self) -> Option<(usize, usize)> /* (lines, subproofs) */ {
-        use Rule::*;
-        match self {
-            Reit | AndElim | OrIntro | NotElim | BotElim | ExistsIntro => Some((1, 0)),
-            BotIntro | ImpElim | ForallElim => Some((2, 0)),
-            NotIntro | ImpIntro | ForallIntro => Some((0, 1)),
-            ExistsElim => Some((1, 1)),
-            AndIntro | OrElim => None, // AndIntro and OrElim can have arbitrarily many conjuncts/disjuncts in one application
-        }
+    fn lookup_expr(&self, r: Self::Reference) -> Option<Expr> {
+        self.lookup(r).and_then(|x: Coprod!(Expr, Justification<Expr, Self::Reference>, Self)| x.fold(hlist![|x| Some(x), |x: Justification<_, _>| Some(x.0), |_| None]))
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Justification<R>(Expr, Rule, Vec<R>);
+pub struct Justification<T, R>(T, Rule, Vec<R>);
 
-impl<R: std::fmt::Debug> DisplayIndented for Justification<R> {
+impl<T: std::fmt::Debug, R: std::fmt::Debug> DisplayIndented for Justification<T, R> {
     fn display_indented(&self, fmt: &mut Formatter, indent: usize, linecount: &mut usize) -> std::result::Result<(), std::fmt::Error> {
         let &Justification(expr, rule, deps) = &self;
         write!(fmt, "{}:\t", linecount)?;
@@ -93,7 +74,7 @@ pub struct LineAndIndent { pub line: usize, pub indent: usize }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ProofCheckError<R> {
-    LineDoesNotExist(usize),
+    LineDoesNotExist(R),
     ReferencesLaterLine(LineAndIndent, usize),
     IncorrectDepCount(Vec<R>, usize, usize),
     DepOfWrongForm(String),

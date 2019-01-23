@@ -7,6 +7,8 @@ pub mod expression;
 use expression::*;
 pub mod proofs;
 use proofs::*;
+pub mod rules;
+use rules::*;
 
 use jni::JNIEnv;
 use jni::strings::JavaStr;

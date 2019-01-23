@@ -21,7 +21,7 @@ pub struct TreeProof<T, U> {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Line<T, U> {
-    Direct(T, Justification<LineDep>),
+    Direct(T, Justification<Expr, LineDep>),
     Subproof(U, TreeProof<T, U>),
 }
 
@@ -30,7 +30,7 @@ impl TreeProof<(), ()> {
         let prf = decorate_subproof_sizes(self.clone());
         prf.premises.len() + prf.lines.iter().map(|line| if let Line::Subproof((SubproofSize(n), ()), _) = line { *n } else { 1 }).sum::<usize>()
     }
-    fn lookup_line(&self, i: usize) -> Option<Coprod!(Expr, Justification<<Self as Proof>::Reference>, Self)> {
+    fn lookup_line(&self, i: usize) -> Option<Coprod!(Expr, Justification<Expr, <Self as Proof>::Reference>, Self)> {
         if i < self.premises.len() {
             return self.premises.get(i).map(|x| Coproduct::inject(x.1.clone()));
         }
@@ -44,7 +44,7 @@ impl TreeProof<(), ()> {
         assert!(j >= i);
         None
     }
-    fn lookup_subproof(&self, i: usize, j: usize) -> Option<Coprod!(Expr, Justification<<Self as Proof>::Reference>, Self)> {
+    fn lookup_subproof(&self, i: usize, j: usize) -> Option<Coprod!(Expr, Justification<Expr, <Self as Proof>::Reference>, Self)> {
         None // TODO: implement
     }
 }
@@ -52,13 +52,13 @@ impl TreeProof<(), ()> {
 impl Proof for TreeProof<(), ()> {
     type Reference = LineDep;
     fn new() -> Self { TreeProof { premises: vec![], lines: vec![] } }
-    fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Self::Reference>, Self)> {
+    fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference>, Self)> {
         let LineDep(Range { start, end }) = r;
         if start == end { self.lookup_line(start-1) } else { self.lookup_subproof(start-1, end-1) }
     }
     fn add_premise(&mut self, e: Expr) -> Self::Reference { self.premises.push(((), e)); let i = self.premises.len(); LineDep(i..i) }
     fn add_subproof(&mut self, sub: Self) -> Self::Reference { let i = self.count_lines(); self.lines.push(Line::Subproof((), sub)); let j = self.count_lines(); LineDep((i+1)..j) }
-    fn add_step(&mut self, just: Justification<Self::Reference>) -> Self::Reference { self.lines.push(Line::Direct((), just)); let i = self.count_lines(); LineDep(i..i) }
+    fn add_step(&mut self, just: Justification<Expr, Self::Reference>) -> Self::Reference { self.lines.push(Line::Direct((), just)); let i = self.count_lines(); LineDep(i..i) }
 }
 
 
@@ -80,7 +80,7 @@ impl<A, B> /* Bifunctor for */ Line<A, B> {
     }
 }
 
-pub enum PremiseOrLine<T> { Premise(T, Expr), Line(T, Justification<LineDep>) }
+pub enum PremiseOrLine<T> { Premise(T, Expr), Line(T, Justification<Expr, LineDep>) }
 impl<T> PremiseOrLine<T> {
     fn get_expr(&self) -> &Expr {
         match self {
@@ -188,10 +188,11 @@ pub fn check_rule_at_line(prf: &TreeProof<LineAndIndent, ()>, i: usize) -> Resul
             PremiseOrLine::Line(li, just) => { check_rule(prf, li, just) }
         }
     } else {
-        Err(ProofCheckError::LineDoesNotExist(i))
+        Err(ProofCheckError::LineDoesNotExist(LineDep(i..i)))
     }
 }
-fn check_rule(prf: &TreeProof<LineAndIndent, ()>, li: LineAndIndent, Justification(expr, rule, deps): Justification<LineDep>) -> Result<(), ProofCheckError<LineDep>> {
+
+fn check_rule(prf: &TreeProof<LineAndIndent, ()>, li: LineAndIndent, Justification(expr, rule, deps): Justification<Expr, LineDep>) -> Result<(), ProofCheckError<LineDep>> {
     use ProofCheckError::*;
     for &LineDep(Range { start, end }) in deps.iter() {
         assert!(start <= end); // this should be enforced by the GUI, and hence not a user-facing error message
@@ -208,37 +209,5 @@ fn check_rule(prf: &TreeProof<LineAndIndent, ()>, li: LineAndIndent, Justificati
             return Err(IncorrectDepCount(deps, directs, subs));
         }
     }
-    match rule {
-        Rule::AndIntro => unimplemented!(),
-        Rule::AndElim => {
-            let LineDep(Range { start, end: _ }) = deps[0];
-            if let Some(prem) = lookup_by_decoration(prf, &|li| li.line == start) {
-                if let Expr::AssocBinop { symbol: ASymbol::And, exprs } = prem.get_expr() {
-                    for e in exprs.iter() {
-                        if e == &expr {
-                            return Ok(());
-                        }
-                    }
-                    return Err(DoesNotOccur(expr, prem.get_expr().clone()));
-                } else {
-                    return Err(DepOfWrongForm("expected an and-expression".into()));
-                }
-            } else {
-                return Err(LineDoesNotExist(start))
-            }
-        },
-        Rule::OrIntro => unimplemented!(),
-        Rule::OrElim => unimplemented!(),
-        Rule::ImpIntro => unimplemented!(),
-        Rule::ImpElim => unimplemented!(),
-        Rule::NotIntro => unimplemented!(),
-        Rule::NotElim => unimplemented!(),
-        Rule::BotIntro => unimplemented!(),
-        Rule::BotElim => unimplemented!(),
-        Rule::ForallIntro => unimplemented!(),
-        Rule::ForallElim => unimplemented!(),
-        Rule::ExistsIntro => unimplemented!(),
-        Rule::ExistsElim => unimplemented!(),
-        Rule::Reit => unimplemented!(),
-    }
+    rule.check(&prf.clone().bimap(&mut |_| (), &mut |_| ()), expr, deps)
 }

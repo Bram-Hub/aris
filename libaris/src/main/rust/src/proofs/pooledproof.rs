@@ -34,10 +34,12 @@ impl<T> ZipperVec<T> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)] pub struct JustKey(usize);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)] pub struct SubKey(usize);
 
+type PooledRef = Coprod!(PremKey, JustKey, SubKey);
+
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PooledProof {
-    prem_map: BTreeMap<PremKey, Expr>,
-    just_map: BTreeMap<JustKey, Justification<<PooledProof as Proof>::Reference>>,
+pub struct PooledProof<T> {
+    prem_map: BTreeMap<PremKey, T>,
+    just_map: BTreeMap<JustKey, Justification<T, PooledRef>>,
     sub_map: BTreeMap<SubKey, Subproof>,
     proof: Subproof,
 }
@@ -58,11 +60,11 @@ impl Subproof {
     }
 }
 
-impl PooledProof {
+impl<PREM: Clone> PooledProof<PREM> {
     pub fn next_premkey(&self) -> PremKey { PremKey(self.prem_map.range(..).next_back().map(|(k, _)| k.0+1).unwrap_or(0)) }
     pub fn next_justkey(&self) -> JustKey { JustKey(self.just_map.range(..).next_back().map(|(k, _)| k.0+1).unwrap_or(0)) }
     pub fn next_subkey(&self) -> SubKey { SubKey(self.sub_map.range(..).next_back().map(|(k, _)| k.0+1).unwrap_or(0)) }
-    fn add_pools(&mut self, other: &PooledProof) -> (PremKey, JustKey, SubKey) {
+    fn add_pools(&mut self, other: &Self) -> (PremKey, JustKey, SubKey) {
         // TODO: deduplicate values for efficiency on joining subproofs with copies of the same expression multiple times
         let premkey = self.next_premkey(); let justkey = self.next_justkey(); let subkey = self.next_subkey();
         for (k, v) in other.prem_map.iter() { self.prem_map.insert(PremKey(premkey.0 + k.0), v.clone()); }
@@ -84,12 +86,12 @@ impl PooledProof {
     }
 }
 
-impl Proof for PooledProof {
-    type Reference = Coprod!(PremKey, JustKey, SubKey);
+impl Proof for PooledProof<Expr> {
+    type Reference = PooledRef;
     fn new() -> Self {
         PooledProof { prem_map: BTreeMap::new(), just_map: BTreeMap::new(), sub_map: BTreeMap::new(), proof: Subproof::new(), }
     }
-    fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Self::Reference>, Self)> {
+    fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference>, Self)> {
         r.fold(hlist![
             |ref k| self.prem_map.get(k).map(|x| Coproduct::inject(x.clone())),
             |ref k| self.just_map.get(k).map(|x| Coproduct::inject(x.clone())),
@@ -109,7 +111,7 @@ impl Proof for PooledProof {
         self.proof.line_list.push(Coproduct::inject(idx));
         Self::Reference::inject(idx)
     }
-    fn add_step(&mut self, just: Justification<Self::Reference>) -> Self::Reference {
+    fn add_step(&mut self, just: Justification<Expr, Self::Reference>) -> Self::Reference {
         let idx = self.next_justkey();
         self.just_map.insert(idx, just);
         self.proof.line_list.push(Coproduct::inject(idx));
@@ -119,13 +121,13 @@ impl Proof for PooledProof {
 
 #[test]
 fn prettyprint_pool() {
-    let prf: PooledProof = super::proof_tests::demo_proof_1();
+    let prf: PooledProof<Expr> = super::proof_tests::demo_proof_1();
     println!("{:?}\n{}\n", prf, prf)
 }
 
-impl DisplayIndented for PooledProof {
+impl DisplayIndented for PooledProof<Expr> {
     fn display_indented(&self, fmt: &mut Formatter, indent: usize, linecount: &mut usize) -> std::result::Result<(), std::fmt::Error> {
-        fn aux(p: &PooledProof, fmt: &mut Formatter, indent: usize, linecount: &mut usize, sub: &Subproof) -> std::result::Result<(), std::fmt::Error> {
+        fn aux(p: &PooledProof<Expr>, fmt: &mut Formatter, indent: usize, linecount: &mut usize, sub: &Subproof) -> std::result::Result<(), std::fmt::Error> {
             for idx in sub.premise_list.iter() {
                 let premise = p.prem_map.get(idx).unwrap();
                 write!(fmt, "{}:\t", linecount)?;
@@ -148,6 +150,6 @@ impl DisplayIndented for PooledProof {
         aux(&self, fmt, indent, linecount, &self.proof)
     }
 }
-impl Display for PooledProof {
+impl Display for PooledProof<Expr> {
     fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> { self.display_indented(fmt, 1, &mut 1) }
 }
