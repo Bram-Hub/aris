@@ -54,31 +54,37 @@ pub mod RuleM {
 }
 
 pub trait RuleT {
-    fn get_depcount(&self) -> Option<(usize, usize)> /* (lines, subproofs) */;
+    fn num_deps(&self) -> Option<usize>;
+    fn num_subdeps(&self) -> Option<usize>;
     fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<P::Reference>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>>;
 }
 
 impl<A: RuleT, B: RuleT> RuleT for Coproduct<A, B> {
-    fn get_depcount(&self) -> Option<(usize, usize)> { match self { Inl(x) => x.get_depcount(), Inr(x) => x.get_depcount(), } }
+    fn num_deps(&self) -> Option<usize> { match self { Inl(x) => x.num_deps(), Inr(x) => x.num_deps(), } }
+    fn num_subdeps(&self) -> Option<usize> { match self { Inl(x) => x.num_subdeps(), Inr(x) => x.num_subdeps(), } }
     fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<P::Reference>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
         match self { Inl(x) => x.check(p, expr, deps, sdeps), Inr(x) => x.check(p, expr, deps, sdeps), }
     }
 }
 impl RuleT for frunk::coproduct::CNil {
-    fn get_depcount(&self) -> Option<(usize, usize)> { match *self {} }
+    fn num_deps(&self) -> Option<usize> { match *self {} }
+    fn num_subdeps(&self) -> Option<usize> { match *self {} }
     fn check<P: Proof>(self, _p: &P, _expr: Expr, _deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
         match self {}
     }
 }
 
 impl<T: RuleT> RuleT for SharedChecks<T> {
-    fn get_depcount(&self) -> Option<(usize, usize)> { self.0.get_depcount() }
+    fn num_deps(&self) -> Option<usize> { self.0.num_deps() }
+    fn num_subdeps(&self) -> Option<usize> { self.0.num_subdeps() }
     fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<P::Reference>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
         use ProofCheckError::*;
-        if let Some((directs, subs)) = self.get_depcount() {
+        if let Some(directs) = self.num_deps() {
             if deps.len() != directs {
                 return Err(IncorrectDepCount(deps, directs));
             }
+        }
+        if let Some(subs) = self.num_subdeps() {
             if sdeps.len() != subs {
                 return Err(IncorrectSubDepCount(sdeps, subs));
             }
@@ -89,13 +95,20 @@ impl<T: RuleT> RuleT for SharedChecks<T> {
 }
 
 impl RuleT for PrepositionalInference {
-    fn get_depcount(&self) -> Option<(usize, usize)> /* (lines, subproofs) */ {
+    fn num_deps(&self) -> Option<usize> {
         use PrepositionalInference::*;
         match self {
-            Reit | AndElim | OrIntro | NotElim | ContradictionElim => Some((1, 0)),
-            ContradictionIntro | ImpElim => Some((2, 0)),
-            NotIntro | ImpIntro => Some((0, 1)),
+            Reit | AndElim | OrIntro | NotElim | ContradictionElim => Some(1),
+            ContradictionIntro | ImpElim => Some(2),
+            NotIntro | ImpIntro => Some(0),
             AndIntro | OrElim => None, // AndIntro and OrElim can have arbitrarily many conjuncts/disjuncts in one application
+        }
+    }
+    fn num_subdeps(&self) -> Option<usize> {
+        use PrepositionalInference::*;
+        match self {
+            NotIntro | ImpIntro => Some(1),
+            Reit | AndElim | OrIntro | NotElim | ContradictionElim | ContradictionIntro | ImpElim | AndIntro | OrElim => Some(0),
         }
     }
     fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<P::Reference>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
@@ -143,13 +156,19 @@ impl RuleT for PrepositionalInference {
 }
 
 impl RuleT for PredicateInference {
-    fn get_depcount(&self) -> Option<(usize, usize)> {
+    fn num_deps(&self) -> Option<usize> {
         use PredicateInference::*;
         match self {
-            ExistsIntro => Some((1, 0)),
-            ForallElim => Some((2, 0)),
-            ForallIntro => Some((0, 1)),
-            ExistsElim => Some((1, 1)),
+            ExistsIntro | ExistsElim => Some(1),
+            ForallElim => Some(2),
+            ForallIntro => Some(0),
+        }
+    }
+    fn num_subdeps(&self) -> Option<usize> {
+        use PredicateInference::*;
+        match self {
+            ExistsIntro | ForallElim => Some(0),
+            ForallIntro | ExistsElim => Some(1),
         }
     }
     fn check<P: Proof>(self, _p: &P, _expr: Expr, _deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
@@ -164,9 +183,8 @@ impl RuleT for PredicateInference {
 }
 
 impl RuleT for Equivalence {
-    fn get_depcount(&self) -> Option<(usize, usize)> {
-        Some((1, 0)) // all equivalence rules rewrite a single statement
-    }
+    fn num_deps(&self) -> Option<usize> { Some(1) } // all equivalence rules rewrite a single statement
+    fn num_subdeps(&self) -> Option<usize> { Some(0) }
     fn check<P: Proof>(self, _p: &P, _expr: Expr, _deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
         use ProofCheckError::*; use Equivalence::*;
         match self {
