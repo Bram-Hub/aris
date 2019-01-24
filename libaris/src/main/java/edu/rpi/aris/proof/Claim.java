@@ -1,5 +1,6 @@
 package edu.rpi.aris.proof;
 
+import edu.rpi.aris.ast.Expression;
 import edu.rpi.aris.rules.Rule;
 
 public class Claim {

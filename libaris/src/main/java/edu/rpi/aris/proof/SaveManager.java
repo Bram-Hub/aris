@@ -3,6 +3,7 @@ package edu.rpi.aris.proof;
 import edu.rpi.aris.LibAris;
 import edu.rpi.aris.assign.Problem;
 import edu.rpi.aris.assign.ProblemConverter;
+import edu.rpi.aris.ast.Expression;
 import edu.rpi.aris.rules.RuleList;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -314,11 +315,11 @@ public class SaveManager implements ProblemConverter<LibAris> {
                     raw = getElementByTag(g, "raw").getTextContent();
                 } catch (IOException e) {
                     String sen = getElementByTag(g, "sen").getTextContent();
-                    try {
-                        raw = new Expression(sen).toLogicString();
-                    } catch (ExpressionParseException e1) {
-                        throw new IOException("Invalid sentence in goal element");
-                    }
+//                    try {
+                    raw = Expression.parseViaRust(sen).toStringViaRust();//new Expression(sen).toLogicString();
+//                    } catch (ExpressionParseException e1) {
+//                        throw new IOException("Invalid sentence in goal element");
+//                    }
                 }
                 Goal goal = proof.addGoal(proof.getNumGoals());
                 goal.setGoalString(raw, true);
@@ -354,11 +355,11 @@ public class SaveManager implements ProblemConverter<LibAris> {
                 raw = getElementByTag(assumption, "raw").getTextContent();
             } catch (IOException e) {
                 String sen = getElementByTag(assumption, "sen").getTextContent();
-                try {
-                    raw = new Expression(sen).toLogicString();
-                } catch (ExpressionParseException e1) {
-                    throw new IOException("Invalid sentence in proof element " + elementId);
-                }
+//                try {
+                raw = Expression.parseViaRust(sen).toStringViaRust();//new Expression(sen).toLogicString();
+//                } catch (ExpressionParseException e1) {
+//                    throw new IOException("Invalid sentence in proof element " + elementId);
+//                }
             }
             Line line = indent == 0 ? proof.addPremise() : proof.addLine(lineNum, true, indent);
             line.setExpressionString(raw, true);
@@ -400,11 +401,11 @@ public class SaveManager implements ProblemConverter<LibAris> {
                     raw = getElementByTag(step, "raw").getTextContent();
                 } catch (IOException e) {
                     String sen = getElementByTag(step, "sen").getTextContent();
-                    try {
-                        raw = new Expression(sen).toLogicString();
-                    } catch (ExpressionParseException e1) {
-                        throw new IOException("Invalid sentence in proof element " + elementId);
-                    }
+//                    try {
+                    raw = Expression.parseViaRust(sen).toStringViaRust();//new Expression(sen).toLogicString();
+//                    } catch (ExpressionParseException e1) {
+//                        throw new IOException("Invalid sentence in proof element " + elementId);
+//                    }
                 }
                 Line line = proof.addLine(lineNum, false, indent);
                 line.setExpressionString(raw, true);

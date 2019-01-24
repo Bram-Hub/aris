@@ -18,9 +18,9 @@ named!(space<&str, ()>, do_parse!(many0!(one_of!(" \t")) >> (())));
 named!(variable_<&str, String>, do_parse!(x: many1!(one_of!("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")) >> ({let mut y = String::new(); for c in x { y.push(c); }; y})));
 named!(keyword<&str, &str>, alt!(tag!("forall") | tag!("exists")));
 
-named!(bottom<&str, Expr>, do_parse!(tag!("_|_") >> (Expr::Bottom)));
+named!(bottom<&str, Expr>, do_parse!(alt!(tag!("_|_") | tag!("⊥")) >> (Expr::Bottom)));
 
-named!(notterm<&str, Expr>, do_parse!(tag!("~") >> e: paren_expr >> (Expr::Unop { symbol: USymbol::Not, operand: Box::new(e) })));
+named!(notterm<&str, Expr>, do_parse!(alt!(tag!("~") | tag!("¬")) >> e: paren_expr >> (Expr::Unop { symbol: USymbol::Not, operand: Box::new(e) })));
 
 named!(predicate<&str, Expr>, alt!(
     do_parse!(space >> name: variable >> space >> tag!("(") >> space >> args: separated_list!(do_parse!(space >> tag!(",") >> space >> (())), variable) >> tag!(")") >> (Expr::Predicate { name, args })) |
@@ -32,7 +32,7 @@ named!(existsQuantifier<&str, QSymbol>, do_parse!(alt!(tag!("exists ") | tag!("�
 named!(quantifier<&str, QSymbol>, alt!(forallQuantifier | existsQuantifier));
 named!(binder<&str, Expr>, do_parse!(space >> symbol: quantifier >> space >> name: variable >> space >> tag!(",") >> space >> body: expr >> (Expr::Quantifier { symbol, name, body: Box::new(body) })));
 
-named!(binop<&str, BSymbol>, alt!(do_parse!(tag!("->") >> (BSymbol::Implies)) | do_parse!(tag!("+") >> (BSymbol::Plus)) | do_parse!(tag!("*") >> (BSymbol::Mult))));
+named!(binop<&str, BSymbol>, alt!(do_parse!(alt!(tag!("->") | tag!("→")) >> (BSymbol::Implies)) | do_parse!(tag!("+") >> (BSymbol::Plus)) | do_parse!(tag!("*") >> (BSymbol::Mult))));
 named!(binopterm<&str, Expr>, do_parse!(left: paren_expr >> space >> symbol: binop >> space >> right: paren_expr >> (Expr::Binop { symbol, left: Box::new(left), right: Box::new(right) })));
 
 named!(andrepr<&str, ASymbol>, do_parse!(alt!(tag!("&") | tag!("∧") | tag!("/\\")) >> (ASymbol::And)));

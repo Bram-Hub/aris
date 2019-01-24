@@ -1,5 +1,7 @@
 package edu.rpi.aris.proof;
 
+import edu.rpi.aris.ast.Expression;
+
 public class Premise {
 
     private boolean isSubproof;

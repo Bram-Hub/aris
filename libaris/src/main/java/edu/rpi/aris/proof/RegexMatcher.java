@@ -1,5 +1,7 @@
 package edu.rpi.aris.proof;
 
+import edu.rpi.aris.ast.Expression;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.TreeSet;

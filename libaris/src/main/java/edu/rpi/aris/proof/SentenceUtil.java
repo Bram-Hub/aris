@@ -5,11 +5,11 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.text.ParseException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public class SentenceUtil {
 
@@ -91,9 +91,9 @@ public class SentenceUtil {
         return expr;
     }
 
-    public static Expression toExpression(String expr) throws ParseException {
-        return new Expression(toPolishNotation(expr));
-    }
+//    public static Expression toExpression(String expr) throws ParseException {
+//        return new Expression(toPolishNotation(expr));
+//    }
 
     public static String toPolishNotation(String expr) throws ExpressionParseException {
         int parenLoc;
@@ -516,12 +516,12 @@ public class SentenceUtil {
         }
     }
 
-    public static String toPolish(Expression[] expressions, String opr) {
-        Objects.requireNonNull(expressions);
-        Objects.requireNonNull(opr);
-        ArrayList<String> polish = Arrays.stream(expressions).map(Expression::toString).collect(Collectors.toCollection(ArrayList::new));
-        return OP + opr + " " + join(polish) + CP;
-    }
+//    public static String toPolish(Expression[] expressions, String opr) {
+//        Objects.requireNonNull(expressions);
+//        Objects.requireNonNull(opr);
+//        ArrayList<String> polish = Arrays.stream(expressions).map(Expression::toString).collect(Collectors.toCollection(ArrayList::new));
+//        return OP + opr + " " + join(polish) + CP;
+//    }
 
     private static String join(ArrayList<String> list) {
         StringBuilder sb = new StringBuilder();

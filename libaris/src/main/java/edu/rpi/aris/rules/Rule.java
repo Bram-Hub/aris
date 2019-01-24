@@ -1,7 +1,7 @@
 package edu.rpi.aris.rules;
 
+import edu.rpi.aris.ast.Expression;
 import edu.rpi.aris.proof.Claim;
-import edu.rpi.aris.proof.Expression;
 import edu.rpi.aris.proof.Premise;
 
 import java.util.ArrayList;

@@ -56,7 +56,7 @@ public class RulesManager {
 
     private synchronized void setAvailableRules(Collection<RuleList> availableRules) {
         for (RuleList r : availableRules) {
-            if (r != null) {
+            if (r != null && r.rule != null) {
                 for (Rule.Type t : r.rule.getRuleType()) {
                     SortedSet<RuleList> set = this.availableRules.computeIfAbsent(t, type -> new TreeSet<>());
                     set.add(r);

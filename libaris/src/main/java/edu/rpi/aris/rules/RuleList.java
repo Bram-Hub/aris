@@ -2,21 +2,21 @@ package edu.rpi.aris.rules;
 
 public enum RuleList {
 
-    CONJUNCTION(new Conjunction()),
-    SIMPLIFICATION(new Simplification()),
-    ADDITION(new Addition()),
-    DISJUNCTIVE_SYLLOGISM(new DisjunctiveSyllogism()),
-    MODUS_PONENS(new ModusPonens()),
-    MODUS_TOLLENS(new ModusTollens()),
-    HYPOTHETICAL_SYLLOGISM(new HypotheticalSyllogism()),
-    EXCLUDED_MIDDLE(new ExcludedMiddle()),
-    CONSTRUCTIVE_DILEMMA(new ConstructiveDilemma()),
-    Association(new Association()),
-    COMMUTATION(new Commutation()),
-    DOUBLENEGATION(new DoubleNegation()),
-    Idempotence (new Idempotence()),
-    DeMorgan(new DeMorgan()),
-    Distribution(new Distribution());
+    CONJUNCTION(null),
+    SIMPLIFICATION(null),
+    ADDITION(null),
+    DISJUNCTIVE_SYLLOGISM(null),
+    MODUS_PONENS(null),
+    MODUS_TOLLENS(null),
+    HYPOTHETICAL_SYLLOGISM(null),
+    EXCLUDED_MIDDLE(null),
+    CONSTRUCTIVE_DILEMMA(null),
+    Association(null),
+    COMMUTATION(null),
+    DOUBLENEGATION(null),
+    Idempotence(null),
+    DeMorgan(null),
+    Distribution(null);
 
     public final String name, simpleName;
     public final Rule rule;

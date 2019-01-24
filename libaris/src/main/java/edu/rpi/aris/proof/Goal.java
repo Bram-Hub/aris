@@ -1,5 +1,6 @@
 package edu.rpi.aris.proof;
 
+import edu.rpi.aris.ast.Expression;
 import org.apache.commons.lang3.Range;
 import org.jetbrains.annotations.NotNull;
 
@@ -86,25 +87,27 @@ public class Goal {
         stopTimer();
         String str = getGoalString();
         if (str.trim().length() > 0) {
-            try {
-                String polish = SentenceUtil.toPolishNotation(str);
-                try {
-                    expression = new Expression(polish);
-                } catch (ExpressionParseException e) {
-                    SentenceUtil.mapExceptionToStandardForm(polish, str, e);
-                }
+//            try {
+//                String polish = SentenceUtil.toPolishNotation(str);
+//                try {
+            expression = Expression.parseViaRust(str);//new Expression(polish);
+//                } catch (ExpressionParseException e) {
+//                    SentenceUtil.mapExceptionToStandardForm(polish, str, e);
+//                }
+            if (expression != null) {
                 setStatusString("");
                 setStatus(Proof.Status.NONE);
                 setErrorRange(null);
                 return true;
-            } catch (ExpressionParseException e) {
-                setStatusString(e.getMessage());
+//            } catch (ExpressionParseException e) {
+            } else {
+                setStatusString("Parse Error");
                 setStatus(Proof.Status.INVALID_EXPRESSION);
-                expression = null;
-                if (e.getErrorOffset() == -1 || e.getErrorLength() == 0)
-                    setErrorRange(null);
-                else
-                    setErrorRange(Range.between(e.getErrorOffset(), e.getErrorOffset() + e.getErrorLength() - 1));
+//                expression = null;
+//                if (e.getErrorOffset() == -1 || e.getErrorLength() == 0)
+//                    setErrorRange(null);
+//                else
+//                    setErrorRange(Range.between(e.getErrorOffset(), e.getErrorOffset() + e.getErrorLength() - 1));
                 return false;
             }
         } else {
