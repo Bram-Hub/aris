@@ -40,23 +40,25 @@ pub trait DisplayIndented {
 
 pub trait Proof: Sized {
     type Reference: Clone;
+    type SubproofReference: Clone;
     fn new() -> Self;
-    fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference>, Self)>;
+    fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference, Self::SubproofReference>)>;
+    fn lookup_subproof(&self, r: Self::SubproofReference) -> Option<Self>;
     fn add_premise(&mut self, e: Expr) -> Self::Reference;
-    fn add_subproof(&mut self, sub: Self) -> Self::Reference;
-    fn add_step(&mut self, just: Justification<Expr, Self::Reference>) -> Self::Reference;
+    fn add_subproof(&mut self, sub: Self) -> Self::SubproofReference;
+    fn add_step(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>) -> Self::Reference;
 
     fn lookup_expr(&self, r: Self::Reference) -> Option<Expr> {
-        self.lookup(r).and_then(|x: Coprod!(Expr, Justification<Expr, Self::Reference>, Self)| x.fold(hlist![|x| Some(x), |x: Justification<_, _>| Some(x.0), |_| None]))
+        self.lookup(r).and_then(|x: Coprod!(Expr, Justification<Expr, Self::Reference, Self::SubproofReference>)| x.fold(hlist![|x| Some(x), |x: Justification<_, _, _>| Some(x.0)]))
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Justification<T, R>(T, Rule, Vec<R>);
+pub struct Justification<T, R, S>(T, Rule, Vec<R>, Vec<S>);
 
-impl<T: std::fmt::Debug, R: std::fmt::Debug> DisplayIndented for Justification<T, R> {
+impl<T: std::fmt::Debug, R: std::fmt::Debug, S: std::fmt::Debug> DisplayIndented for Justification<T, R, S> {
     fn display_indented(&self, fmt: &mut Formatter, indent: usize, linecount: &mut usize) -> std::result::Result<(), std::fmt::Error> {
-        let &Justification(expr, rule, deps) = &self;
+        let &Justification(expr, rule, deps, sdeps) = &self;
         write!(fmt, "{}:\t", linecount)?;
         *linecount += 1;
         for _ in 0..indent { write!(fmt, "| ")?; }
@@ -65,18 +67,13 @@ impl<T: std::fmt::Debug, R: std::fmt::Debug> DisplayIndented for Justification<T
             write!(fmt, "{:?}", dep)?;
             if i != deps.len()-1 { write!(fmt, ", ")?; }
         }
+        for (i, dep) in sdeps.iter().enumerate() {
+            write!(fmt, "{:?}", dep)?;
+            if i != sdeps.len()-1 { write!(fmt, ", ")?; }
+        }
         write!(fmt, "\n")
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LineAndIndent { pub line: usize, pub indent: usize }
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum ProofCheckError<R> {
-    LineDoesNotExist(R),
-    ReferencesLaterLine(LineAndIndent, usize),
-    IncorrectDepCount(Vec<R>, usize, usize),
-    DepOfWrongForm(String),
-    DoesNotOccur(Expr, Expr),
-}
