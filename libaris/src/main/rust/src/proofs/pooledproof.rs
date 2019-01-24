@@ -34,12 +34,12 @@ impl<T> ZipperVec<T> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)] pub struct JustKey(usize);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)] pub struct SubKey(usize);
 
-type PooledRef = Coprod!(PremKey, JustKey, SubKey);
+type PooledRef = Coprod!(PremKey, JustKey);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PooledProof<T> {
     prem_map: BTreeMap<PremKey, T>,
-    just_map: BTreeMap<JustKey, Justification<T, PooledRef>>,
+    just_map: BTreeMap<JustKey, Justification<T, PooledRef, SubKey>>,
     sub_map: BTreeMap<SubKey, Subproof>,
     proof: Subproof,
 }
@@ -73,8 +73,8 @@ impl<PREM: Clone> PooledProof<PREM> {
                 Justification(v.0.clone(), v.1, v.2.iter().map(|x| x.fold(hlist![
                     |x: PremKey| Coproduct::inject(PremKey(x.0+premkey.0)),
                     |x: JustKey| Coproduct::inject(JustKey(x.0+justkey.0)),
-                    |x: SubKey| Coproduct::inject(SubKey(x.0+subkey.0)),
-                ])).collect())
+                ])).collect(),
+                v.3.iter().map(|x: &SubKey| (SubKey(x.0+subkey.0))).collect())
             );
         }
         for (k, v) in other.sub_map.iter() {
@@ -88,14 +88,17 @@ impl<PREM: Clone> PooledProof<PREM> {
 
 impl Proof for PooledProof<Expr> {
     type Reference = PooledRef;
+    type SubproofReference = SubKey;
     fn new() -> Self {
         PooledProof { prem_map: BTreeMap::new(), just_map: BTreeMap::new(), sub_map: BTreeMap::new(), proof: Subproof::new(), }
     }
-    fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference>, Self)> {
+    fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference, Self::SubproofReference>)> {
         r.fold(hlist![
             |ref k| self.prem_map.get(k).map(|x| Coproduct::inject(x.clone())),
-            |ref k| self.just_map.get(k).map(|x| Coproduct::inject(x.clone())),
-            |ref k| self.sub_map.get(k).map(|x| Coproduct::inject({ let mut p = self.clone(); p.proof = x.clone(); p}))])
+            |ref k| self.just_map.get(k).map(|x| Coproduct::inject(x.clone()))])
+    }
+    fn lookup_subproof(&self, r: Self::SubproofReference) -> Option<Self> {
+        self.sub_map.get(&r).map(|x| { let mut p = self.clone(); p.proof = x.clone(); p})
     }
     fn add_premise(&mut self, e: Expr) -> Self::Reference {
         let idx = self.next_premkey();
@@ -103,15 +106,15 @@ impl Proof for PooledProof<Expr> {
         self.proof.premise_list.push(idx);
         Self::Reference::inject(idx)
     }
-    fn add_subproof(&mut self, mut sub: Self) -> Self::Reference {
+    fn add_subproof(&mut self, mut sub: Self) -> Self::SubproofReference {
         let (i, j, k) = self.add_pools(&sub);
         let idx = self.next_subkey();
         sub.proof.increment_indices(i, j, k);
         self.sub_map.insert(idx, sub.proof);
         self.proof.line_list.push(Coproduct::inject(idx));
-        Self::Reference::inject(idx)
+        idx
     }
-    fn add_step(&mut self, just: Justification<Expr, Self::Reference>) -> Self::Reference {
+    fn add_step(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>) -> Self::Reference {
         let idx = self.next_justkey();
         self.just_map.insert(idx, just);
         self.proof.line_list.push(Coproduct::inject(idx));

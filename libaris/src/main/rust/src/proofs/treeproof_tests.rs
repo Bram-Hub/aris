@@ -11,13 +11,12 @@ fn test_andelim() {
     use ProofCheckError::*;
     assert_eq!(check_rule_at_line(&prf, 3), Ok(()));
     assert_eq!(check_rule_at_line(&prf, 4), Err(DoesNotOccur(p("E"), p("A & B & C & D"))));
-    assert_eq!(check_rule_at_line(&prf, 5), Err(IncorrectDepCount(vec![LineDep(1..1), LineDep(1..1)], 1, 0)));
+    assert_eq!(check_rule_at_line(&prf, 5), Err(IncorrectDepCount(vec![LineDep(1), LineDep(1)], 1)));
     assert!(if let Err(DepOfWrongForm(_)) = check_rule_at_line(&prf, 6) { true } else { false });
 }
 
 #[test]
 fn test_contelim() {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
     let prf = demo_proof_3();
     println!("{}", prf);
     let prf = decorate_line_and_indent(prf).bimap(&mut |(li, ())| li, &mut |_| ());
@@ -32,12 +31,12 @@ fn demo_prettyprinting() {
     let proof1 = TreeProof {
         premises: vec![((),p("A")), ((),p("B"))],
         lines: vec![
-            Line::Direct((), Justification(p("A & B"), Rule::AndIntro, vec![LineDep(1..1), LineDep(2..2)])),
+            Line::Direct((), Justification(p("A & B"), Rule::AndIntro, vec![LineDep(1), LineDep(2)], vec![])),
             Line::Subproof((), TreeProof {
                 premises: vec![((),p("C"))],
-                lines: vec![Line::Direct((), Justification(p("A & B"), Rule::Reit, vec![LineDep(3..3)]))],
+                lines: vec![Line::Direct((), Justification(p("A & B"), Rule::Reit, vec![LineDep(3)], vec![]))],
             }),
-            Line::Direct((), Justification(p("C -> (A & B)"), Rule::ImpIntro, vec![LineDep(4..5)])),
+            Line::Direct((), Justification(p("C -> (A & B)"), Rule::ImpIntro, vec![], vec![SubproofDep(4..5)])),
         ],
     };
     let proof1_: TreeProof<(), ()> = demo_proof_1();

@@ -29,7 +29,7 @@ impl Rule {
             AndIntro | OrElim => None, // AndIntro and OrElim can have arbitrarily many conjuncts/disjuncts in one application
         }
     }
-    pub fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<P::Reference>) -> Result<(), ProofCheckError<P::Reference>> {
+    pub fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<P::Reference>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
         use ProofCheckError::*;
         match self {
             Rule::AndIntro => unimplemented!(),
@@ -79,10 +79,11 @@ impl Rule {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum ProofCheckError<R> {
+pub enum ProofCheckError<R, S> {
     LineDoesNotExist(R),
     ReferencesLaterLine(LineAndIndent, usize),
-    IncorrectDepCount(Vec<R>, usize, usize),
+    IncorrectDepCount(Vec<R>, usize),
+    IncorrectSubDepCount(Vec<S>, usize),
     DepOfWrongForm(String),
     DoesNotOccur(Expr, Expr),
 }

@@ -1,15 +1,20 @@
 use super::*;
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct LineDep(pub Range<usize>);
+pub struct LineDep(pub usize);
+#[derive(Clone, PartialEq, Eq)]
+pub struct SubproofDep(pub Range<usize>);
+
 impl std::fmt::Debug for LineDep {
     fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> {
-        let &LineDep(Range { start, end }) = self;
-        if start == end {
-            write!(fmt, "{}", start)
-        } else {
-            write!(fmt, "{}-{}", start, end)
-        }
+        let &LineDep(i) = self;
+        write!(fmt, "{}", i)
+    }
+}
+impl std::fmt::Debug for SubproofDep {
+    fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> {
+        let &SubproofDep(Range { start, end }) = self;
+        write!(fmt, "{}-{}", start, end)
     }
 }
 
@@ -21,7 +26,7 @@ pub struct TreeProof<T, U> {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Line<T, U> {
-    Direct(T, Justification<Expr, LineDep>),
+    Direct(T, Justification<Expr, LineDep, SubproofDep>),
     Subproof(U, TreeProof<T, U>),
 }
 
@@ -30,7 +35,7 @@ impl TreeProof<(), ()> {
         let prf = decorate_subproof_sizes(self.clone());
         prf.premises.len() + prf.lines.iter().map(|line| if let Line::Subproof((SubproofSize(n), ()), _) = line { *n } else { 1 }).sum::<usize>()
     }
-    fn lookup_line(&self, i: usize) -> Option<Coprod!(Expr, Justification<Expr, <Self as Proof>::Reference>, Self)> {
+    fn lookup_line(&self, i: usize) -> Option<Coprod!(Expr, Justification<Expr, LineDep, SubproofDep>)> {
         if i < self.premises.len() {
             return self.premises.get(i).map(|x| Coproduct::inject(x.1.clone()));
         }
@@ -44,21 +49,21 @@ impl TreeProof<(), ()> {
         assert!(j >= i);
         None
     }
-    fn lookup_subproof(&self, i: usize, j: usize) -> Option<Coprod!(Expr, Justification<Expr, <Self as Proof>::Reference>, Self)> {
-        None // TODO: implement
-    }
 }
 
 impl Proof for TreeProof<(), ()> {
     type Reference = LineDep;
+    type SubproofReference = SubproofDep;
     fn new() -> Self { TreeProof { premises: vec![], lines: vec![] } }
-    fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference>, Self)> {
-        let LineDep(Range { start, end }) = r;
-        if start == end { self.lookup_line(start-1) } else { self.lookup_subproof(start-1, end-1) }
+    fn lookup(&self, LineDep(line): Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference, Self::SubproofReference>)> {
+        self.lookup_line(line-1)
     }
-    fn add_premise(&mut self, e: Expr) -> Self::Reference { self.premises.push(((), e)); let i = self.premises.len(); LineDep(i..i) }
-    fn add_subproof(&mut self, sub: Self) -> Self::Reference { let i = self.count_lines(); self.lines.push(Line::Subproof((), sub)); let j = self.count_lines(); LineDep((i+1)..j) }
-    fn add_step(&mut self, just: Justification<Expr, Self::Reference>) -> Self::Reference { self.lines.push(Line::Direct((), just)); let i = self.count_lines(); LineDep(i..i) }
+    fn lookup_subproof(&self, SubproofDep(Range { start, end }): Self::SubproofReference) -> Option<Self> {
+        None // TODO: implement
+    }
+    fn add_premise(&mut self, e: Expr) -> Self::Reference { self.premises.push(((), e)); let i = self.premises.len(); LineDep(i) }
+    fn add_subproof(&mut self, sub: Self) -> Self::SubproofReference { let i = self.count_lines(); self.lines.push(Line::Subproof((), sub)); let j = self.count_lines(); SubproofDep((i+1)..j) }
+    fn add_step(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>) -> Self::Reference { self.lines.push(Line::Direct((), just)); let i = self.count_lines(); LineDep(i) }
 }
 
 
@@ -80,12 +85,12 @@ impl<A, B> /* Bifunctor for */ Line<A, B> {
     }
 }
 
-pub enum PremiseOrLine<T> { Premise(T, Expr), Line(T, Justification<Expr, LineDep>) }
+pub enum PremiseOrLine<T> { Premise(T, Expr), Line(T, Justification<Expr, LineDep, SubproofDep>) }
 impl<T> PremiseOrLine<T> {
     fn get_expr(&self) -> &Expr {
         match self {
             PremiseOrLine::Premise(_, ref e) => e,
-            PremiseOrLine::Line(_, Justification(ref e, _, _)) => e,
+            PremiseOrLine::Line(_, Justification(ref e, _, _, _)) => e,
         }
     }
 }
@@ -181,33 +186,37 @@ pub fn lookup_by_decoration<T: Clone, F: Fn(&T) -> bool, U>(prf: &TreeProof<T, U
     None
 }
 
-pub fn check_rule_at_line(prf: &TreeProof<LineAndIndent, ()>, i: usize) -> Result<(), ProofCheckError<LineDep>> {
+pub fn check_rule_at_line(prf: &TreeProof<LineAndIndent, ()>, i: usize) -> Result<(), ProofCheckError<LineDep, SubproofDep>> {
     if let Some(pol) = lookup_by_decoration(prf, &|li| li.line == i) {
         match pol {
             PremiseOrLine::Premise(_, _) => Ok(()), // Premises are always valid
             PremiseOrLine::Line(li, just) => { check_rule(prf, li, just) }
         }
     } else {
-        Err(ProofCheckError::LineDoesNotExist(LineDep(i..i)))
+        Err(ProofCheckError::LineDoesNotExist(LineDep(i)))
     }
 }
 
-fn check_rule(prf: &TreeProof<LineAndIndent, ()>, li: LineAndIndent, Justification(expr, rule, deps): Justification<Expr, LineDep>) -> Result<(), ProofCheckError<LineDep>> {
+fn check_rule(prf: &TreeProof<LineAndIndent, ()>, li: LineAndIndent, Justification(expr, rule, deps, sdeps): Justification<Expr, LineDep, SubproofDep>) -> Result<(), ProofCheckError<LineDep, SubproofDep>> {
     use ProofCheckError::*;
-    for &LineDep(Range { start, end }) in deps.iter() {
+    for &LineDep(i) in deps.iter() {
+        if i >= li.line {
+            return Err(ReferencesLaterLine(li, i))
+        }
+    }
+    for &SubproofDep(Range { start, end }) in sdeps.iter() {
         assert!(start <= end); // this should be enforced by the GUI, and hence not a user-facing error message
         if end >= li.line {
             return Err(ReferencesLaterLine(li, end))
         }
     }
     if let Some((directs, subs)) = rule.get_depcount() {
-        let (mut d, mut s) = (0, 0);
-        for &LineDep(Range { start, end }) in deps.iter() {
-            if start == end { d += 1 } else { s += 1 }
+        if deps.len() != directs {
+            return Err(IncorrectDepCount(deps, directs));
         }
-        if d != directs || s != subs {
-            return Err(IncorrectDepCount(deps, directs, subs));
+        if sdeps.len() != subs {
+            return Err(IncorrectSubDepCount(sdeps, subs));
         }
     }
-    rule.check(&prf.clone().bimap(&mut |_| (), &mut |_| ()), expr, deps)
+    rule.check(&prf.clone().bimap(&mut |_| (), &mut |_| ()), expr, deps, sdeps)
 }
