@@ -64,6 +64,8 @@ impl Proof for TreeProof<(), ()> {
     fn add_premise(&mut self, e: Expr) -> Self::Reference { self.premises.push(((), e)); let i = self.premises.len(); LineDep(i) }
     fn add_subproof(&mut self, sub: Self) -> Self::SubproofReference { let i = self.count_lines(); self.lines.push(Line::Subproof((), sub)); let j = self.count_lines(); SubproofDep((i+1)..j) }
     fn add_step(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>) -> Self::Reference { self.lines.push(Line::Direct((), just)); let i = self.count_lines(); LineDep(i) }
+    fn premises(&self) -> Vec<Self::Reference> { unimplemented!() }
+    fn lines(&self) -> Vec<Coprod!(Self::Reference, Self::SubproofReference)> { unimplemented!() }
 }
 
 

@@ -47,6 +47,8 @@ pub trait Proof: Sized {
     fn add_premise(&mut self, e: Expr) -> Self::Reference;
     fn add_subproof(&mut self, sub: Self) -> Self::SubproofReference;
     fn add_step(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>) -> Self::Reference;
+    fn premises(&self) -> Vec<Self::Reference>;
+    fn lines(&self) -> Vec<Coprod!(Self::Reference, Self::SubproofReference)>;
 
     fn lookup_expr(&self, r: Self::Reference) -> Option<Expr> {
         self.lookup(r).and_then(|x: Coprod!(Expr, Justification<Expr, Self::Reference, Self::SubproofReference>)| x.fold(hlist![|x| Some(x), |x: Justification<_, _, _>| Some(x.0)]))

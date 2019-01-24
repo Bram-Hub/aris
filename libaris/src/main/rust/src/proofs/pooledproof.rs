@@ -120,12 +120,23 @@ impl Proof for PooledProof<Expr> {
         self.proof.line_list.push(Coproduct::inject(idx));
         Self::Reference::inject(idx)
     }
+    fn premises(&self) -> Vec<Self::Reference> {
+        self.proof.premise_list.iter().cloned().map(|x| Coproduct::inject(x)).collect()
+    }
+    fn lines(&self) -> Vec<Coprod!(Self::Reference, Self::SubproofReference)> {
+        use self::Coproduct::{Inl, Inr};
+        self.proof.line_list.iter().cloned().map(|x| match x {
+            Inl(x) => Coproduct::inject(Coproduct::inject(x)),
+            Inr(x) => Coproduct::embed(x),
+        }).collect()
+    }
 }
 
 #[test]
 fn prettyprint_pool() {
     let prf: PooledProof<Expr> = super::proof_tests::demo_proof_1();
-    println!("{:?}\n{}\n", prf, prf)
+    println!("{:?}\n{}\n", prf, prf);
+    println!("{:?}\n{:?}\n", prf.premises(), prf.lines());
 }
 
 impl DisplayIndented for PooledProof<Expr> {
