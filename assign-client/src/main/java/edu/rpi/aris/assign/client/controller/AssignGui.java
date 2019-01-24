@@ -162,6 +162,17 @@ public class AssignGui {
             classes.getSelectionModel().select(newValue);
             if (newValue != null)
                 setTabs(userInfo.getDefaultRole(), newValue.getUserRole());
+            tabPane.getTabs().removeIf(t -> {
+                TabGui gui = tabGuis.get(t);
+                if (gui instanceof SingleAssignmentGui) {
+                    ClassInfo info = userInfo.getSelectedClass();
+                    if (info.getClassId() != ((SingleAssignmentGui) gui).getCid()) {
+                        tabGuis.remove(t);
+                        return true;
+                    }
+                }
+                return false;
+            });
             TabGui gui = tabGuis.get(tabPane.getSelectionModel().getSelectedItem());
             if (gui == assignmentsGui || gui == classGui)
                 gui.load(false);
@@ -201,8 +212,12 @@ public class AssignGui {
         userInfo.classRoleProperty().addListener(((observable, oldValue, newValue) -> setTabs(userInfo.getDefaultRole(), newValue)));
 
         userInfo.loginProperty().addListener((observable, oldValue, newValue) -> {
-            if (!newValue)
-                assignmentsGui.load(true);
+            if (!newValue) {
+                for (TabGui gui : tabGuis.values())
+                    gui.unload();
+                TabGui gui = tabGuis.get(tabPane.getSelectionModel().getSelectedItem());
+                gui.load(true);
+            }
         });
 
         setTabs(null, null);
@@ -251,7 +266,7 @@ public class AssignGui {
             userInfo.logout();
         } else {
             for (TabGui gui : tabGuis.values())
-                if (gui != assignmentsGui)
+                if (gui.requiresOnline())
                     gui.unload();
             userInfo.connectionInit(null);
         }

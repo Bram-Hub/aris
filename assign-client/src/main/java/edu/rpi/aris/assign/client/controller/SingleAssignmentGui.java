@@ -110,6 +110,10 @@ public class SingleAssignmentGui implements TabGui {
             return false;
     }
 
+    public int getCid() {
+        return assignment.getCid();
+    }
+
     @FXML
     public void initialize() {
         Label placeHolder = new Label();
@@ -134,7 +138,7 @@ public class SingleAssignmentGui implements TabGui {
         });
         name.textProperty().bind(Bindings.createStringBinding(() -> assignment.getName() + ":", assignment.nameProperty()));
         dueDate.textProperty().bind(assignment.dueDateProperty());
-        status.textProperty().bind(assignment.statusProperty());
+        status.textProperty().bind(Bindings.createStringBinding(() -> userInfo.isLoggedIn() ? assignment.getStatusStr() : "Offline", assignment.statusProperty(), userInfo.loginProperty()));
         status.setManaged(!isInstructor);
         status.setVisible(!isInstructor);
         statusIcon.setManaged(!isInstructor);
@@ -147,6 +151,7 @@ public class SingleAssignmentGui implements TabGui {
         statusColumn.setStyle("-fx-alignment: CENTER;");
         buttonColumn.setCellValueFactory(param -> param.getValue().getValue().controlNodeProperty());
         buttonColumn.setStyle("-fx-alignment: CENTER;");
+
     }
 
     public <T extends ArisModule> void createAttempt(SingleAssignment.Attempt problemInfo, String problemName, Problem<T> problem, ArisModule<T> module) throws Exception {
@@ -203,7 +208,7 @@ public class SingleAssignmentGui implements TabGui {
 
             @Override
             public void uploadProblem() {
-                assignment.uploadAttempt(problemInfo, problem);
+                assignment.uploadAttempt(problemInfo, problem, module);
                 try {
                     moduleUI.hide();
                 } catch (Exception e) {

@@ -30,6 +30,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.sql.PreparedStatement;
@@ -174,10 +175,10 @@ public class SingleAssignment {
                         MsgUtil.ProblemInfo info = new MsgUtil.ProblemInfo(rs.getInt(3), rs.getString(4), null, null, rs.getString(5), rs.getString(6));
                         msg.getProblems().add(info);
                     }
-                    if (!first) {
-                        ref.set(msg);
+                    if (first)
                         return;
-                    }
+                    else
+                        ref.set(msg);
                 }
                 selectSub.setInt(2, aid);
                 selectSub.setInt(3, cid);
@@ -416,7 +417,7 @@ public class SingleAssignment {
         if (error.get()) {
             AssignClient.displayErrorMsg("Save Error", "An error occurred while trying to save the problem locally." + (submitOnError ? "The problem will be uploaded and you can make a copy of the problem to continue working" : ""));
             if (submitOnError)
-                Platform.runLater(() -> uploadAttempt(attempt, problem));
+                Platform.runLater(() -> uploadAttempt(attempt, problem, module));
             return false;
         } else if (!overwrite.get()) {
             for (TreeItem<Submission> item : problems) {
@@ -430,17 +431,50 @@ public class SingleAssignment {
         return false;
     }
 
-    public <T extends ArisModule> void uploadAttempt(Attempt problemInfo, Problem<T> problem) {
-        Client.getInstance().processMessage(new SubmissionCreateMsg<>(cid, aid, problemInfo.getPid(), problemInfo.getModuleName(), problem), new SubmissionCreateResponseHandler<>(problemInfo));
+    public <T extends ArisModule> void uploadAttempt(Attempt problemInfo, Problem<T> problem, ArisModule<T> module) {
+        if (userInfo.isLoggedIn())
+            Client.getInstance().processMessage(new SubmissionCreateMsg<>(cid, aid, problemInfo.getPid(), problemInfo.getModuleName(), problem), new SubmissionCreateResponseHandler<>(problemInfo));
+        else if (module != null) {
+            AssignClient.displayErrorMsg("You are offline", "Your attempt will be saved and you can upload it when you reconnect");
+            saveAttempt(problemInfo, problem, module, false);
+        } else {
+            AssignClient.displayErrorMsg("Error", "Failed to upload and save problem");
+        }
     }
 
     public <T extends ArisModule> void fetchSubmission(Submission submission, ArisModule<T> module, boolean readonly) {
         SubmissionFetchMsg<T> msg;
         if (isInstructor)
             msg = new SubmissionFetchMsg<>(cid, aid, submission.getPid(), submission.getSid(), submission.getUid(), submission.getModuleName());
-        else
+        else {
             msg = new SubmissionFetchMsg<>(cid, aid, submission.getPid(), submission.getSid(), submission.getModuleName());
-        Client.getInstance().processMessage(msg, new SubmissionFetchResponseHandler<>(module, readonly, submission));
+            OfflineDB.submit(con -> {
+                try (PreparedStatement select = con.prepareStatement("SELECT data FROM submissions WHERE sid = ? AND cid = ? AND aid = ? AND pid = ?;")) {
+                    select.setInt(1, submission.getSid());
+                    select.setInt(2, cid);
+                    select.setInt(3, aid);
+                    select.setInt(4, submission.getPid());
+                    try (ResultSet rs = select.executeQuery()) {
+                        if (rs.next()) {
+                            Problem<T> problem = module.getProblemConverter().loadProblem(rs.getBinaryStream(1), true);
+                            msg.setProblem(problem);
+                        }
+                    }
+                } catch (Exception e) {
+                    log.error("An error occurred loading the submission from the offline database", e);
+                }
+            }, true);
+        }
+        SubmissionFetchResponseHandler<T> handler = new SubmissionFetchResponseHandler<>(module, readonly, submission);
+        if (msg.getProblem() == null) {
+            if (!userInfo.isLoggedIn()) {
+                AssignClient.displayErrorMsg("Failed to load", "Failed to load submission while offline");
+                return;
+            }
+            Client.getInstance().processMessage(msg, handler);
+        } else
+            new Thread(() -> handler.response(msg)).start();
+
     }
 
     public void closed() {
@@ -819,19 +853,22 @@ public class SingleAssignment {
                 }
                 if (subs != null)
                     subs.add((int) subs.stream().filter(i -> i.getValue() instanceof Attempt).count(), new TreeItem<>(sub));
-                info.makeSubmission(message.getSid(), message.getSubmittedOn());
+                ArisModule<T> module = ModuleService.getService().getModule(message.getModuleName());
+                if (module != null)
+                    info.makeSubmission(message.getSid(), message.getSubmittedOn(), message.getProblem(), module);
+                else
+                    AssignClient.displayErrorMsg("Missing Module", "The client is missing the following module: " + message.getModuleName());
             });
         }
 
         @Override
         public void onError(boolean suggestRetry, SubmissionCreateMsg<T> msg) {
-            if (suggestRetry)
-                uploadAttempt(info, msg.getProblem());
-            else {
-                ArisModule<T> module = ModuleService.getService().getModule(msg.getModuleName());
-                if (module != null) {
+            ArisModule<T> module = ModuleService.getService().getModule(msg.getModuleName());
+            if (suggestRetry) {
+                uploadAttempt(info, msg.getProblem(), module);
+            } else {
+                if (module != null)
                     saveAttempt(new Attempt(info), msg.getProblem(), module, false);
-                }
             }
         }
 
@@ -864,7 +901,7 @@ public class SingleAssignment {
             this.status = new SimpleObjectProperty<>(status);
             this.moduleName = moduleName;
             this.submittedOnStr.bind(Bindings.createStringBinding(() -> this.submittedOn.get() == null ? "Never" : AssignGui.DATE_FORMAT.format(new Date(NetUtil.UTCToMilli(this.submittedOn.get()))), this.submittedOn));
-            this.statusStr = new SimpleStringProperty(statusStr + " (" + (Math.round(grade * 100.0) / 100.0) + "/" + "1.0)");
+            this.statusStr = new SimpleStringProperty(userInfo.isLoggedIn() ? (statusStr + " (" + (Math.round(grade * 100.0) / 100.0) + "/" + "1.0)") : "Offline");
             this.grade = new SimpleDoubleProperty(grade);
             HBox box = new HBox(5);
             Button view = new Button("View");
@@ -967,7 +1004,7 @@ public class SingleAssignment {
             grade.set(info.grade);
             submittedOn.set(info.submissionTime);
             status.set(info.status);
-            statusStr.set(info.statusStr + " (" + (Math.round(info.grade * 100.0) / 100.0) + "/" + "1.0)");
+            statusStr.set(userInfo.isLoggedIn() ? (info.statusStr + " (" + (Math.round(info.grade * 100.0) / 100.0) + "/" + "1.0)") : "Offline");
             TreeItem<Submission> parent = thisItem.getParent();
             if (parent != null && parent.getValue() instanceof AssignedProblem)
                 updateProblemStatus(parent.getValue(), ((AssignedProblem) parent.getValue()).submissions);
@@ -995,6 +1032,8 @@ public class SingleAssignment {
                     createPushed();
             });
             statusStrProperty().bind(Bindings.createStringBinding(() -> {
+                if (!userInfo.isLoggedIn())
+                    return "Offline";
                 String grade = " (" + Math.round(getGrade() * 100.0) / 100.0 + "/1.0)";
                 switch (getStatusProperty().get()) {
                     case GRADING:
@@ -1011,7 +1050,7 @@ public class SingleAssignment {
                         return "No Submissions" + grade;
                 }
                 return null;
-            }, getStatusProperty(), gradeProperty()));
+            }, getStatusProperty(), gradeProperty(), userInfo.loginProperty()));
         }
 
         AssignedProblem(MsgUtil.ProblemInfo info) {
@@ -1094,13 +1133,15 @@ public class SingleAssignment {
             submittedOnDateProperty().set(createdOn);
             nameProperty().set("Attempt " + getSubmittedOn());
             statusStrProperty().unbind();
-            statusStrProperty().set("Not Submitted");
+            statusStrProperty().bind(Bindings.createStringBinding(() -> userInfo.isLoggedIn() ? "Not Submitted" : "Offline", userInfo.loginProperty()));
             submittedOnProperty().unbind();
             submittedOnProperty().set("Not Submitted");
             Button edit = new Button("Edit");
             edit.setOnAction(e -> editAttempt());
             Button upload = new Button("Upload");
             upload.setOnAction(e -> uploadAttempt());
+            upload.visibleProperty().bind(userInfo.loginProperty());
+            upload.managedProperty().bind(userInfo.loginProperty());
             Button delete = new Button("Delete");
             delete.setOnAction(e -> askDelete());
             HBox box = new HBox(5);
@@ -1138,7 +1179,7 @@ public class SingleAssignment {
                     }
                     if (problem != null) {
                         Problem<T> finalProblem = problem;
-                        Platform.runLater(() -> SingleAssignment.this.uploadAttempt(this, finalProblem));
+                        Platform.runLater(() -> SingleAssignment.this.uploadAttempt(this, finalProblem, module));
                     }
                 } else {
                     log.error("Upload failed: No connection available to offline database");
@@ -1190,23 +1231,27 @@ public class SingleAssignment {
             });
         }
 
-        public void makeSubmission(int sid, ZonedDateTime submittedOn) {
+        public <T extends ArisModule> void makeSubmission(int sid, ZonedDateTime submittedOn, Problem<T> problem, ArisModule<T> module) {
             OfflineDB.submit(connection -> {
                 if (connection == null)
                     return;
-                try (PreparedStatement stmt = connection.prepareStatement("INSERT INTO submission (sid, pid, aid, cid, submitted_on, module_name, data) VALUES (?, ?, ?, ?, ?, a.module_name, a.data) SELECT a.module_name, a.data FROM attempts a WHERE aid = ? AND cid = ? AND pid = ? AND created_time = ?;")) {
+                try (PreparedStatement stmt = connection.prepareStatement("INSERT INTO submissions (sid, pid, aid, cid, submitted_on, module_name, data) VALUES (?, ?, ?, ?, ?, ?, ?);")) {
                     stmt.setInt(1, sid);
                     stmt.setInt(2, getPid());
                     stmt.setInt(3, aid);
                     stmt.setInt(4, cid);
                     stmt.setTimestamp(5, NetUtil.ZDTToTimestamp(submittedOn));
-                    stmt.setInt(6, aid);
-                    stmt.setInt(7, cid);
-                    stmt.setInt(8, getPid());
-                    stmt.setTimestamp(9, NetUtil.ZDTToTimestamp(submittedOn));
-                    stmt.execute();
+                    stmt.setString(6, module.getModuleName());
+                    try (PipedInputStream pis = new PipedInputStream();
+                         PipedOutputStream pos = new PipedOutputStream(pis)) {
+
+                        LibAssign.convertProblem(pos, problem, module, true);
+
+                        stmt.setBinaryStream(7, pis);
+                        stmt.executeUpdate();
+                    }
                     deleteAttempt();
-                } catch (SQLException e) {
+                } catch (SQLException | IOException e) {
                     log.error("An error occurred while trying to save submission", e);
                 }
             });

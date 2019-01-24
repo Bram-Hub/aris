@@ -123,7 +123,8 @@ public class AssignmentsGui implements TabGui {
         });
 
         userInfo.loginProperty().addListener((observable, oldValue, newValue) -> {
-            status.setVisible(newValue);
+            if (!newValue)
+                status.setText("Offline");
             classColumn.setVisible(!newValue);
             ServerPermissions permissions = ServerConfig.getPermissions();
             modifyColumn.setVisible(newValue && permissions != null && permissions.hasPermission(userInfo.getClassRole(), Perm.ASSIGNMENT_EDIT));
@@ -161,7 +162,7 @@ public class AssignmentsGui implements TabGui {
 
         dueDate.setCellValueFactory(param -> param.getValue().dueDateProperty());
 
-        status.setCellValueFactory(param -> param.getValue().statusProperty());
+        status.setCellValueFactory(param -> Bindings.createStringBinding(() -> userInfo.isLoggedIn() ? param.getValue().getStatus() : "Offline", param.getValue().statusProperty(), userInfo.loginProperty()));
 
         modifyColumn.setCellValueFactory(param -> param.getValue().modifyColumnProperty());
 

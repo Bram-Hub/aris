@@ -13,8 +13,7 @@
                          text="Assignment"/>
             <TableColumn fx:id="dueDate" editable="false" prefWidth="75.0" style="-fx-alignment: CENTER;"
                          text="Due Date"/>
-            <TableColumn fx:id="status" editable="false" prefWidth="75.0" style="-fx-alignment: CENTER;"
-                         text="Completed" visible="false"/>
+            <TableColumn fx:id="status" editable="false" prefWidth="75.0" style="-fx-alignment: CENTER;" text="Status"/>
             <TableColumn fx:id="modifyColumn" editable="false" prefWidth="75.0" sortable="false"
                          style="-fx-alignment: CENTER;" text="Modify Assignment" visible="false"/>
         </columns>
