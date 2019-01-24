@@ -45,7 +45,10 @@ public class Claim {
         sb.append("Premises:\n");
         for (Premise p : premises) {
             if (p.isSubproof()) {
-                sb.append("{ ").append(p.getAssumption()).append(" ").append(SUBPROOF_REP).append(" ").append(p.getConclusion()).append(" }\n");
+                sb.append("{\n\t").append(p.getAssumption()).append("\n-----------------\n");
+                for (Expression e : p.getSubproofLines())
+                    sb.append("\t").append(e).append("\n");
+                sb.append("}\n");
             } else {
                 sb.append(p.getPremise()).append("\n");
             }

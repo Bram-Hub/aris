@@ -5,16 +5,17 @@ import edu.rpi.aris.ast.Expression;
 public class Premise {
 
     private boolean isSubproof;
-    private Expression p1, p2;
+    private Expression premise;
+    private Expression[] lines;
 
     public Premise(Expression premise) {
-        p1 = premise;
+        this.premise = premise;
         isSubproof = false;
     }
 
-    public Premise(Expression assumption, Expression conclusion) {
-        p1 = assumption;
-        p2 = conclusion;
+    public Premise(Expression assumption, Expression[] lines) {
+        premise = assumption;
+        this.lines = lines;
         isSubproof = true;
     }
 
@@ -23,15 +24,15 @@ public class Premise {
     }
 
     public Expression getPremise() {
-        return isSubproof ? null : p1;
+        return isSubproof ? null : premise;
     }
 
     public Expression getAssumption() {
-        return isSubproof ? p1 : null;
+        return isSubproof ? premise : null;
     }
 
-    public Expression getConclusion() {
-        return isSubproof ? p2 : null;
+    public Expression[] getSubproofLines() {
+        return isSubproof ? lines : null;
     }
 
 }

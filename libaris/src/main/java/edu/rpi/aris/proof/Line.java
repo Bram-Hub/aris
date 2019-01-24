@@ -4,6 +4,7 @@ import edu.rpi.aris.ast.Expression;
 import edu.rpi.aris.rules.RuleList;
 import org.apache.commons.lang3.Range;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -165,15 +166,19 @@ public class Line {
                 setStatus(Proof.Status.INVALID_CLAIM);
                 return null;
             }
-            Line conclusion;
-            if (p.isAssumption && (conclusion = proof.getSubProofConclusion(p, this)) != null) {
-                conclusion.buildExpression();
-                if (conclusion.expression == null) {
-                    setStatusString("The expression at line " + (p.getLineNum() + 1) + " is invalid");
-                    setStatus(Proof.Status.INVALID_CLAIM);
-                    return null;
+            ArrayList<Line> conclusions;
+            if (p.isAssumption && (conclusions = proof.getSubProofConclusions(p, this)) != null) {
+                Expression[] exprs = new Expression[conclusions.size()];
+                for (int j = 0; j < conclusions.size(); ++j) {
+                    conclusions.get(j).buildExpression();
+                    if (conclusions.get(j).expression == null) {
+                        setStatusString("The expression at line " + (p.getLineNum() + 1) + " is invalid");
+                        setStatus(Proof.Status.INVALID_CLAIM);
+                        return null;
+                    }
+                    exprs[j] = conclusions.get(j).expression;
                 }
-                premises[i] = new Premise(p.expression, conclusion.expression);
+                premises[i] = new Premise(p.expression, exprs);
             } else
                 premises[i] = new Premise(p.expression);
             ++i;
