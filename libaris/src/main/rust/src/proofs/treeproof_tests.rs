@@ -31,12 +31,12 @@ fn demo_prettyprinting() {
     let proof1 = TreeProof {
         premises: vec![((),p("A")), ((),p("B"))],
         lines: vec![
-            Line::Direct((), Justification(p("A & B"), Rule::AndIntro, vec![LineDep(1), LineDep(2)], vec![])),
+            Line::Direct((), Justification(p("A & B"), RuleM::AndIntro, vec![LineDep(1), LineDep(2)], vec![])),
             Line::Subproof((), TreeProof {
                 premises: vec![((),p("C"))],
-                lines: vec![Line::Direct((), Justification(p("A & B"), Rule::Reit, vec![LineDep(3)], vec![]))],
+                lines: vec![Line::Direct((), Justification(p("A & B"), RuleM::Reit, vec![LineDep(3)], vec![]))],
             }),
-            Line::Direct((), Justification(p("C -> (A & B)"), Rule::ImpIntro, vec![], vec![SubproofDep(4..5)])),
+            Line::Direct((), Justification(p("C -> (A & B)"), RuleM::ImpIntro, vec![], vec![SubproofDep(4..5)])),
         ],
     };
     let proof1_: TreeProof<(), ()> = demo_proof_1();

@@ -210,13 +210,5 @@ fn check_rule(prf: &TreeProof<LineAndIndent, ()>, li: LineAndIndent, Justificati
             return Err(ReferencesLaterLine(li, end))
         }
     }
-    if let Some((directs, subs)) = rule.get_depcount() {
-        if deps.len() != directs {
-            return Err(IncorrectDepCount(deps, directs));
-        }
-        if sdeps.len() != subs {
-            return Err(IncorrectSubDepCount(sdeps, subs));
-        }
-    }
     rule.check(&prf.clone().bimap(&mut |_| (), &mut |_| ()), expr, deps, sdeps)
 }
