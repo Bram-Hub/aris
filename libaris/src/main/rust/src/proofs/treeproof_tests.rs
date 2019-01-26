@@ -26,6 +26,18 @@ fn test_contelim() {
 }
 
 #[test]
+fn test_orintro() {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let prf = demo_proof_4();
+    println!("{}", prf);
+    let prf = decorate_line_and_indent(prf).bimap(&mut |(li, ())| li, &mut |_| ());
+    use ProofCheckError::*;
+    assert_eq!(check_rule_at_line(&prf, 2), Ok(()));
+    assert_eq!(check_rule_at_line(&prf, 3), Err(DoesNotOccur(p("A"), p("P | Q"))));
+    assert!(if let Err(ConclusionOfWrongForm(_)) = check_rule_at_line(&prf, 4) { true } else { false });
+}
+
+#[test]
 fn demo_prettyprinting() {
     let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
     let proof1 = TreeProof {

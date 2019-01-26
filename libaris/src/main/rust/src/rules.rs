@@ -133,7 +133,22 @@ impl RuleT for PrepositionalInference {
                     return Err(LineDoesNotExist(deps[0].clone()))
                 }
             },
-            OrIntro => unimplemented!(),
+            OrIntro => {
+                if let Some(prem) = p.lookup_expr(deps[0].clone()) {
+                    if let Expr::AssocBinop { symbol: ASymbol::Or, ref exprs } = expr {
+                        for e in exprs.iter() {
+                            if e == &prem {
+                                return Ok(());
+                            }
+                        }
+                        return Err(DoesNotOccur(prem, expr.clone()));
+                    } else {
+                        return Err(ConclusionOfWrongForm("expected an or-expression".into()));
+                    }
+                } else {
+                    return Err(LineDoesNotExist(deps[0].clone()))
+                }
+            },
             OrElim => unimplemented!(),
             ImpIntro => unimplemented!(),
             ImpElim => unimplemented!(),
@@ -200,5 +215,6 @@ pub enum ProofCheckError<R, S> {
     IncorrectDepCount(Vec<R>, usize),
     IncorrectSubDepCount(Vec<S>, usize),
     DepOfWrongForm(String),
+    ConclusionOfWrongForm(String),
     DoesNotOccur(Expr, Expr),
 }
