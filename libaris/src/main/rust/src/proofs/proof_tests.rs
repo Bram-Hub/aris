@@ -52,3 +52,12 @@ pub fn demo_proof_4<P: Proof>() -> P {
     prf.add_step(Justification(p("P & Q"), RuleM::OrIntro, vec![r1.clone()], vec![])); // 4
     prf
 }
+
+pub fn demo_proof_5<P: Proof>() -> P {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let mut prf = P::new();
+    let r1 = prf.add_premise(p("A")); // 1
+    prf.add_step(Justification(p("A"), RuleM::Reit, vec![r1.clone()], vec![])); // 2
+    prf.add_step(Justification(p("B"), RuleM::Reit, vec![r1.clone()], vec![])); // 3
+    prf
+}

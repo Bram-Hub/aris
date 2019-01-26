@@ -114,7 +114,17 @@ impl RuleT for PrepositionalInference {
     fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<P::Reference>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
         use ProofCheckError::*; use PrepositionalInference::*;
         match self {
-            Reit => unimplemented!(),
+            Reit => {
+                if let Some(prem) = p.lookup_expr(deps[0].clone()) {
+                    if prem == expr {
+                        return Ok(());
+                    } else {
+                        return Err(DoesNotOccur(expr, prem.clone()));
+                    }
+                } else {
+                    return Err(LineDoesNotExist(deps[0].clone()))
+                }
+            },
             AndIntro => unimplemented!(),
             AndElim => {
                 if let Some(prem) = p.lookup_expr(deps[0].clone()) {

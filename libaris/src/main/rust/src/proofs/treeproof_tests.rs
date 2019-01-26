@@ -38,6 +38,17 @@ fn test_orintro() {
 }
 
 #[test]
+fn test_reit() {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let prf = demo_proof_5();
+    println!("{}", prf);
+    let prf = decorate_line_and_indent(prf).bimap(&mut |(li, ())| li, &mut |_| ());
+    use ProofCheckError::*;
+    assert_eq!(check_rule_at_line(&prf, 2), Ok(()));
+    assert_eq!(check_rule_at_line(&prf, 3), Err(DoesNotOccur(p("B"), p("A"))));
+}
+
+#[test]
 fn demo_prettyprinting() {
     let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
     let proof1 = TreeProof {
