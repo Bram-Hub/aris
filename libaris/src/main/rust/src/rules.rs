@@ -176,7 +176,23 @@ impl RuleT for PrepositionalInference {
             ImpElim => unimplemented!(),
             NotIntro => unimplemented!(),
             NotElim => unimplemented!(),
-            ContradictionIntro => unimplemented!(),
+            ContradictionIntro => {
+                if let Expr::Bottom = expr { 
+                    let mut prems = vec![];
+                    prems.push(p.lookup_expr_or_die(deps[0].clone())?);
+                    prems.push(p.lookup_expr_or_die(deps[1].clone())?);
+                    for (i, j) in [(0, 1), (1, 0)].iter().cloned() {
+                        if let Expr::Unop { symbol: USymbol::Not, ref operand } = prems[i] {
+                            if **operand == prems[j] {
+                                return Ok(());
+                            }
+                        }
+                    }
+                    return Err(DepOfWrongForm("expected one dep to be negation of other".into()));
+                } else {
+                    return Err(ConclusionOfWrongForm("conclusion should be bottom".into()));
+                }
+            },
             ContradictionElim => {
                 let prem = p.lookup_expr_or_die(deps[0].clone())?;
                 if let Expr::Bottom = prem {

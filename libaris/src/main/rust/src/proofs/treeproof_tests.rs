@@ -61,6 +61,20 @@ fn test_andintro() {
 }
 
 #[test]
+fn test_contradictionintro() {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let prf = demo_proof_7();
+    println!("{}", prf);
+    let prf = decorate_line_and_indent(prf).bimap(&mut |(li, ())| li, &mut |_| ());
+    use ProofCheckError::*;
+    assert_eq!(check_rule_at_line(&prf, 5), Ok(()));
+    assert_eq!(check_rule_at_line(&prf, 4), Ok(()));
+    assert!(if let Err(DepOfWrongForm(_)) = check_rule_at_line(&prf, 7) { true } else { false });
+    assert!(if let Err(DepOfWrongForm(_)) = check_rule_at_line(&prf, 8) { true } else { false });
+    assert!(if let Err(ConclusionOfWrongForm(_)) = check_rule_at_line(&prf, 9) { true } else { false });
+}
+
+#[test]
 fn demo_prettyprinting() {
     let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
     let proof1 = TreeProof {
