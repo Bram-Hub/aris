@@ -108,33 +108,28 @@ impl RuleT for PrepositionalInference {
         use PrepositionalInference::*;
         match self {
             NotIntro | ImpIntro => Some(1),
-            Reit | AndElim | OrIntro | NotElim | ContradictionElim | ContradictionIntro | ImpElim | AndIntro | OrElim => Some(0),
+            Reit | AndElim | OrIntro | NotElim | ContradictionElim | ContradictionIntro | ImpElim | AndIntro => Some(0),
+            OrElim => None,
         }
     }
     fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<P::Reference>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
         use ProofCheckError::*; use PrepositionalInference::*;
         match self {
             Reit => {
-                if let Some(prem) = p.lookup_expr(deps[0].clone()) {
-                    if prem == expr {
-                        return Ok(());
-                    } else {
-                        return Err(DoesNotOccur(expr, prem.clone()));
-                    }
+                let prem = p.lookup_expr_or_die(deps[0].clone())?;
+                if prem == expr {
+                    return Ok(());
                 } else {
-                    return Err(LineDoesNotExist(deps[0].clone()))
+                    return Err(DoesNotOccur(expr, prem.clone()));
                 }
             },
             AndIntro => {
                 if let Expr::AssocBinop { symbol: ASymbol::And, ref exprs } = expr {
                     // ensure each dep appears in exprs
                     for d in deps.iter() {
-                        if let Some(e) = p.lookup_expr(d.clone()) {
-                            if !exprs.iter().find(|x| x == &&e).is_some() {
-                                return Err(DoesNotOccur(e, expr.clone()));
-                            }
-                        } else {
-                            return Err(LineDoesNotExist(d.clone()));
+                        let e = p.lookup_expr_or_die(d.clone())?;
+                        if !exprs.iter().find(|x| x == &&e).is_some() {
+                            return Err(DoesNotOccur(e, expr.clone()));
                         }
                     }
                     // ensure each expr has a dep
@@ -150,36 +145,30 @@ impl RuleT for PrepositionalInference {
                 }
             },
             AndElim => {
-                if let Some(prem) = p.lookup_expr(deps[0].clone()) {
-                    if let Expr::AssocBinop { symbol: ASymbol::And, ref exprs } = prem {
-                        for e in exprs.iter() {
-                            if e == &expr {
-                                return Ok(());
-                            }
+                let prem = p.lookup_expr_or_die(deps[0].clone())?;
+                if let Expr::AssocBinop { symbol: ASymbol::And, ref exprs } = prem {
+                    for e in exprs.iter() {
+                        if e == &expr {
+                            return Ok(());
                         }
-                        // TODO: allow `A /\ B /\ C |- C /\ A /\ C`, etc
-                        return Err(DoesNotOccur(expr, prem.clone()));
-                    } else {
-                        return Err(DepOfWrongForm("expected an and-expression".into()));
                     }
+                    // TODO: allow `A /\ B /\ C |- C /\ A /\ C`, etc
+                    return Err(DoesNotOccur(expr, prem.clone()));
                 } else {
-                    return Err(LineDoesNotExist(deps[0].clone()))
+                    return Err(DepOfWrongForm("expected an and-expression".into()));
                 }
             },
             OrIntro => {
-                if let Some(prem) = p.lookup_expr(deps[0].clone()) {
-                    if let Expr::AssocBinop { symbol: ASymbol::Or, ref exprs } = expr {
-                        for e in exprs.iter() {
-                            if e == &prem {
-                                return Ok(());
-                            }
+                let prem = p.lookup_expr_or_die(deps[0].clone())?;
+                if let Expr::AssocBinop { symbol: ASymbol::Or, ref exprs } = expr {
+                    for e in exprs.iter() {
+                        if e == &prem {
+                            return Ok(());
                         }
-                        return Err(DoesNotOccur(prem, expr.clone()));
-                    } else {
-                        return Err(ConclusionOfWrongForm("expected an or-expression".into()));
                     }
+                    return Err(DoesNotOccur(prem, expr.clone()));
                 } else {
-                    return Err(LineDoesNotExist(deps[0].clone()))
+                    return Err(ConclusionOfWrongForm("expected an or-expression".into()));
                 }
             },
             OrElim => unimplemented!(),
@@ -189,14 +178,11 @@ impl RuleT for PrepositionalInference {
             NotElim => unimplemented!(),
             ContradictionIntro => unimplemented!(),
             ContradictionElim => {
-                if let Some(prem) = p.lookup_expr(deps[0].clone()) {
-                    if let Expr::Bottom = prem {
-                        return Ok(());
-                    } else {
-                        return Err(DepOfWrongForm("premise should be bottom".into()));
-                    }
+                let prem = p.lookup_expr_or_die(deps[0].clone())?;
+                if let Expr::Bottom = prem {
+                    return Ok(());
                 } else {
-                    return Err(LineDoesNotExist(deps[0].clone()))
+                    return Err(DepOfWrongForm("premise should be bottom".into()));
                 }
             },
         }

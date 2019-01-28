@@ -53,6 +53,9 @@ pub trait Proof: Sized {
     fn lookup_expr(&self, r: Self::Reference) -> Option<Expr> {
         self.lookup(r).and_then(|x: Coprod!(Expr, Justification<Expr, Self::Reference, Self::SubproofReference>)| x.fold(hlist![|x| Some(x), |x: Justification<_, _, _>| Some(x.0)]))
     }
+    fn lookup_expr_or_die(&self, r: Self::Reference) -> Result<Expr, ProofCheckError<Self::Reference, Self::SubproofReference>> {
+        self.lookup_expr(r.clone()).ok_or(ProofCheckError::LineDoesNotExist(r))
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
