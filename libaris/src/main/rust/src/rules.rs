@@ -125,7 +125,30 @@ impl RuleT for PrepositionalInference {
                     return Err(LineDoesNotExist(deps[0].clone()))
                 }
             },
-            AndIntro => unimplemented!(),
+            AndIntro => {
+                if let Expr::AssocBinop { symbol: ASymbol::And, ref exprs } = expr {
+                    // ensure each dep appears in exprs
+                    for d in deps.iter() {
+                        if let Some(e) = p.lookup_expr(d.clone()) {
+                            if !exprs.iter().find(|x| x == &&e).is_some() {
+                                return Err(DoesNotOccur(e, expr.clone()));
+                            }
+                        } else {
+                            return Err(LineDoesNotExist(d.clone()));
+                        }
+                    }
+                    // ensure each expr has a dep
+                    for e in exprs {
+                        if deps.iter().find(|&d| p.lookup_expr(d.clone()).map(|de| &de == e).unwrap_or(false)).is_none() {
+                            return Err(DepDoesNotExist(e.clone()));
+                        }
+                    }
+                    assert_eq!(exprs.len(), deps.len());
+                    return Ok(());
+                } else {
+                    return Err(DepOfWrongForm("expected an and-expression".into()));
+                }
+            },
             AndElim => {
                 if let Some(prem) = p.lookup_expr(deps[0].clone()) {
                     if let Expr::AssocBinop { symbol: ASymbol::And, ref exprs } = prem {
@@ -227,4 +250,5 @@ pub enum ProofCheckError<R, S> {
     DepOfWrongForm(String),
     ConclusionOfWrongForm(String),
     DoesNotOccur(Expr, Expr),
+    DepDoesNotExist(Expr),
 }

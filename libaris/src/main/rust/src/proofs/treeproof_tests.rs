@@ -49,6 +49,18 @@ fn test_reit() {
 }
 
 #[test]
+fn test_andintro() {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let prf = demo_proof_6();
+    println!("{}", prf);
+    let prf = decorate_line_and_indent(prf).bimap(&mut |(li, ())| li, &mut |_| ());
+    use ProofCheckError::*;
+    assert_eq!(check_rule_at_line(&prf, 4), Ok(()));
+    assert_eq!(check_rule_at_line(&prf, 5), Err(DoesNotOccur(p("C"), p("A & B"))));
+    assert_eq!(check_rule_at_line(&prf, 6), Err(DepDoesNotExist(p("B"))));
+}
+
+#[test]
 fn demo_prettyprinting() {
     let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
     let proof1 = TreeProof {
