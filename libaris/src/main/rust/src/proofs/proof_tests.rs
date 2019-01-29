@@ -8,6 +8,7 @@ fn test_rules<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofRefer
     test_reit::<P>();
     test_andintro::<P>();
     test_contradictionintro::<P>();
+    test_notelim::<P>();
 }
 
 #[test] fn test_rules_on_treeproof() { test_rules::<treeproof::TreeProof<(), ()>>(); }
@@ -151,7 +152,6 @@ pub fn demo_proof_7<P: Proof>() -> (P, Vec<P::Reference>) {
 }
 
 fn test_contradictionintro<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
     let (prf, lines) = demo_proof_7::<P>();
     println!("{}", prf);
     use ProofCheckError::*;
@@ -162,7 +162,7 @@ fn test_contradictionintro<P: Proof+Display>() where P::Reference: Debug+Eq, P::
     assert!(if let Err(ConclusionOfWrongForm(_)) = prf.verify_line(&lines[8]) { true } else { false });
 }
 
-pub fn demo_proof_8<P: Proof>() -> P{
+pub fn demo_proof_8<P: Proof>() -> (P, Vec<P::Reference>) {
     let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
     let mut prf = P::new();
     let r1 = prf.add_premise(p("~~A")); // 1
@@ -170,11 +170,23 @@ pub fn demo_proof_8<P: Proof>() -> P{
     let r3 = prf.add_premise(p("~A")); // 3
     let r4 = prf.add_premise(p("A")); // 4
 
-    prf.add_step(Justification(p("A"), RuleM::NotElim, vec![r1.clone()], vec![]));  // 5
-    prf.add_step(Justification(p("A & B"), RuleM::NotElim, vec![r2.clone()], vec![])); // 6
-    prf.add_step(Justification(p("A"), RuleM::NotElim, vec![r3.clone()], vec![])); // 7
-    prf.add_step(Justification(p("A"), RuleM::NotElim, vec![r4.clone()], vec![])); // 8
-    prf.add_step(Justification(p("B"), RuleM::NotElim, vec![r2.clone()], vec![])); // 9
+    let r5 = prf.add_step(Justification(p("A"), RuleM::NotElim, vec![r1.clone()], vec![]));  // 5
+    let r6 = prf.add_step(Justification(p("A & B"), RuleM::NotElim, vec![r2.clone()], vec![])); // 6
+    let r7 = prf.add_step(Justification(p("A"), RuleM::NotElim, vec![r3.clone()], vec![])); // 7
+    let r8 = prf.add_step(Justification(p("A"), RuleM::NotElim, vec![r4.clone()], vec![])); // 8
+    let r9 = prf.add_step(Justification(p("B"), RuleM::NotElim, vec![r2.clone()], vec![])); // 9
 
-    prf
+    (prf, vec![r1, r2, r3, r4, r5, r6, r7, r8, r9])
 }
+
+fn test_notelim<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq {
+    let (prf, lines) = demo_proof_8::<P>();
+    println!("{}", prf);
+    use ProofCheckError::*;
+    assert_eq!(prf.verify_line(&lines[4]),Ok(()));
+    assert_eq!(prf.verify_line(&lines[5]),Ok(()));
+    assert!(if let Err(DepOfWrongForm(_)) = prf.verify_line(&lines[6]) {true} else {false});
+    assert!(if let Err(DepOfWrongForm(_)) = prf.verify_line(&lines[7]) {true} else {false});
+    assert!(if let Err(ConclusionOfWrongForm(_)) = prf.verify_line(&lines[8]) {true} else {false});
+}
+

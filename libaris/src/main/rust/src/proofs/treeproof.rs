@@ -58,7 +58,7 @@ impl<T: Clone+Default, U: Clone+Default> Proof for TreeProof<T, U> {
     fn lookup(&self, LineDep(line): Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference, Self::SubproofReference>)> {
         self.lookup_line(line-1)
     }
-    fn lookup_subproof(&self, SubproofDep(Range { start, end }): Self::SubproofReference) -> Option<Self> {
+    fn lookup_subproof(&self, SubproofDep(_): Self::SubproofReference) -> Option<Self> {
         None // TODO: implement
     }
     fn add_premise(&mut self, e: Expr) -> Self::Reference { self.premises.push((Default::default(), e)); let i = self.premises.len(); LineDep(i) }
