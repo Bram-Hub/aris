@@ -130,6 +130,16 @@ impl Proof for PooledProof<Expr> {
             Inr(x) => Coproduct::embed(x),
         }).collect()
     }
+    fn verify_line(&self, r: &Self::Reference) -> Result<(), ProofCheckError<Self::Reference, Self::SubproofReference>> {
+        // TODO: ReferencesLaterLine check (or should that go in SharedChecks?)
+        use self::Coproduct::{Inl, Inr};
+        match self.lookup(r.clone()) {
+            None => Err(ProofCheckError::LineDoesNotExist(r.clone())),
+            Some(Inl(_)) => Ok(()), // premises are always valid
+            Some(Inr(Inl(Justification(conclusion, rule, deps, sdeps)))) => rule.check(self, conclusion, deps, sdeps),
+            Some(Inr(Inr(void))) => match void {},
+        }
+    }
 }
 
 #[test]

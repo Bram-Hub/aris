@@ -30,10 +30,10 @@ pub enum Line<T, U> {
     Subproof(U, TreeProof<T, U>),
 }
 
-impl TreeProof<(), ()> {
+impl<T: Clone, U: Clone> TreeProof<T, U> {
     fn count_lines(&self) -> usize {
         let prf = decorate_subproof_sizes(self.clone());
-        prf.premises.len() + prf.lines.iter().map(|line| if let Line::Subproof((SubproofSize(n), ()), _) = line { *n } else { 1 }).sum::<usize>()
+        prf.premises.len() + prf.lines.iter().map(|line| if let Line::Subproof((SubproofSize(n), _), _) = line { *n } else { 1 }).sum::<usize>()
     }
     fn lookup_line(&self, i: usize) -> Option<Coprod!(Expr, Justification<Expr, LineDep, SubproofDep>)> {
         if i < self.premises.len() {
@@ -42,8 +42,8 @@ impl TreeProof<(), ()> {
         let mut j = self.premises.len();
         for line in self.lines.iter() {
             match line {
-                Line::Direct((), just) => { if j == i { return Some(Coproduct::inject(just.clone())); } else { j += 1; } },
-                Line::Subproof((), sub) => { if let Some(x) = sub.lookup_line(i-j) { return Some(x); } else { j += sub.count_lines(); } }
+                Line::Direct(_, just) => { if j == i { return Some(Coproduct::inject(just.clone())); } else { j += 1; } },
+                Line::Subproof(_, sub) => { if let Some(x) = sub.lookup_line(i-j) { return Some(x); } else { j += sub.count_lines(); } }
             }
         }
         assert!(j >= i);
@@ -51,7 +51,7 @@ impl TreeProof<(), ()> {
     }
 }
 
-impl Proof for TreeProof<(), ()> {
+impl<T: Clone+Default, U: Clone+Default> Proof for TreeProof<T, U> {
     type Reference = LineDep;
     type SubproofReference = SubproofDep;
     fn new() -> Self { TreeProof { premises: vec![], lines: vec![] } }
@@ -61,11 +61,19 @@ impl Proof for TreeProof<(), ()> {
     fn lookup_subproof(&self, SubproofDep(Range { start, end }): Self::SubproofReference) -> Option<Self> {
         None // TODO: implement
     }
-    fn add_premise(&mut self, e: Expr) -> Self::Reference { self.premises.push(((), e)); let i = self.premises.len(); LineDep(i) }
-    fn add_subproof(&mut self, sub: Self) -> Self::SubproofReference { let i = self.count_lines(); self.lines.push(Line::Subproof((), sub)); let j = self.count_lines(); SubproofDep((i+1)..j) }
-    fn add_step(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>) -> Self::Reference { self.lines.push(Line::Direct((), just)); let i = self.count_lines(); LineDep(i) }
-    fn premises(&self) -> Vec<Self::Reference> { unimplemented!() }
+    fn add_premise(&mut self, e: Expr) -> Self::Reference { self.premises.push((Default::default(), e)); let i = self.premises.len(); LineDep(i) }
+    fn add_subproof(&mut self, sub: Self) -> Self::SubproofReference { let i = self.count_lines(); self.lines.push(Line::Subproof(Default::default(), sub)); let j = self.count_lines(); SubproofDep((i+1)..j) }
+    fn add_step(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>) -> Self::Reference { self.lines.push(Line::Direct(Default::default(), just)); let i = self.count_lines(); LineDep(i) }
+    fn premises(&self) -> Vec<Self::Reference> {
+        //let prf = decorate_references(self.clone());
+        //let res = vec![];
+        unimplemented!();
+    }
     fn lines(&self) -> Vec<Coprod!(Self::Reference, Self::SubproofReference)> { unimplemented!() }
+    fn verify_line(&self, &LineDep(i): &Self::Reference) -> Result<(), ProofCheckError<Self::Reference, Self::SubproofReference>> {
+        let prf = decorate_line_and_indent(self.clone()).bimap(&mut |(x,_)| x, &mut |_| ());
+        check_rule_at_line(&prf, i)
+    }
 }
 
 
