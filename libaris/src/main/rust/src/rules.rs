@@ -175,7 +175,22 @@ impl RuleT for PrepositionalInference {
             ImpIntro => unimplemented!(),
             ImpElim => unimplemented!(),
             NotIntro => unimplemented!(),
-            NotElim => unimplemented!(),
+            NotElim => {
+                let prem = p.lookup_expr_or_die(deps[0].clone())?;
+                if let Expr::Unop{symbol: USymbol::Not, ref operand} = prem{
+                    if let Expr::Unop{symbol: USymbol::Not, ref operand} = **operand{
+                        if **operand == expr {
+                            return Ok(());
+                        }
+
+                        return Err(ConclusionOfWrongForm("Double negated expression in premise not found in conclusion".into()));
+                    }else{
+                        return Err(DepOfWrongForm("Expected a double-negation".into()));
+                    }
+                }else{
+                    return Err(DepOfWrongForm("Expected a negation-expression".into()));
+                }
+            },
             ContradictionIntro => {
                 if let Expr::Bottom = expr { 
                     let mut prems = vec![];

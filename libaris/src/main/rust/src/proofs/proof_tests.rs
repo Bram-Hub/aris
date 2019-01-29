@@ -88,3 +88,20 @@ pub fn demo_proof_7<P: Proof>() -> P {
     prf.add_step(Justification(p("Q(E,D)"), RuleM::ContradictionIntro, vec![r1.clone(), r2.clone()], vec![])); // 9
     prf
 }
+
+pub fn demo_proof_8<P: Proof>() -> P{
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let mut prf = P::new();
+    let r1 = prf.add_premise(p("~~A")); // 1
+    let r2 = prf.add_premise(p("~~(A & B)")); // 2
+    let r3 = prf.add_premise(p("~A")); // 3
+    let r4 = prf.add_premise(p("A")); // 4
+
+    prf.add_step(Justification(p("A"), RuleM::NotElim, vec![r1.clone()], vec![]));  // 5
+    prf.add_step(Justification(p("A & B"), RuleM::NotElim, vec![r2.clone()], vec![])); // 6
+    prf.add_step(Justification(p("A"), RuleM::NotElim, vec![r3.clone()], vec![])); // 7
+    prf.add_step(Justification(p("A"), RuleM::NotElim, vec![r4.clone()], vec![])); // 8
+    prf.add_step(Justification(p("B"), RuleM::NotElim, vec![r2.clone()], vec![])); // 9
+
+    prf
+}
