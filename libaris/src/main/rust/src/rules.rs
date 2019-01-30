@@ -1,6 +1,8 @@
 use super::*;
 use frunk::Coproduct::{self, Inl, Inr};
 
+pub mod java_rule;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PrepositionalInference {
     Reit,
