@@ -1,4 +1,5 @@
 use super::*;
+//use std::rc::{Rc, Weak};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct LineDep(pub usize);
@@ -19,7 +20,11 @@ impl std::fmt::Debug for SubproofDep {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TreeProof<T, U> {
+pub struct TreeProof<T, U>(pub TreeSubproof<T, U>);
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TreeSubproof<T, U> {
+    //pub root: Weak<TreeProof<T, U>>,
     pub premises: Vec<(T, Expr)>,
     pub lines: Vec<Line<T, U>>,
 }
@@ -27,13 +32,13 @@ pub struct TreeProof<T, U> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Line<T, U> {
     Direct(T, Justification<Expr, LineDep, SubproofDep>),
-    Subproof(U, TreeProof<T, U>),
+    Subproof(U, TreeSubproof<T, U>),
 }
 
-impl<T: Clone, U: Clone> TreeProof<T, U> {
+impl<T: Clone, U: Clone> TreeSubproof<T, U> {
     fn count_lines(&self) -> usize {
-        let prf = decorate_subproof_sizes(self.clone());
-        prf.premises.len() + prf.lines.iter().map(|line| if let Line::Subproof((SubproofSize(n), _), _) = line { *n } else { 1 }).sum::<usize>()
+        let prf = decorate_subproof_sizes(TreeProof(self.clone()));
+        prf.0.premises.len() + prf.0.lines.iter().map(|line| if let Line::Subproof((SubproofSize(n), _), _) = line { *n } else { 1 }).sum::<usize>()
     }
     fn lookup_line(&self, i: usize) -> Option<Coprod!(Expr, Justification<Expr, LineDep, SubproofDep>)> {
         if i < self.premises.len() {
@@ -54,16 +59,16 @@ impl<T: Clone, U: Clone> TreeProof<T, U> {
 impl<T: Clone+Default, U: Clone+Default> Proof for TreeProof<T, U> {
     type Reference = LineDep;
     type SubproofReference = SubproofDep;
-    fn new() -> Self { TreeProof { premises: vec![], lines: vec![] } }
+    fn new() -> Self { TreeProof(TreeSubproof { premises: vec![], lines: vec![] }) }
     fn lookup(&self, LineDep(line): Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference, Self::SubproofReference>)> {
-        self.lookup_line(line-1)
+        self.0.lookup_line(line-1)
     }
     fn lookup_subproof(&self, SubproofDep(_): Self::SubproofReference) -> Option<Self> {
         None // TODO: implement
     }
-    fn add_premise(&mut self, e: Expr) -> Self::Reference { self.premises.push((Default::default(), e)); let i = self.premises.len(); LineDep(i) }
-    fn add_subproof(&mut self, sub: Self) -> Self::SubproofReference { let i = self.count_lines(); self.lines.push(Line::Subproof(Default::default(), sub)); let j = self.count_lines(); SubproofDep((i+1)..j) }
-    fn add_step(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>) -> Self::Reference { self.lines.push(Line::Direct(Default::default(), just)); let i = self.count_lines(); LineDep(i) }
+    fn add_premise(&mut self, e: Expr) -> Self::Reference { self.0.premises.push((Default::default(), e)); let i = self.0.premises.len(); LineDep(i) }
+    fn add_subproof(&mut self, sub: Self) -> Self::SubproofReference { let i = self.0.count_lines(); self.0.lines.push(Line::Subproof(Default::default(), sub.0)); let j = self.0.count_lines(); SubproofDep((i+1)..j) }
+    fn add_step(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>) -> Self::Reference { self.0.lines.push(Line::Direct(Default::default(), just)); let i = self.0.count_lines(); LineDep(i) }
     fn premises(&self) -> Vec<Self::Reference> {
         //let prf = decorate_references(self.clone());
         //let res = vec![];
@@ -78,8 +83,13 @@ impl<T: Clone+Default, U: Clone+Default> Proof for TreeProof<T, U> {
 
 
 impl<A, B> /* Bifunctor for */ TreeProof<A, B> {
-    pub fn bimap<C, D, F: FnMut(A) -> C, G: FnMut(B) -> D>(mut self, f: &mut F, g: &mut G) -> TreeProof<C, D> {
-        TreeProof {
+    pub fn bimap<C, D, F: FnMut(A) -> C, G: FnMut(B) -> D>(self, f: &mut F, g: &mut G) -> TreeProof<C, D> {
+        TreeProof(self.0.bimap(f, g))
+    }
+}
+impl<A, B> /* Bifunctor for */ TreeSubproof<A, B> {
+    pub fn bimap<C, D, F: FnMut(A) -> C, G: FnMut(B) -> D>(mut self, f: &mut F, g: &mut G) -> TreeSubproof<C, D> {
+        TreeSubproof {
             premises: self.premises.drain(..).map(|(data, premise)| (f(data), premise)).collect(),
             lines: self.lines.drain(..).map(|line| line.bimap(f, g)).collect(),
         }
@@ -106,10 +116,13 @@ impl<T> PremiseOrLine<T> {
 }
 
 impl Display for TreeProof<(),()> {
+    fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> { self.0.fmt(fmt) }
+}
+impl Display for TreeSubproof<(),()> {
     fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> { self.display_indented(fmt, 1, &mut 1) }
 }
 
-impl DisplayIndented for TreeProof<(),()> {
+impl DisplayIndented for TreeSubproof<(),()> {
     fn display_indented(&self, fmt: &mut Formatter, indent: usize, linecount: &mut usize) -> std::result::Result<(), std::fmt::Error> {
         for (_, premise) in self.premises.iter() {
             write!(fmt, "{}:\t", linecount)?;
@@ -138,8 +151,8 @@ impl DisplayIndented for Line<(), ()> {
 }
 
 pub fn decorate_line_and_indent<T, U>(prf: TreeProof<T, U>) -> TreeProof<(LineAndIndent, T), U> {
-    fn aux<T, U>(mut prf: TreeProof<T, U>, li: &mut LineAndIndent) -> TreeProof<(LineAndIndent, T), U> {
-        let mut result = TreeProof { premises: vec![], lines: vec![] };
+    fn aux<T, U>(mut prf: TreeSubproof<T, U>, li: &mut LineAndIndent) -> TreeSubproof<(LineAndIndent, T), U> {
+        let mut result = TreeSubproof { premises: vec![], lines: vec![] };
         for (data, premise) in prf.premises.drain(..) {
             result.premises.push(((li.clone(), data), premise));
             li.line += 1;
@@ -152,15 +165,15 @@ pub fn decorate_line_and_indent<T, U>(prf: TreeProof<T, U>) -> TreeProof<(LineAn
         }
         result
     }
-    aux(prf, &mut LineAndIndent { line: 1, indent: 1 })
+    TreeProof(aux(prf.0, &mut LineAndIndent { line: 1, indent: 1 }))
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct SubproofSize(usize);
 pub fn decorate_subproof_sizes<T, U>(prf: TreeProof<T, U>) -> TreeProof<T, (SubproofSize, U)> {
-    fn aux<T, U>(mut prf: TreeProof<T, U>) -> (usize, TreeProof<T, (SubproofSize, U)>) {
+    fn aux<T, U>(mut prf: TreeSubproof<T, U>) -> (usize, TreeSubproof<T, (SubproofSize, U)>) {
         let mut size = prf.premises.len();
-        let mut result = TreeProof { premises: prf.premises, lines: vec![] };
+        let mut result = TreeSubproof { premises: prf.premises, lines: vec![] };
         for line in prf.lines.drain(..) {
             match line {
                 Line::Direct(data, just) => { result.lines.push(Line::Direct(data, just)); size += 1; },
@@ -169,11 +182,11 @@ pub fn decorate_subproof_sizes<T, U>(prf: TreeProof<T, U>) -> TreeProof<T, (Subp
         }
         (size, result)
     }
-    aux(prf).1
+    TreeProof(aux(prf.0).1)
 }
 
 // This is O(n) lookup for LineAndIndent line lookups, TODO: O(log(n)) line lookups via SubproofSize decorations
-pub fn lookup_by_decoration<T: Clone, F: Fn(&T) -> bool, U>(prf: &TreeProof<T, U>, f: &F) -> Option<PremiseOrLine<T>> {
+pub fn lookup_by_decoration<T: Clone, F: Fn(&T) -> bool, U>(prf: &TreeSubproof<T, U>, f: &F) -> Option<PremiseOrLine<T>> {
     for (data, premise) in prf.premises.iter() {
         if f(data) {
             return Some(PremiseOrLine::Premise(data.clone(), premise.clone()));
@@ -182,12 +195,12 @@ pub fn lookup_by_decoration<T: Clone, F: Fn(&T) -> bool, U>(prf: &TreeProof<T, U
     for line in prf.lines.iter() {
         match line {
             Line::Direct(data, just) => {
-                if f(data) {
+                if f(&*data) {
                     return Some(PremiseOrLine::Line(data.clone(), just.clone()));
                 }
             },
             Line::Subproof(_, sub) => {
-                if let Some(ret) = lookup_by_decoration(sub, f) {
+                if let Some(ret) = lookup_by_decoration(&sub, f) {
                     return Some(ret);
                 }
             }
@@ -197,7 +210,7 @@ pub fn lookup_by_decoration<T: Clone, F: Fn(&T) -> bool, U>(prf: &TreeProof<T, U
 }
 
 pub fn check_rule_at_line(prf: &TreeProof<LineAndIndent, ()>, i: usize) -> Result<(), ProofCheckError<LineDep, SubproofDep>> {
-    if let Some(pol) = lookup_by_decoration(prf, &|li| li.line == i) {
+    if let Some(pol) = lookup_by_decoration(&prf.0, &|li| li.line == i) {
         match pol {
             PremiseOrLine::Premise(_, _) => Ok(()), // Premises are always valid
             PremiseOrLine::Line(li, just) => { check_rule(prf, li, just) }
