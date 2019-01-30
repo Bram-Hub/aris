@@ -173,7 +173,37 @@ impl RuleT for PrepositionalInference {
             },
             OrElim => unimplemented!(),
             ImpIntro => unimplemented!(),
-            ImpElim => unimplemented!(),
+            ImpElim => {
+                let mut prems = vec![];
+                prems.push(p.lookup_expr_or_die(deps[0].clone())?);
+                prems.push(p.lookup_expr_or_die(deps[1].clone())?);
+
+                for (i, j) in [(0,1), (1,0)].iter().cloned(){
+                    if let Expr::Binop{symbol: BSymbol::Implies, ref left, ref right} = prems[i]{
+                        //bad case, p -> q, q therefore --doesn't matter, nothing can be said
+                        //given q
+                        if **right == prems[j] {
+                            return Err(DepOfWrongForm("Expected form of p -> q, p therefore q".into()));
+                        }
+                        //bad case, p -> q, a therefore --doesn't matter, nothing can be said
+                        //with a
+                        if **left != prems[j] {
+                            return Err(DoesNotOccur(prems[i].clone(), prems[j].clone()));
+                        }
+
+                        //bad case, p -> q, p therefore a which does not follow
+                        if **right != expr{
+                            return Err(ConclusionOfWrongForm("Expected the antecedent of conditional as conclusion".into()));
+                        }
+                        //good case, p -> q, p therefore q
+                        if **left == prems[j] && **right == expr{
+                            return Ok(());
+                        }
+                    }
+                }
+                return Err(DepOfWrongForm("No conditional in dependencies".into()));
+
+            },
             NotIntro => unimplemented!(),
             NotElim => {
                 let prem = p.lookup_expr_or_die(deps[0].clone())?;

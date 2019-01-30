@@ -9,6 +9,7 @@ fn test_rules<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofRefer
     test_andintro::<P>();
     test_contradictionintro::<P>();
     test_notelim::<P>();
+    test_impelim::<P>();
 }
 
 #[test] fn test_rules_on_treeproof() { test_rules::<treeproof::TreeProof<(), ()>>(); }
@@ -189,4 +190,49 @@ fn test_notelim<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofRef
     assert!(if let Err(DepOfWrongForm(_)) = prf.verify_line(&lines[7]) {true} else {false});
     assert!(if let Err(ConclusionOfWrongForm(_)) = prf.verify_line(&lines[8]) {true} else {false});
 }
+
+pub fn demo_proof_9<P: Proof>() -> (P, Vec<P::Reference>){
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let mut prf = P::new();
+
+    let r1 = prf.add_premise(p("P")); // 1
+    let r2 = prf.add_premise(p("P -> Q")); // 2
+    let r3 = prf.add_premise(p("Q")); // 3
+    let r4 = prf.add_premise(p("A")); //4
+
+    //P -> Q, P and P, P->Q should get same result of Q
+    let r5 = prf.add_step(Justification(p("Q"), RuleM::ImpElim, vec![r1.clone(), r2.clone()], vec![])); // 5
+    let r6 = prf.add_step(Justification(p("Q"), RuleM::ImpElim, vec![r2.clone(), r1.clone()], vec![])); // 6
+
+    //ensure that P -> Q, P should only give Q and not allow something else
+    let r7 = prf.add_step(Justification(p("B"), RuleM::ImpElim, vec![r1.clone(), r2.clone()],vec![])); // 7
+
+    //P -> Q, Q and Q, P->Q should get same result of error
+    let r8 = prf.add_step(Justification(p("P"), RuleM::ImpElim, vec![r3.clone(), r2.clone()], vec![])); // 8
+    let r9 = prf.add_step(Justification(p("P"), RuleM::ImpElim, vec![r2.clone(), r3.clone()], vec![])); // 9
+
+    //ensure that you can't use this rule without an implication in premises
+    let r10 = prf.add_step(Justification(p("B"), RuleM::ImpElim, vec![r3.clone(), r4.clone()], vec![])); // 10
+    //can't do P->Q, A => Q
+    let r11 = prf.add_step(Justification(p("Q"), RuleM::ImpElim, vec![r2.clone(), r4.clone()], vec![])); // 11
+
+    (prf, vec![r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11])
+}
+
+fn test_impelim<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let (prf, lines) = demo_proof_9::<P>();
+    println!("{}", prf);
+    use ProofCheckError::*;
+
+    assert_eq!(prf.verify_line(&lines[4]), Ok(()));
+    assert_eq!(prf.verify_line(&lines[4]), prf.verify_line(&lines[5]));
+
+    assert!(if let Err(ConclusionOfWrongForm(_)) = prf.verify_line(&lines[6]) {true} else {false});
+    assert!(if let Err(DepOfWrongForm(_)) = prf.verify_line(&lines[7]) {true} else {false});
+    assert!(if let Err(DepOfWrongForm(_)) = prf.verify_line(&lines[8]) {true} else {false});
+    assert!(if let Err(DepOfWrongForm(_)) = prf.verify_line(&lines[9]) {true} else {false});
+    assert_eq!(prf.verify_line(&lines[10]), Err(DoesNotOccur(p("P -> Q"), p("A"))));
+}
+
 
