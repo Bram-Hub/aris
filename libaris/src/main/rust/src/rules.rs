@@ -1,6 +1,8 @@
 use super::*;
 use frunk::Coproduct::{self, Inl, Inr};
 
+pub mod java_rule;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PrepositionalInference {
     Reit,
@@ -108,47 +110,142 @@ impl RuleT for PrepositionalInference {
         use PrepositionalInference::*;
         match self {
             NotIntro | ImpIntro => Some(1),
-            Reit | AndElim | OrIntro | NotElim | ContradictionElim | ContradictionIntro | ImpElim | AndIntro | OrElim => Some(0),
+            Reit | AndElim | OrIntro | NotElim | ContradictionElim | ContradictionIntro | ImpElim | AndIntro => Some(0),
+            OrElim => None,
         }
     }
     fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<P::Reference>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
         use ProofCheckError::*; use PrepositionalInference::*;
         match self {
-            Reit => unimplemented!(),
-            AndIntro => unimplemented!(),
+            Reit => {
+                let prem = p.lookup_expr_or_die(deps[0].clone())?;
+                if prem == expr {
+                    return Ok(());
+                } else {
+                    return Err(DoesNotOccur(expr, prem.clone()));
+                }
+            },
+            AndIntro => {
+                if let Expr::AssocBinop { symbol: ASymbol::And, ref exprs } = expr {
+                    // ensure each dep appears in exprs
+                    for d in deps.iter() {
+                        let e = p.lookup_expr_or_die(d.clone())?;
+                        if !exprs.iter().find(|x| x == &&e).is_some() {
+                            return Err(DoesNotOccur(e, expr.clone()));
+                        }
+                    }
+                    // ensure each expr has a dep
+                    for e in exprs {
+                        if deps.iter().find(|&d| p.lookup_expr(d.clone()).map(|de| &de == e).unwrap_or(false)).is_none() {
+                            return Err(DepDoesNotExist(e.clone()));
+                        }
+                    }
+                    assert_eq!(exprs.len(), deps.len());
+                    return Ok(());
+                } else {
+                    return Err(DepOfWrongForm("expected an and-expression".into()));
+                }
+            },
             AndElim => {
-                if let Some(prem) = p.lookup_expr(deps[0].clone()) {
-                    if let Expr::AssocBinop { symbol: ASymbol::And, ref exprs } = prem {
-                        for e in exprs.iter() {
-                            if e == &expr {
+                let prem = p.lookup_expr_or_die(deps[0].clone())?;
+                if let Expr::AssocBinop { symbol: ASymbol::And, ref exprs } = prem {
+                    for e in exprs.iter() {
+                        if e == &expr {
+                            return Ok(());
+                        }
+                    }
+                    // TODO: allow `A /\ B /\ C |- C /\ A /\ C`, etc
+                    return Err(DoesNotOccur(expr, prem.clone()));
+                } else {
+                    return Err(DepOfWrongForm("expected an and-expression".into()));
+                }
+            },
+            OrIntro => {
+                let prem = p.lookup_expr_or_die(deps[0].clone())?;
+                if let Expr::AssocBinop { symbol: ASymbol::Or, ref exprs } = expr {
+                    for e in exprs.iter() {
+                        if e == &prem {
+                            return Ok(());
+                        }
+                    }
+                    return Err(DoesNotOccur(prem, expr.clone()));
+                } else {
+                    return Err(ConclusionOfWrongForm("expected an or-expression".into()));
+                }
+            },
+            OrElim => unimplemented!(),
+            ImpIntro => unimplemented!(),
+            ImpElim => {
+                let mut prems = vec![];
+                prems.push(p.lookup_expr_or_die(deps[0].clone())?);
+                prems.push(p.lookup_expr_or_die(deps[1].clone())?);
+
+                for (i, j) in [(0,1), (1,0)].iter().cloned(){
+                    if let Expr::Binop{symbol: BSymbol::Implies, ref left, ref right} = prems[i]{
+                        //bad case, p -> q, q therefore --doesn't matter, nothing can be said
+                        //given q
+                        if **right == prems[j] {
+                            return Err(DepOfWrongForm("Expected form of p -> q, p therefore q".into()));
+                        }
+                        //bad case, p -> q, a therefore --doesn't matter, nothing can be said
+                        //with a
+                        if **left != prems[j] {
+                            return Err(DoesNotOccur(prems[i].clone(), prems[j].clone()));
+                        }
+
+                        //bad case, p -> q, p therefore a which does not follow
+                        if **right != expr{
+                            return Err(ConclusionOfWrongForm("Expected the antecedent of conditional as conclusion".into()));
+                        }
+                        //good case, p -> q, p therefore q
+                        if **left == prems[j] && **right == expr{
+                            return Ok(());
+                        }
+                    }
+                }
+                return Err(DepOfWrongForm("No conditional in dependencies".into()));
+
+            },
+            NotIntro => unimplemented!(),
+            NotElim => {
+                let prem = p.lookup_expr_or_die(deps[0].clone())?;
+                if let Expr::Unop{symbol: USymbol::Not, ref operand} = prem{
+                    if let Expr::Unop{symbol: USymbol::Not, ref operand} = **operand{
+                        if **operand == expr {
+                            return Ok(());
+                        }
+
+                        return Err(ConclusionOfWrongForm("Double negated expression in premise not found in conclusion".into()));
+                    }else{
+                        return Err(DepOfWrongForm("Expected a double-negation".into()));
+                    }
+                }else{
+                    return Err(DepOfWrongForm("Expected a negation-expression".into()));
+                }
+            },
+            ContradictionIntro => {
+                if let Expr::Bottom = expr { 
+                    let mut prems = vec![];
+                    prems.push(p.lookup_expr_or_die(deps[0].clone())?);
+                    prems.push(p.lookup_expr_or_die(deps[1].clone())?);
+                    for (i, j) in [(0, 1), (1, 0)].iter().cloned() {
+                        if let Expr::Unop { symbol: USymbol::Not, ref operand } = prems[i] {
+                            if **operand == prems[j] {
                                 return Ok(());
                             }
                         }
-                        // TODO: allow `A /\ B /\ C |- C /\ A /\ C`, etc
-                        return Err(DoesNotOccur(expr, prem.clone()));
-                    } else {
-                        return Err(DepOfWrongForm("expected an and-expression".into()));
                     }
+                    return Err(DepOfWrongForm("expected one dep to be negation of other".into()));
                 } else {
-                    return Err(LineDoesNotExist(deps[0].clone()))
+                    return Err(ConclusionOfWrongForm("conclusion should be bottom".into()));
                 }
             },
-            OrIntro => unimplemented!(),
-            OrElim => unimplemented!(),
-            ImpIntro => unimplemented!(),
-            ImpElim => unimplemented!(),
-            NotIntro => unimplemented!(),
-            NotElim => unimplemented!(),
-            ContradictionIntro => unimplemented!(),
             ContradictionElim => {
-                if let Some(prem) = p.lookup_expr(deps[0].clone()) {
-                    if let Expr::Bottom = prem {
-                        return Ok(());
-                    } else {
-                        return Err(DepOfWrongForm("premise should be bottom".into()));
-                    }
+                let prem = p.lookup_expr_or_die(deps[0].clone())?;
+                if let Expr::Bottom = prem {
+                    return Ok(());
                 } else {
-                    return Err(LineDoesNotExist(deps[0].clone()))
+                    return Err(DepOfWrongForm("premise should be bottom".into()));
                 }
             },
         }
@@ -200,5 +297,7 @@ pub enum ProofCheckError<R, S> {
     IncorrectDepCount(Vec<R>, usize),
     IncorrectSubDepCount(Vec<S>, usize),
     DepOfWrongForm(String),
+    ConclusionOfWrongForm(String),
     DoesNotOccur(Expr, Expr),
+    DepDoesNotExist(Expr),
 }
