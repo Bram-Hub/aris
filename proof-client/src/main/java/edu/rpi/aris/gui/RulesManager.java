@@ -1,7 +1,7 @@
 package edu.rpi.aris.gui;
 
-import edu.rpi.aris.rules.Rule;
 import edu.rpi.aris.rules.RuleList;
+import edu.rpi.aris.rules.Rule;
 import javafx.application.Platform;
 import javafx.event.Event;
 import javafx.event.EventHandler;

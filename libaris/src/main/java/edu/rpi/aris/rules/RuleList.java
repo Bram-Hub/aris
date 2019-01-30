@@ -2,27 +2,27 @@ package edu.rpi.aris.rules;
 
 public enum RuleList {
 
-    CONJUNCTION(null),
-    SIMPLIFICATION(null),
-    ADDITION(null),
-    DISJUNCTIVE_SYLLOGISM(null),
-    MODUS_PONENS(null),
-    MODUS_TOLLENS(null),
-    HYPOTHETICAL_SYLLOGISM(null),
-    EXCLUDED_MIDDLE(null),
-    CONSTRUCTIVE_DILEMMA(null),
-    Association(null),
-    COMMUTATION(null),
-    DOUBLENEGATION(null),
-    Idempotence(null),
-    DeMorgan(null),
-    Distribution(null);
+    CONJUNCTION,
+    SIMPLIFICATION,
+    ADDITION,
+    DISJUNCTIVE_SYLLOGISM,
+    MODUS_PONENS,
+    MODUS_TOLLENS,
+    HYPOTHETICAL_SYLLOGISM,
+    EXCLUDED_MIDDLE,
+    CONSTRUCTIVE_DILEMMA,
+    ASSOCIATION,
+    COMMUTATION,
+    DOUBLENEGATION,
+    IDEMPOTENCE,
+    DE_MORGAN,
+    DISTRIBUTION;
 
     public final String name, simpleName;
     public final Rule rule;
 
-    RuleList(Rule rule) {
-        this.rule = rule;
+    RuleList() {
+        this.rule = Rule.fromRule(this);
         if (rule != null) {
             name = rule.getName();
             simpleName = rule.getSimpleName();

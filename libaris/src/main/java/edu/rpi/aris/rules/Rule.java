@@ -1,37 +1,28 @@
 package edu.rpi.aris.rules;
 
 import edu.rpi.aris.ast.Expression;
-import edu.rpi.aris.proof.Claim;
 import edu.rpi.aris.proof.Premise;
 
 import java.util.ArrayList;
 
-public abstract class Rule {
+public class Rule {
+    static { edu.rpi.aris.util.SharedObjectLoader.loadLib("liblibaris_rs"); }
 
-    Rule() {
-    }
+    protected long pointerToRustHeap;
+    protected Rule(long p) { pointerToRustHeap = p; }
+    // TODO: native finalizer
+    public static native Rule fromRule(RuleList x);
 
-    public String verifyClaim(Claim claim) {
-        if (canGeneralizePremises()) {
-            if (claim.getPremises().length < requiredPremises())
-                return "Rule " + getName() + " requires at least " + requiredPremises() + " premises";
-        } else {
-            if (claim.getPremises().length != requiredPremises())
-                return "Rule " + getName() + " requires exactly " + requiredPremises() + " premises";
-        }
-        int spPremises = 0;
-        for (Premise p : claim.getPremises())
-            if (p.isSubproof())
-                spPremises++;
-        if (canGeneralizePremises()) {
-            if (spPremises < subProofPremises())
-                return "Rule " + getName() + " requires at least " + subProofPremises() + " subproof(s) as premises";
-        } else {
-            if (spPremises != subProofPremises())
-                return "Rule " + getName() + " requires exactly " + subProofPremises() + " subproof(s) as premises";
-        }
-        return verifyClaim(claim.getConclusion(), claim.getPremises());
-    }
+    @Override public native String toString();
+
+    // TODO: rule metadata
+    public String getName() { return null; }
+    public String getSimpleName() { return null; }
+    public Type[] getRuleType() { return null; }
+
+    // TODO: autofill
+    public boolean canAutoFill() { return false; }
+    protected ArrayList<String> getAutoFill(Premise[] premises) { return null; }
 
     public ArrayList<String> getAutoFillCandidates(Premise[] premises) {
         if (premises == null)
@@ -47,23 +38,11 @@ public abstract class Rule {
         return getAutoFill(premises);
     }
 
-    public abstract String getName();
+    public native int requiredPremises();
+    public native boolean canGeneralizePremises();
+    public native int subProofPremises();
 
-    public abstract String getSimpleName();
-
-    public abstract Type[] getRuleType();
-
-    public abstract boolean canAutoFill();
-
-    protected abstract ArrayList<String> getAutoFill(Premise[] premises);
-
-    protected abstract int requiredPremises();
-
-    public abstract boolean canGeneralizePremises();
-
-    protected abstract int subProofPremises();
-
-    protected abstract String verifyClaim(Expression conclusion, Premise[] premises);
+    public String verifyClaim(Expression conclusion, Premise[] premises) { return null; }
 
     public enum Type {
 
@@ -80,5 +59,4 @@ public abstract class Rule {
         }
 
     }
-
 }

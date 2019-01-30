@@ -24,7 +24,7 @@ public class Claim {
             return "No rule specified";
         if (conclusion == null)
             return "No conclusion specified";
-        return rule.verifyClaim(this);
+        return rule.verifyClaim(conclusion, premises);
     }
 
     public Expression getConclusion() {
