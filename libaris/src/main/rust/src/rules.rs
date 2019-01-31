@@ -132,16 +132,16 @@ impl RuleT for PrepositionalInference {
         use PrepositionalInference::*;
         match self {
             Reit => "Reiteration",
-            AndIntro => "/\\ Introduction",
-            AndElim => "/\\ Elimination",
-            OrIntro => "\\/ Introduction",
-            OrElim => "\\/ Elimination",
-            ImpIntro => "-> Introduction",
-            ImpElim => "-> Elimination",
-            NotIntro => "~ Introduction",
-            NotElim => "~ Elimination",
-            ContradictionIntro => "_|_ Introduction",
-            ContradictionElim => "_|_ Elimination",
+            AndIntro => "∧ Introduction",
+            AndElim => "∧ Elimination",
+            OrIntro => "∨ Introduction",
+            OrElim => "∨ Elimination",
+            ImpIntro => "→ Introduction",
+            ImpElim => "→ Elimination",
+            NotIntro => "¬ Introduction",
+            NotElim => "¬ Elimination",
+            ContradictionIntro => "⊥ Introduction",
+            ContradictionElim => "⊥ Elimination",
         }.into()
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
@@ -313,10 +313,10 @@ impl RuleT for PredicateInference {
     fn get_name(&self) -> String {
         use PredicateInference::*;
         match self {
-            ForallIntro => "Forall Introduction",
-            ForallElim => "Forall Elimination",
-            ExistsIntro => "Exists Introduction",
-            ExistsElim => "Exists Elimination",
+            ForallIntro => "∀ Introduction",
+            ForallElim => "∀ Elimination",
+            ExistsIntro => "∃ Introduction",
+            ExistsElim => "∃ Elimination",
         }.into()
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
