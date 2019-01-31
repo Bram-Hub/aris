@@ -61,6 +61,32 @@ pub extern "system" fn Java_edu_rpi_aris_rules_Rule_getName(env: JNIEnv, obj: JO
 
 #[no_mangle]
 #[allow(non_snake_case)]
+pub extern "system" fn Java_edu_rpi_aris_rules_Rule_getRuleType(env: JNIEnv, obj: JObject) -> jarray {
+    let jv = |s: &str| -> jni::errors::Result<JValue> { Ok(JObject::from(env.new_string(s)?).into()) };
+    with_thrown_errors(&env, |env| {
+        let ptr: jni::sys::jlong = env.get_field(obj, "pointerToRustHeap", "J")?.j()?;
+        let rule: &Rule = unsafe { &*(ptr as *mut Rule) };
+        let classifications = rule.get_classifications();
+        let types = env.new_object_array(classifications.len() as _, "edu/rpi/aris/rules/Rule$Type", JObject::null())?;
+        let cls = env.call_static_method("java/lang/Class", "forName", "(Ljava/lang/String;)Ljava/lang/Class;", &[jv("edu.rpi.aris.rules.Rule$Type")?])?;
+        for (i, classification) in classifications.iter().enumerate() {
+            use RuleClassification::*;
+            let ty = match classification {
+                Introduction => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("INTRO")?])?,
+                Elimination => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("ELIM")?])?,
+                Equivalence => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("EQUIVALENCE")?])?,
+                Inference => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("INFERENCE")?])?,
+                Predicate => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("PREDICATE")?])?,
+            };
+            env.set_object_array_element(types, i as _, ty.l()?)?;
+        }
+        Ok(types)
+    })
+}
+
+
+#[no_mangle]
+#[allow(non_snake_case)]
 pub extern "system" fn Java_edu_rpi_aris_rules_Rule_requiredPremises(env: JNIEnv, obj: JObject) -> jni::sys::jlong {
     with_thrown_errors(&env, |env| {
         let ptr: jni::sys::jlong = env.get_field(obj, "pointerToRustHeap", "J")?.j()?;

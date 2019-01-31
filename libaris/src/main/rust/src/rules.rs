@@ -1,4 +1,5 @@
 use super::*;
+use std::collections::HashSet;
 use frunk::Coproduct::{self, Inl, Inr};
 
 pub mod java_rule;
@@ -72,8 +73,14 @@ pub mod RuleM {
 
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum RuleClassification {
+    Introduction, Elimination, Equivalence, Inference, Predicate
+}
+
 pub trait RuleT {
     fn get_name(&self) -> String;
+    fn get_classifications(&self) -> HashSet<RuleClassification>;
     fn num_deps(&self) -> Option<usize>;
     fn num_subdeps(&self) -> Option<usize>;
     fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<P::Reference>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>>;
@@ -81,6 +88,7 @@ pub trait RuleT {
 
 impl<A: RuleT, B: RuleT> RuleT for Coproduct<A, B> {
     fn get_name(&self) -> String { match self { Inl(x) => x.get_name(), Inr(x) => x.get_name(), } }
+    fn get_classifications(&self) -> HashSet<RuleClassification> { match self { Inl(x) => x.get_classifications(), Inr(x) => x.get_classifications(), } }
     fn num_deps(&self) -> Option<usize> { match self { Inl(x) => x.num_deps(), Inr(x) => x.num_deps(), } }
     fn num_subdeps(&self) -> Option<usize> { match self { Inl(x) => x.num_subdeps(), Inr(x) => x.num_subdeps(), } }
     fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<P::Reference>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
@@ -89,6 +97,7 @@ impl<A: RuleT, B: RuleT> RuleT for Coproduct<A, B> {
 }
 impl RuleT for frunk::coproduct::CNil {
     fn get_name(&self) -> String { match *self {} }
+    fn get_classifications(&self) -> HashSet<RuleClassification> { match *self {} }
     fn num_deps(&self) -> Option<usize> { match *self {} }
     fn num_subdeps(&self) -> Option<usize> { match *self {} }
     fn check<P: Proof>(self, _p: &P, _expr: Expr, _deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
@@ -98,6 +107,7 @@ impl RuleT for frunk::coproduct::CNil {
 
 impl<T: RuleT> RuleT for SharedChecks<T> {
     fn get_name(&self) -> String { self.0.get_name() }
+    fn get_classifications(&self) -> HashSet<RuleClassification> { self.0.get_classifications() }
     fn num_deps(&self) -> Option<usize> { self.0.num_deps() }
     fn num_subdeps(&self) -> Option<usize> { self.0.num_subdeps() }
     fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<P::Reference>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
@@ -133,6 +143,16 @@ impl RuleT for PrepositionalInference {
             ContradictionIntro => "_|_ Introduction",
             ContradictionElim => "_|_ Elimination",
         }.into()
+    }
+    fn get_classifications(&self) -> HashSet<RuleClassification> {
+        use RuleClassification::*; use PrepositionalInference::*;
+        let mut ret = [Inference].iter().cloned().collect::<HashSet<_>>();
+        match self {
+            Reit => (),
+            AndIntro | OrIntro | ImpIntro | NotIntro | ContradictionIntro => { ret.insert(Introduction); },
+            AndElim | OrElim | ImpElim | NotElim | ContradictionElim => { ret.insert(Elimination); },
+        }
+        ret
     }
     fn num_deps(&self) -> Option<usize> {
         use PrepositionalInference::*;
@@ -299,6 +319,15 @@ impl RuleT for PredicateInference {
             ExistsElim => "Exists Elimination",
         }.into()
     }
+    fn get_classifications(&self) -> HashSet<RuleClassification> {
+        use RuleClassification::*; use PredicateInference::*;
+        let mut ret = [Inference, RuleClassification::Predicate].iter().cloned().collect::<HashSet<_>>();
+        match self {
+            ForallIntro | ExistsIntro => ret.insert(Introduction),
+            ForallElim | ExistsElim => ret.insert(Elimination),
+        };
+        ret
+    }
     fn num_deps(&self) -> Option<usize> {
         use PredicateInference::*;
         match self {
@@ -336,6 +365,9 @@ impl RuleT for Equivalence {
             Distribution => "Distribution",
         }.into()
     }
+    fn get_classifications(&self) -> HashSet<RuleClassification> {
+        [RuleClassification::Equivalence].iter().cloned().collect()
+    }
     fn num_deps(&self) -> Option<usize> { Some(1) } // all equivalence rules rewrite a single statement
     fn num_subdeps(&self) -> Option<usize> { Some(0) }
     fn check<P: Proof>(self, _p: &P, _expr: Expr, _deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
@@ -359,6 +391,9 @@ impl RuleT for RedundantPrepositionalInference {
             ExcludedMiddle => "ExcludedMiddle",
             ConstructiveDilemma => "ConstructiveDilemma",
         }.into()
+    }
+    fn get_classifications(&self) -> HashSet<RuleClassification> {
+        [RuleClassification::Inference].iter().cloned().collect()
     }
     fn num_deps(&self) -> Option<usize> { unimplemented!() }
     fn num_subdeps(&self) -> Option<usize> { unimplemented!() }

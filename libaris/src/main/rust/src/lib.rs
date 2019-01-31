@@ -13,7 +13,7 @@ use rules::*;
 use jni::JNIEnv;
 use jni::strings::JavaStr;
 use jni::objects::{JClass, JString, JValue, JObject};
-use jni::sys::{jobject, jstring};
+use jni::sys::{jobject, jstring, jarray};
 
 fn jobject_to_string(env: &JNIEnv, obj: JObject) -> jni::errors::Result<String> {
     Ok(String::from(env.get_string(JString::from(obj))?))
