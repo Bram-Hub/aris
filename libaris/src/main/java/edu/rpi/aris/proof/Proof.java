@@ -250,13 +250,9 @@ public class Proof {
 
     ArrayList<Line> getSubProofConclusions(Line assumption, Line goal) {
         int lvl = assumption.getSubProofLevel();
-        if (!assumption.isAssumption() || lvl == 0)
-            return null;
         ArrayList<Line> subLines = new ArrayList<>();
-        for (int i = assumption.getLineNum() + 1; i < getNumLines(); ++i) {
+        for (int i = assumption.getLineNum() + 1; i < goal.getLineNum(); ++i) {
             Line l = lines.get(i);
-            if (l == goal)
-                return null;
             if (l.getSubProofLevel() == lvl) {
                 if (l.isAssumption()) {
                     return subLines;
@@ -266,7 +262,7 @@ public class Proof {
             } else if (l.getSubProofLevel() < lvl)
                 return subLines;
         }
-        return null;
+        return subLines;
     }
 
     void resetGoalStatus() {
