@@ -73,12 +73,14 @@ pub mod RuleM {
 }
 
 pub trait RuleT {
+    fn get_name(&self) -> String;
     fn num_deps(&self) -> Option<usize>;
     fn num_subdeps(&self) -> Option<usize>;
     fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<P::Reference>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>>;
 }
 
 impl<A: RuleT, B: RuleT> RuleT for Coproduct<A, B> {
+    fn get_name(&self) -> String { match self { Inl(x) => x.get_name(), Inr(x) => x.get_name(), } }
     fn num_deps(&self) -> Option<usize> { match self { Inl(x) => x.num_deps(), Inr(x) => x.num_deps(), } }
     fn num_subdeps(&self) -> Option<usize> { match self { Inl(x) => x.num_subdeps(), Inr(x) => x.num_subdeps(), } }
     fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<P::Reference>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
@@ -86,6 +88,7 @@ impl<A: RuleT, B: RuleT> RuleT for Coproduct<A, B> {
     }
 }
 impl RuleT for frunk::coproduct::CNil {
+    fn get_name(&self) -> String { match *self {} }
     fn num_deps(&self) -> Option<usize> { match *self {} }
     fn num_subdeps(&self) -> Option<usize> { match *self {} }
     fn check<P: Proof>(self, _p: &P, _expr: Expr, _deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
@@ -94,6 +97,7 @@ impl RuleT for frunk::coproduct::CNil {
 }
 
 impl<T: RuleT> RuleT for SharedChecks<T> {
+    fn get_name(&self) -> String { self.0.get_name() }
     fn num_deps(&self) -> Option<usize> { self.0.num_deps() }
     fn num_subdeps(&self) -> Option<usize> { self.0.num_subdeps() }
     fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<P::Reference>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
@@ -114,6 +118,22 @@ impl<T: RuleT> RuleT for SharedChecks<T> {
 }
 
 impl RuleT for PrepositionalInference {
+    fn get_name(&self) -> String {
+        use PrepositionalInference::*;
+        match self {
+            Reit => "Reiteration",
+            AndIntro => "/\\ Introduction",
+            AndElim => "/\\ Elimination",
+            OrIntro => "\\/ Introduction",
+            OrElim => "\\/ Elimination",
+            ImpIntro => "-> Introduction",
+            ImpElim => "-> Elimination",
+            NotIntro => "~ Introduction",
+            NotElim => "~ Elimination",
+            ContradictionIntro => "_|_ Introduction",
+            ContradictionElim => "_|_ Elimination",
+        }.into()
+    }
     fn num_deps(&self) -> Option<usize> {
         use PrepositionalInference::*;
         match self {
@@ -270,6 +290,15 @@ impl RuleT for PrepositionalInference {
 }
 
 impl RuleT for PredicateInference {
+    fn get_name(&self) -> String {
+        use PredicateInference::*;
+        match self {
+            ForallIntro => "Forall Introduction",
+            ForallElim => "Forall Elimination",
+            ExistsIntro => "Exists Introduction",
+            ExistsElim => "Exists Elimination",
+        }.into()
+    }
     fn num_deps(&self) -> Option<usize> {
         use PredicateInference::*;
         match self {
@@ -297,6 +326,16 @@ impl RuleT for PredicateInference {
 }
 
 impl RuleT for Equivalence {
+    fn get_name(&self) -> String {
+        use Equivalence::*;
+        match self {
+            DeMorgan => "DeMorgan",
+            Association => "Association",
+            Commutation => "Commutation",
+            Idempotence => "Idempotence",
+            Distribution => "Distribution",
+        }.into()
+    }
     fn num_deps(&self) -> Option<usize> { Some(1) } // all equivalence rules rewrite a single statement
     fn num_subdeps(&self) -> Option<usize> { Some(0) }
     fn check<P: Proof>(self, _p: &P, _expr: Expr, _deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
@@ -312,6 +351,15 @@ impl RuleT for Equivalence {
 }
 
 impl RuleT for RedundantPrepositionalInference {
+    fn get_name(&self) -> String {
+        use RedundantPrepositionalInference::*;
+        match self {
+            ModusTollens => "ModusTollens",
+            HypotheticalSyllogism => "HypotheticalSyllogism",
+            ExcludedMiddle => "ExcludedMiddle",
+            ConstructiveDilemma => "ConstructiveDilemma",
+        }.into()
+    }
     fn num_deps(&self) -> Option<usize> { unimplemented!() }
     fn num_subdeps(&self) -> Option<usize> { unimplemented!() }
     fn check<P: Proof>(self, _p: &P, _expr: Expr, _deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> { unimplemented!() }
