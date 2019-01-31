@@ -16,9 +16,9 @@ public class Rule {
     @Override public native String toString();
 
     // TODO: rule metadata
-    public String getName() { return null; }
-    public String getSimpleName() { return null; }
-    public Type[] getRuleType() { return null; }
+    public String getName() { return toString(); }
+    public String getSimpleName() { return toString(); }
+    public Type[] getRuleType() { Type[] t = new Type[1]; t[0] = Type.INFERENCE; return t; }
 
     // TODO: autofill
     public boolean canAutoFill() { return false; }

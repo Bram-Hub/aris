@@ -12,14 +12,21 @@ pub enum PrepositionalInference {
     NotIntro, NotElim,
     ContradictionIntro, ContradictionElim,
 }
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PredicateInference {
     ForallIntro, ForallElim,
     ExistsIntro, ExistsElim,
 }
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Equivalence {
-    DeMorgan,
+    DeMorgan, Association, Commutation, Idempotence, Distribution
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RedundantPrepositionalInference {
+    ModusTollens, HypotheticalSyllogism, ExcludedMiddle, ConstructiveDilemma
 }
 
 /// The RuleT instance for SharedChecks does checking that is common to all the rules;
@@ -27,7 +34,7 @@ pub enum Equivalence {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SharedChecks<T>(T);
 
-pub type Rule = SharedChecks<Coprod!(PrepositionalInference, PredicateInference, Equivalence)>;
+pub type Rule = SharedChecks<Coprod!(PrepositionalInference, PredicateInference, Equivalence, RedundantPrepositionalInference)>;
 
 /// Conveniences for constructing rules of the appropriate type, primarily for testing.
 /// The non-standard naming conventions here are because a module is being used to pretend to be an enum.
@@ -52,7 +59,17 @@ pub mod RuleM {
     pub static ExistsIntro: Rule = SharedChecks(Inr(Inl(PredicateInference::ExistsIntro)));
     pub static ExistsElim: Rule = SharedChecks(Inr(Inl(PredicateInference::ExistsElim)));
 
-    pub static Demorgan: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::DeMorgan))));
+    pub static DeMorgan: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::DeMorgan))));
+    pub static Association: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Association))));
+    pub static Commutation: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Commutation))));
+    pub static Idempotence: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Idempotence))));
+    pub static Distribution: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Distribution))));
+
+    pub static ModusTollens: Rule = SharedChecks(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ModusTollens)))));
+    pub static HypotheticalSyllogism: Rule = SharedChecks(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::HypotheticalSyllogism)))));
+    pub static ExcludedMiddle: Rule = SharedChecks(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ExcludedMiddle)))));
+    pub static ConstructiveDilemma: Rule = SharedChecks(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ConstructiveDilemma)))));
+
 }
 
 pub trait RuleT {
@@ -286,8 +303,18 @@ impl RuleT for Equivalence {
         use ProofCheckError::*; use Equivalence::*;
         match self {
             DeMorgan => unimplemented!(),
+            Association => unimplemented!(),
+            Commutation => unimplemented!(),
+            Idempotence => unimplemented!(),
+            Distribution => unimplemented!(),
         }
     }
+}
+
+impl RuleT for RedundantPrepositionalInference {
+    fn num_deps(&self) -> Option<usize> { unimplemented!() }
+    fn num_subdeps(&self) -> Option<usize> { unimplemented!() }
+    fn check<P: Proof>(self, _p: &P, _expr: Expr, _deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> { unimplemented!() }
 }
 
 #[derive(Debug, PartialEq, Eq)]

@@ -15,7 +15,21 @@ pub extern "system" fn Java_edu_rpi_aris_rules_Rule_fromRule(env: JNIEnv, _: JOb
         println!("Rule.fromRule, rule enum name: {:?}", name);
         let rule = match &*name {
             "CONJUNCTION" => RuleM::AndIntro,
-            _ => { return Err(jni::errors::Error::from_kind(jni::errors::ErrorKind::Msg(format!("Rule::fromRule: unknown enum name {}", name)))) },
+            "SIMPLIFICATION" => RuleM::AndElim,
+            "ADDITION" => RuleM::OrIntro,
+            "DISJUNCTIVE_SYLLOGISM" => RuleM::OrElim,
+            "MODUS_PONENS" => RuleM::ImpElim,
+            "MODUS_TOLLENS" => RuleM::ModusTollens,
+            "HYPOTHETICAL_SYLLOGISM" => RuleM::HypotheticalSyllogism,
+            "EXCLUDED_MIDDLE" => RuleM::ExcludedMiddle,
+            "CONSTRUCTIVE_DILEMMA" => RuleM::ConstructiveDilemma,
+            "ASSOCIATION" => RuleM::Association,
+            "COMMUTATION" => RuleM::Commutation,
+            "DOUBLENEGATION" => RuleM::NotElim,
+            "IDEMPOTENCE" => RuleM::Idempotence,
+            "DE_MORGAN" => RuleM::DeMorgan,
+            "DISTRIBUTION" => RuleM::Distribution,
+            _ => { let e = Err(jni::errors::Error::from_kind(jni::errors::ErrorKind::Msg(format!("Rule::fromRule: unknown enum name {}", name)))); println!("{:?}", e); return e; },
         };
         let boxed_rule = Box::into_raw(Box::new(rule)); // prevent boxed_rule from being freed, since it's to be referenced through the java heap
 
