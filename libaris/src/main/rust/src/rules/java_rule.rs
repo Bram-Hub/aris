@@ -3,7 +3,7 @@ use super::*;
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern "system" fn Java_edu_rpi_aris_rules_Rule_fromRule(env: JNIEnv, _: JObject, rule: JObject) -> jobject {
-    (|| -> jni::errors::Result<jstring> {
+    with_thrown_errors(&env, |env| {
         let cls = env.call_method(rule, "getClass", "()Ljava/lang/Class;", &[])?.l()?;
         let classname = String::from(env.get_string(JString::from(env.call_method(cls, "getName", "()Ljava/lang/String;", &[])?.l()?))?);
         println!("Rule.fromRule, rule class: {:?}", classname);
@@ -36,45 +36,45 @@ pub extern "system" fn Java_edu_rpi_aris_rules_Rule_fromRule(env: JNIEnv, _: JOb
         let jrule = env.new_object("edu/rpi/aris/rules/Rule", "(J)V", &[JValue::from(boxed_rule as jni::sys::jlong)]);
         println!("Rule.fromRule, boxed_rule: {:?}, jrule: {:?}", boxed_rule, jrule);
         Ok(jrule?.into_inner())
-    })().unwrap_or(std::ptr::null_mut())
+    })
 }
 
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern "system" fn Java_edu_rpi_aris_rules_Rule_toString(env: JNIEnv, obj: JObject) -> jstring {
-    (|| -> jni::errors::Result<jstring> {
+    with_thrown_errors(&env, |env| {
         let ptr: jni::sys::jlong = env.get_field(obj, "pointerToRustHeap", "J")?.j()?;
         let rule: &Rule = unsafe { &*(ptr as *mut Rule) };
         Ok(env.new_string(format!("{:?}", rule))?.into_inner())
-    })().unwrap_or(std::ptr::null_mut())
+    })
 }
 
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern "system" fn Java_edu_rpi_aris_rules_Rule_requiredPremises(env: JNIEnv, obj: JObject) -> jni::sys::jlong {
-    (|| -> jni::errors::Result<_> {
+    with_thrown_errors(&env, |env| {
         let ptr: jni::sys::jlong = env.get_field(obj, "pointerToRustHeap", "J")?.j()?;
         let rule: &Rule = unsafe { &*(ptr as *mut Rule) };
         Ok(rule.num_deps().unwrap_or(1) as _) // it looks like the java version represents generalizable premises as 1 premise, with the flag indicating >= instead of ==
-    })().unwrap()
+    })
 }
 
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern "system" fn Java_edu_rpi_aris_rules_Rule_canGeneralizePremises(env: JNIEnv, obj: JObject) -> jni::sys::jboolean {
-    (|| -> jni::errors::Result<_> {
+    with_thrown_errors(&env, |env| {
         let ptr: jni::sys::jlong = env.get_field(obj, "pointerToRustHeap", "J")?.j()?;
         let rule: &Rule = unsafe { &*(ptr as *mut Rule) };
         Ok(if rule.num_deps().is_none() { 1 } else { 0 })
-    })().unwrap()
+    })
 }
 
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern "system" fn Java_edu_rpi_aris_rules_Rule_subProofPremises(env: JNIEnv, obj: JObject) -> jni::sys::jlong {
-    (|| -> jni::errors::Result<_> {
+    with_thrown_errors(&env, |env| {
         let ptr: jni::sys::jlong = env.get_field(obj, "pointerToRustHeap", "J")?.j()?;
         let rule: &Rule = unsafe { &*(ptr as *mut Rule) };
         Ok(rule.num_subdeps().unwrap_or(0) as _)
-    })().unwrap()
+    })
 }

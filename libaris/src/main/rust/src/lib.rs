@@ -28,6 +28,10 @@ pub fn java_iterator_for_each<F: FnMut(JObject) -> jni::errors::Result<()>>(env:
     Ok(())
 }
 
+pub fn with_thrown_errors<A, F: FnOnce(&JNIEnv) -> jni::errors::Result<A>>(env: &JNIEnv, f: F) -> A {
+    f(env).unwrap_or_else(|e| { let _ = env.throw(&*format!("{:?}", e)); unsafe { std::mem::zeroed() } })
+}
+
 #[cfg(test)]
 mod tests {
 }

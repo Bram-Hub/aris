@@ -4,11 +4,11 @@ use std::collections::HashSet;
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern "system" fn Java_edu_rpi_aris_ast_Expression_toStringViaRust(env: JNIEnv, obj: JObject) -> jstring {
-    (|| -> jni::errors::Result<jstring> {
+    with_thrown_errors(&env, |env| {
         let expr = jobject_to_expr(&env, obj);
         //println!("toStringViaRust, expr: {:?}", expr);
         Ok(env.new_string(format!("{:?}", expr?))?.into_inner())
-    })().unwrap_or(std::ptr::null_mut())
+    })
 }
 
 pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> {
@@ -57,7 +57,7 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern "system" fn Java_edu_rpi_aris_ast_Expression_parseViaRust(env: JNIEnv, _cls: JClass, e: JString) -> jobject {
-    (|| -> jni::errors::Result<jobject> {
+    with_thrown_errors(&env, |env| {
         if let Ok(e) = JavaStr::from_env(&env, e)?.to_str() {
             //println!("received {:?}", e);
             let e = format!("{}\n", e);
@@ -72,7 +72,7 @@ pub extern "system" fn Java_edu_rpi_aris_ast_Expression_parseViaRust(env: JNIEnv
         } else {
             Ok(std::ptr::null_mut())
         }
-    })().unwrap_or(std::ptr::null_mut())
+    })
 }
 
 pub fn expr_to_jobject<'a>(env: &'a JNIEnv, e: Expr) -> jni::errors::Result<JObject<'a>> {
