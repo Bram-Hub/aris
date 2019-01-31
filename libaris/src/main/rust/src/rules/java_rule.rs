@@ -14,6 +14,7 @@ pub extern "system" fn Java_edu_rpi_aris_rules_Rule_fromRule(env: JNIEnv, _: JOb
         let name = String::from(env.get_string(JString::from(env.call_method(rule, "name", "()Ljava/lang/String;", &[])?.l()?))?);
         println!("Rule.fromRule, rule enum name: {:?}", name);
         let rule = match &*name {
+            "REITERATION" => RuleM::Reit,
             "CONJUNCTION" => RuleM::AndIntro,
             "SIMPLIFICATION" => RuleM::AndElim,
             "ADDITION" => RuleM::OrIntro,

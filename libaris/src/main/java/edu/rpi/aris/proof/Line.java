@@ -179,8 +179,9 @@ public class Line {
                     exprs[j] = conclusions.get(j).expression;
                 }
                 premises[i] = new Premise(p.expression, exprs);
-            } else
+            } else {
                 premises[i] = new Premise(p.expression);
+            }
             ++i;
         }
         return premises;

@@ -2,6 +2,7 @@ package edu.rpi.aris.rules;
 
 public enum RuleList {
 
+    REITERATION,
     CONJUNCTION,
     SIMPLIFICATION,
     ADDITION,
