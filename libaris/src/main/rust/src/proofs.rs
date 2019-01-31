@@ -30,6 +30,9 @@ pub mod treeproof;
 /// - splicing in a subproof is O(|subproof|), while in treeproof that's O(1), but forces an O(|wholeproof|) line recalculation
 pub mod pooledproof;
 
+/// java_shallow_proof only represents things from edu.rpi.aris.rules.Premise, for the purpose of shimming into RuleT::check
+pub mod java_shallow_proof;
+
 /// DisplayIndented gives a convention for passing around state to pretty printers
 /// it is intended that objects that implement this implement display as:
 /// `fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> { self.display_indented(fmt, 1, &mut 1) }`

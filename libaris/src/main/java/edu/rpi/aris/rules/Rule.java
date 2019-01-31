@@ -42,7 +42,7 @@ public class Rule {
     public native boolean canGeneralizePremises();
     public native int subProofPremises();
 
-    public String verifyClaim(Expression conclusion, Premise[] premises) { return null; }
+    public native String verifyClaim(Expression conclusion, Premise[] premises);
 
     public enum Type {
 

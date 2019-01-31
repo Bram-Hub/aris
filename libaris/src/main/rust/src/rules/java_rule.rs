@@ -125,3 +125,39 @@ pub extern "system" fn Java_edu_rpi_aris_rules_Rule_subProofPremises(env: JNIEnv
         Ok(rule.num_subdeps().unwrap_or(0) as _)
     })
 }
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern "system" fn Java_edu_rpi_aris_rules_Rule_verifyClaim(env: JNIEnv, ruleobj: JObject, conclusion: JObject, premises: jarray) -> jstring {
+    use proofs::java_shallow_proof::JavaShallowProof;
+    with_thrown_errors(&env, |env| {
+        let ptr: jni::sys::jlong = env.get_field(ruleobj, "pointerToRustHeap", "J")?.j()?;
+        let rule: &Rule = unsafe { &*(ptr as *mut Rule) };
+        let conc = jobject_to_expr(env, conclusion)?;
+        let prem_len = env.get_array_length(premises)?;
+        println!("Rule::verifyClaim conclusion: {:?}, {} premises", conc, prem_len);
+        let mut deps = vec![];
+        let mut sdeps = vec![];
+        for i in 0..prem_len {
+            let prem = env.get_object_array_element(premises, i)?;
+            //println!("prem[{}] {:?}", i, prem);
+            if env.call_method(prem, "isSubproof", "()Z", &[])?.z()? {
+                let mut sdep = JavaShallowProof(vec![]);
+                sdep.0.push(jobject_to_expr(env, env.call_method(prem, "getAssumption", "()Ledu/rpi/aris/ast/Expression;", &[])?.l()?)?);
+                let lines = env.call_method(prem, "getSubproofLines", "()[Ledu/rpi/aris/ast/Expression;", &[])?.l()?;
+                for j in 0..env.get_array_length(lines.into_inner())? {
+                    sdep.0.push(jobject_to_expr(env, env.get_object_array_element(lines.into_inner(), j)?)?);
+                }
+                sdeps.push(sdep);
+            } else {
+                deps.push(jobject_to_expr(env, env.call_method(prem, "getPremise", "()Ledu/rpi/aris/ast/Expression;", &[])?.l()?)?);
+            }
+        }
+        println!("Rule::verifyClaim deps: {:?} {:?}", deps, sdeps);
+        if let Err(e) = rule.check(&JavaShallowProof(vec![]), conc, deps, sdeps) {
+            Ok(env.new_string(format!("{:?}", e))?.into_inner())
+        } else {
+            Ok(std::ptr::null_mut())
+        }
+    })
+}
