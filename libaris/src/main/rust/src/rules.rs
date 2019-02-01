@@ -12,6 +12,7 @@ pub enum PrepositionalInference {
     ImpIntro, ImpElim,
     NotIntro, NotElim,
     ContradictionIntro, ContradictionElim,
+    BiconditionalIntro, BiconditionalElim,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -54,6 +55,8 @@ pub mod RuleM {
     pub static NotElim: Rule = SharedChecks(Inl(PrepositionalInference::NotElim));
     pub static ContradictionIntro: Rule = SharedChecks(Inl(PrepositionalInference::ContradictionIntro));
     pub static ContradictionElim: Rule = SharedChecks(Inl(PrepositionalInference::ContradictionElim));
+    pub static BiconditionalIntro: Rule = SharedChecks(Inl(PrepositionalInference::BiconditionalIntro));
+    pub static BiconditionalElim: Rule = SharedChecks(Inl(PrepositionalInference::BiconditionalElim));
 
     pub static ForallIntro: Rule = SharedChecks(Inr(Inl(PredicateInference::ForallIntro)));
     pub static ForallElim: Rule = SharedChecks(Inr(Inl(PredicateInference::ForallElim)));
@@ -142,6 +145,8 @@ impl RuleT for PrepositionalInference {
             NotElim => "¬ Elimination",
             ContradictionIntro => "⊥ Introduction",
             ContradictionElim => "⊥ Elimination",
+            BiconditionalIntro => "↔ Introduction",
+            BiconditionalElim => "↔ Elimination",
         }.into()
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
@@ -149,8 +154,8 @@ impl RuleT for PrepositionalInference {
         let mut ret = [Inference].iter().cloned().collect::<HashSet<_>>();
         match self {
             Reit => (),
-            AndIntro | OrIntro | ImpIntro | NotIntro | ContradictionIntro => { ret.insert(Introduction); },
-            AndElim | OrElim | ImpElim | NotElim | ContradictionElim => { ret.insert(Elimination); },
+            AndIntro | OrIntro | ImpIntro | NotIntro | ContradictionIntro | BiconditionalIntro => { ret.insert(Introduction); },
+            AndElim | OrElim | ImpElim | NotElim | ContradictionElim | BiconditionalElim => { ret.insert(Elimination); },
         }
         ret
     }
@@ -158,8 +163,8 @@ impl RuleT for PrepositionalInference {
         use PrepositionalInference::*;
         match self {
             Reit | AndElim | OrIntro | NotElim | ContradictionElim => Some(1),
-            ContradictionIntro | ImpElim => Some(2),
-            NotIntro | ImpIntro => Some(0),
+            ContradictionIntro | ImpElim | BiconditionalElim => Some(2),
+            NotIntro | ImpIntro | BiconditionalIntro => Some(0),
             AndIntro | OrElim => None, // AndIntro and OrElim can have arbitrarily many conjuncts/disjuncts in one application
         }
     }
@@ -167,28 +172,28 @@ impl RuleT for PrepositionalInference {
         use PrepositionalInference::*;
         match self {
             NotIntro | ImpIntro => Some(1),
-            Reit | AndElim | OrIntro | NotElim | ContradictionElim | ContradictionIntro | ImpElim | AndIntro => Some(0),
-            OrElim => None,
+            Reit | AndElim | OrIntro | NotElim | ContradictionElim | ContradictionIntro | ImpElim | AndIntro | BiconditionalElim => Some(0),
+            OrElim | BiconditionalIntro => None,
         }
     }
-    fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<P::Reference>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
+    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<P::Reference>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
         use ProofCheckError::*; use PrepositionalInference::*;
         match self {
             Reit => {
                 let prem = p.lookup_expr_or_die(deps[0].clone())?;
-                if prem == expr {
+                if prem == conclusion {
                     return Ok(());
                 } else {
-                    return Err(DoesNotOccur(expr, prem.clone()));
+                    return Err(DoesNotOccur(conclusion, prem.clone()));
                 }
             },
             AndIntro => {
-                if let Expr::AssocBinop { symbol: ASymbol::And, ref exprs } = expr {
+                if let Expr::AssocBinop { symbol: ASymbol::And, ref exprs } = conclusion {
                     // ensure each dep appears in exprs
                     for d in deps.iter() {
                         let e = p.lookup_expr_or_die(d.clone())?;
                         if !exprs.iter().find(|x| x == &&e).is_some() {
-                            return Err(DoesNotOccur(e, expr.clone()));
+                            return Err(DoesNotOccur(e, conclusion.clone()));
                         }
                     }
                     // ensure each expr has a dep
@@ -197,7 +202,6 @@ impl RuleT for PrepositionalInference {
                             return Err(DepDoesNotExist(e.clone()));
                         }
                     }
-                    assert_eq!(exprs.len(), deps.len());
                     return Ok(());
                 } else {
                     return Err(DepOfWrongForm("expected an and-expression".into()));
@@ -207,25 +211,23 @@ impl RuleT for PrepositionalInference {
                 let prem = p.lookup_expr_or_die(deps[0].clone())?;
                 if let Expr::AssocBinop { symbol: ASymbol::And, ref exprs } = prem {
                     for e in exprs.iter() {
-                        if e == &expr {
+                        if e == &conclusion {
                             return Ok(());
                         }
                     }
                     // TODO: allow `A /\ B /\ C |- C /\ A /\ C`, etc
-                    return Err(DoesNotOccur(expr, prem.clone()));
+                    return Err(DoesNotOccur(conclusion, prem.clone()));
                 } else {
                     return Err(DepOfWrongForm("expected an and-expression".into()));
                 }
             },
             OrIntro => {
                 let prem = p.lookup_expr_or_die(deps[0].clone())?;
-                if let Expr::AssocBinop { symbol: ASymbol::Or, ref exprs } = expr {
-                    for e in exprs.iter() {
-                        if e == &prem {
-                            return Ok(());
-                        }
+                if let Expr::AssocBinop { symbol: ASymbol::Or, ref exprs } = conclusion {
+                    if exprs.iter().find(|e| e == &&prem).is_none() {
+                        return Err(DoesNotOccur(prem, conclusion.clone()));
                     }
-                    return Err(DoesNotOccur(prem, expr.clone()));
+                    return Ok(());
                 } else {
                     return Err(ConclusionOfWrongForm("expected an or-expression".into()));
                 }
@@ -251,11 +253,11 @@ impl RuleT for PrepositionalInference {
                         }
 
                         //bad case, p -> q, p therefore a which does not follow
-                        if **right != expr{
+                        if **right != conclusion{
                             return Err(ConclusionOfWrongForm("Expected the antecedent of conditional as conclusion".into()));
                         }
                         //good case, p -> q, p therefore q
-                        if **left == prems[j] && **right == expr{
+                        if **left == prems[j] && **right == conclusion{
                             return Ok(());
                         }
                     }
@@ -268,7 +270,7 @@ impl RuleT for PrepositionalInference {
                 let prem = p.lookup_expr_or_die(deps[0].clone())?;
                 if let Expr::Unop{symbol: USymbol::Not, ref operand} = prem{
                     if let Expr::Unop{symbol: USymbol::Not, ref operand} = **operand{
-                        if **operand == expr {
+                        if **operand == conclusion {
                             return Ok(());
                         }
 
@@ -281,7 +283,7 @@ impl RuleT for PrepositionalInference {
                 }
             },
             ContradictionIntro => {
-                if let Expr::Bottom = expr { 
+                if let Expr::Bottom = conclusion {
                     let mut prems = vec![];
                     prems.push(p.lookup_expr_or_die(deps[0].clone())?);
                     prems.push(p.lookup_expr_or_die(deps[1].clone())?);
@@ -304,6 +306,25 @@ impl RuleT for PrepositionalInference {
                 } else {
                     return Err(DepOfWrongForm("premise should be bottom".into()));
                 }
+            },
+            BiconditionalIntro => unimplemented!(),
+            BiconditionalElim => {
+                let mut prems = vec![];
+                prems.push(p.lookup_expr_or_die(deps[0].clone())?);
+                prems.push(p.lookup_expr_or_die(deps[1].clone())?);
+
+                for (i, j) in [(0,1), (1,0)].iter().cloned() {
+                    if let Expr::AssocBinop { symbol: ASymbol::Bicon, ref exprs } = prems[i] {
+                        if exprs.iter().find(|x| x == &&prems[j]).is_none() {
+                            return Err(DoesNotOccur(prems[j].clone(), prems[i].clone()));
+                        }
+                        if exprs.iter().find(|x| x == &&conclusion).is_none() {
+                            return Err(DoesNotOccur(conclusion.clone(), prems[i].clone()));
+                        }
+                        return Ok(());
+                    }
+                }
+                return Err(DepOfWrongForm("at least one dep should be a biconditional".into()));
             },
         }
     }

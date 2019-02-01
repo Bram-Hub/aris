@@ -25,6 +25,8 @@ pub extern "system" fn Java_edu_rpi_aris_rules_Rule_fromRule(env: JNIEnv, _: JOb
             "DOUBLENEGATION" => RuleM::NotElim,
             "CONTRADICTION" => RuleM::ContradictionIntro,
             "PRINCIPLE_OF_EXPLOSION" => RuleM::ContradictionElim,
+            "BICONDITIONAL_INTRO" => RuleM::BiconditionalIntro,
+            "BICONDITIONAL_ELIM" => RuleM::BiconditionalElim,
 
             "UNIVERSAL_GENERALIZATION" => RuleM::ForallIntro,
             "UNIVERSAL_INSTANTIATION" => RuleM::ForallElim,

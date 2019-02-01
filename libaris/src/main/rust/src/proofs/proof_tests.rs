@@ -10,6 +10,7 @@ fn test_rules<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofRefer
     test_contradictionintro::<P>();
     test_notelim::<P>();
     test_impelim::<P>();
+    test_biconelim::<P>();
 }
 
 #[test] fn test_rules_on_treeproof() { test_rules::<treeproof::TreeProof<(), ()>>(); }
@@ -124,7 +125,8 @@ pub fn demo_proof_6<P: Proof>() -> (P, Vec<P::Reference>) {
     let r4 = prf.add_step(Justification(p("A & B"), RuleM::AndIntro, vec![r1.clone(), r2.clone()], vec![])); // 4
     let r5 = prf.add_step(Justification(p("A & B"), RuleM::AndIntro, vec![r1.clone(), r2.clone(), r3.clone()], vec![])); // 5
     let r6 = prf.add_step(Justification(p("A & B"), RuleM::AndIntro, vec![r1.clone()], vec![])); // 6
-    (prf, vec![r1, r2, r3, r4, r5, r6])
+    let r7 = prf.add_step(Justification(p("A & A"), RuleM::AndIntro, vec![r1.clone()], vec![])); // 7
+    (prf, vec![r1, r2, r3, r4, r5, r6, r7])
 }
 
 fn test_andintro<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq {
@@ -135,6 +137,7 @@ fn test_andintro<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofRe
     assert_eq!(prf.verify_line(&lines[3]), Ok(()));
     assert_eq!(prf.verify_line(&lines[4]), Err(DoesNotOccur(p("C"), p("A & B"))));
     assert_eq!(prf.verify_line(&lines[5]), Err(DepDoesNotExist(p("B"))));
+    assert_eq!(prf.verify_line(&lines[6]), Ok(()));
 }
 
 pub fn demo_proof_7<P: Proof>() -> (P, Vec<P::Reference>) {
@@ -191,7 +194,7 @@ fn test_notelim<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofRef
     assert!(if let Err(ConclusionOfWrongForm(_)) = prf.verify_line(&lines[8]) {true} else {false});
 }
 
-pub fn demo_proof_9<P: Proof>() -> (P, Vec<P::Reference>){
+pub fn demo_proof_9<P: Proof>() -> (P, Vec<P::Reference>) {
     let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
     let mut prf = P::new();
 
@@ -235,4 +238,27 @@ fn test_impelim<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofRef
     assert_eq!(prf.verify_line(&lines[10]), Err(DoesNotOccur(p("P -> Q"), p("A"))));
 }
 
+pub fn demo_proof_10<P: Proof>() -> (P, Vec<P::Reference>) {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let mut prf = P::new();
+    let r1 = prf.add_premise(p("A <-> B <-> C"));
+    let r2 = prf.add_premise(p("A"));
+    let r3 = prf.add_step(Justification(p("B"), RuleM::BiconditionalElim, vec![r1.clone(), r2.clone()], vec![]));
+    let r4 = prf.add_step(Justification(p("C"), RuleM::BiconditionalElim, vec![r1.clone(), r2.clone()], vec![]));
+    let r5 = prf.add_step(Justification(p("A"), RuleM::BiconditionalElim, vec![r1.clone(), r4.clone()], vec![]));
+    let r6 = prf.add_step(Justification(p("D"), RuleM::BiconditionalElim, vec![r1.clone(), r4.clone()], vec![]));
+    let r7 = prf.add_step(Justification(p("A"), RuleM::BiconditionalElim, vec![r1.clone(), r6.clone()], vec![]));
+    (prf, vec![r1, r2, r3, r4, r5, r6, r7])
+}
 
+fn test_biconelim<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let (prf, lines) = demo_proof_10::<P>();
+    println!("{}", prf);
+    use ProofCheckError::*;
+    assert_eq!(prf.verify_line(&lines[2]), Ok(()));
+    assert_eq!(prf.verify_line(&lines[3]), Ok(()));
+    assert_eq!(prf.verify_line(&lines[4]), Ok(()));
+    assert_eq!(prf.verify_line(&lines[5]), Err(DoesNotOccur(p("D"), p("A <-> B <-> C"))));
+    assert_eq!(prf.verify_line(&lines[6]), Err(DoesNotOccur(p("D"), p("A <-> B <-> C"))));
+}
