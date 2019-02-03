@@ -5,8 +5,6 @@ import edu.rpi.aris.rules.Rule;
 
 public class Claim {
 
-    public static final String SUBPROOF_REP = "==>";
-
     private Expression conclusion;
     private Premise[] premises;
     private Rule rule;

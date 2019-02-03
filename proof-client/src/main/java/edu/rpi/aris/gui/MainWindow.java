@@ -105,6 +105,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     private MenuItem saveProof;
     private MenuItem saveAsProof;
     private ModuleUIOptions moduleOptions;
+    private RuleRestrictionUI ruleRestrictionUI;
 
     public MainWindow(Stage primaryStage, EditMode editMode) throws IOException {
         this(primaryStage, editMode, null);
@@ -150,7 +151,8 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
         });
         saveManager = new SaveManager(this);
         fontObjectProperty = new SimpleObjectProperty<>(new Font(14));
-        rulesManager = new RulesManager();
+        rulesManager = new RulesManager(proof.getAllowedRules());
+        ruleRestrictionUI = new RuleRestrictionUI(primaryStage, rulesManager);
         rulesManager.addRuleSelectionHandler(ruleSelectEvent -> {
             if (selectedLine.get() > -1) {
                 Line line = proof.getLine(selectedLine.get());
@@ -339,6 +341,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
         MenuItem addGoal = new MenuItem("Add Goal");
         MenuItem verifyLine = new MenuItem("Verify Line");
         MenuItem verifyProof = new MenuItem("Verify Proof");
+        MenuItem proofRestrictions = new MenuItem("Proof Restrictions");
 
         addLine.setOnAction(actionEvent -> {
             if (selectedLine.get() < 0)
@@ -370,6 +373,8 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
 
         verifyProof.setOnAction(actionEvent -> this.proof.verifyProof());
 
+        proofRestrictions.setOnAction(actionEvent -> ruleRestrictionUI.show(this.proof));
+
         addLine.acceleratorProperty().bind(configuration.newProofLineKey);
         deleteLine.acceleratorProperty().bind(configuration.deleteProofLineKey);
         startSubProof.acceleratorProperty().bind(configuration.startSubProofKey);
@@ -379,7 +384,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
         verifyLine.acceleratorProperty().bind(configuration.verifyLineKey);
         verifyProof.acceleratorProperty().bind(configuration.verifyProofKey);
 
-        proof.getItems().addAll(addLine, deleteLine, startSubProof, endSubProof, newPremise, addGoal);
+        proof.getItems().addAll(proofRestrictions, addLine, deleteLine, startSubProof, endSubProof, newPremise, addGoal);
 
         if (editMode == EditMode.READ_ONLY) {
             proof.getItems().forEach(item -> {
@@ -389,6 +394,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
         } else if (editMode == EditMode.RESTRICTED_EDIT) {
             newPremise.setDisable(true);
             addGoal.setDisable(true);
+            proofRestrictions.setDisable(true);
         }
 
         proof.getItems().addAll(verifyLine, verifyProof);

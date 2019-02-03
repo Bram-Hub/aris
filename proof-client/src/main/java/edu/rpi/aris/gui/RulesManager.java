@@ -1,7 +1,7 @@
 package edu.rpi.aris.gui;
 
-import edu.rpi.aris.rules.RuleList;
 import edu.rpi.aris.rules.Rule;
+import edu.rpi.aris.rules.RuleList;
 import javafx.application.Platform;
 import javafx.event.Event;
 import javafx.event.EventHandler;
@@ -18,16 +18,15 @@ public class RulesManager {
 
     private SortedMap<Rule.Type, SortedSet<RuleList>> availableRules = new TreeMap<>();
     private HashSet<EventHandler<RuleSelectEvent>> eventHandlers = new HashSet<>();
-    private ContextMenu ruleDropdown = null;
+    private ContextMenu ruleDropdown;
     private ScrollPane ruleTable;
     private HashMap<Rule.Type, Pair<TitledPane, VBox>> ruleTypePanes = new HashMap<>();
 
-    public RulesManager() {
-        this(GuiConfig.getConfigManager().getDefaultRuleSet());
-    }
-
     public RulesManager(Collection<RuleList> availableRules) {
-        setAvailableRules(availableRules);
+        if (availableRules.size() == 0)
+            setAvailableRules(Arrays.asList(RuleList.values()));
+        else
+            setAvailableRules(availableRules);
         ruleDropdown = new ContextMenu();
         initRuleTable();
     }
@@ -54,7 +53,8 @@ public class RulesManager {
         }
     }
 
-    private synchronized void setAvailableRules(Collection<RuleList> availableRules) {
+    public synchronized void setAvailableRules(Collection<RuleList> availableRules) {
+        this.availableRules.clear();
         for (RuleList r : availableRules) {
             if (r != null && r.rule != null) {
                 for (Rule.Type t : r.rule.getRuleType()) {

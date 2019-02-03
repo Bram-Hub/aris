@@ -74,7 +74,7 @@ public class Line {
         return status;
     }
 
-    private void setStatus(Proof.Status status) {
+    void setStatus(Proof.Status status) {
         this.status = status;
         if (listener != null)
             listener.status(status);
@@ -195,6 +195,11 @@ public class Line {
         if (selectedRule == null) {
             setStatusString("Rule Not Specified");
             setStatus(Proof.Status.NO_RULE);
+            return;
+        }
+        if (proof.getAllowedRules().size() > 0 && !proof.getAllowedRules().contains(selectedRule)) {
+            setStatusString("The Rule \"" + selectedRule.name + "\" has been restricted for this proof");
+            setStatus(Proof.Status.INVALID_CLAIM);
             return;
         }
         Premise[] premises = getClaimPremises();

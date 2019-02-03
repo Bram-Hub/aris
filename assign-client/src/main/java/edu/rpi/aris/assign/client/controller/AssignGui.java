@@ -216,7 +216,8 @@ public class AssignGui {
                 for (TabGui gui : tabGuis.values())
                     gui.unload();
                 TabGui gui = tabGuis.get(tabPane.getSelectionModel().getSelectedItem());
-                gui.load(true);
+                if (userInfo.isLoggedIn() || !gui.requiresOnline())
+                    gui.load(true);
             }
         });
 

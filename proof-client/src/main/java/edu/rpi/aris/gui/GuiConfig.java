@@ -1,11 +1,8 @@
 package edu.rpi.aris.gui;
 
-import edu.rpi.aris.rules.RuleList;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
-import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Orientation;
@@ -31,7 +28,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.prefs.Preferences;
 
@@ -534,10 +534,6 @@ public class GuiConfig {
             if (((KeyCombination) a.get()).match(event))
                 return true;
         return false;
-    }
-
-    public List<RuleList> getDefaultRuleSet() {
-        return Arrays.asList(RuleList.values());
     }
 
     public File getSaveDirectory() {

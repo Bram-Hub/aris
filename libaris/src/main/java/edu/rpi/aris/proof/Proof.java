@@ -221,8 +221,15 @@ public class Proof {
     }
 
     private boolean recursiveLineVerification(Line l) {
-        if (l.isAssumption())
+        if (l.isAssumption()) {
+            if (l.getSubProofLevel() == 0)
+                return true;
+            for (Line c : getSubProofConclusions(l)) {
+                if (!recursiveLineVerification(c))
+                    return false;
+            }
             return true;
+        }
         if (l.getStatus() == Status.NONE || l.getStatus() == Status.CORRECT) {
             if (l.getStatus() != Status.CORRECT && !l.verifyClaim())
                 return false;
@@ -248,6 +255,10 @@ public class Proof {
         return goals;
     }
 
+    ArrayList<Line> getSubProofConclusions(Line assumption) {
+        return getSubProofConclusions(assumption, lines.get(lines.size() - 1));
+    }
+
     ArrayList<Line> getSubProofConclusions(Line assumption, Line goal) {
         int lvl = assumption.getSubProofLevel();
         ArrayList<Line> subLines = new ArrayList<>();
@@ -267,9 +278,21 @@ public class Proof {
 
     void resetGoalStatus() {
         for (Goal g : goals) {
-            g.setStatus(Status.NONE);
-            g.buildExpression();
+            if (g.getStatus() == Status.CORRECT || g.getStatus() == Status.INVALID_CLAIM) {
+                g.setStatus(Status.NONE);
+                g.buildExpression();
+            }
         }
+    }
+
+    public void resetProofStatus() {
+        for (Line l : lines) {
+            if (l.getStatus() == Status.CORRECT || l.getStatus() == Status.INVALID_CLAIM) {
+                l.setStatus(Status.NONE);
+                l.buildExpression();
+            }
+        }
+        resetGoalStatus();
     }
 
     HashSet<String> getAuthors() {

@@ -3,6 +3,7 @@ package edu.rpi.aris.assign.client.dialog;
 import edu.rpi.aris.assign.*;
 import edu.rpi.aris.assign.client.AssignClient;
 import edu.rpi.aris.assign.spi.ArisModule;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -71,26 +72,28 @@ public class ProblemDialog<T extends ArisModule> extends Dialog<Triple<String, S
 
     @FXML
     public void openEditor() {
-        try {
-            if (moduleUI == null) {
-                String moduleName = module.getSelectionModel().getSelectedItem();
-                ArisClientModule<T> client = ModuleService.getService().getClientModule(moduleName);
-                if (client == null) {
-                    AssignClient.displayErrorMsg("Error loading module", "Failed to load client module for \"" + moduleName + "\"");
-                    return;
+        new Thread(() -> {
+            try {
+                if (moduleUI == null) {
+                    String moduleName = module.getSelectionModel().getSelectedItem();
+                    ArisClientModule<T> client = ModuleService.getService().getClientModule(moduleName);
+                    if (client == null) {
+                        AssignClient.displayErrorMsg("Error loading module", "Failed to load client module for \"" + moduleName + "\"");
+                        return;
+                    }
+                    Platform.runLater(() -> replaceModuleChoice(moduleName));
+                    if (problem.get() == null)
+                        moduleUI = client.createModuleGui(UI_OPTIONS);
+                    else
+                        moduleUI = client.createModuleGui(UI_OPTIONS, problem.get());
+                    moduleUI.setModal(Modality.WINDOW_MODAL, getOwner());
+                    moduleUI.setModuleUIListener(this);
                 }
-                replaceModuleChoice(moduleName);
-                if (problem.get() == null)
-                    moduleUI = client.createModuleGui(UI_OPTIONS);
-                else
-                    moduleUI = client.createModuleGui(UI_OPTIONS, problem.get());
-                moduleUI.setModal(Modality.WINDOW_MODAL, getOwner());
-                moduleUI.setModuleUIListener(this);
+                moduleUI.show();
+            } catch (Exception e) {
+                LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, false);
             }
-            moduleUI.show();
-        } catch (Exception e) {
-            LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, false);
-        }
+        }).start();
     }
 
     public void replaceModuleChoice(String moduleName) {
