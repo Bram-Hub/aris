@@ -160,6 +160,7 @@ public class ProofLine implements LineChangeListener {
         textField.positionCaret(textField.getText().length());
         caretPos = textField.getText().length();
         selectedRule(proofLine.getSelectedRule());
+        status(proofLine.getStatus());
     }
 
     private boolean isEditable() {

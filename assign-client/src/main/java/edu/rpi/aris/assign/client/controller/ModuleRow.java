@@ -1,9 +1,6 @@
 package edu.rpi.aris.assign.client.controller;
 
-import edu.rpi.aris.assign.EditMode;
-import edu.rpi.aris.assign.LibAssign;
-import edu.rpi.aris.assign.ModuleService;
-import edu.rpi.aris.assign.ModuleUIOptions;
+import edu.rpi.aris.assign.*;
 import edu.rpi.aris.assign.spi.ArisModule;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -48,11 +45,17 @@ public class ModuleRow {
 
     @FXML
     public void launchModule() {
-        try {
-            module.getClientModule().createModuleGui(UI_OPTIONS).show();
-        } catch (Exception e) {
-            LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, true);
-        }
+        new Thread(() -> {
+            try {
+                ArisClientModule m = module.getClientModule();
+                if (m != null)
+                    m.createModuleGui(UI_OPTIONS).show();
+                else
+                    LibAssign.getInstance().showExceptionError(Thread.currentThread(), new Exception("Module " + module.getModuleName() + " missing client module"), true);
+            } catch (Exception e) {
+                LibAssign.getInstance().showExceptionError(Thread.currentThread(), e, true);
+            }
+        }).start();
     }
 
     public Parent getRoot() {

@@ -1,12 +1,20 @@
 package edu.rpi.aris.ast;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Expression {
     static { edu.rpi.aris.util.SharedObjectLoader.loadLib("liblibaris_rs"); }
 
     public native String toStringViaRust();
     public static native Expression parseViaRust(String s);
+
+    @Override
+    public boolean equals(Object e) {
+        if (!(e instanceof Expression))
+            return false;
+        return toStringViaRust().equals(((Expression) e).toStringViaRust());
+    }
 
     public static class BottomExpression extends Expression {
         @Override public String toString() {

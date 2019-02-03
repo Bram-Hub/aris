@@ -166,7 +166,7 @@ public class Line {
                 setStatus(Proof.Status.INVALID_CLAIM);
                 return null;
             }
-            if (p.isAssumption && p.getSubProofLevel() > 0) {
+            if (p.isAssumption && p.getSubProofLevel() == subProofLevel + 1) {
                 ArrayList<Line> conclusions = proof.getSubProofConclusions(p, this);
                 Expression[] exprs = new Expression[conclusions.size()];
                 for (int j = 0; j < conclusions.size(); ++j) {
