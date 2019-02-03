@@ -13,8 +13,15 @@ fn test_rules<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofRefer
     test_biconelim::<P>();
 }
 
+fn test_rules_with_subproofs<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq {
+    test_impintro::<P>();
+}
+
 #[test] fn test_rules_on_treeproof() { test_rules::<treeproof::TreeProof<(), ()>>(); }
-#[test] fn test_rules_on_pooledproof() { test_rules::<pooledproof::PooledProof<Expr>>(); }
+#[test] fn test_rules_on_pooledproof() { 
+    test_rules::<pooledproof::PooledProof<Expr>>();
+    test_rules_with_subproofs::<pooledproof::PooledProof<Expr>>();
+}
 
 pub fn demo_proof_1<P: Proof>() -> P where P: PartialEq+std::fmt::Debug, P::Reference: PartialEq+std::fmt::Debug, P::SubproofReference: PartialEq+std::fmt::Debug {
     let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
@@ -261,4 +268,33 @@ fn test_biconelim<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofR
     assert_eq!(prf.verify_line(&lines[4]), Ok(()));
     assert_eq!(prf.verify_line(&lines[5]), Err(DoesNotOccur(p("D"), p("A <-> B <-> C"))));
     assert_eq!(prf.verify_line(&lines[6]), Err(DoesNotOccur(p("D"), p("A <-> B <-> C"))));
+}
+
+pub fn demo_proof_11<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::SubproofReference>) {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let mut prf = P::new();
+    let r1 = prf.add_premise(p("A"));
+    let r2 = prf.add_premise(p("B"));
+    let mut sub1 = P::new();
+    let r3 = sub1.add_premise(p("A"));
+    let r4 = sub1.add_step(Justification(p("B"), RuleM::Reit, vec![r2.clone()], vec![]));
+    let r5 = prf.add_subproof(sub1);
+    let mut sub2 = P::new();
+    let r6 = sub2.add_premise(p("A"));
+    let r7 = sub2.add_step(Justification(p("A"), RuleM::Reit, vec![r1.clone()], vec![]));
+    let r8 = prf.add_subproof(sub2);
+    let r9 = prf.add_step(Justification(p("A -> B"), RuleM::ImpIntro, vec![], vec![r5.clone()]));
+    let r10 = prf.add_step(Justification(p("A -> A"), RuleM::ImpIntro, vec![], vec![r8.clone()]));
+    let r11 = prf.add_step(Justification(p("B -> A"), RuleM::ImpIntro, vec![], vec![r5.clone()]));
+    (prf, vec![r1, r2, r3, r4, r6, r7, r9, r10, r11], vec![r5, r8])
+}
+
+fn test_impintro<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let (prf, lines, sublines) = demo_proof_11::<P>();
+    println!("{}", prf);
+    use ProofCheckError::*;
+    assert_eq!(prf.verify_line(&lines[6]), Ok(()));
+    assert_eq!(prf.verify_line(&lines[7]), Ok(()));
+    assert_eq!(prf.verify_line(&lines[8]), Err(DoesNotOccur(p("B"), p("A"))));
 }

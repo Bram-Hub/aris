@@ -60,6 +60,9 @@ pub trait Proof: Sized {
     fn lookup_expr_or_die(&self, r: Self::Reference) -> Result<Expr, ProofCheckError<Self::Reference, Self::SubproofReference>> {
         self.lookup_expr(r.clone()).ok_or(ProofCheckError::LineDoesNotExist(r))
     }
+    fn lookup_subproof_or_die(&self, r: Self::SubproofReference) -> Result<Self, ProofCheckError<Self::Reference, Self::SubproofReference>> {
+        self.lookup_subproof(r.clone()).ok_or(ProofCheckError::SubproofDoesNotExist(r))
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

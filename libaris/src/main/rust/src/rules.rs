@@ -231,7 +231,25 @@ impl RuleT for PrepositionalInference {
                 }
             },
             OrElim => unimplemented!(),
-            ImpIntro => unimplemented!(),
+            ImpIntro => {
+                let sproof = p.lookup_subproof_or_die(sdeps[0].clone())?;
+                // TODO: allow generalized premises
+                assert_eq!(sproof.premises().len(), 1);
+                if let Expr::Binop{symbol: BSymbol::Implies, ref left, ref right} = conclusion {
+                    let prem = sproof.premises().into_iter().map(|r| p.lookup_expr_or_die(r)).collect::<Result<Vec<Expr>,_>>()?;
+                    if **left != prem[0] {
+                        return Err(DoesNotOccur(*left.clone(), prem[0].clone()));
+                    }
+                    let conc = sproof.lines().into_iter().filter_map(|x| x.get::<P::Reference,_>().map(|y| y.clone()))
+                        .map(|r| p.lookup_expr_or_die(r.clone())).collect::<Result<Vec<Expr>,_>>()?;
+                    if conc.iter().find(|c| *c == &**right).is_none() {
+                        return Err(DepDoesNotExist(*right.clone()));
+                    }
+                    return Ok(());
+                } else {
+                    return Err(ConclusionOfWrongForm("expected an imp-expression".into()));
+                }
+            },
             ImpElim => {
                 let mut prems = vec![];
                 prems.push(p.lookup_expr_or_die(deps[0].clone())?);
@@ -422,6 +440,7 @@ impl RuleT for RedundantPrepositionalInference {
 #[derive(Debug, PartialEq, Eq)]
 pub enum ProofCheckError<R, S> {
     LineDoesNotExist(R),
+    SubproofDoesNotExist(S),
     ReferencesLaterLine(LineAndIndent, usize),
     IncorrectDepCount(Vec<R>, usize),
     IncorrectSubDepCount(Vec<S>, usize),
