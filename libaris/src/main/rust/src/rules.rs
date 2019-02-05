@@ -160,10 +160,10 @@ impl RuleT for PrepositionalInference {
     fn num_deps(&self) -> Option<usize> {
         use PrepositionalInference::*;
         match self {
-            Reit | AndElim | OrIntro | NotElim | ContradictionElim => Some(1),
+            Reit | AndElim | OrIntro | OrElim | NotElim | ContradictionElim => Some(1),
             ContradictionIntro | ImpElim | BiconditionalElim => Some(2),
             NotIntro | ImpIntro | BiconditionalIntro => Some(0),
-            AndIntro | OrElim => None, // AndIntro and OrElim can have arbitrarily many conjuncts/disjuncts in one application
+            AndIntro => None, // AndIntro can have arbitrarily many conjuncts in one application
         }
     }
     fn num_subdeps(&self) -> Option<usize> {
@@ -230,7 +230,27 @@ impl RuleT for PrepositionalInference {
                     return Err(ConclusionOfWrongForm("expected an or-expression".into()));
                 }
             },
-            OrElim => unimplemented!(),
+            OrElim => {
+                let prem = p.lookup_expr_or_die(deps[0].clone())?;
+                if let Expr::AssocBinop { symbol: ASymbol::Or, ref exprs } = prem {
+                    let sproofs = sdeps.into_iter().map(|r| p.lookup_subproof_or_die(r.clone())).collect::<Result<Vec<P>,_>>()?;
+                    if !sproofs.iter().all(|sproof| {
+                            sproof.lines().into_iter().filter_map(|x| x.get::<P::Reference,_>().and_then(|y| p.lookup_expr(y.clone())).map(|y| y.clone())).find(|c| *c == conclusion).is_some()
+                        }) {
+                        return Err(DepDoesNotExist(conclusion.clone()));
+                    }
+                    if let Some(e) = exprs.iter().find(|&e| {
+                        !sproofs.iter().any(|sproof| {
+                            sproof.premises().into_iter().next().and_then(|r| p.lookup_expr(r)).map(|x| x == *e) == Some(true)
+                            })
+                        }) {
+                        return Err(DepDoesNotExist(e.clone()));
+                    }
+                    return Ok(());
+                } else {
+                    return Err(DepOfWrongForm("expected an or-expression".into()));
+                }
+            },
             ImpIntro => {
                 let sproof = p.lookup_subproof_or_die(sdeps[0].clone())?;
                 // TODO: allow generalized premises

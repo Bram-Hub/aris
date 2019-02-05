@@ -16,6 +16,7 @@ fn test_rules<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofRefer
 fn test_rules_with_subproofs<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq {
     test_impintro::<P>();
     test_notintro::<P>();
+    test_orelim::<P>();
 }
 
 #[test] fn test_rules_on_treeproof() { test_rules::<treeproof::TreeProof<(), ()>>(); }
@@ -292,7 +293,7 @@ pub fn demo_proof_11<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::SubproofRefere
 
 fn test_impintro<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq {
     let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
-    let (prf, lines, sublines) = demo_proof_11::<P>();
+    let (prf, lines, _) = demo_proof_11::<P>();
     println!("{}", prf);
     use ProofCheckError::*;
     assert_eq!(prf.verify_line(&lines[6]), Ok(()));
@@ -315,9 +316,41 @@ pub fn demo_proof_12<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::SubproofRefere
 
 fn test_notintro<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq {
     let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
-    let (prf, lines, sublines) = demo_proof_12::<P>();
+    let (prf, lines, _) = demo_proof_12::<P>();
     println!("{}", prf);
     use ProofCheckError::*;
     assert_eq!(prf.verify_line(&lines[3]), Ok(()));
     assert_eq!(prf.verify_line(&lines[4]), Err(DoesNotOccur(p("B"), p("A"))));
+}
+
+pub fn demo_proof_13<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::SubproofReference>) {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let mut prf = P::new();
+    let r1 = prf.add_premise(p("A | B"));
+    let mut sub1 = P::new();
+    let r2 = sub1.add_premise(p("A"));
+    let r3 = sub1.add_step(Justification(p("C"), RuleM::Reit, vec![], vec![]));
+    let r4 = prf.add_subproof(sub1);
+    let mut sub2 = P::new();
+    let r5 = sub2.add_premise(p("B"));
+    let r6 = sub2.add_step(Justification(p("C"), RuleM::Reit, vec![], vec![]));
+    let r7 = prf.add_subproof(sub2);
+    let mut sub3 = P::new();
+    let r8 = sub3.add_premise(p("B"));
+    let r9 = sub3.add_step(Justification(p("D"), RuleM::Reit, vec![], vec![]));
+    let r10 = prf.add_subproof(sub3);
+    let r11 = prf.add_step(Justification(p("C"), RuleM::OrElim, vec![r1.clone()], vec![r4.clone(), r7.clone()]));
+    let r12 = prf.add_step(Justification(p("D"), RuleM::OrElim, vec![r1.clone()], vec![r4.clone(), r7.clone()]));
+    let r13 = prf.add_step(Justification(p("C"), RuleM::OrElim, vec![r1.clone()], vec![r4.clone(), r10.clone()]));
+    (prf, vec![r1, r2, r3, r5, r6, r8, r9, r11, r12, r13], vec![r4, r7, r10])
+}
+
+fn test_orelim<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let (prf, lines, _) = demo_proof_13::<P>();
+    println!("{}", prf);
+    use ProofCheckError::*;
+    assert_eq!(prf.verify_line(&lines[7]), Ok(()));
+    assert_eq!(prf.verify_line(&lines[8]), Err(DepDoesNotExist(p("D"))));
+    assert_eq!(prf.verify_line(&lines[9]), Err(DepDoesNotExist(p("C"))));
 }
