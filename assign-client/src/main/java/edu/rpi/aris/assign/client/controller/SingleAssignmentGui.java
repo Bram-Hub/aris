@@ -13,16 +13,19 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.Region;
 import javafx.stage.Modality;
 import javafx.stage.Window;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Optional;
 
 public class SingleAssignmentGui implements TabGui {
 
+    private static final HashMap<String, Image> iconImages = new HashMap<>();
     private static final ModuleUIOptions SUBMIT_OPTIONS = new ModuleUIOptions(EditMode.RESTRICTED_EDIT, "Create Submission", true, false, true, true, false);
     private static final ModuleUIOptions READ_ONLY_OPTIONS = new ModuleUIOptions(EditMode.READ_ONLY, "View Submission", false, false, false, false, false);
     private final SingleAssignment assignment;
@@ -45,6 +48,8 @@ public class SingleAssignmentGui implements TabGui {
     private Label status;
     @FXML
     private ImageView statusIcon;
+    @FXML
+    private ProgressIndicator gradingIndicator;
     private CurrentUser userInfo = CurrentUser.getInstance();
     private Parent root;
     private TreeItem<SingleAssignment.Submission> rootItem = new TreeItem<>();
@@ -52,7 +57,7 @@ public class SingleAssignmentGui implements TabGui {
     SingleAssignmentGui(String name, int cid, int aid, boolean isInstructor) {
         this.isInstructor = isInstructor;
         assignment = new SingleAssignment(this, name, cid, aid, isInstructor);
-        FXMLLoader loader = new FXMLLoader(ProblemsGui.class.getResource("/edu/rpi/aris/assign/client/view/single_assignment.fxml"));
+        FXMLLoader loader = new FXMLLoader(SingleAssignmentGui.class.getResource("/edu/rpi/aris/assign/client/view/single_assignment.fxml"));
         loader.setController(this);
         try {
             root = loader.load();
@@ -138,11 +143,20 @@ public class SingleAssignmentGui implements TabGui {
         });
         name.textProperty().bind(Bindings.createStringBinding(() -> assignment.getName() + ":", assignment.nameProperty()));
         dueDate.textProperty().bind(assignment.dueDateProperty());
-        status.textProperty().bind(Bindings.createStringBinding(() -> userInfo.isLoggedIn() ? assignment.getStatusStr() : "Offline", assignment.statusProperty(), userInfo.loginProperty()));
+        status.textProperty().bind(Bindings.createStringBinding(() -> userInfo.isLoggedIn() ? assignment.getStatusStr() : "Offline", assignment.statusStringProperty(), userInfo.loginProperty()));
         status.setManaged(!isInstructor);
         status.setVisible(!isInstructor);
+        statusIcon.imageProperty().bind(Bindings.createObjectBinding(() -> assignment.getStatus() == null || !userInfo.isLoggedIn() ? null : iconImages.computeIfAbsent(assignment.getStatus().icon, str -> str == null ? null : new Image(SingleAssignmentGui.class.getResourceAsStream("/edu/rpi/aris/assign/client/images/" + str))), assignment.statusProperty(), userInfo.loginProperty()));
         statusIcon.setManaged(!isInstructor);
         statusIcon.setVisible(!isInstructor);
+        gradingIndicator.setVisible(false);
+        gradingIndicator.setManaged(false);
+        if (!isInstructor) {
+            statusIcon.visibleProperty().bind(assignment.statusProperty().isNotEqualTo(GradingStatus.GRADING).and(userInfo.loginProperty()));
+            statusIcon.managedProperty().bind(statusIcon.visibleProperty());
+            gradingIndicator.visibleProperty().bind(statusIcon.visibleProperty().not().and(userInfo.loginProperty()));
+            gradingIndicator.managedProperty().bind(gradingIndicator.visibleProperty());
+        }
         nameColumn.setCellValueFactory(param -> param.getValue().getValue().nameProperty());
         nameColumn.setStyle("-fx-alignment: CENTER-LEFT;");
         submittedColumn.setCellValueFactory(param -> param.getValue().getValue().submittedOnProperty());

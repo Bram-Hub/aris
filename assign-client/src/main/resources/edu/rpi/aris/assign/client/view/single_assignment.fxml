@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
-<VBox spacing="5.0" xmlns="http://javafx.com/javafx/8.0.172-ea" xmlns:fx="http://javafx.com/fxml/1">
+<VBox spacing="5.0" xmlns="http://javafx.com/javafx/8.0.202-ea" xmlns:fx="http://javafx.com/fxml/1">
     <children>
         <HBox alignment="CENTER_LEFT" spacing="5.0">
             <children>
@@ -21,6 +20,7 @@
                 <Separator visible="false" HBox.hgrow="ALWAYS" />
                 <Label fx:id="status" text="Status" />
                 <ImageView fx:id="statusIcon" fitHeight="25.0" fitWidth="25.0" pickOnBounds="true" preserveRatio="true" />
+                <ProgressIndicator fx:id="gradingIndicator" prefHeight="25.0" prefWidth="25.0"/>
             </children>
         </HBox>
         <TreeTableView fx:id="treeTable" sortMode="ONLY_FIRST_LEVEL" VBox.vgrow="ALWAYS">

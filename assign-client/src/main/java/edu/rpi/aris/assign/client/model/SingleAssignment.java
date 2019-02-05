@@ -257,8 +257,12 @@ public class SingleAssignment {
         return dueDate.get();
     }
 
-    public SimpleStringProperty statusProperty() {
+    public SimpleStringProperty statusStringProperty() {
         return statusStr;
+    }
+
+    public SimpleObjectProperty<GradingStatus> statusProperty() {
+        return status;
     }
 
     public String getStatusStr() {
@@ -361,13 +365,19 @@ public class SingleAssignment {
         if (isInstructor)
             return;
         double grade = 0;
+        boolean grading = false;
         for (TreeItem<Submission> item : problems) {
             Submission prob = item.getValue();
+            if (prob.status.get() == GradingStatus.GRADING)
+                grading = true;
             grade += prob.getGrade();
         }
         int numProb = problems.size();
         this.grade.set(grade);
-        status.set(numProb == grade ? GradingStatus.CORRECT : (grade == 0 ? GradingStatus.INCORRECT : GradingStatus.PARTIAL));
+        if (grading)
+            status.set(GradingStatus.GRADING);
+        else
+            status.set(numProb == grade ? GradingStatus.CORRECT : (grade == 0 ? GradingStatus.INCORRECT : GradingStatus.PARTIAL));
     }
 
     public <T extends ArisModule> boolean saveAttempt(Attempt attempt, Problem<T> problem, ArisModule<T> module, boolean submitOnError) {

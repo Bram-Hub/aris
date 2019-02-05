@@ -4,10 +4,10 @@ public enum GradingStatus {
 
     // Do not reorder as java uses this ordering when sorting a Collection of enums
     CORRECT("correct.png"),
-    PARTIAL("partial.png"),
-    GRADING("grading.png"),
+    PARTIAL("warning.png"),
+    GRADING(null),
     INCORRECT("incorrect.png"),
-    ERROR("error.png"),
+    ERROR("warning.png"),
     NONE(null);
 
     public final String icon;
