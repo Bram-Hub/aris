@@ -281,7 +281,25 @@ impl RuleT for PrepositionalInference {
                 return Err(DepOfWrongForm("No conditional in dependencies".into()));
 
             },
-            NotIntro => unimplemented!(),
+            NotIntro => {
+                let sproof = p.lookup_subproof_or_die(sdeps[0].clone())?;
+                // TODO: allow generalized premises
+                assert_eq!(sproof.premises().len(), 1);
+                if let Expr::Unop { symbol: USymbol::Not, ref operand } = conclusion {
+                    let prem = sproof.premises().into_iter().map(|r| p.lookup_expr_or_die(r)).collect::<Result<Vec<Expr>,_>>()?;
+                    if **operand != prem[0] {
+                        return Err(DoesNotOccur(*operand.clone(), prem[0].clone()));
+                    }
+                    let conc = sproof.lines().into_iter().filter_map(|x| x.get::<P::Reference,_>().map(|y| y.clone()))
+                        .map(|r| p.lookup_expr_or_die(r.clone())).collect::<Result<Vec<Expr>,_>>()?;
+                    if conc.iter().find(|x| **x == Expr::Bottom).is_none() {
+                        return Err(DepDoesNotExist(Expr::Bottom));
+                    }
+                    return Ok(());
+                } else {
+                    return Err(ConclusionOfWrongForm("expected a not-expression".into()));
+                }
+            },
             NotElim => {
                 let prem = p.lookup_expr_or_die(deps[0].clone())?;
                 if let Expr::Unop{symbol: USymbol::Not, ref operand} = prem{
