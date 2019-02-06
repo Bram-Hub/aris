@@ -38,8 +38,12 @@ task "rust-build" {
             commandLine 'cargo', 'build', '--release'
         }
         copy {
-            into './build/resources/main'
+            into './src/main/resources'
             from './src/main/rust/target/release/liblibaris_rs.so'
+        }
+        copy {
+            into './src/main/resources'
+            from './src/main/rust/target/release/libaris_rs.dll'
         }
     }
 }
