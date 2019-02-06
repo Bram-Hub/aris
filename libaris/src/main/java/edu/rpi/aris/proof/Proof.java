@@ -234,7 +234,7 @@ public class Proof {
             if (l.getStatus() != Status.CORRECT && !l.verifyClaim())
                 return false;
             for (Line p : l.getPremises())
-                if (!recursiveLineVerification(p))
+                if ((!p.isAssumption() || p.getSubProofLevel() > l.getSubProofLevel()) && !recursiveLineVerification(p))
                     return false;
             return true;
         } else
