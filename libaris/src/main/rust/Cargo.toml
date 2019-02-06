@@ -9,5 +9,8 @@ frunk = "0.2.2"
 jni = "0.10.2"
 nom = "4.1.1"
 
+[build-dependencies]
+cbindgen = "*"
+
 [lib]
 crate_type = ["cdylib"]

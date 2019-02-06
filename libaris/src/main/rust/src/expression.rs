@@ -1,15 +1,20 @@
 use std::collections::HashSet;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[repr(C)]
 pub enum USymbol { Not }
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[repr(C)]
 pub enum BSymbol { Implies, Plus, Mult }
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[repr(C)]
 pub enum ASymbol { And, Or, Bicon }
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[repr(C)]
 pub enum QSymbol { Forall, Exists }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[repr(C)]
 pub enum Expr {
     Bottom,
     Predicate { name: String, args: Vec<String> },

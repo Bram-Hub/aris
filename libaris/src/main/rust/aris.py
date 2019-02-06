@@ -1,0 +1,125 @@
+import ctypes
+import struct
+import os.path
+
+class Box_Expr(ctypes.Structure):
+    _fields_ = [('ptr', ctypes.c_void_p)]
+    def deref(self):
+        #print ctypes.c_void_p(self.ptr), (ctypes.c_uint*16)(self.ptr)[0:16]
+        #tmp = (ctypes.c_void_p*8)(*deref_word(self.ptr, 8))
+        #print tmp[0:8]
+        #print map(hex, tmp[0:8])
+        return ctypes.cast(ctypes.c_void_p(self.ptr), ctypes.POINTER(Expr)).contents
+        #return ctypes.cast(tmp, ctypes.POINTER(Expr)).contents
+    def __repr__(self):
+        return 'Box(%r, %r)' % (hex(self.ptr), map(hex, deref_word(self.ptr, 4)))
+    def __str__(self):
+        #print repr(self)
+        return str(self.deref())
+
+class String(ctypes.Structure):
+    _fields_ = [('ptr', ctypes.c_void_p), ('capacity', ctypes.c_ulong), ('len', ctypes.c_ulong)]
+    def __str__(self):
+        #return 'String(%s, %d, %d, %r)' % (hex(self.ptr), self.len, self.capacity, map(hex, deref_word(ctypes.addressof(self), 20)))
+        return ctypes.string_at(self.ptr, self.len)
+        #return ctypes.string_at(self.ptr, deref_word(ctypes.addressof(self),3)[2])
+    def __repr__(self):
+        return repr(str(self))
+
+def Vec(ty):
+    class Vec_ty(ctypes.Structure):
+        _fields_ = [('ptr', ctypes.c_void_p), ('capacity', ctypes.c_ulong), ('len', ctypes.c_ulong)]
+        def __repr__(self):
+            #print self.to_list(), str(self)
+            return 'Vec<%r>(%r, %r, %d, %d, %r)' % (ty, hex(ctypes.addressof(self)), hex(self.ptr), self.capacity, self.len, map(hex, deref_word(ctypes.addressof(self), 8)))
+        def __str__(self):
+            return '[%s]' % (', '.join(str(x) for x in self.to_list()))
+        def to_list(self):
+            #print self.ptr, ty
+            return ctypes.cast(ctypes.c_void_p(self.ptr), ctypes.POINTER(ty))[:self.len]
+    return Vec_ty
+
+class Expr(ctypes.Structure):
+    def downcast(self):
+        return getattr(self.body, {0: 'bottom', 1: 'predicate', 2: 'unop', 3: 'binop', 4: 'assoc_binop', 5: 'quantifier'}[self.tag])
+    def __repr__(self):
+        return 'Expr(%r, %r)' % (hex(ctypes.addressof(self)), deref_word(ctypes.addressof(self), 4))
+    def __str__(self):
+        return str(self.downcast())
+
+class Predicate_Body(ctypes.Structure):
+    _fields_ = [('name', String), ('args', Vec(String))]
+    def __repr__(self):
+        #print self.name
+        return 'Predicate(0x%08x, %r, %r)' % (ctypes.addressof(self), self.name, map(hex, deref_word(ctypes.addressof(self), 8)))
+    def __str__(self):
+        return str(self.name)
+
+class Bottom_Body(ctypes.Structure):
+    _fields_ = []
+    def __repr__(self):
+        return 'Bottom'
+    def __str__(self):
+        return '_|_'
+
+class Unop_Body(ctypes.Structure):
+    _fields_ = [('symbol', ctypes.c_uint), ('operand', Box_Expr)]
+    def __repr__(self):
+        return 'Unop(0x%08x, %r, %r)' % (ctypes.addressof(self), self.operand.deref().downcast(), map(hex, deref_word(ctypes.addressof(self), 8)))
+    def __str__(self):
+        return '%s%s' % ({0: '~'}[self.symbol], str(self.operand))
+
+class Binop_Body(ctypes.Structure):
+    _fields_ = [('symbol', ctypes.c_uint), ('left', Box_Expr), ('right', Box_Expr)]
+    def __repr__(self):
+        #print '%r %r' % (self.left.deref().downcast(), self.right.deref().downcast())
+        return 'Binop(0x%08x, %r)' % (ctypes.addressof(self), map(hex, deref_word(ctypes.addressof(self), 8)))
+    def __str__(self):
+        return '(%s %s %s)' % (self.left.deref().downcast(), {0: '->', 1: '+', 2: '*'}[self.symbol], self.right.deref().downcast())
+
+class AssocBinop_Body(ctypes.Structure):
+    _fields_ = [('symbol', ctypes.c_uint), ('exprs', Vec(Expr))]
+    def __repr__(self):
+        return 'AssocBinop(%d, %r)' % (self.symbol, self.exprs)
+    def __str__(self):
+        return '(%s)' % ((' %s ' % ({0: '&', 1: '|', 2: '<->'}[self.symbol],)).join(map(str,self.exprs.to_list())),)
+        #return repr(self)
+
+class Quantifier_Body(ctypes.Structure):
+    _fields_ = [
+        ('symbol', ctypes.c_uint),
+        ('pad', ctypes.c_uint),
+        ('name', String),
+        ('body', Box_Expr),
+        ]
+    def __str__(self):
+        #print self.name
+        return '%s %s, %s' % ({0: 'forall', 1: 'exists'}[self.symbol], self.name, str(self.body))
+    def get_body(self):
+        return aris.aris_box_expr_deref(self.body)
+
+class Expr_Body(ctypes.Union):
+    _fields_ = [
+        ('bottom', Bottom_Body),
+        ('predicate', Predicate_Body),
+        ('unop', Unop_Body),
+        ('binop', Binop_Body),
+        ('assoc_binop', AssocBinop_Body),
+        ('quantifier', Quantifier_Body),
+        ]
+
+Expr._fields_ = [('tag', ctypes.c_uint), ('body', Expr_Body)]
+
+scriptpath = os.path.abspath(os.path.dirname(__file__))
+aris = ctypes.cdll[scriptpath+'/target/release/liblibaris_rs.so']
+
+aris.aris_expr_parse.restype = ctypes.POINTER(Expr)
+
+#x = aris.aris_expr_parse('exists x, AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
+#x = aris.aris_expr_parse('exists x, AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA -> (forall y, b+c) -> (AAAAAAAAAAAAAAAAAAAAA & BBBBBBBBBBBBBBBB & CCCCCCCCCCCCCCcc & DDDDDDDDDDDD & EEEEEEEEEEEEE)')
+x = aris.aris_expr_parse('exists x, AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA -> (forall y, b+c) -> (AAAAAAAAAAAAAAAAAAAAA & ~BBBBBBBBBBBBBBBB & CCCCCCCCCCCCCCcc & DDDDDDDDDDDD & EEEEEEEEEEEEE & _|_)')
+
+deref_word = lambda addr, n: struct.unpack('<' + 'Q'*n, ctypes.string_at(addr, 8*n))
+print x.contents.downcast()
+
+#deref_word(0x41414141, 1)
