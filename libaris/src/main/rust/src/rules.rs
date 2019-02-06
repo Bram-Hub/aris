@@ -290,7 +290,7 @@ impl RuleT for PrepositionalInference {
 
                         //bad case, p -> q, p therefore a which does not follow
                         if **right != conclusion{
-                            return Err(DoesNotOccur(*right.clone(), conclusion.clone()));
+                            return Err(DoesNotOccur(conclusion.clone(), *right.clone()));
                         }
                         //good case, p -> q, p therefore q
                         if **left == prems[j] && **right == conclusion{

@@ -240,7 +240,7 @@ fn test_impelim<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofRef
     assert_eq!(prf.verify_line(&lines[4]), Ok(()));
     assert_eq!(prf.verify_line(&lines[4]), prf.verify_line(&lines[5]));
 
-    assert!(if let Err(ConclusionOfWrongForm(_)) = prf.verify_line(&lines[6]) {true} else {false});
+    assert_eq!(prf.verify_line(&lines[6]), Err(DoesNotOccur(p("B"), p("Q"))));
     assert!(if let Err(DepOfWrongForm(_)) = prf.verify_line(&lines[7]) {true} else {false});
     assert!(if let Err(DepOfWrongForm(_)) = prf.verify_line(&lines[8]) {true} else {false});
     assert!(if let Err(DepOfWrongForm(_)) = prf.verify_line(&lines[9]) {true} else {false});
