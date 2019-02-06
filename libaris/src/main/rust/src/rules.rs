@@ -496,7 +496,7 @@ impl<R: std::fmt::Debug, S: std::fmt::Debug> std::fmt::Display for ProofCheckErr
             DepOfWrongForm(x, y) => write!(f, "A dependency ({}) is of the wrong form, expected {}", x, y),
             ConclusionOfWrongForm(kind) => write!(f, "The conclusion is of the wrong form, expected {}", kind),
             DoesNotOccur(x, y) => write!(f, "{} does not occur in {}", x, y),
-            DepDoesNotExist(x, approx) => write!(f, "{}{} is required as a dependency, but it does not exist.", x, if *approx { "Something of the shape " } else { "" }),
+            DepDoesNotExist(x, approx) => write!(f, "{}{} is required as a dependency, but it does not exist.", if *approx { "Something of the shape " } else { "" }, x),
             Other(msg) => write!(f, "{}", msg),
         }
     }
