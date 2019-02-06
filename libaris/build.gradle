@@ -25,14 +25,13 @@ dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
 }
 
-build { dependsOn "rust-build" }
+compileJava { dependsOn "rust-build" }
 test {
     dependsOn "rust-build"
     dependsOn "rust-test"
  }
 
 task "rust-build" {
-    dependsOn "compileJava"
     doFirst {
         exec {
             workingDir './src/main/rust'
@@ -40,10 +39,6 @@ task "rust-build" {
         }
         copy {
             into './build/resources/main'
-            from './src/main/rust/target/release/liblibaris_rs.so'
-        }
-        copy {
-            into '../proof-client/build/resources/main'
             from './src/main/rust/target/release/liblibaris_rs.so'
         }
     }
