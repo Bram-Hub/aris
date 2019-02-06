@@ -158,7 +158,7 @@ pub extern "system" fn Java_edu_rpi_aris_rules_Rule_verifyClaim(env: JNIEnv, rul
         }
         println!("Rule::verifyClaim deps: {:?} {:?}", deps, sdeps);
         if let Err(e) = rule.check(&JavaShallowProof(vec![]), conc, deps, sdeps) {
-            Ok(env.new_string(format!("{:?}", e))?.into_inner())
+            Ok(env.new_string(format!("{}", e))?.into_inner())
         } else {
             Ok(std::ptr::null_mut())
         }

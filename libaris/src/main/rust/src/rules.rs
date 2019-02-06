@@ -487,3 +487,20 @@ pub enum ProofCheckError<R, S> {
     DoesNotOccur(Expr, Expr),
     DepDoesNotExist(Expr),
 }
+
+impl<R: std::fmt::Debug, S: std::fmt::Debug> std::fmt::Display for ProofCheckError<R, S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use ProofCheckError::*;
+        match self {
+            LineDoesNotExist(r) => write!(f, "The referenced line {:?} does not exist.", r),
+            SubproofDoesNotExist(s) => write!(f, "The referenced subproof {:?} does not exist.", s),
+            ReferencesLaterLine(li, i) => write!(f, "The dependency on line {} is after the line it occurs on ({}).", li.line, i),
+            IncorrectDepCount(deps, n) => write!(f, "Too {} dependencies (expected: {}, provided: {})", if deps.len() > *n { "many" } else { "few" }, n, deps.len()),
+            IncorrectSubDepCount(sdeps, n) => write!(f, "Too {} subproof dependencies (expected: {}, provided: {})", if sdeps.len() > *n { "many" } else { "few" }, n, sdeps.len()),
+            DepOfWrongForm(msg) => write!(f, "A dependency is of the wrong form: {:?}", msg),
+            ConclusionOfWrongForm(msg) => write!(f, "The conclusion is of the wrong form: {:?}", msg),
+            DoesNotOccur(x, y) => write!(f, "{} does not occur in {}", x, y),
+            DepDoesNotExist(x) => write!(f, "{} is required as a dependency, but it does not exist.", x),
+        }
+    }
+}
