@@ -197,12 +197,12 @@ impl RuleT for PrepositionalInference {
                     // ensure each expr has a dep
                     for e in exprs {
                         if deps.iter().find(|&d| p.lookup_expr(d.clone()).map(|de| &de == e).unwrap_or(false)).is_none() {
-                            return Err(DepDoesNotExist(e.clone()));
+                            return Err(DepDoesNotExist(e.clone(), false));
                         }
                     }
                     return Ok(());
                 } else {
-                    return Err(ConclusionOfWrongForm({use expression_builders::*; assocbinop(ASymbol::And, &[var("_"), var("...")]) }));
+                    return Err(ConclusionOfWrongForm(expression_builders::assocplaceholder(ASymbol::And)));
                 }
             },
             AndElim => {
@@ -216,7 +216,7 @@ impl RuleT for PrepositionalInference {
                     // TODO: allow `A /\ B /\ C |- C /\ A /\ C`, etc
                     return Err(DoesNotOccur(conclusion, prem.clone()));
                 } else {
-                    return Err(DepOfWrongForm("expected an and-expression".into()));
+                    return Err(DepDoesNotExist(expression_builders::assocplaceholder(ASymbol::And), true));
                 }
             },
             OrIntro => {
@@ -227,7 +227,7 @@ impl RuleT for PrepositionalInference {
                     }
                     return Ok(());
                 } else {
-                    return Err(ConclusionOfWrongForm({use expression_builders::*; assocbinop(ASymbol::Or, &[var("_"), var("...")]) }));
+                    return Err(ConclusionOfWrongForm(expression_builders::assocplaceholder(ASymbol::Or)));
                 }
             },
             OrElim => {
@@ -237,18 +237,18 @@ impl RuleT for PrepositionalInference {
                     if !sproofs.iter().all(|sproof| {
                             sproof.lines().into_iter().filter_map(|x| x.get::<P::Reference,_>().and_then(|y| p.lookup_expr(y.clone())).map(|y| y.clone())).find(|c| *c == conclusion).is_some()
                         }) {
-                        return Err(DepDoesNotExist(conclusion.clone()));
+                        return Err(DepDoesNotExist(conclusion.clone(), false));
                     }
                     if let Some(e) = exprs.iter().find(|&e| {
                         !sproofs.iter().any(|sproof| {
                             sproof.premises().into_iter().next().and_then(|r| p.lookup_expr(r)).map(|x| x == *e) == Some(true)
                             })
                         }) {
-                        return Err(DepDoesNotExist(e.clone()));
+                        return Err(DepDoesNotExist(e.clone(), false));
                     }
                     return Ok(());
                 } else {
-                    return Err(DepOfWrongForm("expected an or-expression".into()));
+                    return Err(DepDoesNotExist(expression_builders::assocplaceholder(ASymbol::Or), true));
                 }
             },
             ImpIntro => {
@@ -263,11 +263,11 @@ impl RuleT for PrepositionalInference {
                     let conc = sproof.lines().into_iter().filter_map(|x| x.get::<P::Reference,_>().map(|y| y.clone()))
                         .map(|r| p.lookup_expr_or_die(r.clone())).collect::<Result<Vec<Expr>,_>>()?;
                     if conc.iter().find(|c| *c == &**right).is_none() {
-                        return Err(DepDoesNotExist(*right.clone()));
+                        return Err(DepDoesNotExist(*right.clone(), false));
                     }
                     return Ok(());
                 } else {
-                    return Err(ConclusionOfWrongForm({use expression_builders::*; binop(BSymbol::Implies, var("_"), var("_")) }));
+                    return Err(ConclusionOfWrongForm(expression_builders::binopplaceholder(BSymbol::Implies)));
                 }
             },
             ImpElim => {
@@ -277,11 +277,6 @@ impl RuleT for PrepositionalInference {
 
                 for (i, j) in [(0,1), (1,0)].iter().cloned(){
                     if let Expr::Binop{symbol: BSymbol::Implies, ref left, ref right} = prems[i]{
-                        //bad case, p -> q, q therefore --doesn't matter, nothing can be said
-                        //given q
-                        if **right == prems[j] {
-                            return Err(DepOfWrongForm("Expected form of p -> q, p therefore q".into()));
-                        }
                         //bad case, p -> q, a therefore --doesn't matter, nothing can be said
                         //with a
                         if **left != prems[j] {
@@ -292,13 +287,14 @@ impl RuleT for PrepositionalInference {
                         if **right != conclusion{
                             return Err(DoesNotOccur(conclusion.clone(), *right.clone()));
                         }
+
                         //good case, p -> q, p therefore q
                         if **left == prems[j] && **right == conclusion{
                             return Ok(());
                         }
                     }
                 }
-                return Err(DepOfWrongForm("No conditional in dependencies".into()));
+                return Err(DepDoesNotExist(expression_builders::binopplaceholder(BSymbol::Implies), true));
 
             },
             NotIntro => {
@@ -313,7 +309,7 @@ impl RuleT for PrepositionalInference {
                     let conc = sproof.lines().into_iter().filter_map(|x| x.get::<P::Reference,_>().map(|y| y.clone()))
                         .map(|r| p.lookup_expr_or_die(r.clone())).collect::<Result<Vec<Expr>,_>>()?;
                     if conc.iter().find(|x| **x == Expr::Bottom).is_none() {
-                        return Err(DepDoesNotExist(Expr::Bottom));
+                        return Err(DepDoesNotExist(Expr::Bottom, false));
                     }
                     return Ok(());
                 } else {
@@ -322,18 +318,17 @@ impl RuleT for PrepositionalInference {
             },
             NotElim => {
                 let prem = p.lookup_expr_or_die(deps[0].clone())?;
-                if let Expr::Unop{symbol: USymbol::Not, ref operand} = prem{
-                    if let Expr::Unop{symbol: USymbol::Not, ref operand} = **operand{
+                if let Expr::Unop{symbol: USymbol::Not, ref operand} = prem {
+                    if let Expr::Unop{symbol: USymbol::Not, ref operand} = **operand {
                         if **operand == conclusion {
                             return Ok(());
                         }
-
                         return Err(ConclusionOfWrongForm({use expression_builders::*; not(not(var("_"))) }));
-                    }else{
-                        return Err(DepOfWrongForm("Expected a double-negation".into()));
+                    } else {
+                        return Err(DepDoesNotExist({use expression_builders::*; not(not(var("_"))) }, true));
                     }
-                }else{
-                    return Err(DepOfWrongForm("Expected a negation-expression".into()));
+                } else {
+                    return Err(DepDoesNotExist({use expression_builders::*; not(not(var("_"))) }, true));
                 }
             },
             ContradictionIntro => {
@@ -348,7 +343,7 @@ impl RuleT for PrepositionalInference {
                             }
                         }
                     }
-                    return Err(DepOfWrongForm("expected one dep to be negation of other".into()));
+                    return Err(Other("Expected one dependency to be the negation of the other.".into()));
                 } else {
                     return Err(ConclusionOfWrongForm(Expr::Bottom));
                 }
@@ -358,7 +353,7 @@ impl RuleT for PrepositionalInference {
                 if let Expr::Bottom = prem {
                     return Ok(());
                 } else {
-                    return Err(DepOfWrongForm("premise should be bottom".into()));
+                    return Err(DepOfWrongForm(prem.clone(), Expr::Bottom));
                 }
             },
             BiconditionalIntro => unimplemented!(),
@@ -378,7 +373,7 @@ impl RuleT for PrepositionalInference {
                         return Ok(());
                     }
                 }
-                return Err(DepOfWrongForm("at least one dep should be a biconditional".into()));
+                return Err(DepDoesNotExist(expression_builders::assocplaceholder(ASymbol::Bicon), true));
             },
         }
     }
@@ -482,10 +477,11 @@ pub enum ProofCheckError<R, S> {
     ReferencesLaterLine(LineAndIndent, usize),
     IncorrectDepCount(Vec<R>, usize),
     IncorrectSubDepCount(Vec<S>, usize),
-    DepOfWrongForm(String),
+    DepOfWrongForm(Expr, Expr),
     ConclusionOfWrongForm(Expr),
     DoesNotOccur(Expr, Expr),
-    DepDoesNotExist(Expr),
+    DepDoesNotExist(Expr, bool),
+    Other(String),
 }
 
 impl<R: std::fmt::Debug, S: std::fmt::Debug> std::fmt::Display for ProofCheckError<R, S> {
@@ -497,10 +493,11 @@ impl<R: std::fmt::Debug, S: std::fmt::Debug> std::fmt::Display for ProofCheckErr
             ReferencesLaterLine(li, i) => write!(f, "The dependency on line {} is after the line it occurs on ({}).", li.line, i),
             IncorrectDepCount(deps, n) => write!(f, "Too {} dependencies (expected: {}, provided: {})", if deps.len() > *n { "many" } else { "few" }, n, deps.len()),
             IncorrectSubDepCount(sdeps, n) => write!(f, "Too {} subproof dependencies (expected: {}, provided: {})", if sdeps.len() > *n { "many" } else { "few" }, n, sdeps.len()),
-            DepOfWrongForm(msg) => write!(f, "A dependency is of the wrong form: {:?}", msg),
+            DepOfWrongForm(x, y) => write!(f, "A dependency ({}) is of the wrong form, expected {}", x, y),
             ConclusionOfWrongForm(kind) => write!(f, "The conclusion is of the wrong form, expected {}", kind),
             DoesNotOccur(x, y) => write!(f, "{} does not occur in {}", x, y),
-            DepDoesNotExist(x) => write!(f, "{} is required as a dependency, but it does not exist.", x),
+            DepDoesNotExist(x, approx) => write!(f, "{}{} is required as a dependency, but it does not exist.", x, if *approx { "Something of the shape " } else { "" }),
+            Other(msg) => write!(f, "{}", msg),
         }
     }
 }

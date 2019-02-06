@@ -66,7 +66,7 @@ fn test_andelim<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofRef
     assert_eq!(prf.verify_line(&lines[2]), Ok(()));
     assert_eq!(prf.verify_line(&lines[3]), Err(DoesNotOccur(p("E"), p("A & B & C & D"))));
     assert!(if let Err(IncorrectDepCount(v, 1)) = prf.verify_line(&lines[4]) { v.len() == 2 } else { false });
-    assert!(if let Err(DepOfWrongForm(_)) = prf.verify_line(&lines[5]) { true } else { false });
+    assert!(if let Err(DepDoesNotExist(_, true)) = prf.verify_line(&lines[5]) { true } else { false });
 }
 
 pub fn demo_proof_3<P: Proof>() -> (P, Vec<P::Reference>) {
@@ -84,7 +84,7 @@ fn test_contelim<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofRe
     println!("{}", prf);
     use ProofCheckError::*;
     assert_eq!(prf.verify_line(&lines[2]), Ok(()));
-    assert!(if let Err(DepOfWrongForm(_)) = prf.verify_line(&lines[3]) { true } else { false });
+    assert!(if let Err(DepOfWrongForm(_, _)) = prf.verify_line(&lines[3]) { true } else { false });
 }
 
 pub fn demo_proof_4<P: Proof>() -> (P, Vec<P::Reference>) {
@@ -145,7 +145,7 @@ fn test_andintro<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofRe
     use ProofCheckError::*;
     assert_eq!(prf.verify_line(&lines[3]), Ok(()));
     assert_eq!(prf.verify_line(&lines[4]), Err(DoesNotOccur(p("C"), p("A & B"))));
-    assert_eq!(prf.verify_line(&lines[5]), Err(DepDoesNotExist(p("B"))));
+    assert_eq!(prf.verify_line(&lines[5]), Err(DepDoesNotExist(p("B"), false)));
     assert_eq!(prf.verify_line(&lines[6]), Ok(()));
 }
 
@@ -170,8 +170,8 @@ fn test_contradictionintro<P: Proof+Display>() where P::Reference: Debug+Eq, P::
     use ProofCheckError::*;
     assert_eq!(prf.verify_line(&lines[4]), Ok(()));
     assert_eq!(prf.verify_line(&lines[5]), Ok(()));
-    assert!(if let Err(DepOfWrongForm(_)) = prf.verify_line(&lines[6]) { true } else { false });
-    assert!(if let Err(DepOfWrongForm(_)) = prf.verify_line(&lines[7]) { true } else { false });
+    assert!(if let Err(Other(_)) = prf.verify_line(&lines[6]) { true } else { false });
+    assert!(if let Err(Other(_)) = prf.verify_line(&lines[7]) { true } else { false });
     assert!(if let Err(ConclusionOfWrongForm(_)) = prf.verify_line(&lines[8]) { true } else { false });
 }
 
@@ -198,8 +198,8 @@ fn test_notelim<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofRef
     use ProofCheckError::*;
     assert_eq!(prf.verify_line(&lines[4]),Ok(()));
     assert_eq!(prf.verify_line(&lines[5]),Ok(()));
-    assert!(if let Err(DepOfWrongForm(_)) = prf.verify_line(&lines[6]) {true} else {false});
-    assert!(if let Err(DepOfWrongForm(_)) = prf.verify_line(&lines[7]) {true} else {false});
+    assert!(if let Err(DepDoesNotExist(_, true)) = prf.verify_line(&lines[6]) {true} else {false});
+    assert!(if let Err(DepDoesNotExist(_, true)) = prf.verify_line(&lines[7]) {true} else {false});
     assert!(if let Err(ConclusionOfWrongForm(_)) = prf.verify_line(&lines[8]) {true} else {false});
 }
 
@@ -211,6 +211,7 @@ pub fn demo_proof_9<P: Proof>() -> (P, Vec<P::Reference>) {
     let r2 = prf.add_premise(p("P -> Q")); // 2
     let r3 = prf.add_premise(p("Q")); // 3
     let r4 = prf.add_premise(p("A")); //4
+    let r4p5 = prf.add_premise(p("A -> A")); //4.5
 
     //P -> Q, P and P, P->Q should get same result of Q
     let r5 = prf.add_step(Justification(p("Q"), RuleM::ImpElim, vec![r1.clone(), r2.clone()], vec![])); // 5
@@ -227,8 +228,9 @@ pub fn demo_proof_9<P: Proof>() -> (P, Vec<P::Reference>) {
     let r10 = prf.add_step(Justification(p("B"), RuleM::ImpElim, vec![r3.clone(), r4.clone()], vec![])); // 10
     //can't do P->Q, A => Q
     let r11 = prf.add_step(Justification(p("Q"), RuleM::ImpElim, vec![r2.clone(), r4.clone()], vec![])); // 11
+    let r12 = prf.add_step(Justification(p("A"), RuleM::ImpElim, vec![r4.clone(), r4p5.clone()], vec![])); // 12
 
-    (prf, vec![r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11])
+    (prf, vec![r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r4p5,r12])
 }
 
 fn test_impelim<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq {
@@ -241,10 +243,11 @@ fn test_impelim<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofRef
     assert_eq!(prf.verify_line(&lines[4]), prf.verify_line(&lines[5]));
 
     assert_eq!(prf.verify_line(&lines[6]), Err(DoesNotOccur(p("B"), p("Q"))));
-    assert!(if let Err(DepOfWrongForm(_)) = prf.verify_line(&lines[7]) {true} else {false});
-    assert!(if let Err(DepOfWrongForm(_)) = prf.verify_line(&lines[8]) {true} else {false});
-    assert!(if let Err(DepOfWrongForm(_)) = prf.verify_line(&lines[9]) {true} else {false});
+    assert!(if let Err(DoesNotOccur(_, _)) = prf.verify_line(&lines[7]) {true} else {false});
+    assert!(if let Err(DoesNotOccur(_, _)) = prf.verify_line(&lines[8]) {true} else {false});
+    assert!(if let Err(DepDoesNotExist(_, true)) = prf.verify_line(&lines[9]) {true} else {false});
     assert_eq!(prf.verify_line(&lines[10]), Err(DoesNotOccur(p("P -> Q"), p("A"))));
+    assert_eq!(prf.verify_line(&lines[12]), Ok(()));
 }
 
 pub fn demo_proof_10<P: Proof>() -> (P, Vec<P::Reference>) {
@@ -351,6 +354,6 @@ fn test_orelim<P: Proof+Display>() where P::Reference: Debug+Eq, P::SubproofRefe
     println!("{}", prf);
     use ProofCheckError::*;
     assert_eq!(prf.verify_line(&lines[7]), Ok(()));
-    assert_eq!(prf.verify_line(&lines[8]), Err(DepDoesNotExist(p("D"))));
-    assert_eq!(prf.verify_line(&lines[9]), Err(DepDoesNotExist(p("C"))));
+    assert_eq!(prf.verify_line(&lines[8]), Err(DepDoesNotExist(p("D"), false)));
+    assert_eq!(prf.verify_line(&lines[9]), Err(DepDoesNotExist(p("C"), false)));
 }
