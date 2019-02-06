@@ -197,4 +197,17 @@ public class GoalLine implements LineChangeListener {
     public void requestFocus() {
         goalText.requestFocus();
     }
+
+    public void copy() {
+        goalText.copy();
+    }
+
+    public void cut() {
+        goalText.cut();
+    }
+
+    public void paste() {
+        goalText.paste();
+    }
+
 }

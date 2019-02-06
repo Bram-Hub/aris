@@ -322,4 +322,17 @@ public class ProofLine implements LineChangeListener {
     public void requestFocus() {
         textField.requestFocus();
     }
+
+    public void copy() {
+        textField.copy();
+    }
+
+    public void cut() {
+        textField.cut();
+    }
+
+    public void paste() {
+        textField.paste();
+    }
+
 }

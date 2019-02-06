@@ -97,6 +97,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     private RulesManager rulesManager;
     private File saveFile = null;
     private HistoryManager history = new HistoryManager(this);
+    private CopyManager copyManager = new CopyManager(this);
     private boolean loaded = false;
     private SaveManager saveManager;
     private Node headerNode;
@@ -311,6 +312,10 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
 
         undo.setOnAction(actionEvent -> history.undo());
         redo.setOnAction(actionEvent -> history.redo());
+
+        copy.setOnAction(actionEvent -> copyManager.copy());
+        cut.setOnAction(actionEvent -> copyManager.cut());
+        paste.setOnAction(actionEvent -> copyManager.paste());
 
         settings.setOnAction(actionEvent -> GuiConfig.getConfigManager().showConfig());
 
