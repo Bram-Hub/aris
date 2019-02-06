@@ -1,16 +1,16 @@
 package edu.rpi.aris.gui;
 
 import edu.rpi.aris.proof.Proof;
+import edu.rpi.aris.rules.CustomRuleGroup;
 import edu.rpi.aris.rules.RuleGroup;
+import edu.rpi.aris.rules.RuleGroupPresets;
 import edu.rpi.aris.rules.RuleList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.ChoiceBox;
-import javafx.scene.control.ListCell;
-import javafx.scene.control.ListView;
-import javafx.scene.control.SelectionMode;
+import javafx.scene.control.*;
+import javafx.scene.layout.Region;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.Window;
@@ -20,21 +20,28 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
+import java.util.*;
 
 public class RuleRestrictionUI {
 
+    private static final ArrayList<CustomRuleGroup> customGroups = new ArrayList<>();
     private static final Logger log = LogManager.getLogger();
+
+    static {
+        synchronized (RuleRestrictionUI.class) {
+            GuiConfig.getConfigManager().loadCustomRuleGroups(customGroups);
+        }
+    }
+
     private final RulesManager rulesManager;
     @FXML
-    private ChoiceBox<RuleGroup> presetChoice;
+    private ChoiceBox<RuleGroup> ruleGroupChoice;
     @FXML
     private ListView<RuleList> restrictedList;
     @FXML
     private ListView<RuleList> allowedList;
+    @FXML
+    private Button btnDelete;
     private Stage stage;
     private Proof proof;
 
@@ -59,7 +66,7 @@ public class RuleRestrictionUI {
             return;
         this.proof = proof;
         setAllowed(proof.getAllowedRules());
-        presetChoice.getSelectionModel().select(null);
+        ruleGroupChoice.getSelectionModel().select(null);
         stage.show();
     }
 
@@ -96,12 +103,13 @@ public class RuleRestrictionUI {
         allowedList.setCellFactory(callback);
         allowedList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         restrictedList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        presetChoice.getItems().setAll(RuleGroup.values());
-        presetChoice.getSelectionModel().select(null);
-        presetChoice.setConverter(new StringConverter<RuleGroup>() {
+        ruleGroupChoice.getItems().setAll(RuleGroupPresets.values());
+        ruleGroupChoice.getItems().addAll(customGroups);
+        ruleGroupChoice.getSelectionModel().select(null);
+        ruleGroupChoice.setConverter(new StringConverter<RuleGroup>() {
             @Override
             public String toString(RuleGroup object) {
-                return object.groupName;
+                return object.getName() + (object instanceof RuleGroupPresets ? " (Preset)" : "");
             }
 
             @Override
@@ -109,11 +117,15 @@ public class RuleRestrictionUI {
                 return null;
             }
         });
-        presetChoice.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue == null)
+        ruleGroupChoice.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue == null) {
+                btnDelete.setDisable(true);
                 return;
-            setAllowed(Arrays.asList(newValue.rules));
+            }
+            setAllowed(Arrays.asList(newValue.getRules()));
+            btnDelete.setDisable(newValue instanceof RuleGroupPresets);
         });
+        btnDelete.setDisable(true);
     }
 
     @FXML
@@ -121,7 +133,7 @@ public class RuleRestrictionUI {
         restrictedList.getItems().addAll(allowedList.getSelectionModel().getSelectedItems());
         allowedList.getItems().removeAll(allowedList.getSelectionModel().getSelectedItems());
         Collections.sort(restrictedList.getItems());
-        presetChoice.getSelectionModel().select(null);
+        ruleGroupChoice.getSelectionModel().select(null);
     }
 
     @FXML
@@ -129,7 +141,7 @@ public class RuleRestrictionUI {
         allowedList.getItems().addAll(restrictedList.getSelectionModel().getSelectedItems());
         restrictedList.getItems().removeAll(restrictedList.getSelectionModel().getSelectedItems());
         Collections.sort(allowedList.getItems());
-        presetChoice.getSelectionModel().select(null);
+        ruleGroupChoice.getSelectionModel().select(null);
     }
 
     @FXML
@@ -146,6 +158,69 @@ public class RuleRestrictionUI {
         proof.verifyProof();
         rulesManager.setAvailableRules(proof.getAllowedRules());
         stage.hide();
+    }
+
+    @FXML
+    public void saveCustomGroup() {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setHeaderText("Create Custom Rule Group");
+        dialog.setContentText("Rule Group Name");
+        dialog.initModality(Modality.WINDOW_MODAL);
+        dialog.initOwner(stage);
+        Optional<String> result = dialog.showAndWait();
+        result.ifPresent(r -> {
+            if (r.length() > 0) {
+                synchronized (RuleRestrictionUI.class) {
+                    CustomRuleGroup remove = null;
+                    for (CustomRuleGroup c : customGroups) {
+                        if (c.getName().equals(r)) {
+                            Alert alert = new Alert(Alert.AlertType.WARNING);
+                            alert.setHeaderText("Custom Rule Group Exists");
+                            alert.setContentText("A custom rule group name \"" + r + "\" already exists.\nWould you like to replace it?");
+                            alert.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
+                            alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+                            Optional<ButtonType> btnResult = alert.showAndWait();
+                            if (!btnResult.isPresent() || btnResult.get() != ButtonType.OK)
+                                return;
+                            else
+                                remove = c;
+                        }
+                    }
+                    if (remove != null) {
+                        customGroups.remove(remove);
+                        ruleGroupChoice.getSelectionModel().select(null);
+                        ruleGroupChoice.getItems().remove(remove);
+                    }
+                    RuleList[] rules = allowedList.getItems().toArray(new RuleList[0]);
+                    CustomRuleGroup group = new CustomRuleGroup(r, rules);
+                    customGroups.add(group);
+                    ruleGroupChoice.getItems().add(group);
+                    ruleGroupChoice.getSelectionModel().select(group);
+                    GuiConfig.getConfigManager().saveCustomRuleGroups(customGroups);
+                }
+            }
+        });
+    }
+
+    @FXML
+    public void deleteCustomGroup() {
+        RuleGroup g = ruleGroupChoice.getValue();
+        if (!(g instanceof CustomRuleGroup))
+            return;
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setHeaderText("Delete custom rule group?");
+        alert.setContentText("Are you sure you want to delete the \"" + g.getName() + "\" rule group?");
+        alert.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
+        alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+        Optional<ButtonType> btnResult = alert.showAndWait();
+        if (!btnResult.isPresent() || btnResult.get() != ButtonType.OK)
+            return;
+        synchronized (GuiConfig.getConfigManager()) {
+            customGroups.remove(g);
+            ruleGroupChoice.getSelectionModel().select(null);
+            ruleGroupChoice.getItems().remove(g);
+            GuiConfig.getConfigManager().saveCustomRuleGroups(customGroups);
+        }
     }
 
 }

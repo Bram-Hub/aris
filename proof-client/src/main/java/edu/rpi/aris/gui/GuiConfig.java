@@ -1,5 +1,8 @@
 package edu.rpi.aris.gui;
 
+import edu.rpi.aris.rules.CustomRuleGroup;
+import edu.rpi.aris.rules.RuleGroup;
+import edu.rpi.aris.rules.RuleList;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -20,6 +23,7 @@ import javafx.stage.Stage;
 import javafx.util.Pair;
 import org.apache.commons.collections4.BidiMap;
 import org.apache.commons.collections4.bidimap.DualHashBidiMap;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -33,6 +37,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
 public class GuiConfig {
@@ -74,6 +79,9 @@ public class GuiConfig {
     private static final String LAST_SAVE_DIR = "LAST_SAVE_DIR";
     private static final String ACCESS_TOKEN = "ACCESS_TOKEN";
     private static final String AND_KEY = "AND_KEY";
+    private static final String RULE_GROUP_BASE = "RULE_GROUP";
+
+    private static final Preferences rulePrefs = preferences.node(RULE_GROUP_BASE);
 
 //    private static final String SERVER_ADDRESS = "SERVER_ADDRESS";
 //    public static final SimpleStringProperty serverAddress = new SimpleStringProperty(preferences.get(SERVER_ADDRESS, null));
@@ -170,10 +178,10 @@ public class GuiConfig {
     private BidiMap<String, String> aliasKeyMap = new DualHashBidiMap<>();
     private HashMap<String, TextField> aliasMap = new HashMap<>();
     private HashMap<SimpleObjectProperty<KeyCombination>, Pair<KeyCombination, Button>> shortcutMap = new HashMap<>();
-//    private HashSet<String> removeCerts = new HashSet<>();
+    //    private HashSet<String> removeCerts = new HashSet<>();
     private Stage stage;
     private File saveDirectory = new File(preferences.get(LAST_SAVE_DIR, System.getProperty("user.home")));
-//    private String accessToken = preferences.get(ACCESS_TOKEN, null);
+    //    private String accessToken = preferences.get(ACCESS_TOKEN, null);
     @SuppressWarnings("unchecked")
     private SimpleObjectProperty<KeyCombination>[] accelerators = new SimpleObjectProperty[]{newProofLineKey, deleteProofLineKey,
             startSubProofKey, endSubProofKey, addGoalKey, newPremiseKey, verifyLineKey, verifyProofKey, newProofKey,
@@ -550,6 +558,46 @@ public class GuiConfig {
         else
             saveDirectory = file;
         preferences.put(LAST_SAVE_DIR, saveDirectory.getAbsolutePath());
+    }
+
+    public void loadCustomRuleGroups(ArrayList<CustomRuleGroup> groups) {
+        groups.clear();
+        try {
+            for (String g : rulePrefs.keys()) {
+                if (g.length() == 0)
+                    continue;
+                String ruleStr = rulePrefs.get(g, "");
+                if (ruleStr.length() == 0)
+                    continue;
+                try {
+                    String[] splitRules = ruleStr.split(",");
+                    RuleList[] rules = new RuleList[splitRules.length];
+                    for (int i = 0; i < rules.length; ++i)
+                        rules[i] = RuleList.valueOf(splitRules[i]);
+                    groups.add(new CustomRuleGroup(g, rules));
+                } catch (IllegalArgumentException e) {
+                    logger.error("Failed to load custom rule groups: " + g, e);
+                    rulePrefs.remove(g);
+                }
+            }
+            rulePrefs.sync();
+        } catch (BackingStoreException e) {
+            logger.error("Failed to load custom rule groups", e);
+        }
+    }
+
+    public void saveCustomRuleGroups(ArrayList<? extends RuleGroup> groups) {
+        try {
+            for (String g : rulePrefs.keys())
+                rulePrefs.remove(g);
+            for (RuleGroup g : groups) {
+                String rules = StringUtils.join(g.getRules(), ",");
+                rulePrefs.put(g.getName(), rules);
+            }
+            rulePrefs.sync();
+        } catch (BackingStoreException e) {
+            logger.error("Failed to save custom rule groups", e);
+        }
     }
 
 //    public synchronized String getAccessToken() {
