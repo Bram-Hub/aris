@@ -202,7 +202,7 @@ impl RuleT for PrepositionalInference {
                     }
                     return Ok(());
                 } else {
-                    return Err(DepOfWrongForm("expected an and-expression".into()));
+                    return Err(ConclusionOfWrongForm({use expression_builders::*; assocbinop(ASymbol::And, &[var("_"), var("...")]) }));
                 }
             },
             AndElim => {
@@ -227,7 +227,7 @@ impl RuleT for PrepositionalInference {
                     }
                     return Ok(());
                 } else {
-                    return Err(ConclusionOfWrongForm("expected an or-expression".into()));
+                    return Err(ConclusionOfWrongForm({use expression_builders::*; assocbinop(ASymbol::Or, &[var("_"), var("...")]) }));
                 }
             },
             OrElim => {
@@ -267,7 +267,7 @@ impl RuleT for PrepositionalInference {
                     }
                     return Ok(());
                 } else {
-                    return Err(ConclusionOfWrongForm("expected an imp-expression".into()));
+                    return Err(ConclusionOfWrongForm({use expression_builders::*; binop(BSymbol::Implies, var("_"), var("_")) }));
                 }
             },
             ImpElim => {
@@ -290,7 +290,7 @@ impl RuleT for PrepositionalInference {
 
                         //bad case, p -> q, p therefore a which does not follow
                         if **right != conclusion{
-                            return Err(ConclusionOfWrongForm("Expected the antecedent of conditional as conclusion".into()));
+                            return Err(DoesNotOccur(*right.clone(), conclusion.clone()));
                         }
                         //good case, p -> q, p therefore q
                         if **left == prems[j] && **right == conclusion{
@@ -317,7 +317,7 @@ impl RuleT for PrepositionalInference {
                     }
                     return Ok(());
                 } else {
-                    return Err(ConclusionOfWrongForm("expected a not-expression".into()));
+                    return Err(ConclusionOfWrongForm({use expression_builders::*; not(var("_")) }));
                 }
             },
             NotElim => {
@@ -328,7 +328,7 @@ impl RuleT for PrepositionalInference {
                             return Ok(());
                         }
 
-                        return Err(ConclusionOfWrongForm("Double negated expression in premise not found in conclusion".into()));
+                        return Err(ConclusionOfWrongForm({use expression_builders::*; not(not(var("_"))) }));
                     }else{
                         return Err(DepOfWrongForm("Expected a double-negation".into()));
                     }
@@ -350,7 +350,7 @@ impl RuleT for PrepositionalInference {
                     }
                     return Err(DepOfWrongForm("expected one dep to be negation of other".into()));
                 } else {
-                    return Err(ConclusionOfWrongForm("conclusion should be bottom".into()));
+                    return Err(ConclusionOfWrongForm(Expr::Bottom));
                 }
             },
             ContradictionElim => {
@@ -483,7 +483,7 @@ pub enum ProofCheckError<R, S> {
     IncorrectDepCount(Vec<R>, usize),
     IncorrectSubDepCount(Vec<S>, usize),
     DepOfWrongForm(String),
-    ConclusionOfWrongForm(String),
+    ConclusionOfWrongForm(Expr),
     DoesNotOccur(Expr, Expr),
     DepDoesNotExist(Expr),
 }
@@ -498,7 +498,7 @@ impl<R: std::fmt::Debug, S: std::fmt::Debug> std::fmt::Display for ProofCheckErr
             IncorrectDepCount(deps, n) => write!(f, "Too {} dependencies (expected: {}, provided: {})", if deps.len() > *n { "many" } else { "few" }, n, deps.len()),
             IncorrectSubDepCount(sdeps, n) => write!(f, "Too {} subproof dependencies (expected: {}, provided: {})", if sdeps.len() > *n { "many" } else { "few" }, n, sdeps.len()),
             DepOfWrongForm(msg) => write!(f, "A dependency is of the wrong form: {:?}", msg),
-            ConclusionOfWrongForm(msg) => write!(f, "The conclusion is of the wrong form: {:?}", msg),
+            ConclusionOfWrongForm(kind) => write!(f, "The conclusion is of the wrong form, expected {}", kind),
             DoesNotOccur(x, y) => write!(f, "{} does not occur in {}", x, y),
             DepDoesNotExist(x) => write!(f, "{} is required as a dependency, but it does not exist.", x),
         }

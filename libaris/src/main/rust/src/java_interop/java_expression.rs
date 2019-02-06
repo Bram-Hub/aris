@@ -32,7 +32,7 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
     match &*name {
         "edu.rpi.aris.ast.Expression$NotExpression" => {
             let operand = env.get_field(obj, "operand", "Ledu/rpi/aris/ast/Expression;")?.l()?;
-            Ok(notexp(jobject_to_expr(env, operand)?))
+            Ok(not(jobject_to_expr(env, operand)?))
         },
         "edu.rpi.aris.ast.Expression$ImplicationExpression" => handle_binop(BSymbol::Implies),
         "edu.rpi.aris.ast.Expression$AddExpression" => handle_binop(BSymbol::Plus),
