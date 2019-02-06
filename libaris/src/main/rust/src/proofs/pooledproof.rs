@@ -156,7 +156,7 @@ impl DisplayIndented for PooledProof<Expr> {
                 let premise = p.prem_map.get(idx).unwrap();
                 write!(fmt, "{}:\t", linecount)?;
                 for _ in 0..indent { write!(fmt, "| ")?; }
-                write!(fmt, "{:?}\n", premise)?; // TODO Display for Expr
+                write!(fmt, "{}\n", premise)?;
                 *linecount += 1;
             }
             write!(fmt, "\t")?;

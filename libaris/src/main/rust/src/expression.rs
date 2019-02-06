@@ -24,6 +24,55 @@ pub enum Expr {
     Quantifier { symbol: QSymbol, name: String, body: Box<Expr> },
 }
 
+impl std::fmt::Display for USymbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self { USymbol::Not => write!(f, "~"), }
+    }
+}
+
+impl std::fmt::Display for BSymbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            BSymbol::Implies => write!(f, "->"),
+            BSymbol::Plus => write!(f, "+"),
+            BSymbol::Mult => write!(f, "*"),
+        }
+    }
+}
+
+impl std::fmt::Display for ASymbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            ASymbol::And => write!(f, "&"),
+            ASymbol::Or => write!(f, "|"),
+            ASymbol::Bicon => write!(f, "<->"),
+        }
+    }
+}
+
+impl std::fmt::Display for QSymbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            QSymbol::Forall => write!(f, "forall"),
+            QSymbol::Exists => write!(f, "exists"),
+        }
+    }
+}
+
+impl std::fmt::Display for Expr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use Expr::*;
+        match self {
+            Bottom => write!(f, "_|_"),
+            Predicate { name, args } => { write!(f, "{}", name)?; if args.len() > 0 { write!(f, "({})", args.join(", "))? }; Ok(()) }
+            Unop { symbol, operand } => write!(f, "{}{}", symbol, operand),
+            Binop { symbol, left, right } => write!(f, "({} {} {})", left, symbol, right),
+            AssocBinop { symbol, exprs } => write!(f, "({})", exprs.iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join(&format!(" {} ", symbol))),
+            Quantifier { symbol, name, body } => write!(f, "({} {}, {})", symbol, name, body),
+        }
+    }
+}
+
 pub fn freevars(e: &Expr) -> HashSet<String> {
     let mut r = HashSet::new();
     match e {
@@ -36,7 +85,6 @@ pub fn freevars(e: &Expr) -> HashSet<String> {
     }
     r
 }
-
 
 pub mod expression_builders {
     use super::{Expr, USymbol, BSymbol, ASymbol, QSymbol};

@@ -127,7 +127,7 @@ impl DisplayIndented for TreeSubproof<(),()> {
         for (_, premise) in self.premises.iter() {
             write!(fmt, "{}:\t", linecount)?;
             for _ in 0..indent { write!(fmt, "| ")?; }
-            write!(fmt, "{:?}\n", premise)?; // TODO Display for Expr
+            write!(fmt, "{}\n", premise)?;
             *linecount += 1;
         }
         write!(fmt, "\t")?;

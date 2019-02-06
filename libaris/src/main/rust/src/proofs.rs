@@ -68,13 +68,13 @@ pub trait Proof: Sized {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Justification<T, R, S>(T, Rule, Vec<R>, Vec<S>);
 
-impl<T: std::fmt::Debug, R: std::fmt::Debug, S: std::fmt::Debug> DisplayIndented for Justification<T, R, S> {
+impl<T: std::fmt::Display, R: std::fmt::Debug, S: std::fmt::Debug> DisplayIndented for Justification<T, R, S> {
     fn display_indented(&self, fmt: &mut Formatter, indent: usize, linecount: &mut usize) -> std::result::Result<(), std::fmt::Error> {
         let &Justification(expr, rule, deps, sdeps) = &self;
         write!(fmt, "{}:\t", linecount)?;
         *linecount += 1;
         for _ in 0..indent { write!(fmt, "| ")?; }
-        write!(fmt, "{:?}; {:?}; ", expr, rule)?;
+        write!(fmt, "{}; {:?}; ", expr, rule)?;
         for (i, dep) in deps.iter().enumerate() {
             write!(fmt, "{:?}", dep)?;
             if i != deps.len()-1 { write!(fmt, ", ")?; }
