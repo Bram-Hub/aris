@@ -26,14 +26,14 @@ pub enum Expr {
 
 impl std::fmt::Display for USymbol {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self { USymbol::Not => write!(f, "~"), }
+        match self { USymbol::Not => write!(f, "¬"), }
     }
 }
 
 impl std::fmt::Display for BSymbol {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            BSymbol::Implies => write!(f, "->"),
+            BSymbol::Implies => write!(f, "→"),
             BSymbol::Plus => write!(f, "+"),
             BSymbol::Mult => write!(f, "*"),
         }
@@ -43,9 +43,9 @@ impl std::fmt::Display for BSymbol {
 impl std::fmt::Display for ASymbol {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            ASymbol::And => write!(f, "&"),
-            ASymbol::Or => write!(f, "|"),
-            ASymbol::Bicon => write!(f, "<->"),
+            ASymbol::And => write!(f, "∧"),
+            ASymbol::Or => write!(f, "∨"),
+            ASymbol::Bicon => write!(f, "↔"),
         }
     }
 }
@@ -53,8 +53,8 @@ impl std::fmt::Display for ASymbol {
 impl std::fmt::Display for QSymbol {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            QSymbol::Forall => write!(f, "forall"),
-            QSymbol::Exists => write!(f, "exists"),
+            QSymbol::Forall => write!(f, "∀"),
+            QSymbol::Exists => write!(f, "∃"),
         }
     }
 }
@@ -63,7 +63,7 @@ impl std::fmt::Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         use Expr::*;
         match self {
-            Bottom => write!(f, "_|_"),
+            Bottom => write!(f, "⊥"),
             Predicate { name, args } => { write!(f, "{}", name)?; if args.len() > 0 { write!(f, "({})", args.join(", "))? }; Ok(()) }
             Unop { symbol, operand } => write!(f, "{}{}", symbol, operand),
             Binop { symbol, left, right } => write!(f, "({} {} {})", left, symbol, right),

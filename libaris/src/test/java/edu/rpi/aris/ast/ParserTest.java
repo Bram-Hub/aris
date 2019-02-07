@@ -24,7 +24,7 @@ public class ParserTest {
             Expression e = ASTConstructor.parse(s);
             assert(test_for_null ^ (e == null));
             System.out.printf("Parsed version of \"%s\" is \"%s\"\n", s, e);
-            if(e != null) { System.out.printf("Rust stringification of Java parse: %s\n", e.toStringViaRust()); }
+            if(e != null) { System.out.printf("Rust stringification of Java parse: %s\n", e.toDebugString()); }
         }
     }
 
@@ -34,7 +34,7 @@ public class ParserTest {
             Expression e = Expression.parseViaRust(s);
             assert(test_for_null ^ (e == null));
             System.out.printf("Parsed version of \"%s\" via Rust is \"%s\"\n", s, e);
-            if(e != null) { System.out.printf("Rust stringification of Rust parse: %s\n", e.toStringViaRust()); }
+            if(e != null) { System.out.printf("Rust stringification of Rust parse: %s\n", e.toDebugString()); }
         }
     }
     @Test

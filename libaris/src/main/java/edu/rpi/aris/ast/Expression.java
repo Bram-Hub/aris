@@ -6,95 +6,47 @@ import java.util.List;
 public class Expression {
     static { edu.rpi.aris.util.SharedObjectLoader.loadLib("liblibaris_rs"); }
 
-    public native String toStringViaRust();
+    public native String toDebugString();
+    public native String toString();
     public static native Expression parseViaRust(String s);
 
-    @Override
-    public boolean equals(Object e) {
-        if (!(e instanceof Expression))
-            return false;
-        return toStringViaRust().equals(((Expression) e).toStringViaRust());
-    }
+    @Override public native boolean equals(Object e);
 
-    public static class BottomExpression extends Expression {
-        @Override public String toString() {
-            return "_|_";
-        }
-    }
+    public static class BottomExpression extends Expression {}
 
     public static class PredicateExpression extends Expression {
         public String name;
         public List<String> args;
         PredicateExpression() { name = null; args = new ArrayList(); }
-        @Override public String toString() {
-            StringBuilder sb = new StringBuilder();
-            sb.append(name);
-            for(int i=0; i<args.size(); i++) {
-                if(i == 0) { sb.append('('); } else { sb.append(", "); }
-                sb.append(args.get(i));
-                if(i+1 == args.size()) { sb.append(')'); }
-            }
-            return sb.toString();
-        }
     }
 
     public static abstract class UnaryExpression extends Expression {
         public Expression operand;
         UnaryExpression() { operand = null; }
     }
-    public static class NotExpression extends Expression.UnaryExpression {
-        @Override public String toString() { return "~" + operand.toString(); }
-    }
+    public static class NotExpression extends Expression.UnaryExpression {}
 
     public static abstract class BinaryExpression extends Expression {
         public Expression l; public Expression r;
         BinaryExpression() { l = null; r = null; }
     }
-    public static class ImplicationExpression extends Expression.BinaryExpression {
-        @Override public String toString() { return l.toString() + " -> " + r.toString(); }
-    }
-    public static class AddExpression extends Expression.BinaryExpression {
-        @Override public String toString() { return l.toString() + " + " + r.toString(); }
-    }
-    public static class MultExpression extends Expression.BinaryExpression {
-        @Override public String toString() { return l.toString() + " * " + r.toString(); }
-    }
+    public static class ImplicationExpression extends Expression.BinaryExpression {}
+    public static class AddExpression extends Expression.BinaryExpression {}
+    public static class MultExpression extends Expression.BinaryExpression {}
 
     public static abstract class AssociativeBinopExpression extends Expression {
         public ArrayList<Expression> exprs;
-        protected abstract String canonicalRepr();
         AssociativeBinopExpression() { exprs = new ArrayList(); }
         public void addOperand(Expression e) { exprs.add(0, e); }
-        @Override public String toString() {
-            StringBuilder sb = new StringBuilder();
-            for(int i=0; i<exprs.size(); i++) {
-                if(i == 0) { sb.append('('); } else { sb.append(' '); sb.append(canonicalRepr()); sb.append(' '); }
-                sb.append(exprs.get(i).toString());
-                if(i+1 == exprs.size()) { sb.append(')'); }
-            }
-            return sb.toString();
-        }
     }
-    public static class AndExpression extends Expression.AssociativeBinopExpression {
-        protected String canonicalRepr() { return "/\\"; }
-    }
-    public static class OrExpression extends Expression.AssociativeBinopExpression {
-        protected String canonicalRepr() { return "\\/"; }
-    }
-    public static class BiconExpression extends Expression.AssociativeBinopExpression {
-        protected String canonicalRepr() { return "<->"; }
-    }
+    public static class AndExpression extends Expression.AssociativeBinopExpression {}
+    public static class OrExpression extends Expression.AssociativeBinopExpression {}
+    public static class BiconExpression extends Expression.AssociativeBinopExpression {}
 
     public static abstract class QuantifierExpression extends Expression {
         public String boundvar; public Expression body;
-        protected abstract String canonicalRepr();
         QuantifierExpression() { boundvar = null; body = null; }
-        @Override public String toString() { return canonicalRepr() + boundvar + ", (" + (body != null ? body.toString() : "null") + ")"; }
     }
-    public static class ForallExpression extends Expression.QuantifierExpression {
-        protected String canonicalRepr() { return "forall "; }
-    }
-    public static class ExistsExpression extends Expression.QuantifierExpression {
-        protected String canonicalRepr() { return "exists "; }
-    }
+    public static class ForallExpression extends Expression.QuantifierExpression {}
+    public static class ExistsExpression extends Expression.QuantifierExpression {}
 }

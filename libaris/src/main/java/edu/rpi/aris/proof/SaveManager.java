@@ -316,7 +316,7 @@ public class SaveManager implements ProblemConverter<LibAris> {
                 } catch (IOException e) {
                     String sen = getElementByTag(g, "sen").getTextContent();
 //                    try {
-                    raw = Expression.parseViaRust(sen).toStringViaRust();//new Expression(sen).toLogicString();
+                    raw = Expression.parseViaRust(sen).toDebugString();//new Expression(sen).toLogicString();
 //                    } catch (ExpressionParseException e1) {
 //                        throw new IOException("Invalid sentence in goal element");
 //                    }
@@ -356,7 +356,7 @@ public class SaveManager implements ProblemConverter<LibAris> {
             } catch (IOException e) {
                 String sen = getElementByTag(assumption, "sen").getTextContent();
 //                try {
-                raw = Expression.parseViaRust(sen).toStringViaRust();//new Expression(sen).toLogicString();
+                raw = Expression.parseViaRust(sen).toDebugString();//new Expression(sen).toLogicString();
 //                } catch (ExpressionParseException e1) {
 //                    throw new IOException("Invalid sentence in proof element " + elementId);
 //                }
@@ -402,7 +402,7 @@ public class SaveManager implements ProblemConverter<LibAris> {
                 } catch (IOException e) {
                     String sen = getElementByTag(step, "sen").getTextContent();
 //                    try {
-                    raw = Expression.parseViaRust(sen).toStringViaRust();//new Expression(sen).toLogicString();
+                    raw = Expression.parseViaRust(sen).toDebugString();//new Expression(sen).toLogicString();
 //                    } catch (ExpressionParseException e1) {
 //                        throw new IOException("Invalid sentence in proof element " + elementId);
 //                    }

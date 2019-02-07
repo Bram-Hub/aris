@@ -2,12 +2,30 @@ use super::*;
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern "system" fn Java_edu_rpi_aris_ast_Expression_toStringViaRust(env: JNIEnv, obj: JObject) -> jstring {
+pub extern "system" fn Java_edu_rpi_aris_ast_Expression_toDebugString(env: JNIEnv, obj: JObject) -> jstring {
     with_thrown_errors(&env, |env| {
         let expr = jobject_to_expr(&env, obj);
-        //println!("toStringViaRust, expr: {:?}", expr);
         Ok(env.new_string(format!("{:?}", expr?))?.into_inner())
     })
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern "system" fn Java_edu_rpi_aris_ast_Expression_toString(env: JNIEnv, obj: JObject) -> jstring {
+    with_thrown_errors(&env, |env| {
+        let expr = jobject_to_expr(&env, obj);
+        Ok(env.new_string(format!("{}", expr?))?.into_inner())
+    })
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern "system" fn Java_edu_rpi_aris_ast_Expression_equals(env: JNIEnv, this: JObject, other: JObject) -> jni::sys::jboolean {
+    (|env| -> jni::errors::Result<_>{
+        let expr1 = jobject_to_expr(&env, this)?;
+        let expr2 = jobject_to_expr(&env, other)?;
+        Ok((expr1 == expr2) as _)
+    })(env).unwrap_or(false as _)
 }
 
 pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> {
