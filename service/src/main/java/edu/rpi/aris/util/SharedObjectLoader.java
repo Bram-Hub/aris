@@ -19,22 +19,21 @@ public class SharedObjectLoader {
         }
     }
 
-    private static String getPlatformLibrarySuffix() {
+    private static String getPlatformLibraryName(String libName) {
         if (SystemUtils.IS_OS_LINUX) {
-            return ".so";
-        } else {
-            // TODO: drop a dll on windows, a .so on mac
-            return null;
+            return "lib" + libName + ".so";
+        } else if (SystemUtils.IS_OS_WINDOWS) {
+            return libName + ".dll";
         }
+        return null;
     }
 
     private static void __loadLib(String LIB_NAME) {
-        String suffix = getPlatformLibrarySuffix();
-        if(suffix == null) {
+        String LIB_FILE = getPlatformLibraryName(LIB_NAME);
+        if(LIB_FILE == null) {
             log.info("Loading libraries is not yet supported on the current platform");
             return;
         }
-        String LIB_FILE = LIB_NAME + suffix;
         log.info("Loading " + LIB_FILE + " native library");
 
         File tmpFile = new File(System.getProperty("java.io.tmpdir"), LIB_FILE);

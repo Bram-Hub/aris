@@ -6,7 +6,7 @@ import edu.rpi.aris.proof.Premise;
 import java.util.ArrayList;
 
 public class Rule {
-    static { edu.rpi.aris.util.SharedObjectLoader.loadLib("liblibaris_rs"); }
+    static { edu.rpi.aris.util.SharedObjectLoader.loadLib("libaris_rs"); }
 
     protected long pointerToRustHeap;
     protected Rule(long p) { pointerToRustHeap = p; }

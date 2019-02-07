@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Expression {
-    static { edu.rpi.aris.util.SharedObjectLoader.loadLib("liblibaris_rs"); }
+    static { edu.rpi.aris.util.SharedObjectLoader.loadLib("libaris_rs"); }
 
     public native String toDebugString();
     public native String toString();

@@ -15,7 +15,7 @@ import java.io.InputStream;
 
 public class PAMLoginAuth extends LoginAuth {
 
-    private static final String LIB_NAME = "libassign_pam";
+    private static final String LIB_NAME = "assign_pam";
     private static final Logger log = LogManager.getLogger();
     private static final PAMLoginAuth instance = new PAMLoginAuth();
 
