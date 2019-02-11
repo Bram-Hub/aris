@@ -8,7 +8,6 @@ import edu.rpi.aris.proof.Proof;
 import edu.rpi.aris.rules.RuleList;
 import javafx.application.Platform;
 import javafx.event.Event;
-import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
@@ -28,8 +27,9 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.function.UnaryOperator;
 
-public class ProofLine implements LineChangeListener {
+public class ProofLine implements LineChangeListener, LineInterface {
 
+    static final String SELECT_STYLE = "highlight-select";
     private static final int SUB_PROOF_INDENT = 25;
     private static final Image SELECTED_IMAGE = new Image(ProofLine.class.getResourceAsStream("right_arrow.png"));
     private static final String HIGHLIGHT_STYLE = "highlight-premise";
@@ -59,14 +59,6 @@ public class ProofLine implements LineChangeListener {
     private int caretPos = 0;
     private String lastVal = "";
     private Timer historyTimer;
-
-    private EventHandler<MouseEvent> highlightListener = new EventHandler<MouseEvent>() {
-        @Override
-        public void handle(MouseEvent mouseEvent) {
-            if (!textField.isEditable())
-                window.requestSelect(ProofLine.this);
-        }
-    };
 
     ProofLine(MainWindow window, Line proofLine) {
         this.window = window;
@@ -155,7 +147,7 @@ public class ProofLine implements LineChangeListener {
         int spaces = (total.length() - num.length());
         numberLbl.setText(spaces < 0 ? "" : StringUtils.repeat("  ", spaces) + num + '.');
         setIndent(proofLine.getSubProofLevel());
-        root.setOnMouseClicked(highlightListener);
+        root.setOnMouseClicked(this::requestFocus);
         ruleChoose.setContextMenu(window.getRulesManager().getRulesDropdown());
         textField.positionCaret(textField.getText().length());
         caretPos = textField.getText().length();
@@ -190,7 +182,7 @@ public class ProofLine implements LineChangeListener {
         subProofIndent.getChildren().clear();
         for (int i = 0; i < level; ++i) {
             Region spacer = new Region();
-            spacer.setOnMouseClicked(highlightListener);
+            spacer.setOnMouseClicked(this::requestFocus);
             spacer.maxHeightProperty().bind(root.heightProperty().subtract(proofLine.isAssumption() && i == level - 1 ? 5 : 0));
             spacer.setPrefWidth(SUB_PROOF_INDENT);
             spacer.setMinWidth(SUB_PROOF_INDENT);
@@ -228,9 +220,12 @@ public class ProofLine implements LineChangeListener {
     }
 
     private void requestFocus(MouseEvent e) {
-        if (e.getButton() == MouseButton.PRIMARY)
-            window.requestFocus(this);
-        else if (e.getButton() == MouseButton.SECONDARY && !textField.isEditable())
+        if (e.getButton() == MouseButton.PRIMARY) {
+            if (e.isShiftDown()) {
+                window.selectRequest(this);
+            } else
+                window.requestFocus(this);
+        } else if (e.getButton() == MouseButton.SECONDARY && !textField.isEditable())
             window.requestSelect(this);
         e.consume();
     }
@@ -323,16 +318,48 @@ public class ProofLine implements LineChangeListener {
         textField.requestFocus();
     }
 
+    @Override
     public void copy() {
         textField.copy();
     }
 
+    @Override
+    public int getLineNum() {
+        return proofLine.getLineNum();
+    }
+
+    @Override
+    public boolean isGoal() {
+        return false;
+    }
+
+    @Override
+    public boolean isAssumption() {
+        return proofLine.isAssumption();
+    }
+
+    @Override
     public void cut() {
         textField.cut();
     }
 
+    @Override
     public void paste() {
         textField.paste();
+    }
+
+    @Override
+    public void select() {
+        if (!root.getStyleClass().contains(SELECT_STYLE)) {
+            root.getStyleClass().add(SELECT_STYLE);
+            textVBox.getStyleClass().add(SELECT_STYLE);
+        }
+    }
+
+    @Override
+    public void deselect() {
+        root.getStyleClass().remove(SELECT_STYLE);
+        textVBox.getStyleClass().remove(SELECT_STYLE);
     }
 
 }

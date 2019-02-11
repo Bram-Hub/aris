@@ -181,7 +181,7 @@ public class Proof {
             for (Line l : lines)
                 l.lineDeleted(lines.get(lineNum));
             Line removed = lines.remove(lineNum);
-            for (int i = lineNum; i < lines.size(); ++i)
+            for (int i = 0; i < lines.size(); ++i)
                 lines.get(i).setLineNum(i);
             if (getNumPremises() > 1 && lineNum < getNumPremises()) {
                 if (removed.isUnderlined() && lineNum > 0)

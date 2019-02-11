@@ -22,7 +22,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.function.UnaryOperator;
 
-public class GoalLine implements LineChangeListener {
+public class GoalLine implements LineChangeListener, LineInterface {
 
 
     @FXML
@@ -109,8 +109,19 @@ public class GoalLine implements LineChangeListener {
         }, 500);
     }
 
-    public int lineNumber() {
+    @Override
+    public int getLineNum() {
         return goal.getGoalNum();
+    }
+
+    @Override
+    public boolean isGoal() {
+        return true;
+    }
+
+    @Override
+    public boolean isAssumption() {
+        return false;
     }
 
     public HBox getRootNode() {
@@ -198,16 +209,28 @@ public class GoalLine implements LineChangeListener {
         goalText.requestFocus();
     }
 
+    @Override
     public void copy() {
         goalText.copy();
     }
 
+    @Override
     public void cut() {
         goalText.cut();
     }
 
+    @Override
     public void paste() {
         goalText.paste();
+    }
+
+    @Override
+    public void select() {
+    }
+
+    @Override
+    public void deselect() {
+        root.getStyleClass().remove(ProofLine.SELECT_STYLE);
     }
 
 }

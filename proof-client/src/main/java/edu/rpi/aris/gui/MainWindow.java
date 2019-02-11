@@ -310,8 +310,14 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
         undo.disableProperty().bind(history.canUndo().not());
         redo.disableProperty().bind(history.canRedo().not());
 
-        undo.setOnAction(actionEvent -> history.undo());
-        redo.setOnAction(actionEvent -> history.redo());
+        undo.setOnAction(actionEvent -> {
+            copyManager.deselect();
+            history.undo();
+        });
+        redo.setOnAction(actionEvent -> {
+            copyManager.deselect();
+            history.redo();
+        });
 
         copy.setOnAction(actionEvent -> copyManager.copy());
         cut.setOnAction(actionEvent -> copyManager.cut());
@@ -349,6 +355,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
         MenuItem proofRestrictions = new MenuItem("Proof Restrictions");
 
         addLine.setOnAction(actionEvent -> {
+            copyManager.deselect();
             if (selectedLine.get() < 0)
                 return;
             int line = selectedLine.get() + 1;
@@ -393,7 +400,6 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
 
         if (editMode == EditMode.READ_ONLY) {
             proof.getItems().forEach(item -> {
-                item.disableProperty().unbind();
                 item.setDisable(true);
             });
         } else if (editMode == EditMode.RESTRICTED_EDIT) {
@@ -536,6 +542,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     }
 
     private void startSubProof() {
+        copyManager.deselect();
         if (selectedLine.get() < 0)
             return;
         int level = proof.getLine(selectedLine.get()).getSubProofLevel() + 1;
@@ -715,6 +722,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     }
 
     private synchronized void addProofLine(boolean assumption, int proofLevel, int index) {
+        copyManager.deselect();
         if (proofLevel < 0 || index < 0)
             return;
         addProofLine(proof.addLine(index, assumption, proofLevel));
@@ -741,12 +749,14 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     }
 
     private synchronized int addPremise() {
+        copyManager.deselect();
         Line line = proof.addPremise();
         addProofLine(line);
         return line.getLineNum();
     }
 
     private synchronized int addGoal() {
+        copyManager.deselect();
         Goal goal = proof.addGoal(proof.getNumGoals());
         return addGoal(goal);
     }
@@ -781,13 +791,15 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     }
 
     public void requestFocus(GoalLine line) {
-        if (selectedLine.get() == -2 - line.lineNumber())
+        copyManager.deselect();
+        if (selectedLine.get() == -2 - line.getLineNum())
             return;
         selectedLine.set(-1);
-        selectedLine.set(-2 - line.lineNumber());
+        selectedLine.set(-2 - line.getLineNum());
     }
 
     private synchronized void requestFocus(int lineNum) {
+        copyManager.deselect();
         if (selectedLine.get() == lineNum)
             return;
         selectedLine.set(-1);
@@ -795,6 +807,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     }
 
     public void requestSelect(ProofLine line) {
+        copyManager.deselect();
         Triple<Integer, Integer, Boolean> eventData = proof.togglePremise(selectedLine.get(), line.getModel());
         updateHighlighting(selectedLine.get());
         if (eventData != null)
@@ -816,10 +829,11 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     public synchronized void updateHighlighting(int selectedLine) {
         if (selectedLine >= 0) {
             Line line = proof.getLine(selectedLine);
-            HashSet<Line> highlighted = proof.getHighlighted(line);
-            if (line != null)
+            if (line != null) {
+                HashSet<Line> highlighted = proof.getHighlighted(line);
                 for (ProofLine p : proofLines)
                     p.setHighlighted(highlighted.contains(p.getModel()) && p.getModel() != line);
+            }
         } else {
             for (ProofLine p : proofLines)
                 p.setHighlighted(false);
@@ -827,6 +841,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     }
 
     public synchronized void deleteLine(int lineNum) {
+        copyManager.deselect();
         if (editMode == EditMode.RESTRICTED_EDIT && lineNum < proof.getNumPremises())
             return;
         if (lineNum > 0 || (proof.getNumPremises() > 1 && lineNum >= 0)) {
@@ -879,6 +894,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     }
 
     private void endSubproof() {
+        copyManager.deselect();
         int level = proof.getLine(selectedLine.get()).getSubProofLevel();
         if (level == 0)
             return;
@@ -1023,4 +1039,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
             moduleUIListener.uploadProblem();
     }
 
+    public void selectRequest(ProofLine proofLine) {
+        copyManager.selectRange(proofLine.getLineNum());
+    }
 }
