@@ -323,7 +323,7 @@ public class CopyManager {
             String pasteStr = (String) content;
             PasteLine[] data = parsePasteData(pasteStr);
             ProofLine currentLine = getPLine();
-            if (currentLine == null || data == null || data.length == 0)
+            if (currentLine == null || data == null || data.length == 0 || currentLine.getLineNum() < window.getProof().getNumPremises() - 1)
                 return;
             int baseIndent = currentLine.getModel().getSubProofLevel();
             int startLine = currentLine.getLineNum() + 1;
