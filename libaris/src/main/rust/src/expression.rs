@@ -17,7 +17,7 @@ pub enum QSymbol { Forall, Exists }
 #[repr(C)]
 pub enum Expr {
     Bottom,
-    Predicate { name: String, args: Vec<String> },
+    Predicate { name: String, args: Vec<Expr> },
     Unop { symbol: USymbol, operand: Box<Expr> },
     Binop { symbol: BSymbol, left: Box<Expr>, right: Box<Expr> },
     AssocBinop { symbol: ASymbol, exprs: Vec<Expr> },
@@ -64,7 +64,7 @@ impl std::fmt::Display for Expr {
         use Expr::*;
         match self {
             Bottom => write!(f, "⊥"),
-            Predicate { name, args } => { write!(f, "{}", name)?; if args.len() > 0 { write!(f, "({})", args.join(", "))? }; Ok(()) }
+            Predicate { name, args } => { write!(f, "{}", name)?; if args.len() > 0 { write!(f, "({})", args.iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join(", "))? }; Ok(()) }
             Unop { symbol, operand } => write!(f, "{}{}", symbol, operand),
             Binop { symbol, left, right } => write!(f, "({} {} {})", left, symbol, right),
             AssocBinop { symbol, exprs } => write!(f, "({})", exprs.iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join(&format!(" {} ", symbol))),
@@ -77,7 +77,7 @@ pub fn freevars(e: &Expr) -> HashSet<String> {
     let mut r = HashSet::new();
     match e {
         Expr::Bottom => (),
-        Expr::Predicate { name, args } => { r.insert(name.clone()); r.extend(args.iter().cloned()); },
+        Expr::Predicate { name, args } => { r.insert(name.clone()); for s in args.iter().map(|x| freevars(x)) { r.extend(s); } },
         Expr::Unop { operand, .. } => { r.extend(freevars(operand)); },
         Expr::Binop { left, right, .. } => { r.extend(freevars(left)); r.extend(freevars(right)); },
         Expr::AssocBinop { exprs, .. } => { for expr in exprs.iter() { r.extend(freevars(expr)); } }
@@ -88,7 +88,7 @@ pub fn freevars(e: &Expr) -> HashSet<String> {
 
 pub mod expression_builders {
     use super::{Expr, USymbol, BSymbol, ASymbol, QSymbol};
-    pub fn predicate(name: &str, args: &[&str]) -> Expr { Expr::Predicate { name: name.into(), args: args.iter().map(|&x| x.into()).collect() } }
+    pub fn predicate(name: &str, args: &[&str]) -> Expr { Expr::Predicate { name: name.into(), args: args.iter().map(|&x| var(x)).collect() } }
     pub fn not(expr: Expr) -> Expr { Expr::Unop { symbol: USymbol::Not, operand: Box::new(expr) } }
     pub fn var(name: &str) -> Expr { predicate(name, &[]) }
     pub fn binop(symbol: BSymbol, l: Expr, r: Expr) -> Expr { Expr::Binop { symbol, left: Box::new(l), right: Box::new(r) } }

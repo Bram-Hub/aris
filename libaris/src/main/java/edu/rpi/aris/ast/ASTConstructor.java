@@ -38,7 +38,7 @@ public class ASTConstructor extends ParseExpressionBaseVisitor<Expression> imple
         }
 
     }
-    ArrayList<String> pred_args = null;
+    ArrayList<Expression> pred_args = null;
 	//@Override public Expression visitMain(ParseExpressionParser.MainContext ctx) { return null; }
 	@Override public Expression visitPredicate(ParseExpressionParser.PredicateContext ctx) {
         // System.out.printf("visitPredicate %d\n", ctx.getAltNumber());
@@ -48,6 +48,7 @@ public class ASTConstructor extends ParseExpressionBaseVisitor<Expression> imple
         if(ctx.getAltNumber() == 2) {
             pred_args = new ArrayList();
             ctx.arg_list().accept(this);
+
             pe.args = pred_args;
             pred_args = null;
         }
@@ -57,7 +58,10 @@ public class ASTConstructor extends ParseExpressionBaseVisitor<Expression> imple
 	@Override public Expression visitArg_list(ParseExpressionParser.Arg_listContext ctx) {
         // System.out.printf("visitArg_list %d\n", ctx.getAltNumber());
         visitChildren(ctx);
-        pred_args.add(0, ctx.VARIABLE().getText());
+        PredicateExpression pe = new PredicateExpression();
+        pe.name = ctx.VARIABLE().getText();
+        pe.args = new ArrayList();
+        pred_args.add(0, pe);
         return null;
     }
 	@Override public Expression visitForallQuantifier(ParseExpressionParser.ForallQuantifierContext ctx) {

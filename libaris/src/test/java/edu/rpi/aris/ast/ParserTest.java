@@ -41,6 +41,8 @@ public class ParserTest {
     public void test_should_parse() {
         test_cases(should_parse, true);
         test_cases_rust(should_parse, true);
+        test_cases_rust(new String[]{"s(s(s(z)))"}, true);
+
     }
     @Test
     public void test_should_fail() {

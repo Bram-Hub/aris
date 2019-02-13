@@ -52,7 +52,7 @@ class Expr(ctypes.Structure):
         return str(self.downcast())
 
 class Predicate_Body(ctypes.Structure):
-    _fields_ = [('name', String), ('args', Vec(String))]
+    _fields_ = [('name', String), ('args', Vec(Expr))]
     def __repr__(self):
         #print self.name
         #return 'Predicate(0x%08x, %r, %r)' % (ctypes.addressof(self), self.name, map(hex, deref_word(ctypes.addressof(self), 8)))

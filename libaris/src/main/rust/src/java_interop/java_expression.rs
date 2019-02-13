@@ -64,7 +64,7 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
         "edu.rpi.aris.ast.Expression$PredicateExpression" => {
             let name = jobject_to_string(env, env.get_field(obj, "name", "Ljava/lang/String;")?.l()?)?;
             let mut args = vec![];
-            java_iterator_for_each(env, env.get_field(obj, "args", "Ljava/util/List;")?.l()?, |arg| { Ok(args.push(jobject_to_string(env, arg)?)) })?;
+            java_iterator_for_each(env, env.get_field(obj, "args", "Ljava/util/List;")?.l()?, |arg| { Ok(args.push(jobject_to_expr(env, arg)?)) })?;
             Ok(Expr::Predicate { name, args })
         },
         _ => Err(jni::errors::Error::from_kind(jni::errors::ErrorKind::Msg(format!("jobject_to_expr: unknown class {}", name)))),
@@ -102,7 +102,7 @@ pub fn expr_to_jobject<'a>(env: &'a JNIEnv, e: Expr) -> jni::errors::Result<JObj
             env.set_field(obj, "name", "Ljava/lang/String;", jv(&name)?)?;
             let list = env.get_field(obj, "args", "Ljava/util/List;")?.l()?;
             for arg in args {
-                env.call_method(list, "add", "(Ljava/lang/Object;)Z", &[jv(&arg)?])?;
+                env.call_method(list, "add", "(Ljava/lang/Object;)Z", &[rec(arg)?])?;
             }
         },
         Expr::Unop { symbol: _, operand } => {

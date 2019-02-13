@@ -16,7 +16,7 @@ public class Expression {
 
     public static class PredicateExpression extends Expression {
         public String name;
-        public List<String> args;
+        public List<Expression> args;
         PredicateExpression() { name = null; args = new ArrayList(); }
     }
 
