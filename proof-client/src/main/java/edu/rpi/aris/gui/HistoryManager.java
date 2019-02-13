@@ -1,6 +1,7 @@
 package edu.rpi.aris.gui;
 
 import edu.rpi.aris.SizedStack;
+import edu.rpi.aris.gui.event.BundledEvent;
 import edu.rpi.aris.gui.event.HistoryEvent;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -16,6 +17,7 @@ public class HistoryManager {
     private MainWindow window;
     private boolean historyEvent = false;
     private boolean upcomingHistoryEvent = false;
+    private BundledEvent bundledEvent = null;
 
     public HistoryManager(MainWindow window) {
         this.window = window;
@@ -24,6 +26,10 @@ public class HistoryManager {
     public synchronized void addHistoryEvent(HistoryEvent event) {
         if (historyEvent || !window.isLoaded())
             return;
+        if (bundledEvent != null) {
+            bundledEvent.addEvent(event);
+            return;
+        }
         upcomingHistoryEvent = false;
         historyEvent = true;
         window.commitSentenceChanges();
@@ -76,6 +82,20 @@ public class HistoryManager {
             canUndoProperty.set(undoHistory.size() > 0);
             canRedoProperty.set(redoHistory.size() > 0);
         }
+    }
+
+    public synchronized void startEventBundle() {
+        if (bundledEvent != null)
+            finalizeEventBundle();
+        bundledEvent = new BundledEvent();
+    }
+
+    public synchronized void finalizeEventBundle() {
+        if (bundledEvent == null)
+            return;
+        BundledEvent event = bundledEvent;
+        bundledEvent = null;
+        addHistoryEvent(event);
     }
 
 }

@@ -1,15 +1,32 @@
 package edu.rpi.aris.gui;
 
 import edu.rpi.aris.assign.EditMode;
+import edu.rpi.aris.proof.Line;
+import edu.rpi.aris.proof.Proof;
+import edu.rpi.aris.rules.RuleList;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.DataFormat;
 import javafx.util.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
 
 public class CopyManager {
 
+    private static final DataFormat dataFormat = new DataFormat("application/aris-clipboard");
+    private static Logger log = LogManager.getLogger();
     private MainWindow window;
-
     private int start;
     private int end;
     private boolean multilineSelect = false;
+    private Clipboard clipboard = Clipboard.getSystemClipboard();
 
     public CopyManager(MainWindow window) {
         this.window = window;
@@ -46,6 +63,13 @@ public class CopyManager {
         return null;
     }
 
+    private ProofLine getPLine() {
+        LineInterface l = getLine();
+        if (l instanceof ProofLine)
+            return (ProofLine) l;
+        return null;
+    }
+
     private int getLvl(ProofLine line) {
         return line.getModel().getSubProofLevel() - (line.isAssumption() ? 1 : 0);
     }
@@ -63,13 +87,38 @@ public class CopyManager {
     }
 
     private void copy(boolean cut) {
-        LineInterface line = getLine();
-        if (line == null)
-            return;
-        if (cut && checkEditMode(line))
-            line.cut();
-        else
-            line.copy();
+        if (multilineSelect) {
+            String text = selectionToString();
+            HashMap<DataFormat, Object> data = new HashMap<>();
+            data.put(dataFormat, text);
+            clipboard.setContent(data);
+            if (cut) {
+                // copy to local variables to prevent concurrent modification
+                int start = this.start;
+                int end = this.end;
+                window.getHistory().startEventBundle();
+                ProofLine root = getPLine(start);
+                if (root == null)
+                    return;
+                int lvl = root.getModel().getSubProofLevel();
+                for (int i = end; i >= start; --i) {
+                    ProofLine line = getPLine(i);
+                    if (line == null)
+                        continue;
+                    if (line.getModel().getSubProofLevel() == lvl)
+                        window.deleteLine(i);
+                }
+                window.getHistory().finalizeEventBundle();
+            }
+        } else {
+            LineInterface line = getLine();
+            if (line == null)
+                return;
+            if (cut && checkEditMode(line))
+                line.cut();
+            else
+                line.copy();
+        }
     }
 
     private int findSubproofEnd(ProofLine line) {
@@ -142,9 +191,125 @@ public class CopyManager {
         }
     }
 
+    private PasteLine parsePasteLine(String line, int parentLvl) {
+        String[] split = line.split("\\|");
+        if (split.length != 5)
+            return null;
+        try {
+            boolean isAssumption = Boolean.parseBoolean(split[0]);
+            int lvl = Integer.parseInt(split[1]);
+            if (lvl < 0 || (isAssumption ? lvl > parentLvl + 1 : lvl > parentLvl))
+                return null;
+            String expr = URLDecoder.decode(split[2], "UTF-8");
+            RuleList rule = split[3].equals("null") ? null : RuleList.valueOf(split[3]);
+            return new PasteLine(isAssumption, lvl, expr, rule, split[4].equals("null") ? null : Arrays.asList(split[4].split(",")));
+        } catch (UnsupportedEncodingException | IllegalArgumentException e) {
+            log.error("Failed to parse paste data", e);
+            return null;
+        }
+    }
+
+    private PasteLine[] parsePasteData(String data) {
+        String[] split = data.split("\n");
+        PasteLine[] lines = new PasteLine[split.length];
+        int lvl = 0;
+        for (int i = 0; i < lines.length; ++i) {
+            lines[i] = parsePasteLine(split[i], lvl);
+            if (lines[i] == null)
+                return null;
+            lvl = lines[i].lvl;
+        }
+        return lines;
+    }
+
+    private String getLineString(ProofLine proofLine, int rootIndent) {
+        try {
+            Line line = proofLine.getModel();
+            StringBuilder premises = new StringBuilder();
+            for (Line p : line.getPremises()) {
+                if (p.getLineNum() >= start && p.getLineNum() <= end) {
+                    premises.append("l.").append(p.getLineNum() - start);
+                } else {
+                    premises.append("h.").append(p.hashCode());
+                }
+                premises.append(",");
+            }
+            if (premises.length() > 0)
+                premises.deleteCharAt(premises.length() - 1);
+            else
+                premises.append("null");
+            return line.isAssumption() + "|"
+                    + (line.getSubProofLevel() - rootIndent) + "|"
+                    + URLEncoder.encode(line.getExpressionString(), "UTF-8") + "|"
+                    + line.getSelectedRule() + "|"
+                    + premises.toString();
+        } catch (UnsupportedEncodingException e) {
+            log.error("Failed to convert ProofLine to string", e);
+            return null;
+        }
+    }
+
+    private String selectionToString() {
+        if (!multilineSelect)
+            return null;
+        ProofLine line = getPLine(start);
+        if (line == null)
+            return null;
+        int baseIndent = line.getModel().getSubProofLevel() - (line.isAssumption() ? 1 : 0);
+        StringBuilder sb = new StringBuilder();
+        for (int i = start; i <= end; ++i) {
+            line = getPLine(i);
+            if (line == null)
+                return null;
+            sb.append(getLineString(line, baseIndent));
+            if (i != end)
+                sb.append("\n");
+        }
+        return sb.toString();
+    }
+
     private Pair<Integer, Integer> getSelectableRange(int start, int end) {
         Pair<Integer, Integer> p = getCommonLine(start, end);
         return p == null ? null : checkCommonParent(p.getKey(), p.getValue());
+    }
+
+    private void insertLine(PasteLine pasteLine, int baseIndent, int realLineNum, int relativeLineNum) {
+        Proof proof = window.getProof();
+        Line line = proof.addLine(realLineNum, pasteLine.isAssumption, baseIndent + pasteLine.lvl);
+        line.setExpressionString(pasteLine.expr);
+        if (!pasteLine.isAssumption)
+            line.setSelectedRule(pasteLine.rule);
+        for (String pStr : pasteLine.prems) {
+            Line premiseLine = null;
+            try {
+                if (pStr.startsWith("l.")) {
+                    String[] split = pStr.split("\\.");
+                    if (split.length == 2) {
+                        int relNum = Integer.parseInt(split[1]);
+                        if (relNum < relativeLineNum)
+                            premiseLine = proof.getLine(realLineNum - relativeLineNum + relNum);
+                    }
+                } else if (pStr.startsWith("h.")) {
+                    String[] split = pStr.split("\\.");
+                    if (split.length == 2) {
+                        int hashCode = Integer.parseInt(split[1]);
+                        for (int i = 0; i < realLineNum; ++i) {
+                            Line l = proof.getLine(i);
+                            if (l.hashCode() == hashCode) {
+                                premiseLine = l;
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch (NumberFormatException e) {
+                log.error("Failed to parse premise on paste", e);
+                premiseLine = null;
+            }
+            if (premiseLine != null)
+                proof.setPremise(realLineNum, premiseLine, true);
+        }
+        window.addProofLine(line);
     }
 
     public void cut() {
@@ -152,9 +317,26 @@ public class CopyManager {
     }
 
     public void paste() {
-        LineInterface line = getLine();
-        if (line != null && checkEditMode(line))
-            line.paste();
+        deselect();
+        Object content;
+        if ((content = clipboard.getContent(dataFormat)) != null) {
+            String pasteStr = (String) content;
+            PasteLine[] data = parsePasteData(pasteStr);
+            ProofLine currentLine = getPLine();
+            if (currentLine == null || data == null || data.length == 0)
+                return;
+            int baseIndent = currentLine.getModel().getSubProofLevel();
+            int startLine = currentLine.getLineNum() + 1;
+            window.getHistory().startEventBundle();
+            for (int i = 0; i < data.length; ++i) {
+                insertLine(data[i], baseIndent, startLine + i, i);
+            }
+            window.getHistory().finalizeEventBundle();
+        } else if (clipboard.getString() != null) {
+            LineInterface line = getLine();
+            if (line != null && checkEditMode(line))
+                line.paste();
+        }
     }
 
     public void deselect() {
@@ -170,14 +352,11 @@ public class CopyManager {
         if (clicked == null || clicked.isGoal())
             return;
         int rangeStart, rangeEnd;
-        if (multilineSelect) {
-            rangeStart = Math.min(start, clickedNum);
-            rangeEnd = Math.max(end, clickedNum);
-        } else {
-            int currentNum = current == null || current.isGoal() ? clickedNum : current.getLineNum();
-            rangeStart = Math.min(currentNum, clickedNum);
-            rangeEnd = Math.max(currentNum, clickedNum);
-        }
+        if (multilineSelect)
+            deselect();
+        int currentNum = current == null || current.isGoal() ? clickedNum : current.getLineNum();
+        rangeStart = Math.min(currentNum, clickedNum);
+        rangeEnd = Math.max(currentNum, clickedNum);
         Pair<Integer, Integer> range = getSelectableRange(rangeStart, rangeEnd);
         if (range != null) {
             start = range.getKey();
@@ -188,37 +367,23 @@ public class CopyManager {
         }
     }
 
-//    public void selectUp() {
-//        if (multilineSelect) {
-//            if (start > 0) {
-//                start--;
-//                select(start);
-//            }
-//        } else {
-//            LineInterface line = getLine();
-//            if (line == null || line.getLineNum() <= 0 || line.isGoal())
-//                return;
-//            end = line.getLineNum();
-//            start = end - 1;
-//            multilineSelect = true;
-//            select(end, start);
-//        }
-//    }
-//
-//    public void selectDown() {
-//        if (multilineSelect) {
-//            if (end < window.numLines() - 1) {
-//                end++;
-//                select(end);
-//            }
-//        } else {
-//            LineInterface line = getLine();
-//            if (line == null || line.getLineNum() >= window.numLines() - 1 || line.isGoal())
-//                return;
-//            start = line.getLineNum();
-//            end = start + 1;
-//            multilineSelect = true;
-//            select(end, start);
-//        }
-//    }
+    private static class PasteLine {
+
+        final boolean isAssumption;
+        final int lvl;
+        final String expr;
+        final RuleList rule;
+        final ArrayList<String> prems = new ArrayList<>();
+
+        public PasteLine(boolean isAssumption, int lvl, String expr, RuleList rule, Collection<String> prems) {
+            this.isAssumption = isAssumption;
+            this.lvl = lvl;
+            this.expr = expr;
+            this.rule = rule;
+            if (prems != null)
+                this.prems.addAll(prems);
+        }
+
+    }
+
 }

@@ -230,7 +230,6 @@ public class GoalLine implements LineChangeListener, LineInterface {
 
     @Override
     public void deselect() {
-        root.getStyleClass().remove(ProofLine.SELECT_STYLE);
     }
 
 }

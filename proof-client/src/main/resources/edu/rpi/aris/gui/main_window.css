@@ -1,13 +1,15 @@
 * { -fx-hcolor: #8edcff; }
-* { -fx-scolor: #42f453; }
+* { -fx-scolor: #ba84f4; }
 .proof-left-border { -fx-border-color: black; -fx-border-width: 0 2 0 0; }
-.underlined { -fx-border-color: black; -fx-border-width: 0 0 2 0; }
 .no-border { -fx-border-color: -fx-background; -fx-border-width: 0; }
 .underline { -fx-background-color: black, -fx-background, -fx-background, -fx-background; -fx-background-insets: 0 0 0 0, 0 0 2 25, 0 0 2 0, 0 0 0 25; }
 .underline.highlight-premise { -fx-background-color: black, -fx-hcolor, -fx-hcolor, -fx-hcolor; -fx-background-insets: 0 0 0 0, 0 0 2 25, 0 0 2 0, 0 0 0 25; }
+.underline.highlight-select { -fx-background-color: black, -fx-scolor, -fx-scolor, -fx-scolor; -fx-background-insets: 0 0 0 0, 0 0 2 25, 0 0 2 0, 0 0 0 25; }
+.underline.highlight-premise.highlight-select.text-vbox { -fx-background-color: black, -fx-hcolor, -fx-hcolor, -fx-hcolor; -fx-background-insets: 0 0 0 0, 0 0 2 25, 0 0 2 0, 0 0 0 25; }
 .rule-box { -fx-border-color: grey; -fx-border-width: 1; -fx-border-radius: 5; }
 .highlight-premise { -fx-background-color: -fx-hcolor; }
 .highlight-select { -fx-background-color: -fx-scolor; }
+.highlight-select.highlight-premise.text-vbox { -fx-background-color: -fx-hcolor; }
 .error-range { -fx-text-fill: #0000EE; -fx-font-weight: bold; }
 .error-range:hover { -fx-text-fill: #0000EE; -fx-font-weight: bold; -fx-underline: true; }
 .titled-pane > .title  { -fx-font-weight: bold; }

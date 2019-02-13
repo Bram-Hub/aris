@@ -283,47 +283,47 @@ public class SaveManager implements ProblemConverter<LibAris> {
                 }
             }).collect(Collectors.toSet());
             proof = new Proof(authors, author, allowedRules);
-            ArrayList<Element> proofElements = getElementsByTag(root, "proof");
-            if (proofElements.size() == 0)
-                throw new IOException("Missing main proof element");
-            proofElements.sort((e1, e2) -> {
-                try {
-                    int i1 = Integer.valueOf(e1.getAttribute("id"));
-                    int i2 = Integer.valueOf(e2.getAttribute("id"));
-                    return Integer.compare(i1, i2);
-                } catch (NumberFormatException e) {
-                    return 0;
-                }
-            });
-            for (int i = 0; i < proofElements.size(); ++i) {
-                Element e = proofElements.get(i);
-                int id;
-                try {
-                    id = Integer.valueOf(e.getAttribute("id"));
-                } catch (NumberFormatException e1) {
-                    throw new IOException("Invalid id tag in proof element");
-                }
-                if (id != i)
-                    throw new IOException("Non sequential id tag found in proof element");
+        }
+        ArrayList<Element> proofElements = getElementsByTag(root, "proof");
+        if (proofElements.size() == 0)
+            throw new IOException("Missing main proof element");
+        proofElements.sort((e1, e2) -> {
+            try {
+                int i1 = Integer.valueOf(e1.getAttribute("id"));
+                int i2 = Integer.valueOf(e2.getAttribute("id"));
+                return Integer.compare(i1, i2);
+            } catch (NumberFormatException e) {
+                return 0;
             }
-            readProofElement(proof, proofElements, 0, 0, 0);
-            Element baseProof = proofElements.get(0);
-            ArrayList<Element> goals = getElementsByTag(baseProof, "goal");
-            for (Element g : goals) {
-                String raw;
-                try {
-                    raw = getElementByTag(g, "raw").getTextContent();
-                } catch (IOException e) {
-                    String sen = getElementByTag(g, "sen").getTextContent();
+        });
+        for (int i = 0; i < proofElements.size(); ++i) {
+            Element e = proofElements.get(i);
+            int id;
+            try {
+                id = Integer.valueOf(e.getAttribute("id"));
+            } catch (NumberFormatException e1) {
+                throw new IOException("Invalid id tag in proof element");
+            }
+            if (id != i)
+                throw new IOException("Non sequential id tag found in proof element");
+        }
+        readProofElement(proof, proofElements, 0, 0, 0);
+        Element baseProof = proofElements.get(0);
+        ArrayList<Element> goals = getElementsByTag(baseProof, "goal");
+        for (Element g : goals) {
+            String raw;
+            try {
+                raw = getElementByTag(g, "raw").getTextContent();
+            } catch (IOException e) {
+                String sen = getElementByTag(g, "sen").getTextContent();
 //                    try {
-                    raw = Expression.parseViaRust(sen).toDebugString();//new Expression(sen).toLogicString();
+                raw = Expression.parseViaRust(sen).toDebugString();//new Expression(sen).toLogicString();
 //                    } catch (ExpressionParseException e1) {
 //                        throw new IOException("Invalid sentence in goal element");
 //                    }
-                }
-                Goal goal = proof.addGoal(proof.getNumGoals());
-                goal.setGoalString(raw, true);
             }
+            Goal goal = proof.addGoal(proof.getNumGoals());
+            goal.setGoalString(raw, true);
         }
         proof.saved();
         return proof;

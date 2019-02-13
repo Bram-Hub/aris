@@ -5,7 +5,8 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.*?>
-<HBox fx:id="root" alignment="CENTER" stylesheets="@main_window.css" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1">
+<HBox fx:id="root" alignment="CENTER" stylesheets="@main_window.css" xmlns="http://javafx.com/javafx/8.0.202-ea"
+      xmlns:fx="http://javafx.com/fxml/1">
     <HBox fx:id="selectedHBox" alignment="CENTER" styleClass="proof-left-border" HBox.hgrow="NEVER">
         <ImageView fx:id="selectedLine" fitHeight="25.0" fitWidth="25.0" pickOnBounds="true" preserveRatio="true" HBox.hgrow="NEVER">
          <HBox.margin>
@@ -14,7 +15,7 @@
         <Label fx:id="numberLbl" minHeight="-Infinity" minWidth="-Infinity" />
     </HBox>
     <HBox fx:id="subProofIndent" alignment="BOTTOM_LEFT" />
-    <VBox fx:id="textVBox" HBox.hgrow="ALWAYS">
+    <VBox fx:id="textVBox" styleClass="text-vbox" HBox.hgrow="ALWAYS">
         <Region prefHeight="4.0" />
         <HBox alignment="CENTER" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
             <Region minHeight="-Infinity" minWidth="-Infinity" prefWidth="2.0" />
