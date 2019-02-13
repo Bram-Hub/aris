@@ -43,7 +43,7 @@ typedef enum {
 
 typedef struct {
   String name;
-  Vec_String args;
+  Vec_Expr args;
 } Predicate_Body;
 
 typedef struct {
