@@ -7,6 +7,7 @@ pub struct JavaShallowProof(pub Vec<Expr>);
 impl Proof for JavaShallowProof {
     type Reference = Expr;
     type SubproofReference = Self;
+    type Subproof = Self;
     fn new() -> Self {
         JavaShallowProof(vec![])
     }
@@ -16,11 +17,14 @@ impl Proof for JavaShallowProof {
     fn lookup_subproof(&self, r: Self::SubproofReference) -> Option<Self> {
         Some(r)
     }
+    fn with_mut_subproof<A, F: FnOnce(&mut Self::Subproof) -> A>(&mut self, _: &Self::SubproofReference, _: F) -> Option<A> {
+        unimplemented!()
+    }
     fn add_premise(&mut self, e: Expr) -> Self::Reference {
         e
     }
-    fn add_subproof(&mut self, sub: Self) -> Self::SubproofReference {
-        sub
+    fn add_subproof(&mut self) -> Self::SubproofReference {
+        JavaShallowProof(vec![])
     }
     fn add_step(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>) -> Self::Reference {
         just.0

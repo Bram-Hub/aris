@@ -26,7 +26,7 @@ fn test_rules<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::Subproo
     run_test::<P, _>(test_biconelim);
 }
 
-fn test_rules_with_subproofs<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq {
+fn test_rules_with_subproofs<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq, P::Subproof: Debug {
     run_test::<P, _>(test_impintro);
     run_test::<P, _>(test_notintro);
     run_test::<P, _>(test_orelim);
@@ -44,17 +44,16 @@ pub fn demo_proof_1<P: Proof>() -> P where P: PartialEq+std::fmt::Debug, P::Refe
     let r1 = prf.add_premise(p("A"));
     let r2 = prf.add_premise(p("B"));
     let r3 = prf.add_step(Justification(p("A & B"), RuleM::AndIntro, vec![r1.clone(), r2.clone()], vec![]));
-    let r4 = prf.add_subproof({
-        let mut sub = P::new();
+    let r4 = prf.add_subproof();
+    prf.with_mut_subproof(&r4, |sub| {
         sub.add_premise(p("C"));
         sub.add_step(Justification(p("A & B"), RuleM::Reit, vec![r3.clone()], vec![]));
-        sub
     });
     let r5 = prf.add_step(Justification(p("C -> (A & B)"), RuleM::ImpIntro, vec![], vec![r4.clone()]));
     assert_eq!(prf.lookup(r1.clone()), Some(Coproduct::inject(p("A"))));
     assert_eq!(prf.lookup(r2.clone()), Some(Coproduct::inject(p("B"))));
     assert_eq!(prf.lookup(r3.clone()), Some(Coproduct::inject(Justification(p("A&B"), RuleM::AndIntro, vec![r1.clone(), r2.clone()], vec![]))));
-    if let Some(sub) = prf.lookup_subproof(r4.clone()) { let _: P = sub; println!("lookup4 good"); } else { println!("lookup4 bad"); }
+    if let Some(sub) = prf.lookup_subproof(r4.clone()) { let _: P::Subproof = sub; println!("lookup4 good"); } else { println!("lookup4 bad"); }
     assert_eq!(prf.lookup(r5), Some(Coproduct::inject(Justification(p("C->(A&B)"), RuleM::ImpIntro, vec![], vec![r4.clone()]))));
     prf
 }
@@ -175,35 +174,40 @@ pub fn test_biconelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
     (prf, vec![r3, r4, r5], vec![r6, r7])
 }
 
-pub fn test_impintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
+pub fn test_impintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Reference>) where P::Subproof: Debug {
     let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A"));
     let r2 = prf.add_premise(p("B"));
-    let mut sub1 = P::new();
-    let _r3 = sub1.add_premise(p("A"));
-    let _r4 = sub1.add_step(Justification(p("B"), RuleM::Reit, vec![r2.clone()], vec![]));
-    println!("{:?}",sub1);
-    let r5 = prf.add_subproof(sub1);
-    let mut sub2 = P::new();
-    let _r6 = sub2.add_premise(p("A"));
-    let _r7 = sub2.add_step(Justification(p("A"), RuleM::Reit, vec![r1.clone()], vec![]));
-    println!("{:?}",sub2);
-    let r8 = prf.add_subproof(sub2);
+    let r5 = prf.add_subproof();
+    let r4 = prf.with_mut_subproof(&r5, |sub1| {
+        let _r3 = sub1.add_premise(p("A"));
+        let r4 = sub1.add_step(Justification(p("B"), RuleM::Reit, vec![r2.clone()], vec![]));
+        println!("{:?}",sub1);
+        r4
+    }).unwrap();
+    let r8 = prf.add_subproof();
+    let r7 = prf.with_mut_subproof(&r8, |sub2| {
+        let _r6 = sub2.add_premise(p("A"));
+        let r7 = sub2.add_step(Justification(p("A"), RuleM::Reit, vec![r1.clone()], vec![]));
+        println!("{:?}",sub2);
+        r7
+    }).unwrap();
     let r9 = prf.add_step(Justification(p("A -> B"), RuleM::ImpIntro, vec![], vec![r5.clone()]));
     let r10 = prf.add_step(Justification(p("A -> A"), RuleM::ImpIntro, vec![], vec![r8.clone()]));
     let r11 = prf.add_step(Justification(p("B -> A"), RuleM::ImpIntro, vec![], vec![r5.clone()]));
-    (prf, vec![/*r4, r7, */r9, r10], vec![r11])
+    (prf, vec![r4, r7, r9, r10], vec![r11])
 }
 
 pub fn test_notintro<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
     let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A -> _|_"));
-    let mut sub1 = P::new();
-    let r2 = sub1.add_premise(p("A"));
-    let _r3 = sub1.add_step(Justification(p("_|_"), RuleM::ImpElim, vec![r1.clone(), r2.clone()], vec![]));
-    let r4 = prf.add_subproof(sub1);
+    let r4 = prf.add_subproof();
+    prf.with_mut_subproof(&r4, |sub1| {
+        let r2 = sub1.add_premise(p("A"));
+        let _r3 = sub1.add_step(Justification(p("_|_"), RuleM::ImpElim, vec![r1.clone(), r2.clone()], vec![]));
+    });
     let r5 = prf.add_step(Justification(p("~A"), RuleM::NotIntro, vec![], vec![r4.clone()]));
     let r6 = prf.add_step(Justification(p("~B"), RuleM::NotIntro, vec![], vec![r4.clone()]));
     (prf, vec![r5], vec![r6])
@@ -213,18 +217,21 @@ pub fn test_orelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
     let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A | B"));
-    let mut sub1 = P::new();
-    let _r2 = sub1.add_premise(p("A"));
-    let _r3 = sub1.add_step(Justification(p("C"), RuleM::Reit, vec![], vec![]));
-    let r4 = prf.add_subproof(sub1);
-    let mut sub2 = P::new();
-    let _r5 = sub2.add_premise(p("B"));
-    let _r6 = sub2.add_step(Justification(p("C"), RuleM::Reit, vec![], vec![]));
-    let r7 = prf.add_subproof(sub2);
-    let mut sub3 = P::new();
-    let _r8 = sub3.add_premise(p("B"));
-    let _r9 = sub3.add_step(Justification(p("D"), RuleM::Reit, vec![], vec![]));
-    let r10 = prf.add_subproof(sub3);
+    let r4 = prf.add_subproof();
+    prf.with_mut_subproof(&r4, |sub1| {
+        let _r2 = sub1.add_premise(p("A"));
+        let _r3 = sub1.add_step(Justification(p("C"), RuleM::Reit, vec![], vec![]));
+    });
+    let r7 = prf.add_subproof();
+    prf.with_mut_subproof(&r7, |sub2| {
+        let _r5 = sub2.add_premise(p("B"));
+        let _r6 = sub2.add_step(Justification(p("C"), RuleM::Reit, vec![], vec![]));
+    });
+    let r10 = prf.add_subproof();
+    prf.with_mut_subproof(&r10, |sub3| {
+        let _r8 = sub3.add_premise(p("B"));
+        let _r9 = sub3.add_step(Justification(p("D"), RuleM::Reit, vec![], vec![]));
+    });
     let r11 = prf.add_step(Justification(p("C"), RuleM::OrElim, vec![r1.clone()], vec![r4.clone(), r7.clone()]));
     let r12 = prf.add_step(Justification(p("D"), RuleM::OrElim, vec![r1.clone()], vec![r4.clone(), r7.clone()]));
     let r13 = prf.add_step(Justification(p("C"), RuleM::OrElim, vec![r1.clone()], vec![r4.clone(), r10.clone()]));

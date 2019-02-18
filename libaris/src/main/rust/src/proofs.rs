@@ -44,11 +44,13 @@ pub trait DisplayIndented {
 pub trait Proof: Sized {
     type Reference: Clone;
     type SubproofReference: Clone;
+    type Subproof: Proof<Reference=Self::Reference, SubproofReference=Self::SubproofReference, Subproof=Self::Subproof>;
     fn new() -> Self;
     fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference, Self::SubproofReference>)>;
-    fn lookup_subproof(&self, r: Self::SubproofReference) -> Option<Self>;
+    fn lookup_subproof(&self, r: Self::SubproofReference) -> Option<Self::Subproof>;
+    fn with_mut_subproof<A, F: FnOnce(&mut Self::Subproof) -> A>(&mut self, r: &Self::SubproofReference, f: F) -> Option<A>;
     fn add_premise(&mut self, e: Expr) -> Self::Reference;
-    fn add_subproof(&mut self, sub: Self) -> Self::SubproofReference;
+    fn add_subproof(&mut self) -> Self::SubproofReference;
     fn add_step(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>) -> Self::Reference;
     fn premises(&self) -> Vec<Self::Reference>;
     fn lines(&self) -> Vec<Coprod!(Self::Reference, Self::SubproofReference)>;
@@ -60,7 +62,7 @@ pub trait Proof: Sized {
     fn lookup_expr_or_die(&self, r: Self::Reference) -> Result<Expr, ProofCheckError<Self::Reference, Self::SubproofReference>> {
         self.lookup_expr(r.clone()).ok_or(ProofCheckError::LineDoesNotExist(r))
     }
-    fn lookup_subproof_or_die(&self, r: Self::SubproofReference) -> Result<Self, ProofCheckError<Self::Reference, Self::SubproofReference>> {
+    fn lookup_subproof_or_die(&self, r: Self::SubproofReference) -> Result<Self::Subproof, ProofCheckError<Self::Reference, Self::SubproofReference>> {
         self.lookup_subproof(r.clone()).ok_or(ProofCheckError::SubproofDoesNotExist(r))
     }
 }

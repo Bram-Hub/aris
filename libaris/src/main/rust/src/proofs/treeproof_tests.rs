@@ -1,6 +1,5 @@
 use super::*;
 use super::treeproof::*;
-use super::proof_tests::*;
 
 #[test]
 fn demo_prettyprinting() {
@@ -16,8 +15,8 @@ fn demo_prettyprinting() {
             Line::Direct((), Justification(p("C -> (A & B)"), RuleM::ImpIntro, vec![], vec![SubproofDep(4..5)])),
         ],
     });
-    let proof1_: TreeProof<(), ()> = demo_proof_1();
+    //let proof1_: TreeProof<(), ()> = demo_proof_1();
     let proof2 = decorate_line_and_indent(proof1.clone());
-    println!("{:?}\n{}\n{}\n{:?}", proof1, proof1_, proof1, proof2);
-    assert_eq!(proof1, proof1_);
+    println!("{:?}\n{}\n{:?}", proof1, proof1, proof2);
+    //assert_eq!(proof1, proof1_);
 }

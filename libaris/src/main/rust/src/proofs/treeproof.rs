@@ -59,15 +59,22 @@ impl<T: Clone, U: Clone> TreeSubproof<T, U> {
 impl<T: Clone+Default, U: Clone+Default> Proof for TreeProof<T, U> {
     type Reference = LineDep;
     type SubproofReference = SubproofDep;
+    type Subproof = Self;
     fn new() -> Self { TreeProof(TreeSubproof { premises: vec![], lines: vec![] }) }
     fn lookup(&self, LineDep(line): Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference, Self::SubproofReference>)> {
         self.0.lookup_line(line-1)
     }
-    fn lookup_subproof(&self, SubproofDep(_): Self::SubproofReference) -> Option<Self> {
+    fn lookup_subproof(&self, SubproofDep(_): Self::SubproofReference) -> Option<Self::Subproof> {
         None // TODO: implement
     }
+    /*unsafe fn lookup_subproof_mut(&mut self, _: Self::SubproofReference) -> Option<&mut Self::Subproof> {
+        None // TODO: implement
+    }*/
+    fn with_mut_subproof<A, F: FnOnce(&mut Self::Subproof) -> A>(&mut self, _: &Self::SubproofReference, _: F) -> Option<A> {
+        unimplemented!();
+    }
     fn add_premise(&mut self, e: Expr) -> Self::Reference { self.0.premises.push((Default::default(), e)); let i = self.0.premises.len(); LineDep(i) }
-    fn add_subproof(&mut self, sub: Self) -> Self::SubproofReference { let i = self.0.count_lines(); self.0.lines.push(Line::Subproof(Default::default(), sub.0)); let j = self.0.count_lines(); SubproofDep((i+1)..j) }
+    fn add_subproof(&mut self) -> Self::SubproofReference { let i = self.0.count_lines(); self.0.lines.push(Line::Subproof(Default::default(), TreeSubproof { premises: vec![], lines: vec![] })); let j = self.0.count_lines(); SubproofDep((i+1)..j) }
     fn add_step(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>) -> Self::Reference { self.0.lines.push(Line::Direct(Default::default(), just)); let i = self.0.count_lines(); LineDep(i) }
     fn premises(&self) -> Vec<Self::Reference> {
         //let prf = decorate_references(self.clone());

@@ -37,21 +37,34 @@ impl<T> ZipperVec<T> {
 type PooledRef = Coprod!(PremKey, JustKey);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PooledProof<T> {
+pub struct Pools<T> {
     prem_map: BTreeMap<PremKey, T>,
     just_map: BTreeMap<JustKey, Justification<T, PooledRef, SubKey>>,
-    sub_map: BTreeMap<SubKey, Subproof>,
-    proof: Subproof,
+    sub_map: BTreeMap<SubKey, PooledSubproof>,
+}
+
+impl<T> Pools<T> {
+    fn new() -> Self {
+        Pools { prem_map: BTreeMap::new(), just_map: BTreeMap::new(), sub_map: BTreeMap::new() }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Subproof {
+pub struct PooledProof<T> {
+    pools: Box<Pools<T>>,
+    proof: PooledSubproof,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PooledSubproof {
+    pools: *mut Pools<Expr>,
     premise_list: ZipperVec<PremKey>,
     line_list: ZipperVec<Coprod!(JustKey, SubKey)>,
 }
 
-impl Subproof {
-    pub fn new() -> Self { Subproof { premise_list: ZipperVec::new(), line_list: ZipperVec::new() } }
+impl PooledSubproof {
+    /// PooledSubproof::new requires for safety that p points to something that won't move (e.g. a heap-allocated Box)
+    fn new(p: &mut Pools<Expr>) -> Self { PooledSubproof { pools: p as _, premise_list: ZipperVec::new(), line_list: ZipperVec::new() } }
     fn increment_indices(&mut self, i: PremKey, j: JustKey, k: SubKey) {
         let newprems = self.premise_list.iter().map(|x| PremKey(x.0+i.0)).collect();
         self.premise_list = ZipperVec::from_vec(newprems);
@@ -60,7 +73,7 @@ impl Subproof {
     }
 }
 
-impl<PREM: Clone> PooledProof<PREM> {
+impl<T: Clone> Pools<T> {
     pub fn next_premkey(&self) -> PremKey { PremKey(self.prem_map.range(..).next_back().map(|(k, _)| k.0+1).unwrap_or(0)) }
     pub fn next_justkey(&self) -> JustKey { JustKey(self.just_map.range(..).next_back().map(|(k, _)| k.0+1).unwrap_or(0)) }
     pub fn next_subkey(&self) -> SubKey { SubKey(self.sub_map.range(..).next_back().map(|(k, _)| k.0+1).unwrap_or(0)) }
@@ -86,46 +99,58 @@ impl<PREM: Clone> PooledProof<PREM> {
     }
 }
 
-impl Proof for PooledProof<Expr> {
+impl Proof for PooledSubproof {
     type Reference = PooledRef;
     type SubproofReference = SubKey;
-    fn new() -> Self {
-        PooledProof { prem_map: BTreeMap::new(), just_map: BTreeMap::new(), sub_map: BTreeMap::new(), proof: Subproof::new(), }
-    }
+    type Subproof = PooledSubproof;
+    fn new() -> Self { panic!("new is invalid for PooledSubproof, use add_subproof") }
     fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference, Self::SubproofReference>)> {
         r.fold(hlist![
-            |ref k| self.prem_map.get(k).map(|x| Coproduct::inject(x.clone())),
-            |ref k| self.just_map.get(k).map(|x| Coproduct::inject(x.clone()))])
+            |ref k| unsafe { &*self.pools }.prem_map.get(k).map(|x| Coproduct::inject(x.clone())),
+            |ref k| unsafe { &*self.pools }.just_map.get(k).map(|x| Coproduct::inject(x.clone()))])
     }
-    fn lookup_subproof(&self, r: Self::SubproofReference) -> Option<Self> {
-        self.sub_map.get(&r).map(|x| { let mut p = self.clone(); p.proof = x.clone(); p})
+    fn lookup_subproof(&self, r: Self::SubproofReference) -> Option<Self::Subproof> {
+        unsafe { &mut *self.pools }.sub_map.get(&r).map(|x| x.clone() )
+    }
+    fn with_mut_subproof<A, F: FnOnce(&mut Self::Subproof) -> A>(&mut self, r: &Self::SubproofReference, f: F) -> Option<A> {
+        // The subproof pointer, if returned directly, could be invalidated by calls to add_subproof on the same proof object.
+        // This is prevented by the fact that the lifetime parameter of the subproof reference cannot occur in A:
+        // #[test]
+        // fn doesnt_compile() {
+        //     let mut p = PooledProof::<Expr>::new();
+        //     let r = p.add_subproof();
+        //     let s = p.with_mut_subproof(&r, |x| x);
+        // }
+        unsafe { &mut *self.pools }.sub_map.get_mut(r).map(f)
     }
     fn add_premise(&mut self, e: Expr) -> Self::Reference {
-        let idx = self.next_premkey();
-        self.prem_map.insert(idx, e);
-        self.proof.premise_list.push(idx);
+        let pools = unsafe { &mut *self.pools };
+        let idx = pools.next_premkey();
+        pools.prem_map.insert(idx, e);
+        self.premise_list.push(idx);
         Self::Reference::inject(idx)
     }
-    fn add_subproof(&mut self, mut sub: Self) -> Self::SubproofReference {
-        let (i, j, k) = self.add_pools(&sub);
-        let idx = self.next_subkey();
-        sub.proof.increment_indices(i, j, k);
-        self.sub_map.insert(idx, sub.proof);
-        self.proof.line_list.push(Coproduct::inject(idx));
+    fn add_subproof(&mut self) -> Self::SubproofReference {
+        let pools = unsafe { &mut *self.pools };
+        let idx = pools.next_subkey();
+        let sub = PooledSubproof::new(pools);
+        pools.sub_map.insert(idx, sub);
+        self.line_list.push(Coproduct::inject(idx));
         idx
     }
     fn add_step(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>) -> Self::Reference {
-        let idx = self.next_justkey();
-        self.just_map.insert(idx, just);
-        self.proof.line_list.push(Coproduct::inject(idx));
+        let pools = unsafe { &mut *self.pools };
+        let idx = pools.next_justkey();
+        pools.just_map.insert(idx, just);
+        self.line_list.push(Coproduct::inject(idx));
         Self::Reference::inject(idx)
     }
     fn premises(&self) -> Vec<Self::Reference> {
-        self.proof.premise_list.iter().cloned().map(|x| Coproduct::inject(x)).collect()
+        self.premise_list.iter().cloned().map(|x| Coproduct::inject(x)).collect()
     }
     fn lines(&self) -> Vec<Coprod!(Self::Reference, Self::SubproofReference)> {
         use self::Coproduct::{Inl, Inr};
-        self.proof.line_list.iter().cloned().map(|x| match x {
+        self.line_list.iter().cloned().map(|x| match x {
             Inl(x) => Coproduct::inject(Coproduct::inject(x)),
             Inr(x) => Coproduct::embed(x),
         }).collect()
@@ -142,6 +167,27 @@ impl Proof for PooledProof<Expr> {
     }
 }
 
+
+impl Proof for PooledProof<Expr> {
+    type Reference = PooledRef;
+    type SubproofReference = SubKey;
+    type Subproof = PooledSubproof;
+    fn new() -> Self {
+        let mut pools = Box::new(Pools::new());
+        let proof = PooledSubproof::new(&mut *pools);
+        PooledProof { pools, proof, }
+    }
+    fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference, Self::SubproofReference>)> { self.proof.lookup(r) }
+    fn lookup_subproof(&self, r: Self::SubproofReference) -> Option<Self::Subproof> { self.proof.lookup_subproof(r) }
+    fn with_mut_subproof<A, F: FnOnce(&mut Self::Subproof) -> A>(&mut self, r: &Self::SubproofReference, f: F) -> Option<A> { self.proof.with_mut_subproof(r, f) }
+    fn add_premise(&mut self, e: Expr) -> Self::Reference { self.proof.add_premise(e) }
+    fn add_subproof(&mut self) -> Self::SubproofReference { self.proof.add_subproof() }
+    fn add_step(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>) -> Self::Reference { self.proof.add_step(just) }
+    fn premises(&self) -> Vec<Self::Reference> { self.proof.premises() }
+    fn lines(&self) -> Vec<Coprod!(Self::Reference, Self::SubproofReference)> { self.proof.lines() }
+    fn verify_line(&self, r: &Self::Reference) -> Result<(), ProofCheckError<Self::Reference, Self::SubproofReference>> { self.proof.verify_line(r) }
+}
+
 #[test]
 fn prettyprint_pool() {
     let prf: PooledProof<Expr> = super::proof_tests::demo_proof_1();
@@ -151,9 +197,9 @@ fn prettyprint_pool() {
 
 impl DisplayIndented for PooledProof<Expr> {
     fn display_indented(&self, fmt: &mut Formatter, indent: usize, linecount: &mut usize) -> std::result::Result<(), std::fmt::Error> {
-        fn aux(p: &PooledProof<Expr>, fmt: &mut Formatter, indent: usize, linecount: &mut usize, sub: &Subproof) -> std::result::Result<(), std::fmt::Error> {
+        fn aux(p: &PooledProof<Expr>, fmt: &mut Formatter, indent: usize, linecount: &mut usize, sub: &PooledSubproof) -> std::result::Result<(), std::fmt::Error> {
             for idx in sub.premise_list.iter() {
-                let premise = p.prem_map.get(idx).unwrap();
+                let premise = p.pools.prem_map.get(idx).unwrap();
                 write!(fmt, "{}:\t", linecount)?;
                 for _ in 0..indent { write!(fmt, "| ")?; }
                 write!(fmt, "{}\n", premise)?;
@@ -165,8 +211,8 @@ impl DisplayIndented for PooledProof<Expr> {
             write!(fmt, "\n")?;
             for line in sub.line_list.iter() {
                 match line.uninject() {
-                    Ok(justkey) => p.just_map.get(&justkey).unwrap().display_indented(fmt, indent, linecount)?,
-                    Err(line) => aux(p, fmt, indent+1, linecount, p.sub_map.get(&line.uninject::<SubKey, _>().unwrap()).unwrap())?,
+                    Ok(justkey) => { p.pools.just_map.get(&justkey).unwrap().display_indented(fmt, indent, linecount)? },
+                    Err(line) => aux(p, fmt, indent+1, linecount, p.pools.sub_map.get(&line.uninject::<SubKey, _>().unwrap() ).unwrap())?,
                 }
             }
             Ok(())
