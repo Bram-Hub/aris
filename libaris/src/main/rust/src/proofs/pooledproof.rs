@@ -40,7 +40,7 @@ type PooledRef = Coprod!(PremKey, JustKey);
 pub struct Pools<T> {
     prem_map: BTreeMap<PremKey, T>,
     just_map: BTreeMap<JustKey, Justification<T, PooledRef, SubKey>>,
-    sub_map: BTreeMap<SubKey, PooledSubproof>,
+    sub_map: BTreeMap<SubKey, PooledSubproof<T>>,
 }
 
 impl<T> Pools<T> {
@@ -52,19 +52,19 @@ impl<T> Pools<T> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PooledProof<T> {
     pools: Box<Pools<T>>,
-    proof: PooledSubproof,
+    proof: PooledSubproof<T>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PooledSubproof {
-    pools: *mut Pools<Expr>,
+pub struct PooledSubproof<T> {
+    pools: *mut Pools<T>,
     premise_list: ZipperVec<PremKey>,
-    line_list: ZipperVec<Coprod!(JustKey, SubKey)>,
+    line_list: ZipperVec<Coproduct<JustKey, Coproduct<SubKey, frunk::coproduct::CNil>>>,
 }
 
-impl PooledSubproof {
+impl<T> PooledSubproof<T> {
     /// PooledSubproof::new requires for safety that p points to something that won't move (e.g. a heap-allocated Box)
-    fn new(p: &mut Pools<Expr>) -> Self { PooledSubproof { pools: p as _, premise_list: ZipperVec::new(), line_list: ZipperVec::new() } }
+    fn new(p: &mut Pools<T>) -> Self { PooledSubproof { pools: p as _, premise_list: ZipperVec::new(), line_list: ZipperVec::new() } }
     fn increment_indices(&mut self, i: PremKey, j: JustKey, k: SubKey) {
         let newprems = self.premise_list.iter().map(|x| PremKey(x.0+i.0)).collect();
         self.premise_list = ZipperVec::from_vec(newprems);
@@ -99,10 +99,10 @@ impl<T: Clone> Pools<T> {
     }
 }
 
-impl Proof for PooledSubproof {
+impl Proof for PooledSubproof<Expr> {
     type Reference = PooledRef;
     type SubproofReference = SubKey;
-    type Subproof = PooledSubproof;
+    type Subproof = Self;
     fn new() -> Self { panic!("new is invalid for PooledSubproof, use add_subproof") }
     fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference, Self::SubproofReference>)> {
         r.fold(hlist![
@@ -171,7 +171,7 @@ impl Proof for PooledSubproof {
 impl Proof for PooledProof<Expr> {
     type Reference = PooledRef;
     type SubproofReference = SubKey;
-    type Subproof = PooledSubproof;
+    type Subproof = PooledSubproof<Expr>;
     fn new() -> Self {
         let mut pools = Box::new(Pools::new());
         let proof = PooledSubproof::new(&mut *pools);
@@ -197,7 +197,7 @@ fn prettyprint_pool() {
 
 impl DisplayIndented for PooledProof<Expr> {
     fn display_indented(&self, fmt: &mut Formatter, indent: usize, linecount: &mut usize) -> std::result::Result<(), std::fmt::Error> {
-        fn aux(p: &PooledProof<Expr>, fmt: &mut Formatter, indent: usize, linecount: &mut usize, sub: &PooledSubproof) -> std::result::Result<(), std::fmt::Error> {
+        fn aux(p: &PooledProof<Expr>, fmt: &mut Formatter, indent: usize, linecount: &mut usize, sub: &PooledSubproof<Expr>) -> std::result::Result<(), std::fmt::Error> {
             for idx in sub.premise_list.iter() {
                 let premise = p.pools.prem_map.get(idx).unwrap();
                 write!(fmt, "{}:\t", linecount)?;
