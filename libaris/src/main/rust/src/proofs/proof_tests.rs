@@ -34,8 +34,8 @@ fn test_rules_with_subproofs<P: Proof+Display+Debug>() where P::Reference: Debug
 
 #[test] fn test_rules_on_treeproof() { test_rules::<treeproof::TreeProof<(), ()>>(); }
 #[test] fn test_rules_on_pooledproof() { 
-    test_rules::<pooledproof::PooledProof<Expr>>();
-    test_rules_with_subproofs::<pooledproof::PooledProof<Expr>>();
+    test_rules::<pooledproof::PooledProof<Hlist![Expr]>>();
+    test_rules_with_subproofs::<pooledproof::PooledProof<Hlist![Expr]>>();
 }
 
 pub fn demo_proof_1<P: Proof>() -> P where P: PartialEq+std::fmt::Debug, P::Reference: PartialEq+std::fmt::Debug, P::SubproofReference: PartialEq+std::fmt::Debug {

@@ -70,13 +70,24 @@ pub trait Proof: Sized {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Justification<T, R, S>(T, Rule, Vec<R>, Vec<S>);
 
-impl<T: std::fmt::Display, R: std::fmt::Debug, S: std::fmt::Debug> DisplayIndented for Justification<T, R, S> {
+impl<T, R, S> Justification<T, R, S> {
+    fn map0<U, F: FnOnce(T) -> U>(self, f: F) -> Justification<U, R, S> {
+        Justification(f(self.0), self.1, self.2, self.3)
+    }
+}
+
+pub trait JustificationExprDisplay { fn fmt_expr(&self, fmt: &mut Formatter) -> std::fmt::Result; }
+impl JustificationExprDisplay for Expr { fn fmt_expr(&self, fmt: &mut Formatter) -> std::fmt::Result { write!(fmt, "{}", self) } }
+impl<Tail> JustificationExprDisplay for frunk::HCons<Expr, Tail> { fn fmt_expr(&self, fmt: &mut Formatter) -> std::fmt::Result { write!(fmt, "{}", self.head) } }
+
+impl<T: JustificationExprDisplay, R: std::fmt::Debug, S: std::fmt::Debug> DisplayIndented for Justification<T, R, S> {
     fn display_indented(&self, fmt: &mut Formatter, indent: usize, linecount: &mut usize) -> std::result::Result<(), std::fmt::Error> {
         let &Justification(expr, rule, deps, sdeps) = &self;
         write!(fmt, "{}:\t", linecount)?;
         *linecount += 1;
         for _ in 0..indent { write!(fmt, "| ")?; }
-        write!(fmt, "{}; {:?}; ", expr, rule)?;
+        expr.fmt_expr(fmt)?;
+        write!(fmt, "; {:?}; ", rule)?;
         for (i, dep) in deps.iter().enumerate() {
             write!(fmt, "{:?}", dep)?;
             if i != deps.len()-1 { write!(fmt, ", ")?; }
@@ -88,6 +99,7 @@ impl<T: std::fmt::Display, R: std::fmt::Debug, S: std::fmt::Debug> DisplayIndent
         write!(fmt, "\n")
     }
 }
+
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LineAndIndent { pub line: usize, pub indent: usize }

@@ -1,4 +1,5 @@
 use super::*;
+use frunk::hlist::HCons;
 use std::collections::BTreeMap;
 
 /// a ZipperVec represents a list-with-edit-position [a,b,c, EDIT_CURSOR, d, e, f] as (vec![a, b, c], vec![f, e, d])
@@ -99,15 +100,16 @@ impl<T: Clone> Pools<T> {
     }
 }
 
-impl Proof for PooledSubproof<Expr> {
+
+impl<Tail: Default+Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
     type Reference = PooledRef;
     type SubproofReference = SubKey;
     type Subproof = Self;
     fn new() -> Self { panic!("new is invalid for PooledSubproof, use add_subproof") }
     fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference, Self::SubproofReference>)> {
         r.fold(hlist![
-            |ref k| unsafe { &*self.pools }.prem_map.get(k).map(|x| Coproduct::inject(x.clone())),
-            |ref k| unsafe { &*self.pools }.just_map.get(k).map(|x| Coproduct::inject(x.clone()))])
+            |ref k| unsafe { &*self.pools }.prem_map.get(k).map(|x| Coproduct::inject(x.head.clone())),
+            |ref k| unsafe { &*self.pools }.just_map.get(k).map(|x| Coproduct::inject(x.clone().map0(|y| y.head)))])
     }
     fn lookup_subproof(&self, r: Self::SubproofReference) -> Option<Self::Subproof> {
         unsafe { &mut *self.pools }.sub_map.get(&r).map(|x| x.clone() )
@@ -126,7 +128,7 @@ impl Proof for PooledSubproof<Expr> {
     fn add_premise(&mut self, e: Expr) -> Self::Reference {
         let pools = unsafe { &mut *self.pools };
         let idx = pools.next_premkey();
-        pools.prem_map.insert(idx, e);
+        pools.prem_map.insert(idx, HCons { head: e, tail: Tail::default() });
         self.premise_list.push(idx);
         Self::Reference::inject(idx)
     }
@@ -141,7 +143,7 @@ impl Proof for PooledSubproof<Expr> {
     fn add_step(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>) -> Self::Reference {
         let pools = unsafe { &mut *self.pools };
         let idx = pools.next_justkey();
-        pools.just_map.insert(idx, just);
+        pools.just_map.insert(idx, Justification(HCons { head: just.0, tail: Tail::default() }, just.1, just.2, just.3));
         self.line_list.push(Coproduct::inject(idx));
         Self::Reference::inject(idx)
     }
@@ -167,11 +169,10 @@ impl Proof for PooledSubproof<Expr> {
     }
 }
 
-
-impl Proof for PooledProof<Expr> {
+impl<Tail: Default+Clone> Proof for PooledProof<HCons<Expr, Tail>> {
     type Reference = PooledRef;
     type SubproofReference = SubKey;
-    type Subproof = PooledSubproof<Expr>;
+    type Subproof = PooledSubproof<HCons<Expr, Tail>>;
     fn new() -> Self {
         let mut pools = Box::new(Pools::new());
         let proof = PooledSubproof::new(&mut *pools);
@@ -190,19 +191,19 @@ impl Proof for PooledProof<Expr> {
 
 #[test]
 fn prettyprint_pool() {
-    let prf: PooledProof<Expr> = super::proof_tests::demo_proof_1();
+    let prf: PooledProof<Hlist![Expr]> = super::proof_tests::demo_proof_1();
     println!("{:?}\n{}\n", prf, prf);
     println!("{:?}\n{:?}\n", prf.premises(), prf.lines());
 }
 
-impl DisplayIndented for PooledProof<Expr> {
+impl<Tail> DisplayIndented for PooledProof<HCons<Expr, Tail>> {
     fn display_indented(&self, fmt: &mut Formatter, indent: usize, linecount: &mut usize) -> std::result::Result<(), std::fmt::Error> {
-        fn aux(p: &PooledProof<Expr>, fmt: &mut Formatter, indent: usize, linecount: &mut usize, sub: &PooledSubproof<Expr>) -> std::result::Result<(), std::fmt::Error> {
+        fn aux<Tail>(p: &PooledProof<HCons<Expr, Tail>>, fmt: &mut Formatter, indent: usize, linecount: &mut usize, sub: &PooledSubproof<HCons<Expr, Tail>>) -> std::result::Result<(), std::fmt::Error> {
             for idx in sub.premise_list.iter() {
                 let premise = p.pools.prem_map.get(idx).unwrap();
                 write!(fmt, "{}:\t", linecount)?;
                 for _ in 0..indent { write!(fmt, "| ")?; }
-                write!(fmt, "{}\n", premise)?;
+                write!(fmt, "{}\n", premise.head)?;
                 *linecount += 1;
             }
             write!(fmt, "\t")?;
@@ -220,6 +221,7 @@ impl DisplayIndented for PooledProof<Expr> {
         aux(&self, fmt, indent, linecount, &self.proof)
     }
 }
-impl Display for PooledProof<Expr> {
+
+impl<Tail> Display for PooledProof<HCons<Expr, Tail>> {
     fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> { self.display_indented(fmt, 1, &mut 1) }
 }
