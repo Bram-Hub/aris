@@ -23,10 +23,10 @@ fn test_rules<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::Subproo
     run_test::<P, _>(test_contradictionintro);
     run_test::<P, _>(test_notelim);
     run_test::<P, _>(test_impelim);
-    run_test::<P, _>(test_biconelim);
 }
 
 fn test_rules_with_subproofs<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq, P::Subproof: Debug {
+    run_test::<P, _>(test_biconelim);
     run_test::<P, _>(test_impintro);
     run_test::<P, _>(test_notintro);
     run_test::<P, _>(test_orelim);
@@ -169,16 +169,23 @@ pub fn test_biconelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
     let r3 = prf.add_step(Justification(p("B <-> C"), RuleM::BiconditionalElim, vec![r1.clone(), r2.clone()], vec![]));
     let r4 = prf.add_step(Justification(p("C <-> B"), RuleM::BiconditionalElim, vec![r1.clone(), r2.clone()], vec![]));
     let r5 = prf.add_step(Justification(p("D <-> B"), RuleM::BiconditionalElim, vec![r1.clone(), r2.clone()], vec![]));
-    let mut sub = P::new();
-    let r6 = sub.add_premise(p("D"));
-    let r7 = sub.add_step(Justification(p("A <-> B"), RuleM::BiconditionalElim, vec![r1.clone(), r6.clone()], vec![]));
-    let r8 = prf.add_subproof(sub);
+    let r8 = prf.add_subproof();
+    let (_r6, r7) = prf.with_mut_subproof(&r8, |sub| {
+        let r6 = sub.add_premise(p("D"));
+        let r7 = sub.add_step(Justification(p("A <-> B"), RuleM::BiconditionalElim, vec![r1.clone(), r6.clone()], vec![]));
+        (r6, r7)
+    }).unwrap();
     let r9 = prf.add_premise(p("A <-> B"));
     let r10 = prf.add_step(Justification(p("B"), RuleM::BiconditionalElim, vec![r1.clone(), r2.clone()], vec![]));
     let r11 = prf.add_step(Justification(p("B"), RuleM::BiconditionalElim, vec![r9.clone(), r2.clone()], vec![]));
     let r12 = prf.add_premise(p("A <-> B <-> C <-> D"));
-    let r13 = prf.add_step(Justification(p("A <-> C <-> D"), RuleM::BiconditionalElim, vec![r10.clone(), r2.clone()], vec![]));
-    (prf, vec![r3, r4, r11, r13], vec![r5, r7, r10])
+    let r13 = prf.add_step(Justification(p("A <-> C <-> D"), RuleM::BiconditionalElim, vec![r10.clone(), r12.clone()], vec![]));
+    static BICON_COMMUTATIVITY: bool = false;
+    if BICON_COMMUTATIVITY {
+        (prf, vec![r3, r4, r11, r13], vec![r5, r7, r10])
+    } else {
+        (prf, vec![r3, r11, r13], vec![r4, r5, r7, r10])
+    }
 }
 
 pub fn test_impintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Reference>) where P::Subproof: Debug {

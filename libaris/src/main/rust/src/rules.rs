@@ -367,8 +367,11 @@ impl RuleT for PrepositionalInference {
                         if exprs.iter().find(|x| x == &&prems[j]).is_none() {
                             return Err(DoesNotOccur(prems[j].clone(), prems[i].clone()));
                         }
-                        if exprs.iter().find(|x| x == &&conclusion).is_none() {
-                            return Err(DoesNotOccur(conclusion.clone(), prems[i].clone()));
+                        let terms = exprs.iter().filter(|x| x != &&prems[j]).cloned().collect::<Vec<_>>();
+                        let expected = if terms.len() == 1 { terms[0].clone() } else { expression_builders::assocbinop(ASymbol::Bicon, &terms[..]) };
+                        // TODO: maybe commutativity
+                        if conclusion != expected {
+                            return Err(DoesNotOccur(conclusion, expected));
                         }
                         return Ok(());
                     }
