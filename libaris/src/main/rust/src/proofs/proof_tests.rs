@@ -166,12 +166,19 @@ pub fn test_biconelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A <-> B <-> C"));
     let r2 = prf.add_premise(p("A"));
-    let r3 = prf.add_step(Justification(p("B"), RuleM::BiconditionalElim, vec![r1.clone(), r2.clone()], vec![]));
-    let r4 = prf.add_step(Justification(p("C"), RuleM::BiconditionalElim, vec![r1.clone(), r2.clone()], vec![]));
-    let r5 = prf.add_step(Justification(p("A"), RuleM::BiconditionalElim, vec![r1.clone(), r4.clone()], vec![]));
-    let r6 = prf.add_step(Justification(p("D"), RuleM::BiconditionalElim, vec![r1.clone(), r4.clone()], vec![]));
-    let r7 = prf.add_step(Justification(p("A"), RuleM::BiconditionalElim, vec![r1.clone(), r6.clone()], vec![]));
-    (prf, vec![r3, r4, r5], vec![r6, r7])
+    let r3 = prf.add_step(Justification(p("B <-> C"), RuleM::BiconditionalElim, vec![r1.clone(), r2.clone()], vec![]));
+    let r4 = prf.add_step(Justification(p("C <-> B"), RuleM::BiconditionalElim, vec![r1.clone(), r2.clone()], vec![]));
+    let r5 = prf.add_step(Justification(p("D <-> B"), RuleM::BiconditionalElim, vec![r1.clone(), r2.clone()], vec![]));
+    let mut sub = P::new();
+    let r6 = sub.add_premise(p("D"));
+    let r7 = sub.add_step(Justification(p("A <-> B"), RuleM::BiconditionalElim, vec![r1.clone(), r6.clone()], vec![]));
+    let r8 = prf.add_subproof(sub);
+    let r9 = prf.add_premise(p("A <-> B"));
+    let r10 = prf.add_step(Justification(p("B"), RuleM::BiconditionalElim, vec![r1.clone(), r2.clone()], vec![]));
+    let r11 = prf.add_step(Justification(p("B"), RuleM::BiconditionalElim, vec![r9.clone(), r2.clone()], vec![]));
+    let r12 = prf.add_premise(p("A <-> B <-> C <-> D"));
+    let r13 = prf.add_step(Justification(p("A <-> C <-> D"), RuleM::BiconditionalElim, vec![r10.clone(), r2.clone()], vec![]));
+    (prf, vec![r3, r4, r11, r13], vec![r5, r7, r10])
 }
 
 pub fn test_impintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Reference>) where P::Subproof: Debug {
