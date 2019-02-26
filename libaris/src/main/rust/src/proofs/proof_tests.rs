@@ -180,11 +180,12 @@ pub fn test_biconelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
     let r11 = prf.add_step(Justification(p("B"), RuleM::BiconditionalElim, vec![r9.clone(), r2.clone()], vec![]));
     let r12 = prf.add_premise(p("A <-> B <-> C <-> D"));
     let r13 = prf.add_step(Justification(p("A <-> C <-> D"), RuleM::BiconditionalElim, vec![r10.clone(), r12.clone()], vec![]));
+    let r14 = prf.add_step(Justification(p("C"), RuleM::BiconditionalElim, vec![r1.clone(), r9.clone()], vec![]));
     static BICON_COMMUTATIVITY: bool = false;
     if BICON_COMMUTATIVITY {
         (prf, vec![r3, r4, r11, r13], vec![r5, r7, r10])
     } else {
-        (prf, vec![r3, r11, r13], vec![r4, r5, r7, r10])
+        (prf, vec![r3, r11, r13, r14], vec![r4, r5, r7, r10])
     }
 }
 

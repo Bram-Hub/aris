@@ -364,10 +364,18 @@ impl RuleT for PrepositionalInference {
 
                 for (i, j) in [(0,1), (1,0)].iter().cloned() {
                     if let Expr::AssocBinop { symbol: ASymbol::Bicon, ref exprs } = prems[i] {
-                        if exprs.iter().find(|x| x == &&prems[j]).is_none() {
-                            return Err(DoesNotOccur(prems[j].clone(), prems[i].clone()));
+                        let mut s = HashSet::new();
+                        if let Expr::AssocBinop { symbol: ASymbol::Bicon, ref exprs } = prems[j] {
+                            s.extend(exprs.iter().cloned());
+                        } else {
+                            s.insert(prems[j].clone());
                         }
-                        let terms = exprs.iter().filter(|x| x != &&prems[j]).cloned().collect::<Vec<_>>();
+                        for prem in s.iter() {
+                            if exprs.iter().find(|x| x == &prem).is_none() {
+                                return Err(DoesNotOccur(prem.clone(), prems[i].clone()));
+                            }
+                        }
+                        let terms = exprs.iter().filter(|x| !s.contains(x)).cloned().collect::<Vec<_>>();
                         let expected = if terms.len() == 1 { terms[0].clone() } else { expression_builders::assocbinop(ASymbol::Bicon, &terms[..]) };
                         // TODO: maybe commutativity
                         if conclusion != expected {
