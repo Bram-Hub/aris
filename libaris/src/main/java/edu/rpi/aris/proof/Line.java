@@ -162,21 +162,22 @@ public class Line {
             if (p.expression == null) {
                 setStatusString("The expression at line " + (p.getLineNum() + 1) + " is invalid");
                 setStatus(Proof.Status.INVALID_CLAIM);
+//                if (!p.isAssumption || p.getSubProofLevel() != subProofLevel + 1)
                 return null;
             }
             if (p.isAssumption && p.getSubProofLevel() == subProofLevel + 1) {
                 ArrayList<Line> conclusions = proof.getSubProofConclusions(p, this);
-                Expression[] exprs = new Expression[conclusions.size()];
-                for (int j = 0; j < conclusions.size(); ++j) {
-                    conclusions.get(j).buildExpression();
-                    if (conclusions.get(j).expression == null) {
-                        setStatusString("The expression at line " + (p.getLineNum() + 1) + " is invalid");
+                ArrayList<Expression> exprList = new ArrayList<>();
+                for (Line conclusion : conclusions) {
+                    conclusion.buildExpression();
+                    if (conclusion.expression == null) {
+                        setStatusString("The expression at line " + (conclusion.getLineNum() + 1) + " is invalid");
                         setStatus(Proof.Status.INVALID_CLAIM);
-                        return null;
+                        continue;
                     }
-                    exprs[j] = conclusions.get(j).expression;
+                    exprList.add(conclusion.expression);
                 }
-                premises[i] = new Premise(p.expression, exprs);
+                premises[i] = new Premise(p.expression, exprList.toArray(new Expression[0]));
             } else {
                 premises[i] = new Premise(p.expression);
             }

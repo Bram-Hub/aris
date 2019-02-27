@@ -20,7 +20,7 @@
     <HBox fx:id="subProofIndent" alignment="BOTTOM_LEFT" />
     <VBox fx:id="textVBox" styleClass="text-vbox" HBox.hgrow="ALWAYS">
         <HBox alignment="CENTER" spacing="5.0" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
-         <Button fx:id="varBtn" mnemonicParsing="false">
+         <Button fx:id="varBtn" focusTraversable="false" mnemonicParsing="false">
             <graphic>
                <ImageView fitHeight="15.0" fitWidth="15.0" pickOnBounds="true" preserveRatio="true">
                   <image>
@@ -35,7 +35,7 @@
                <Insets left="3.0" />
             </HBox.margin>
          </Button>
-         <Label fx:id="varLbl">
+         <Label fx:id="varLbl" focusTraversable="false">
             <HBox.margin>
                <Insets left="3.0" />
             </HBox.margin></Label>
