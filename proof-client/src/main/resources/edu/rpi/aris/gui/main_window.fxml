@@ -1,9 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.*?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
-<BorderPane stylesheets="@main_window.css" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1">
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.TitledPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane stylesheets="@main_window.css" xmlns="http://javafx.com/javafx/8.0.172-ea" xmlns:fx="http://javafx.com/fxml/1">
     <center>
         <BorderPane fx:id="proofBorderPane">
             <bottom>
@@ -43,13 +52,18 @@
             <TitledPane fx:id="oprTitlePane" text="Operators">
                 <GridPane fx:id="operatorPane" />
             </TitledPane>
+         <TitledPane fx:id="constTitlePane" text="Constants">
+            <content>
+               <GridPane fx:id="constantPane" />
+            </content>
+         </TitledPane>
             <VBox fx:id="rulesPane" VBox.vgrow="ALWAYS" />
         </VBox>
     </right>
    <top>
       <HBox fx:id="descriptionBox" alignment="CENTER_LEFT" BorderPane.alignment="CENTER">
          <children>
-             <Label fx:id="arisAssignLbl" text="Aris Assign:"/>
+             <Label fx:id="arisAssignLbl" text="Aris Assign:" />
             <Label fx:id="descriptionText">
                <HBox.margin>
                   <Insets />
@@ -58,18 +72,18 @@
                   <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
                </padding>
             </Label>
-             <Separator visible="false" HBox.hgrow="ALWAYS"/>
+             <Separator visible="false" HBox.hgrow="ALWAYS" />
              <Button fx:id="uploadBtn" mnemonicParsing="false" onAction="#upload" text="Upload">
                <HBox.margin>
-                   <Insets/>
+                   <Insets />
                </HBox.margin>
             </Button>
          </children>
           <BorderPane.margin>
-              <Insets/>
+              <Insets />
           </BorderPane.margin>
           <padding>
-              <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
+              <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
           </padding>
       </HBox>
    </top>

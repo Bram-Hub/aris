@@ -10,6 +10,7 @@ import javafx.application.Platform;
 import javafx.event.Event;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
@@ -19,17 +20,18 @@ import javafx.scene.input.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Text;
 import org.apache.commons.lang3.Range;
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.HashSet;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 import java.util.function.UnaryOperator;
+import java.util.regex.Pattern;
 
 public class ProofLine implements LineChangeListener, LineInterface {
 
     static final String SELECT_STYLE = "highlight-select";
+    private static final Pattern constantPattern = Pattern.compile("[a-z][a-z0-9]*");
     private static final int SUB_PROOF_INDENT = 25;
     private static final Image SELECTED_IMAGE = new Image(ProofLine.class.getResourceAsStream("right_arrow.png"));
     private static final String HIGHLIGHT_STYLE = "highlight-premise";
@@ -46,9 +48,15 @@ public class ProofLine implements LineChangeListener, LineInterface {
     @FXML
     private TextField textField;
     @FXML
+    private TextField varText;
+    @FXML
     private Label ruleChoose;
     @FXML
     private Label numberLbl;
+    @FXML
+    private Label varLbl;
+    @FXML
+    private Button varBtn;
     @FXML
     private ImageView validImage;
     @FXML
@@ -93,7 +101,7 @@ public class ProofLine implements LineChangeListener, LineInterface {
                 });
             else {
                 caretPos = textField.getCaretPosition();
-                if (textField.isEditable())
+                if (textField.isEditable() && !varText.isVisible())
                     textField.requestFocus();
             }
         });
@@ -134,13 +142,57 @@ public class ProofLine implements LineChangeListener, LineInterface {
         window.selectedLineProperty().addListener((observable, oldValue, newValue) -> textField.setEditable(proofLine.getLineNum() == newValue.intValue() && isEditable()));
         textField.setText(proofLine.getExpressionString());
         textField.textProperty().addListener((observable, oldValue, newValue) -> proofLine.setExpressionString(newValue));
+        varLbl.managedProperty().bind(varLbl.visibleProperty());
+        varText.managedProperty().bind(varText.visibleProperty());
+        varBtn.managedProperty().bind(varBtn.visibleProperty());
+        varLbl.textProperty().bindBidirectional(varText.textProperty());
         if (proofLine.isUnderlined())
             textVBox.getStyleClass().add(UNDERLINE);
         if (proofLine.isAssumption()) {
             ruleChoose.setVisible(false);
             ruleChoose.setManaged(false);
-            if (proofLine.getSubProofLevel() != 0)
-                ((Region) textVBox.getChildren().get(0)).setPrefHeight(9);
+            if (proofLine.getSubProofLevel() == 0) {
+                varLbl.setVisible(false);
+                varText.setVisible(false);
+                varBtn.setVisible(false);
+            } else {
+                varLbl.visibleProperty().bind(varText.visibleProperty().not().and(varBtn.visibleProperty().not()));
+                varBtn.visibleProperty().bind(varText.visibleProperty().not().and(varText.textProperty().isEmpty()));
+                varText.setVisible(false);
+                varText.textProperty().addListener((ov, prevText, currText) -> {
+                    Platform.runLater(() -> {
+                        Text text = new Text(currText);
+                        text.setFont(varText.getFont());
+                        double width = text.getLayoutBounds().getWidth() + varText.getPadding().getLeft() + varText.getPadding().getRight() + 2d;
+                        varText.setPrefWidth(Math.max(width, 50));
+                        varText.positionCaret(varText.getCaretPosition());
+                    });
+                });
+                varText.focusedProperty().addListener((observable, oldValue, newValue) -> {
+                    if (newValue) {
+                        Platform.runLater(() -> {
+                            varText.deselect();
+                            varText.positionCaret(varText.textProperty().length().get());
+                        });
+                    } else {
+                        varText.setVisible(false);
+                        checkConstants();
+                    }
+
+                });
+                varBtn.setOnAction(e -> {
+                    varText.setVisible(true);
+                    varText.requestFocus();
+                });
+                varLbl.setOnMouseClicked(e -> {
+                    varText.setVisible(true);
+                    varText.requestFocus();
+                });
+            }
+        } else {
+            varLbl.setVisible(false);
+            varText.setVisible(false);
+            varBtn.setVisible(false);
         }
         String total = String.valueOf(window.numLines());
         String num = String.valueOf(proofLine.getLineNum() + 1);
@@ -153,6 +205,18 @@ public class ProofLine implements LineChangeListener, LineInterface {
         caretPos = textField.getText().length();
         selectedRule(proofLine.getSelectedRule());
         status(proofLine.getStatus());
+    }
+
+    private void checkConstants() {
+        String text = varText.getText();
+        String[] split = text.split(",");
+        TreeSet<String> constants = new TreeSet<>(Comparator.naturalOrder());
+        for (String s : split) {
+            s = s.trim();
+            if (constantPattern.matcher(s).matches())
+                constants.add(s);
+        }
+        varText.setText(StringUtils.join(constants, ','));
     }
 
     private boolean isEditable() {
@@ -217,6 +281,14 @@ public class ProofLine implements LineChangeListener, LineInterface {
 
     public void insertText(String str) {
         textField.insertText(textField.getCaretPosition(), str);
+    }
+
+    public void insertConstant(char constant) {
+        if (isAssumption() && getModel().getSubProofLevel() > 0)
+            Platform.runLater(() -> {
+                varText.setText(varText.getText() + "," + constant);
+                checkConstants();
+            });
     }
 
     private void requestFocus(MouseEvent e) {

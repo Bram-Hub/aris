@@ -74,9 +74,13 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     @FXML
     private GridPane operatorPane;
     @FXML
+    private GridPane constantPane;
+    @FXML
     private VBox rulesPane;
     @FXML
     private TitledPane oprTitlePane;
+    @FXML
+    private TitledPane constTitlePane;
     @FXML
     private BorderPane proofBorderPane;
     @FXML
@@ -708,6 +712,30 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
             GridPane.setHgrow(btn, Priority.ALWAYS);
             GridPane.setFillWidth(btn, true);
             btn.setOnAction(actionEvent -> insertString(sym));
+        }
+        constTitlePane.setOnMouseClicked(mouseEvent -> {
+            if (mouseEvent.getEventType() == MouseEvent.MOUSE_CLICKED)
+                constTitlePane.setExpanded(!constTitlePane.isExpanded());
+        });
+        constantPane.setOnMouseClicked(Event::consume);
+        constantPane.setPadding(new Insets(3));
+        constantPane.setVgap(3);
+        constantPane.setHgap(3);
+        int constant = 'a';
+        for (int i = 0; i < 12; i++) {
+            Button btn = new Button(Character.toString((char) constant));
+            constantPane.add(btn, i % 6, i / 6);
+            btn.setMaxWidth(Double.MAX_VALUE);
+            GridPane.setHgrow(btn, Priority.ALWAYS);
+            GridPane.setFillWidth(btn, true);
+            int finalConstant = constant;
+            btn.setOnAction(actionEvent -> {
+                if (selectedLine.get() > -1) {
+                    ProofLine line = proofLines.get(selectedLine.get());
+                    line.insertConstant((char) finalConstant);
+                }
+            });
+            constant++;
         }
     }
 
