@@ -398,13 +398,27 @@ impl RuleT for PrepositionalInference {
                             g.add_edge(slab[&prem], slab[&e], ());
                         }
                     }
-                    let rslab = slab.into_iter().map(|(k, v)| (v, k)).collect::<HashMap<_,_>>();
+                    let rslab = slab.clone().into_iter().map(|(k, v)| (v, k)).collect::<HashMap<_,_>>();
                     let sccs = tarjan_scc(&g).iter().map(|x| x.iter().map(|i| rslab[i].clone()).collect()).collect::<Vec<HashSet<_>>>();
                     println!("sccs: {:?}", sccs);
                     if sccs.iter().any(|s| exprs.iter().all(|e| s.contains(e))) {
                         Ok(())
                     } else {
-                        Err(Other(format!("Not all elements of conclusion mutually implied by premises.")))
+                        let mut errstring = format!("Not all elements of the conclusion are mutually implied by the premises.");
+                        if let Some(e) = exprs.iter().find(|e| !sccs.iter().any(|s| s.contains(e))) {
+                            errstring += &format!("\nThe expression {} occurs in the conclusion, but not in any of the premises.", e);
+                        } else {
+                            exprs.iter().any(|e1| exprs.iter().any(|e2| {
+                                for i in 0..sccs.len() {
+                                    if sccs[i].contains(e2) && !sccs[i..].iter().any(|s| s.contains(e1)) {
+                                        errstring += &format!("\nThe expression {} is unreachable from {} by the premises.", e2, e1);
+                                        return true;
+                                    }
+                                }
+                                false
+                            }));
+                        }
+                        Err(Other(errstring))
                     }
                 } else {
                     return Err(ConclusionOfWrongForm(expression_builders::assocplaceholder(ASymbol::Bicon)));

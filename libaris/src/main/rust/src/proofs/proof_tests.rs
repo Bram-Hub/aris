@@ -294,5 +294,5 @@ pub fn test_biconintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Refere
         sub2.add_step(Justification(p("Q"), RuleM::Reit, vec![], vec![]));
     });
     let r19 = prf.add_step(Justification(p("P <-> Q"), RuleM::BiconditionalIntro, vec![r3.clone()], vec![r18.clone()]));
-    (prf, vec![r7, r8, r9, r11, r16], vec![r12, r13, r17])
+    (prf, vec![r7, r8, r9, r11, r16, r19], vec![r12, r13, r17])
 }
