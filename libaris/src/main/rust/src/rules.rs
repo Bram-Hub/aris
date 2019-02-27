@@ -1,6 +1,8 @@
 use super::*;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use frunk::Coproduct::{self, Inl, Inr};
+use petgraph::algo::tarjan_scc;
+use petgraph::graphmap::DiGraphMap;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PrepositionalInference {
@@ -162,8 +164,8 @@ impl RuleT for PrepositionalInference {
         match self {
             Reit | AndElim | OrIntro | OrElim | NotElim | ContradictionElim => Some(1),
             ContradictionIntro | ImpElim | BiconditionalElim => Some(2),
-            NotIntro | ImpIntro | BiconditionalIntro => Some(0),
-            AndIntro => None, // AndIntro can have arbitrarily many conjuncts in one application
+            NotIntro | ImpIntro => Some(0),
+            AndIntro | BiconditionalIntro => None, // AndIntro can have arbitrarily many conjuncts in one application
         }
     }
     fn num_subdeps(&self) -> Option<usize> {
@@ -356,7 +358,58 @@ impl RuleT for PrepositionalInference {
                     return Err(DepOfWrongForm(prem.clone(), Expr::Bottom));
                 }
             },
-            BiconditionalIntro => unimplemented!(),
+            BiconditionalIntro => {
+                if let Expr::AssocBinop { symbol: ASymbol::Bicon, ref exprs } = conclusion {
+                    let prems = deps.into_iter().map(|r| p.lookup_expr_or_die(r)).collect::<Result<Vec<Expr>,_>>()?;
+                    let sproofs = sdeps.into_iter().map(|r| p.lookup_subproof_or_die(r)).collect::<Result<Vec<_>,_>>()?;
+                    let mut slab = HashMap::new();
+                    let mut counter = 0;
+                    let mut next: &mut FnMut()->_ = &mut || { counter += 1; counter };
+                    let mut g = DiGraphMap::new();
+                    for prem in prems.iter() {
+                        match prem {
+                            Expr::AssocBinop { symbol: ASymbol::Bicon, ref exprs } => {
+                                for e1 in exprs.iter() {
+                                    for e2 in exprs.iter() {
+                                        slab.entry(e1.clone()).or_insert_with(|| next());
+                                        slab.entry(e2.clone()).or_insert_with(|| next());
+                                        g.add_edge(slab[e1], slab[e2], ());
+                                    }
+                                }
+                            },
+                            Expr::Binop { symbol: BSymbol::Implies, ref left, ref right } => {
+                                slab.entry(*left.clone()).or_insert_with(|| next());
+                                slab.entry(*right.clone()).or_insert_with(|| next());
+                                g.add_edge(slab[left], slab[right], ());
+                            },
+                            _ => return Err(OneOf(vec![
+                                DepOfWrongForm(prem.clone(), expression_builders::assocplaceholder(ASymbol::Bicon)),
+                                DepOfWrongForm(prem.clone(), expression_builders::binopplaceholder(BSymbol::Implies)),
+                            ])),
+                        }
+                    }
+                    for sproof in sproofs.iter() {
+                        assert_eq!(sproof.premises().len(), 1);
+                        let prem = sproof.lookup_expr_or_die(sproof.premises()[0].clone())?;
+                        slab.entry(prem.clone()).or_insert_with(|| next());
+                        for r in sproof.premises().iter().cloned().chain(sproof.lines().iter().filter_map(|x| Coproduct::uninject::<P::Reference,_>(x.clone()).ok())) {
+                            let e = sproof.lookup_expr_or_die(r)?.clone();
+                            slab.entry(e.clone()).or_insert_with(|| next());
+                            g.add_edge(slab[&prem], slab[&e], ());
+                        }
+                    }
+                    let rslab = slab.into_iter().map(|(k, v)| (v, k)).collect::<HashMap<_,_>>();
+                    let sccs = tarjan_scc(&g).iter().map(|x| x.iter().map(|i| rslab[i].clone()).collect()).collect::<Vec<HashSet<_>>>();
+                    println!("sccs: {:?}", sccs);
+                    if sccs.iter().any(|s| exprs.iter().all(|e| s.contains(e))) {
+                        Ok(())
+                    } else {
+                        Err(Other(format!("Not all elements of conclusion mutually implied by premises.")))
+                    }
+                } else {
+                    return Err(ConclusionOfWrongForm(expression_builders::assocplaceholder(ASymbol::Bicon)));
+                }
+            },
             BiconditionalElim => {
                 let mut prems = vec![];
                 prems.push(p.lookup_expr_or_die(deps[0].clone())?);
@@ -492,6 +545,7 @@ pub enum ProofCheckError<R, S> {
     ConclusionOfWrongForm(Expr),
     DoesNotOccur(Expr, Expr),
     DepDoesNotExist(Expr, bool),
+    OneOf(Vec<ProofCheckError<R, S>>),
     Other(String),
 }
 
@@ -502,12 +556,16 @@ impl<R: std::fmt::Debug, S: std::fmt::Debug> std::fmt::Display for ProofCheckErr
             LineDoesNotExist(r) => write!(f, "The referenced line {:?} does not exist.", r),
             SubproofDoesNotExist(s) => write!(f, "The referenced subproof {:?} does not exist.", s),
             ReferencesLaterLine(li, i) => write!(f, "The dependency on line {} is after the line it occurs on ({}).", li.line, i),
-            IncorrectDepCount(deps, n) => write!(f, "Too {} dependencies (expected: {}, provided: {})", if deps.len() > *n { "many" } else { "few" }, n, deps.len()),
-            IncorrectSubDepCount(sdeps, n) => write!(f, "Too {} subproof dependencies (expected: {}, provided: {})", if sdeps.len() > *n { "many" } else { "few" }, n, sdeps.len()),
-            DepOfWrongForm(x, y) => write!(f, "A dependency ({}) is of the wrong form, expected {}", x, y),
-            ConclusionOfWrongForm(kind) => write!(f, "The conclusion is of the wrong form, expected {}", kind),
-            DoesNotOccur(x, y) => write!(f, "{} does not occur in {}", x, y),
+            IncorrectDepCount(deps, n) => write!(f, "Too {} dependencies (expected: {}, provided: {}).", if deps.len() > *n { "many" } else { "few" }, n, deps.len()),
+            IncorrectSubDepCount(sdeps, n) => write!(f, "Too {} subproof dependencies (expected: {}, provided: {}).", if sdeps.len() > *n { "many" } else { "few" }, n, sdeps.len()),
+            DepOfWrongForm(x, y) => write!(f, "A dependency ({}) is of the wrong form, expected {}.", x, y),
+            ConclusionOfWrongForm(kind) => write!(f, "The conclusion is of the wrong form, expected {}.", kind),
+            DoesNotOccur(x, y) => write!(f, "{} does not occur in {}.", x, y),
             DepDoesNotExist(x, approx) => write!(f, "{}{} is required as a dependency, but it does not exist.", if *approx { "Something of the shape " } else { "" }, x),
+            OneOf(v) => {
+                write!(f, "One of the following requirements was not met:\n")?;
+                v.iter().map(|e| write!(f, "{}\n", e)).collect::<Result<_,_>>().and_then(|()| Ok(()))
+            }
             Other(msg) => write!(f, "{}", msg),
         }
     }

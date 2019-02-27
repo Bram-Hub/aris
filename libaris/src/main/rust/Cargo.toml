@@ -8,6 +8,7 @@ authors = ["Avi Weinstock <aweinstock314@gmail.com>"]
 frunk = "0.2.2"
 jni = "0.10.2"
 nom = "4.1.1"
+petgraph = "0.4.13"
 
 [build-dependencies]
 cbindgen = "*"

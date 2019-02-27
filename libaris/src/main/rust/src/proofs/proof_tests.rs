@@ -27,6 +27,7 @@ fn test_rules<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::Subproo
 
 fn test_rules_with_subproofs<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq, P::Subproof: Debug {
     run_test::<P, _>(test_biconelim);
+    run_test::<P, _>(test_biconintro);
     run_test::<P, _>(test_impintro);
     run_test::<P, _>(test_notintro);
     run_test::<P, _>(test_orelim);
@@ -251,4 +252,47 @@ pub fn test_orelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
     let r12 = prf.add_step(Justification(p("D"), RuleM::OrElim, vec![r1.clone()], vec![r4.clone(), r7.clone()]));
     let r13 = prf.add_step(Justification(p("C"), RuleM::OrElim, vec![r1.clone()], vec![r4.clone(), r10.clone()]));
     (prf, vec![r11], vec![r12, r13])
+}
+
+
+pub fn test_biconintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Reference>) where P::Subproof: Debug {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let mut prf = P::new();
+    let r1 = prf.add_premise(p("P -> Q"));
+    let r2 = prf.add_premise(p("Q -> R"));
+    let r3 = prf.add_premise(p("Q -> P"));
+    let r4 = prf.add_premise(p("R -> Q"));
+    let r5 = prf.add_premise(p("R -> P"));
+    let r6 = prf.add_premise(p("A -> A"));
+    let r7 = prf.add_step(Justification(p("A <-> A <-> A <-> A <-> A"), RuleM::BiconditionalIntro, vec![r6.clone()], vec![]));
+    let r8 = prf.add_step(Justification(p("P <-> Q <-> R"), RuleM::BiconditionalIntro, vec![r1.clone(), r2.clone(), r3.clone(), r4.clone()], vec![]));
+    let r9 = prf.add_step(Justification(p("P <-> Q <-> R"), RuleM::BiconditionalIntro, vec![r1.clone(), r2.clone(), r5.clone()], vec![]));
+    let r10 = prf.add_subproof();
+    prf.with_mut_subproof(&r10, |sub1| {
+        sub1.add_premise(p("B"));
+    });
+    let r11 = prf.add_step(Justification(p("B <-> B <-> B"), RuleM::BiconditionalIntro, vec![], vec![r10.clone()]));
+    let r12 = prf.add_step(Justification(p("P <-> Q <-> R <-> S"), RuleM::BiconditionalIntro, vec![r1.clone(), r2.clone(), r3.clone(), r4.clone()], vec![]));
+    let r13 = prf.add_step(Justification(p("P <-> Q <-> R <-> S"), RuleM::BiconditionalIntro, vec![r1.clone(), r2.clone(), r5.clone()], vec![]));
+    let r14 = prf.add_subproof();
+    prf.with_mut_subproof(&r14, |sub2| {
+        sub2.add_premise(p("A"));
+        sub2.add_step(Justification(p("B"), RuleM::Reit, vec![], vec![]));
+        sub2.add_step(Justification(p("C"), RuleM::Reit, vec![], vec![]));
+    });
+    let r15 = prf.add_subproof();
+    prf.with_mut_subproof(&r15, |sub2| {
+        sub2.add_premise(p("B"));
+        sub2.add_step(Justification(p("A"), RuleM::Reit, vec![], vec![]));
+        sub2.add_step(Justification(p("C"), RuleM::Reit, vec![], vec![]));
+    });
+    let r16 = prf.add_step(Justification(p("A <-> B"), RuleM::BiconditionalIntro, vec![], vec![r14.clone(), r15.clone()]));
+    let r17 = prf.add_step(Justification(p("A <-> C"), RuleM::BiconditionalIntro, vec![], vec![r14.clone(), r15.clone()]));
+    let r18 = prf.add_subproof();
+    prf.with_mut_subproof(&r18, |sub2| {
+        sub2.add_premise(p("P"));
+        sub2.add_step(Justification(p("Q"), RuleM::Reit, vec![], vec![]));
+    });
+    let r19 = prf.add_step(Justification(p("P <-> Q"), RuleM::BiconditionalIntro, vec![r3.clone()], vec![r18.clone()]));
+    (prf, vec![r7, r8, r9, r11, r16], vec![r12, r13, r17])
 }

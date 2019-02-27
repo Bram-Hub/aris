@@ -1,6 +1,7 @@
 #[macro_use] extern crate frunk;
 #[macro_use] extern crate nom;
 extern crate jni;
+extern crate petgraph;
 
 pub mod parser;
 pub mod expression;
