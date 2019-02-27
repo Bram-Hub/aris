@@ -152,7 +152,7 @@ public class SaveManager implements ProblemConverter<LibAris> {
 
         result = new StreamResult(out);
         transformer.transform(src, result);
-
+        proof.saved();
         return true;
     }
 
@@ -193,6 +193,12 @@ public class SaveManager implements ProblemConverter<LibAris> {
                     Element raw = doc.createElement("raw");
                     raw.appendChild(doc.createTextNode(line.getExpressionString()));
                     assumption.appendChild(raw);
+                    TreeSet<String> constants = line.getConstants();
+                    if (constants.size() > 0) {
+                        Element c = doc.createElement("constants");
+                        c.appendChild(doc.createTextNode(StringUtils.join(constants, ",")));
+                        assumption.appendChild(c);
+                    }
                     prf.appendChild(assumption);
                     ++lineNum;
                 }
@@ -363,6 +369,15 @@ public class SaveManager implements ProblemConverter<LibAris> {
             }
             Line line = indent == 0 ? proof.addPremise() : proof.addLine(lineNum, true, indent);
             line.setExpressionString(raw, true);
+            if (indent > 0) {
+                try {
+                    String constantStr = getElementByTag(assumption, "constants").getTextContent();
+                    String[] split = constantStr.split(",");
+                    for (String s : split)
+                        line.getConstants().add(s);
+                } catch (IOException ignored) {
+                }
+            }
             ++lineNum;
         }
         ArrayList<Element> steps = getElementsByTag(element, "step");

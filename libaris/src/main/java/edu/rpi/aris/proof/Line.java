@@ -4,10 +4,7 @@ import edu.rpi.aris.ast.Expression;
 import edu.rpi.aris.rules.RuleList;
 import org.apache.commons.lang3.Range;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 
 public class Line {
 
@@ -21,6 +18,7 @@ public class Line {
     private HashSet<Runnable> expressionChangeListeners = new HashSet<>();
     private int lineNumber = -1;
     private HashSet<Line> premises = new HashSet<>();
+    private TreeSet<String> constants = new TreeSet<>(Comparator.naturalOrder());
     private int subProofLevel;
     private RuleList selectedRule = null;
     private Proof.Status status = Proof.Status.NONE;
@@ -338,5 +336,9 @@ public class Line {
             return false;
         else
             return expression.equals(l.expression);
+    }
+
+    public TreeSet<String> getConstants() {
+        return constants;
     }
 }

@@ -24,7 +24,10 @@ import javafx.scene.text.Text;
 import org.apache.commons.lang3.Range;
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.TreeSet;
 import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
 
@@ -205,12 +208,15 @@ public class ProofLine implements LineChangeListener, LineInterface {
         caretPos = textField.getText().length();
         selectedRule(proofLine.getSelectedRule());
         status(proofLine.getStatus());
+        varText.setText(StringUtils.join(proofLine.getConstants(), ","));
+        checkConstants();
     }
 
     private void checkConstants() {
         String text = varText.getText();
         String[] split = text.split(",");
-        TreeSet<String> constants = new TreeSet<>(Comparator.naturalOrder());
+        TreeSet<String> constants = proofLine.getConstants();
+        constants.clear();
         for (String s : split) {
             s = s.trim();
             if (constantPattern.matcher(s).matches())

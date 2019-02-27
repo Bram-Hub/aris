@@ -7,6 +7,7 @@ import edu.rpi.aris.rules.RuleList;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.DataFormat;
 import javafx.util.Pair;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -193,7 +194,7 @@ public class CopyManager {
 
     private PasteLine parsePasteLine(String line, int parentLvl) {
         String[] split = line.split("\\|");
-        if (split.length != 5)
+        if (split.length != 6)
             return null;
         try {
             boolean isAssumption = Boolean.parseBoolean(split[0]);
@@ -202,7 +203,7 @@ public class CopyManager {
                 return null;
             String expr = URLDecoder.decode(split[2], "UTF-8");
             RuleList rule = split[3].equals("null") ? null : RuleList.valueOf(split[3]);
-            return new PasteLine(isAssumption, lvl, expr, rule, split[4].equals("null") ? null : Arrays.asList(split[4].split(",")));
+            return new PasteLine(isAssumption, lvl, expr, rule, split[4].equals("null") ? null : Arrays.asList(split[4].split(",")), split[5].equals("+") ? "" : split[5]);
         } catch (UnsupportedEncodingException | IllegalArgumentException e) {
             log.error("Failed to parse paste data", e);
             return null;
@@ -242,7 +243,8 @@ public class CopyManager {
                     + (line.getSubProofLevel() - rootIndent) + "|"
                     + URLEncoder.encode(line.getExpressionString(), "UTF-8") + "|"
                     + line.getSelectedRule() + "|"
-                    + premises.toString();
+                    + premises.toString() + "|"
+                    + (line.getConstants().size() == 0 ? "+" : StringUtils.join(line.getConstants(), ","));
         } catch (UnsupportedEncodingException e) {
             log.error("Failed to convert ProofLine to string", e);
             return null;
@@ -277,6 +279,7 @@ public class CopyManager {
         Proof proof = window.getProof();
         Line line = proof.addLine(realLineNum, pasteLine.isAssumption, baseIndent + pasteLine.lvl);
         line.setExpressionString(pasteLine.expr);
+        line.getConstants().addAll(Arrays.asList(pasteLine.constStr.split(",")));
         if (!pasteLine.isAssumption)
             line.setSelectedRule(pasteLine.rule);
         for (String pStr : pasteLine.prems) {
@@ -374,12 +377,14 @@ public class CopyManager {
         final String expr;
         final RuleList rule;
         final ArrayList<String> prems = new ArrayList<>();
+        final String constStr;
 
-        public PasteLine(boolean isAssumption, int lvl, String expr, RuleList rule, Collection<String> prems) {
+        public PasteLine(boolean isAssumption, int lvl, String expr, RuleList rule, Collection<String> prems, String constStr) {
             this.isAssumption = isAssumption;
             this.lvl = lvl;
             this.expr = expr;
             this.rule = rule;
+            this.constStr = constStr;
             if (prems != null)
                 this.prems.addAll(prems);
         }

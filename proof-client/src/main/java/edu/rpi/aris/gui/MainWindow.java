@@ -466,11 +466,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
     private boolean saveProof(boolean saveAs) {
         if (!saveAs && moduleOptions != null) {
             if (moduleOptions.arisHandleDefaultSave() && moduleUIListener != null) {
-                if (moduleUIListener.saveProblemLocally()) {
-                    proof.saved();
-                    return true;
-                } else
-                    return false;
+                return moduleUIListener.saveProblemLocally();
             } else if (!moduleOptions.allowDefaultSave()) {
                 saveAs = true;
             }
