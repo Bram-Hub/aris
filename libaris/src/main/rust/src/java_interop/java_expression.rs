@@ -52,6 +52,10 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
             let operand = env.get_field(obj, "operand", "Ledu/rpi/aris/ast/Expression;")?.l()?;
             Ok(not(jobject_to_expr(env, operand)?))
         },
+        "edu.rpi.aris.ast.Expression$VarExpression" => {
+            let name = jobject_to_string(env, env.get_field(obj, "name", "Ljava/lang/String;")?.l()?)?;
+            Ok(var(&name))
+        },
         "edu.rpi.aris.ast.Expression$ImplicationExpression" => handle_binop(BSymbol::Implies),
         "edu.rpi.aris.ast.Expression$AddExpression" => handle_binop(BSymbol::Plus),
         "edu.rpi.aris.ast.Expression$MultExpression" => handle_binop(BSymbol::Mult),
@@ -61,11 +65,11 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
         "edu.rpi.aris.ast.Expression$ForallExpression" => handle_quantifier(QSymbol::Forall),
         "edu.rpi.aris.ast.Expression$ExistsExpression" => handle_quantifier(QSymbol::Exists),
         "edu.rpi.aris.ast.Expression$BottomExpression" => Ok(Expr::Bottom),
-        "edu.rpi.aris.ast.Expression$PredicateExpression" => {
-            let name = jobject_to_string(env, env.get_field(obj, "name", "Ljava/lang/String;")?.l()?)?;
+        "edu.rpi.aris.ast.Expression$ApplyExpression" => {
+            let func = jobject_to_expr(env, env.get_field(obj, "func", "Ledu/rpi/aris/ast/Expression;")?.l()?)?;
             let mut args = vec![];
             java_iterator_for_each(env, env.get_field(obj, "args", "Ljava/util/List;")?.l()?, |arg| { Ok(args.push(jobject_to_expr(env, arg)?)) })?;
-            Ok(Expr::Predicate { name, args })
+            Ok(expression_builders::apply(func, &args[..]))
         },
         _ => Err(jni::errors::Error::from_kind(jni::errors::ErrorKind::Msg(format!("jobject_to_expr: unknown class {}", name)))),
     }
@@ -98,8 +102,9 @@ pub fn expr_to_jobject<'a>(env: &'a JNIEnv, e: Expr) -> jni::errors::Result<JObj
     let rec = |e: Expr| -> jni::errors::Result<JValue> { Ok(JObject::from(expr_to_jobject(env, e)?).into()) };
     match e {
         Expr::Bottom => (),
-        Expr::Predicate { name, args } => {
-            env.set_field(obj, "name", "Ljava/lang/String;", jv(&name)?)?;
+        Expr::Var { name } => env.set_field(obj, "name", "Ljava/lang/String;", jv(&name)?)?,
+        Expr::Apply { func, args } => {
+            env.set_field(obj, "func", "Ledu/rpi/aris/ast/Expression;", rec(*func)?)?;
             let list = env.get_field(obj, "args", "Ljava/util/List;")?.l()?;
             for arg in args {
                 env.call_method(list, "add", "(Ljava/lang/Object;)Z", &[rec(arg)?])?;
@@ -166,7 +171,8 @@ impl HasClass for Expr {
     fn get_class(&self) -> &'static str {
         match self {
             Expr::Bottom => "Ledu/rpi/aris/ast/Expression$BottomExpression;",
-            Expr::Predicate { .. } => "Ledu/rpi/aris/ast/Expression$PredicateExpression;",
+            Expr::Var { .. } => "Ledu/rpi/aris/ast/Expression$VarExpression;",
+            Expr::Apply { .. } => "Ledu/rpi/aris/ast/Expression$ApplyExpression;",
             Expr::Unop { symbol, .. } => symbol.get_class(),
             Expr::Binop { symbol, .. } => symbol.get_class(),
             Expr::AssocBinop { symbol, .. } => symbol.get_class(),

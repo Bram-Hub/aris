@@ -34,7 +34,8 @@ typedef struct Vec_String Vec_String;
 
 typedef enum {
   Bottom,
-  Predicate,
+  Var,
+  Apply,
   Unop,
   Binop,
   AssocBinop,
@@ -43,8 +44,12 @@ typedef enum {
 
 typedef struct {
   String name;
+} Var_Body;
+
+typedef struct {
+  Box_Expr func;
   Vec_Expr args;
-} Predicate_Body;
+} Apply_Body;
 
 typedef struct {
   USymbol symbol;
@@ -71,7 +76,8 @@ typedef struct {
 typedef struct {
   Expr_Tag tag;
   union {
-    Predicate_Body predicate;
+    Var_Body var;
+    Apply_Body apply;
     Unop_Body unop;
     Binop_Body binop;
     AssocBinop_Body assoc_binop;

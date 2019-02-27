@@ -6,7 +6,8 @@ import java.util.*;
 public interface ASTVisitor<T> {
     public T visitExpression(Expression e);
     public T visitBottomExpression(BottomExpression e);
-    public T visitPredicateExpression(PredicateExpression e);
+    public T visitVarExpression(VarExpression e);
+    public T visitApplyExpression(ApplyExpression e);
     public T visitUnaryExpression(UnaryExpression e);
     public T visitNotExpression(NotExpression e);
     public T visitBinaryExpression(BinaryExpression e);

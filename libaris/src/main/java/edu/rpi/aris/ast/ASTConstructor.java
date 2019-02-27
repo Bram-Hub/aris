@@ -42,8 +42,10 @@ public class ASTConstructor extends ParseExpressionBaseVisitor<Expression> imple
 	//@Override public Expression visitMain(ParseExpressionParser.MainContext ctx) { return null; }
 	@Override public Expression visitPredicate(ParseExpressionParser.PredicateContext ctx) {
         // System.out.printf("visitPredicate %d\n", ctx.getAltNumber());
-        PredicateExpression pe = new PredicateExpression();
-        pe.name = ctx.VARIABLE().getText();
+        ApplyExpression pe = new ApplyExpression();
+        VarExpression func = new VarExpression();
+        func.name = ctx.VARIABLE().getText();
+        pe.func = func;
         assert(pred_args == null); // this shouldn't be reentrantly invoked
         if(ctx.getAltNumber() == 2) {
             pred_args = new ArrayList();
@@ -58,8 +60,10 @@ public class ASTConstructor extends ParseExpressionBaseVisitor<Expression> imple
 	@Override public Expression visitArg_list(ParseExpressionParser.Arg_listContext ctx) {
         // System.out.printf("visitArg_list %d\n", ctx.getAltNumber());
         visitChildren(ctx);
-        PredicateExpression pe = new PredicateExpression();
-        pe.name = ctx.VARIABLE().getText();
+        ApplyExpression pe = new ApplyExpression();
+        VarExpression func = new VarExpression();
+        func.name = ctx.VARIABLE().getText();
+        pe.func = func;
         pe.args = new ArrayList();
         pred_args.add(0, pe);
         return null;

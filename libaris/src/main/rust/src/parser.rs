@@ -23,8 +23,8 @@ named!(bottom<&str, Expr>, do_parse!(alt!(tag!("_|_") | tag!("⊥")) >> (Expr::B
 named!(notterm<&str, Expr>, do_parse!(alt!(tag!("~") | tag!("¬")) >> e: paren_expr >> (Expr::Unop { symbol: USymbol::Not, operand: Box::new(e) })));
 
 named!(predicate<&str, Expr>, alt!(
-    do_parse!(space >> name: variable >> space >> tag!("(") >> space >> args: separated_list!(do_parse!(space >> tag!(",") >> space >> (())), expr) >> tag!(")") >> (Expr::Predicate { name, args })) |
-    do_parse!(space >> name: variable >> space >> (Expr::Predicate { name, args: vec![]}))
+    do_parse!(space >> name: variable >> space >> tag!("(") >> space >> args: separated_list!(do_parse!(space >> tag!(",") >> space >> (())), expr) >> tag!(")") >> (Expr::Apply { func: Box::new(Expr::Var { name }), args })) |
+    do_parse!(space >> name: variable >> space >> (Expr::Var { name }))
     ));
 
 named!(forallQuantifier<&str, QSymbol>, do_parse!(alt!(tag!("forall ") | tag!("∀")) >> (QSymbol::Forall)));

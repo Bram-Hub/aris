@@ -14,10 +14,14 @@ public class Expression {
 
     public static class BottomExpression extends Expression {}
 
-    public static class PredicateExpression extends Expression {
+    public static class VarExpression extends Expression {
         public String name;
+    }
+
+    public static class ApplyExpression extends Expression {
+        public Expression func;
         public List<Expression> args;
-        PredicateExpression() { name = null; args = new ArrayList(); }
+        ApplyExpression() { func = null; args = new ArrayList(); }
     }
 
     public static abstract class UnaryExpression extends Expression {

@@ -18,7 +18,8 @@ pub enum QSymbol { Forall, Exists }
 #[repr(C)]
 pub enum Expr {
     Bottom,
-    Predicate { name: String, args: Vec<Expr> },
+    Var { name: String },
+    Apply { func: Box<Expr>, args: Vec<Expr> },
     Unop { symbol: USymbol, operand: Box<Expr> },
     Binop { symbol: BSymbol, left: Box<Expr>, right: Box<Expr> },
     AssocBinop { symbol: ASymbol, exprs: Vec<Expr> },
@@ -65,7 +66,8 @@ impl std::fmt::Display for Expr {
         use Expr::*;
         match self {
             Bottom => write!(f, "⊥"),
-            Predicate { name, args } => { write!(f, "{}", name)?; if args.len() > 0 { write!(f, "({})", args.iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join(", "))? }; Ok(()) }
+            Var { name } => write!(f, "{}", name),
+            Apply { func, args } => { write!(f, "{}", func)?; if args.len() > 0 { write!(f, "({})", args.iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join(", "))? }; Ok(()) }
             Unop { symbol, operand } => write!(f, "{}{}", symbol, operand),
             Binop { symbol, left, right } => write!(f, "({} {} {})", left, symbol, right),
             AssocBinop { symbol, exprs } => write!(f, "({})", exprs.iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join(&format!(" {} ", symbol))),
@@ -78,7 +80,8 @@ pub fn freevars(e: &Expr) -> HashSet<String> {
     let mut r = HashSet::new();
     match e {
         Expr::Bottom => (),
-        Expr::Predicate { name, args } => { r.insert(name.clone()); for s in args.iter().map(|x| freevars(x)) { r.extend(s); } },
+        Expr::Var { name } => { r.insert(name.clone()); }
+        Expr::Apply { func, args } => { r.extend(freevars(func)); for s in args.iter().map(|x| freevars(x)) { r.extend(s); } },
         Expr::Unop { operand, .. } => { r.extend(freevars(operand)); },
         Expr::Binop { left, right, .. } => { r.extend(freevars(left)); r.extend(freevars(right)); },
         Expr::AssocBinop { exprs, .. } => { for expr in exprs.iter() { r.extend(freevars(expr)); } }
@@ -100,13 +103,8 @@ pub fn gensym(orig: &str, avoid: &HashSet<String>) -> String {
 pub fn subst(e: &Expr, to_replace: &str, with: Expr) -> Expr {
     match e {
         Expr::Bottom => Expr::Bottom,
-        Expr::Predicate { ref name, ref args } => {
-            if name == to_replace {
-                with // TODO: seperate predicate and variable ASTs? this is wrong for second-order logic
-            } else {
-                Expr::Predicate { name: name.clone(), args: args.iter().map(|e2| subst(e2, to_replace, with.clone())).collect() }
-            }
-        },
+        Expr::Var { ref name } => if name == to_replace { with } else { Expr::Var { name: name.clone() } },
+        Expr::Apply { ref func, ref args } => Expr::Apply { func: Box::new(subst(func, to_replace, with.clone())), args: args.iter().map(|e2| subst(e2, to_replace, with.clone())).collect() },
         Expr::Unop { symbol, operand } => Expr::Unop { symbol: symbol.clone(), operand: Box::new(subst(operand, to_replace, with)) },
         Expr::Binop { symbol, left, right } => Expr::Binop { symbol: symbol.clone(), left: Box::new(subst(left, to_replace, with.clone())), right: Box::new(subst(right, to_replace, with)) },
         Expr::AssocBinop { symbol, exprs } => Expr::AssocBinop { symbol: symbol.clone(), exprs: exprs.iter().map(|e2| subst(e2, to_replace, with.clone())).collect() },
@@ -138,13 +136,15 @@ fn test_subst() {
 
 pub mod expression_builders {
     use super::{Expr, USymbol, BSymbol, ASymbol, QSymbol};
-    pub fn predicate(name: &str, args: &[&str]) -> Expr { Expr::Predicate { name: name.into(), args: args.iter().map(|&x| var(x)).collect() } }
+    pub fn var(name: &str) -> Expr { Expr::Var { name: name.into() } }
+    pub fn apply(func: Expr, args: &[Expr]) -> Expr { Expr::Apply { func: Box::new(func), args: args.iter().cloned().collect() } }
+    pub fn predicate(name: &str, args: &[&str]) -> Expr { apply(var(name), &args.iter().map(|&x| var(x)).collect::<Vec<_>>()[..]) }
     pub fn not(expr: Expr) -> Expr { Expr::Unop { symbol: USymbol::Not, operand: Box::new(expr) } }
-    pub fn var(name: &str) -> Expr { predicate(name, &[]) }
     pub fn binop(symbol: BSymbol, l: Expr, r: Expr) -> Expr { Expr::Binop { symbol, left: Box::new(l), right: Box::new(r) } }
     pub fn binopplaceholder(symbol: BSymbol) -> Expr { binop(symbol, var("_"), var("_")) }
     pub fn assocbinop(symbol: ASymbol, exprs: &[Expr]) -> Expr { Expr::AssocBinop { symbol, exprs: exprs.iter().cloned().collect() } }
     pub fn assocplaceholder(symbol: ASymbol) -> Expr { assocbinop(symbol, &[var("_"), var("_"), var("...")]) }
+    pub fn quantifierplaceholder(symbol: QSymbol) -> Expr { Expr::Quantifier { symbol, name: "_".into(), body: Box::new(var("_")) } }
     pub fn forall(name: &str, body: Expr) -> Expr { Expr::Quantifier { symbol: QSymbol::Forall, name: name.into(), body: Box::new(body) } }
     pub fn exists(name: &str, body: Expr) -> Expr { Expr::Quantifier { symbol: QSymbol::Exists, name: name.into(), body: Box::new(body) } }
 }
