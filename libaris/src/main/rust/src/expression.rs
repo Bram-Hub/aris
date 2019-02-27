@@ -1,3 +1,4 @@
+use super::*;
 use std::collections::HashSet;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -84,6 +85,55 @@ pub fn freevars(e: &Expr) -> HashSet<String> {
         Expr::Quantifier { name, body, .. } => { r.extend(freevars(body)); r.remove(name); }
     }
     r
+}
+
+pub fn gensym(orig: &str, avoid: &HashSet<String>) -> String {
+    for i in 0u64.. {
+        let ret = format!("{}{}", orig, i);
+        if !avoid.contains(&ret[..]) {
+            return ret;
+        }
+    }
+    panic!("Somehow gensym used more than 2^{64} ids without finding anything?")
+}
+
+pub fn subst(e: &Expr, to_replace: &str, with: Expr) -> Expr {
+    match e {
+        Expr::Bottom => Expr::Bottom,
+        Expr::Predicate { ref name, ref args } => {
+            if name == to_replace {
+                with // TODO: seperate predicate and variable ASTs? this is wrong for second-order logic
+            } else {
+                Expr::Predicate { name: name.clone(), args: args.iter().map(|e2| subst(e2, to_replace, with.clone())).collect() }
+            }
+        },
+        Expr::Unop { symbol, operand } => Expr::Unop { symbol: symbol.clone(), operand: Box::new(subst(operand, to_replace, with)) },
+        Expr::Binop { symbol, left, right } => Expr::Binop { symbol: symbol.clone(), left: Box::new(subst(left, to_replace, with.clone())), right: Box::new(subst(right, to_replace, with)) },
+        Expr::AssocBinop { symbol, exprs } => Expr::AssocBinop { symbol: symbol.clone(), exprs: exprs.iter().map(|e2| subst(e2, to_replace, with.clone())).collect() },
+        Expr::Quantifier { symbol, name, body } => {
+            let fv_with = freevars(&with);
+            let (newname, newbody) = match (name == to_replace, fv_with.contains(name)) {
+                (true, _) => (name.clone(), *body.clone()),
+                (false, true) => {
+                    let newname = gensym(name, &fv_with);
+                    let body0 = subst(body, name, expression_builders::var(&newname[..]));
+                    let body1 = subst(&body0, to_replace, with);
+                    //println!("{:?}\n{:?}\n{:?}", body, body0, body1);
+                    (newname.clone(), body1)
+                },
+                (false, false) => { (name.clone(), subst(body, to_replace, with)) },
+            };
+            Expr::Quantifier { symbol: symbol.clone(), name: newname, body: Box::new(newbody) }
+        },
+    }
+}
+
+#[test]
+fn test_subst() {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    assert_eq!(subst(&p("x & forall x, x"), "x", p("y")), p("y & forall x, x")); // hit (true, _) case in Quantifier
+    assert_eq!(subst(&p("forall x, x & y"), "y", p("x")), p("forall x0, x0 & x")); // hit (false, true) case in Quantifier
+    assert_eq!(subst(&p("forall x, x & y"), "y", p("z")), p("forall x, x & z")); // hit (false, false) case in Quantifier
 }
 
 pub mod expression_builders {
