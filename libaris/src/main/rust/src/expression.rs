@@ -132,6 +132,67 @@ fn test_subst() {
     assert_eq!(subst(&p("x & forall x, x"), "x", p("y")), p("y & forall x, x")); // hit (true, _) case in Quantifier
     assert_eq!(subst(&p("forall x, x & y"), "y", p("x")), p("forall x0, x0 & x")); // hit (false, true) case in Quantifier
     assert_eq!(subst(&p("forall x, x & y"), "y", p("z")), p("forall x, x & z")); // hit (false, false) case in Quantifier
+    assert_eq!(subst(&p("forall f, f(x) & g(y, z)"), "g", p("h")), p("forall f, f(x) & h(y, z)"));
+    assert_eq!(subst(&p("forall f, f(x) & g(y, z)"), "g", p("f")), p("forall f0, f0(x) & f(y, z)"));
+}
+
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Constraint<A> { Equal(A, A) }
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Substitution<A, B>(pub Vec<(A, B)>);
+/// a == b -> try_unify(&a, &b) == Some(vec![])
+pub fn unify(mut c: HashSet<Constraint<Expr>>) -> Option<Substitution<String, Expr>> {
+    // inspired by TAPL 22.4
+    //println!("\t{:?}", c);
+    let mut c_ = c.clone(); ;
+    let Constraint::Equal(s,t) = if let Some(x) = c_.drain().next() { c.remove(&x); x } else { return Some(Substitution(vec![])) };
+    use Expr::*;
+    let subst_set = |x, e1: Expr, set: HashSet<_>| { set.into_iter().map(|Constraint::Equal(e2, e3)| Constraint::Equal(subst(&e2, x, e1.clone()), subst(&e3, x, e1.clone()))).collect::<_>() };
+    let (fvs, fvt) = (freevars(&s), freevars(&t));
+    match (&s, &t) {
+        (_, _) if s == t => unify(c),
+        (Var { name: ref sname }, _) if !fvt.contains(sname) => unify(subst_set(&sname, t.clone(), c)).map(|mut x| { x.0.push((sname.clone(), t.clone())); x }),
+        (_, Var { name: ref tname }) if !fvs.contains(tname) => unify(subst_set(&tname, s.clone(), c)).map(|mut x| { x.0.push((tname.clone(), s.clone())); x }),
+        (Unop { symbol: ss, operand: so }, Unop { symbol: ts, operand: to }) if ss == ts => { c.insert(Constraint::Equal(*so.clone(), *to.clone())); unify(c) },
+        (Binop { symbol: ss, left: sl, right: sr }, Binop { symbol: ts, left: tl, right: tr }) if ss == ts => {
+            c.insert(Constraint::Equal(*sl.clone(), *tl.clone()));
+            c.insert(Constraint::Equal(*sr.clone(), *tr.clone()));
+            unify(c)
+        },
+        (Apply { func: sf, args: sa }, Apply { func: tf, args: ta }) if sa.len() == ta.len() => {
+            c.insert(Constraint::Equal(*sf.clone(), *tf.clone()));
+            c.extend(sa.iter().zip(ta.iter()).map(|(x,y)| Constraint::Equal(x.clone(), y.clone())));
+            unify(c)
+        }
+        (AssocBinop { symbol: ss, exprs: se }, AssocBinop { symbol: ts, exprs: te }) if ss == ts && se.len() == te.len() => {
+            c.extend(se.iter().zip(te.iter()).map(|(x,y)| Constraint::Equal(x.clone(), y.clone())));
+            unify(c)
+        },
+        (Quantifier { symbol: ss, name: sn, body: sb }, Quantifier { symbol: ts, name: tn, body: tb }) if ss == ts => {
+            let uv = gensym("__unification_var", &fvs.union(&fvt).cloned().collect());
+            // require that the bodies of the quantifiers are alpha-equal by substituting a fresh constant
+            c.insert(Constraint::Equal(subst(sb, sn, expression_builders::var(&uv)), subst(tb, tn, expression_builders::var(&uv))));
+            // if the constant escapes, then a free variable in one formula unified with a captured variable in the other, so the values don't unify
+            unify(c).and_then(|sub| if sub.0.iter().any(|(x, y)| x == &uv || freevars(y).contains(&uv)) { None } else { Some(sub) } )
+        }
+        _ => None,
+    }
+}
+
+#[test]
+fn test_unify() {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let u = |s, t| { unify(vec![Constraint::Equal(p(s), p(t))].into_iter().collect()) };
+    println!("{:?}", u("x", "forall y, y"));
+    println!("{:?}", u("forall y, y", "y"));
+    println!("{:?}", u("x", "x"));
+    println!("{:?}", u("forall x, x", "forall y, y")); // should be equal with no substitution since unification is modulo alpha equivalence
+    println!("{:?}", u("f(x,y,z)", "g(x,y,y)"));
+    println!("{:?}", u("forall foo, foo(x,y,z) & bar", "forall bar, bar(x,y,z) & baz"));
+
+    assert_eq!(u("forall x, z", "forall y, y"), None);
+    assert_eq!(u("x & y", "x | y"), None);
 }
 
 pub mod expression_builders {

@@ -479,8 +479,7 @@ impl RuleT for PredicateInference {
     fn num_deps(&self) -> Option<usize> {
         use PredicateInference::*;
         match self {
-            ExistsIntro | ExistsElim => Some(1),
-            ForallElim => Some(2),
+            ExistsIntro | ExistsElim | ForallElim => Some(1),
             ForallIntro => Some(0),
         }
     }
@@ -491,11 +490,36 @@ impl RuleT for PredicateInference {
             ForallIntro | ExistsElim => Some(1),
         }
     }
-    fn check<P: Proof>(self, _p: &P, _expr: Expr, _deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
+    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
         use ProofCheckError::*; use PredicateInference::*;
         match self {
             ForallIntro => unimplemented!(),
-            ForallElim => unimplemented!(),
+            ForallElim => {
+                let prem = p.lookup_expr_or_die(deps[0].clone())?;
+                if let Expr::Quantifier { symbol: QSymbol::Forall, ref name, ref body } = prem {
+                    let mut constraints = vec![Constraint::Equal(*body.clone(), conclusion.clone())].into_iter().collect();
+                    if let Some(substitutions) = unify(constraints) {
+                        if substitutions.0.len() == 0 {
+                            assert_eq!(**body, conclusion);
+                            return Ok(());
+                        } else if substitutions.0.len() == 1 {
+                            if &substitutions.0[0].0 == name {
+                                assert_eq!(subst(body, &substitutions.0[0].0, substitutions.0[0].1.clone()), conclusion);
+                                return Ok(());
+                            } else {
+                                // TODO: standardize non-string error messages for unification-based rules
+                                return Err(Other(format!("Attempted to substitute for a variable other than the binder: {}", substitutions.0[0].0)));
+                            }
+                        } else {
+                            return Err(Other(format!("More than one variable was substituted: {:?}", substitutions)));
+                        }
+                    } else {
+                        return Err(Other(format!("No substitution found between {} and {}.", body, conclusion)));
+                    }
+                } else {
+                    Err(DepOfWrongForm(prem, expression_builders::quantifierplaceholder(QSymbol::Forall)))
+                }
+            },
             ExistsIntro => unimplemented!(),
             ExistsElim => unimplemented!(),
         }

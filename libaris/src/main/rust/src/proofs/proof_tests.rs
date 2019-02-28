@@ -26,6 +26,7 @@ fn test_rules<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::Subproo
 }
 
 fn test_rules_with_subproofs<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq, P::Subproof: Debug {
+    run_test::<P, _>(test_forallelim);
     run_test::<P, _>(test_biconelim);
     run_test::<P, _>(test_biconintro);
     run_test::<P, _>(test_impintro);
@@ -295,4 +296,14 @@ pub fn test_biconintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Refere
     });
     let r19 = prf.add_step(Justification(p("P <-> Q"), RuleM::BiconditionalIntro, vec![r3.clone()], vec![r18.clone()]));
     (prf, vec![r7, r8, r9, r11, r16, r19], vec![r12, r13, r17])
+}
+
+pub fn test_forallelim<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Reference>) where P::Subproof: Debug {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let mut prf = P::new();
+    let r1 = prf.add_premise(p("forall x, p(x)"));
+    let r2 = prf.add_step(Justification(p("p(a)"), RuleM::ForallElim, vec![r1.clone()], vec![]));
+    let r3 = prf.add_step(Justification(p("q(x)"), RuleM::ForallElim, vec![r1.clone()], vec![]));
+    let r4 = prf.add_step(Justification(p("p(A & B & C & D)"), RuleM::ForallElim, vec![r1.clone()], vec![]));
+    (prf, vec![r2, r4], vec![r3])
 }
