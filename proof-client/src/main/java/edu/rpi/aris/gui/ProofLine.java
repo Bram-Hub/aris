@@ -1,6 +1,7 @@
 package edu.rpi.aris.gui;
 
 import edu.rpi.aris.assign.EditMode;
+import edu.rpi.aris.gui.event.ConstantEvent;
 import edu.rpi.aris.gui.event.SentenceChangeEvent;
 import edu.rpi.aris.proof.Line;
 import edu.rpi.aris.proof.LineChangeListener;
@@ -69,6 +70,7 @@ public class ProofLine implements LineChangeListener, LineInterface {
     private Line proofLine;
     private int caretPos = 0;
     private String lastVal = "";
+    private String lastConstant = "";
     private Timer historyTimer;
 
     ProofLine(MainWindow window, Line proofLine) {
@@ -173,6 +175,7 @@ public class ProofLine implements LineChangeListener, LineInterface {
                 });
                 varText.focusedProperty().addListener((observable, oldValue, newValue) -> {
                     if (newValue) {
+                        lastConstant = varText.getText();
                         Platform.runLater(() -> {
                             varText.deselect();
                             varText.positionCaret(varText.textProperty().length().get());
@@ -180,6 +183,10 @@ public class ProofLine implements LineChangeListener, LineInterface {
                     } else {
                         varText.setVisible(false);
                         checkConstants();
+                        if(!lastConstant.equals(varText.getText())) {
+                            ConstantEvent event = new ConstantEvent(getLineNum(), lastConstant, varText.getText());
+                            window.getHistory().addHistoryEvent(event);
+                        }
                     }
 
                 });
@@ -289,10 +296,24 @@ public class ProofLine implements LineChangeListener, LineInterface {
         textField.insertText(textField.getCaretPosition(), str);
     }
 
-    public void insertConstant(char constant) {
+    public void insertConstant(String constant) {
         if (isAssumption() && getModel().getSubProofLevel() > 0)
             Platform.runLater(() -> {
-                varText.setText(varText.getText() + "," + constant);
+                if (proofLine.getConstants().contains(constant))
+                    proofLine.getConstants().remove(constant);
+                else
+                    proofLine.getConstants().add(constant);
+                String oldText = varText.getText();
+                varText.setText(StringUtils.join(proofLine.getConstants(), ","));
+                ConstantEvent event = new ConstantEvent(getLineNum(), oldText, varText.getText());
+                window.getHistory().addHistoryEvent(event);
+            });
+    }
+
+    public void setConstants(String constants) {
+        if (isAssumption() && getModel().getSubProofLevel() > 0)
+            Platform.runLater(() -> {
+                varText.setText(constants);
                 checkConstants();
             });
     }

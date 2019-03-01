@@ -728,7 +728,7 @@ public class MainWindow implements StatusChangeListener, SaveInfoListener, Modul
             btn.setOnAction(actionEvent -> {
                 if (selectedLine.get() > -1) {
                     ProofLine line = proofLines.get(selectedLine.get());
-                    line.insertConstant((char) finalConstant);
+                    line.insertConstant(Character.toString((char) finalConstant));
                 }
             });
             constant++;
