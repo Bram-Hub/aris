@@ -31,9 +31,9 @@ impl<T> ZipperVec<T> {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)] pub struct PremKey(usize);
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)] pub struct JustKey(usize);
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)] pub struct SubKey(usize);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)] pub struct PremKey(usize);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)] pub struct JustKey(usize);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)] pub struct SubKey(usize);
 
 type PooledRef = Coprod!(PremKey, JustKey);
 

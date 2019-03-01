@@ -392,7 +392,7 @@ impl RuleT for PrepositionalInference {
                         assert_eq!(sproof.premises().len(), 1);
                         let prem = sproof.lookup_expr_or_die(sproof.premises()[0].clone())?;
                         slab.entry(prem.clone()).or_insert_with(|| next());
-                        for r in sproof.premises().iter().cloned().chain(sproof.lines().iter().filter_map(|x| Coproduct::uninject::<P::Reference,_>(x.clone()).ok())) {
+                        for r in sproof.exprs() {
                             let e = sproof.lookup_expr_or_die(r)?.clone();
                             slab.entry(e.clone()).or_insert_with(|| next());
                             g.add_edge(slab[&prem], slab[&e], ());
@@ -490,32 +490,62 @@ impl RuleT for PredicateInference {
             ForallIntro | ExistsElim => Some(1),
         }
     }
-    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
+    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<P::Reference>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
         use ProofCheckError::*; use PredicateInference::*;
+        fn unifies_wrt_var<P: Proof>(e1: &Expr, e2: &Expr, var: &str) -> Result<Expr, ProofCheckError<P::Reference, P::SubproofReference>> {
+            let constraints = vec![Constraint::Equal(e1.clone(), e2.clone())].into_iter().collect();
+            if let Some(substitutions) = unify(constraints) {
+                if substitutions.0.len() == 0 {
+                    assert_eq!(e1, e2);
+                    return Ok(expression_builders::var(var));
+                } else if substitutions.0.len() == 1 {
+                    if &substitutions.0[0].0 == var {
+                        assert_eq!(&subst(e1, &substitutions.0[0].0, substitutions.0[0].1.clone()), e2);
+                        return Ok(substitutions.0[0].1.clone());
+                    } else {
+                        // TODO: standardize non-string error messages for unification-based rules
+                        return Err(Other(format!("Attempted to substitute for a variable other than the binder: {}", substitutions.0[0].0)));
+                    }
+                } else {
+                    return Err(Other(format!("More than one variable was substituted: {:?}", substitutions)));
+                }
+            } else {
+                return Err(Other(format!("No substitution found between {} and {}.", e1, e2)));
+            }
+        }
+        fn generalizable_variable_counterexample<P: Proof>(sproof: &P, line: P::Reference, var: &str) -> Option<Expr> {
+            let contained = sproof.contained_justifications();
+            let reachable = sproof.transitive_dependencies(line);
+            let outside = reachable.difference(&contained);
+            outside.filter_map(|x| sproof.lookup_expr(x.clone())).find(|e| freevars(e).contains(var))
+        }
         match self {
-            ForallIntro => unimplemented!(),
+            ForallIntro => {
+                let sproof = p.lookup_subproof_or_die(sdeps[0].clone())?;
+                if let Expr::Quantifier { symbol: QSymbol::Forall, ref name, ref body } = conclusion {
+                    for (r, expr) in sproof.exprs().into_iter().map(|r| sproof.lookup_expr_or_die(r.clone()).map(|e| (r, e))).collect::<Result<Vec<_>, _>>()? {
+                        if let Ok(Expr::Var { name: constant }) = unifies_wrt_var::<P>(body, &expr, name) {
+                            if let Some(dangling) = generalizable_variable_counterexample(&sproof, r, &constant) {
+                                return Err(Other(format!("The constant {} occurs in dependency {} that's outside the subproof.", constant, dangling)));
+                            } else {
+                                let expected = subst(body, &constant, expression_builders::var(name));
+                                if &expected != &**body {
+                                    return Err(Other(format!("Not all free occurrences of {} are replaced with {} in {}.", constant, name, body)));
+                                }
+                                return Ok(());
+                            }
+                        }
+                    }
+                    return Err(Other(format!("Couldn't find a subproof line that unifies with the conclusion ({}).", conclusion)));
+                } else {
+                    Err(ConclusionOfWrongForm(expression_builders::quantifierplaceholder(QSymbol::Forall)))
+                }
+            },
             ForallElim => {
                 let prem = p.lookup_expr_or_die(deps[0].clone())?;
                 if let Expr::Quantifier { symbol: QSymbol::Forall, ref name, ref body } = prem {
-                    let mut constraints = vec![Constraint::Equal(*body.clone(), conclusion.clone())].into_iter().collect();
-                    if let Some(substitutions) = unify(constraints) {
-                        if substitutions.0.len() == 0 {
-                            assert_eq!(**body, conclusion);
-                            return Ok(());
-                        } else if substitutions.0.len() == 1 {
-                            if &substitutions.0[0].0 == name {
-                                assert_eq!(subst(body, &substitutions.0[0].0, substitutions.0[0].1.clone()), conclusion);
-                                return Ok(());
-                            } else {
-                                // TODO: standardize non-string error messages for unification-based rules
-                                return Err(Other(format!("Attempted to substitute for a variable other than the binder: {}", substitutions.0[0].0)));
-                            }
-                        } else {
-                            return Err(Other(format!("More than one variable was substituted: {:?}", substitutions)));
-                        }
-                    } else {
-                        return Err(Other(format!("No substitution found between {} and {}.", body, conclusion)));
-                    }
+                    unifies_wrt_var::<P>(body, &conclusion, name)?;
+                    Ok(())
                 } else {
                     Err(DepOfWrongForm(prem, expression_builders::quantifierplaceholder(QSymbol::Forall)))
                 }

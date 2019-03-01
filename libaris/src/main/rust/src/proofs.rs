@@ -1,7 +1,9 @@
 use super::*;
 use frunk::coproduct::*;
-use std::ops::Range;
+use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
+use std::hash::Hash;
+use std::ops::Range;
 
 #[cfg(test)]
 mod proof_tests;
@@ -42,7 +44,7 @@ pub trait DisplayIndented {
 }
 
 pub trait Proof: Sized {
-    type Reference: Clone;
+    type Reference: Clone + Eq + Hash;
     type SubproofReference: Clone;
     type Subproof: Proof<Reference=Self::Reference, SubproofReference=Self::SubproofReference, Subproof=Self::Subproof>;
     fn new() -> Self;
@@ -64,6 +66,39 @@ pub trait Proof: Sized {
     }
     fn lookup_subproof_or_die(&self, r: Self::SubproofReference) -> Result<Self::Subproof, ProofCheckError<Self::Reference, Self::SubproofReference>> {
         self.lookup_subproof(r.clone()).ok_or(ProofCheckError::SubproofDoesNotExist(r))
+    }
+    fn exprs(&self) -> Vec<<Self as Proof>::Reference> {
+        self.premises().iter().cloned().chain(self.lines().iter().filter_map(|x| Coproduct::uninject::<<Self as Proof>::Reference, _>(x.clone()).ok())).collect()
+    }
+    fn contained_justifications(&self) -> HashSet<Self::Reference> {
+        self.lines().into_iter().filter_map(|x| x.fold(hlist![
+            |r: Self::Reference| Some(vec![r].into_iter().collect()),
+            |r: Self::SubproofReference| self.lookup_subproof(r).map(|sub| sub.contained_justifications()),
+        ])).fold(HashSet::new(), |mut x, y| { x.extend(y.into_iter()); x })
+    }
+    fn transitive_dependencies(&self, line: Self::Reference) -> HashSet<Self::Reference> {
+        // TODO: cycle detection
+        let mut stack: Vec<Coprod!(Self::Reference, Self::SubproofReference)> = vec![Coproduct::inject(line)];
+        let mut result = HashSet::new();
+        while let Some(r) = stack.pop() {
+            use frunk::Coproduct::{Inl, Inr};
+            match r {
+                Inl(r) => {
+                    result.insert(r.clone());
+                    if let Some(Justification(_, _, deps, sdeps)) = self.lookup(r).and_then(|x| Coproduct::uninject(x).ok()) {
+                        stack.extend(deps.into_iter().map(|x| Coproduct::inject(x)));
+                        stack.extend(sdeps.into_iter().map(|x| Coproduct::inject(x)));
+                    }
+                },
+                Inr(Inl(r)) => {
+                    if let Some(sub) = self.lookup_subproof(r) {
+                        stack.extend(sub.lines());
+                    }
+                },
+                Inr(Inr(void)) => match void {},
+            }
+        }
+        result
     }
 }
 

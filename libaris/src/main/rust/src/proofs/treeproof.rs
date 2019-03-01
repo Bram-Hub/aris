@@ -1,9 +1,9 @@
 use super::*;
 //use std::rc::{Rc, Weak};
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct LineDep(pub usize);
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct SubproofDep(pub Range<usize>);
 
 impl std::fmt::Debug for LineDep {

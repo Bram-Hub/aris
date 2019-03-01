@@ -1,16 +1,21 @@
 use super::*;
 use std::fmt::Debug;
 
-fn run_test<P: Proof+Display+Debug, F: FnOnce() -> (P, Vec<P::Reference>, Vec<P::Reference>)>(f: F) {
+fn run_test<P: Proof+Display+Debug, F: FnOnce() -> (P, Vec<P::Reference>, Vec<P::Reference>)>(f: F) where P::Reference: Debug, P::SubproofReference: Debug {
     let (prf, oks, errs) = f();
     println!("{}", prf);
     println!("{:?}", prf);
     for (i, ok) in oks.iter().enumerate() {
-        println!("{}", i);
-        assert!(prf.verify_line(&ok).is_ok());
+        if let Err(e) = prf.verify_line(&ok) {
+            panic!("run_test: unexpected error on line {}: {:?}", i, e);
+        }
     }
-    for err in errs {
-        assert!(prf.verify_line(&err).is_err());
+    for (i, err) in errs.iter().enumerate() {
+        if let Err(e) = prf.verify_line(&err) {
+            println!("Error message for {} was {:?}", i, e);
+        } else {
+            panic!("{} ({:?}) should have failed, but didn't", i, err);
+        }
     } 
 }
 
@@ -26,6 +31,7 @@ fn test_rules<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::Subproo
 }
 
 fn test_rules_with_subproofs<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq, P::Subproof: Debug {
+    run_test::<P, _>(test_forallintro);
     run_test::<P, _>(test_forallelim);
     run_test::<P, _>(test_biconelim);
     run_test::<P, _>(test_biconintro);
@@ -306,4 +312,31 @@ pub fn test_forallelim<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Refere
     let r3 = prf.add_step(Justification(p("q(x)"), RuleM::ForallElim, vec![r1.clone()], vec![]));
     let r4 = prf.add_step(Justification(p("p(A & B & C & D)"), RuleM::ForallElim, vec![r1.clone()], vec![]));
     (prf, vec![r2, r4], vec![r3])
+}
+
+pub fn test_forallintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Reference>) where P::Subproof: Debug, P::Reference: Debug, P::SubproofReference: Debug {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let mut prf = P::new();
+    let r1 = prf.add_premise(p("forall x, p(x)"));
+    let r2 = prf.add_premise(p("forall x, q(x)"));
+    let r3 = prf.add_premise(p("r(c)"));
+    let r4 = prf.add_subproof();
+    let (r5, r6, r7) = prf.with_mut_subproof(&r4, |sub| {
+        let r5 = sub.add_step(Justification(p("p(a)"), RuleM::ForallElim, vec![r1.clone()], vec![]));
+        let r6 = sub.add_step(Justification(p("q(a)"), RuleM::ForallElim, vec![r2.clone()], vec![]));
+        let r7 = sub.add_step(Justification(p("p(a) & q(a)"), RuleM::AndIntro, vec![r5.clone(), r6.clone()], vec![]));
+        (r5, r6, r7)
+    }).unwrap();
+    let r8 = prf.add_step(Justification(p("forall y, p(y) & q(y)"), RuleM::ForallIntro, vec![], vec![r4.clone()]));
+    let r9 = prf.add_step(Justification(p("forall y, p(a) & q(y)"), RuleM::ForallIntro, vec![], vec![r4.clone()]));
+    let r10 = prf.add_subproof();
+    let r11 = prf.with_mut_subproof(&r10, |sub| {
+        let r11 = sub.add_step(Justification(p("r(c)"), RuleM::Reit, vec![r3.clone()], vec![]));
+        println!("contained {:?}", sub.contained_justifications());
+        println!("reachable {:?}", sub.transitive_dependencies(r11.clone()));
+        println!("reachable-contained {:?}", sub.transitive_dependencies(r11.clone()).difference(&sub.contained_justifications()).collect::<HashSet<_>>());
+        r11
+    }).unwrap();
+    let r12 = prf.add_step(Justification(p("forall y, r(y)"), RuleM::ForallIntro, vec![], vec![r10.clone()]));
+    (prf, vec![r5, r6, r7, r8, r11], vec![r9, r12])
 }
