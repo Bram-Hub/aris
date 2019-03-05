@@ -44,21 +44,26 @@ def Vec(ty):
 
 class Expr(ctypes.Structure):
     def downcast(self):
-        return getattr(self.body, {0: 'bottom', 1: 'predicate', 2: 'unop', 3: 'binop', 4: 'assoc_binop', 5: 'quantifier'}[self.tag])
+        return getattr(self.body, {0: 'bottom', 1: 'var', 2: 'apply', 3: 'unop', 4: 'binop', 5: 'assoc_binop', 6: 'quantifier'}[self.tag])
     def __repr__(self):
         #return 'Expr(%r, %r)' % (hex(ctypes.addressof(self)), deref_word(ctypes.addressof(self), 4))
         return repr(self.downcast())
     def __str__(self):
         return str(self.downcast())
 
-class Predicate_Body(ctypes.Structure):
-    _fields_ = [('name', String), ('args', Vec(Expr))]
+class Var_Body(ctypes.Structure):
+    _fields_ = [('name', String)]
     def __repr__(self):
-        #print self.name
-        #return 'Predicate(0x%08x, %r, %r)' % (ctypes.addressof(self), self.name, map(hex, deref_word(ctypes.addressof(self), 8)))
-        return 'Predicate(%r, %r)' % (self.name, self.args.to_list())
+        return 'Var(%r)' % (self.name,)
     def __str__(self):
         return str(self.name)
+
+class Apply_Body(ctypes.Structure):
+    _fields_ = [('func', Box_Expr), ('args', Vec(Expr))]
+    def __repr__(self):
+        return 'Apply(%r, %r)' % (self.func, self.args.to_list())
+    def __str__(self):
+        return '%s(%s)' % (str(self.func), ', '.join(map(str, self.args.to_list())))
 
 class Bottom_Body(ctypes.Structure):
     _fields_ = []
@@ -117,7 +122,8 @@ class Quantifier_Body(ctypes.Structure):
 class Expr_Body(ctypes.Union):
     _fields_ = [
         ('bottom', Bottom_Body),
-        ('predicate', Predicate_Body),
+        ('var', Var_Body),
+        ('apply', Apply_Body),
         ('unop', Unop_Body),
         ('binop', Binop_Body),
         ('assoc_binop', AssocBinop_Body),
@@ -131,7 +137,8 @@ Expr._fields_ = [('tag', ctypes.c_uint), ('body', Expr_Body)]
 class ExprVisitor:
     def fold_op(self, x, y): raise NotImplementedError('fold_op')
     def visit_Bottom(self, expr): return None
-    def visit_Predicate(self, expr): return None
+    def visit_Var(self, expr): return None
+    def visit_Apply(self, expr): return self.fold_op(self.visit(expr.func), reduce(self.fold_op, map(self.visit, expr.args.to_list())))
     def visit_Unop(self, expr): return self.visit(expr.operand)
     def visit_Binop(self, expr): return self.fold_op(self.visit(expr.left), self.visit(expr.right))
     def visit_AssocBinop(self, expr): return reduce(self.fold_op, map(self.visit, expr.exprs.to_list()))
@@ -141,7 +148,8 @@ class ExprVisitor:
             Expr: (lambda e: self.visit(e.downcast())),
             Box_Expr: (lambda e: self.visit(e.deref())),
             Bottom_Body: self.visit_Bottom,
-            Predicate_Body: self.visit_Predicate,
+            Var_Body: self.visit_Var,
+            Apply_Body: self.visit_Apply,
             Unop_Body: self.visit_Unop,
             Binop_Body: self.visit_Binop,
             AssocBinop_Body: self.visit_AssocBinop,
@@ -151,7 +159,7 @@ class ExprVisitor:
 def freevars(expr):
     class FV(ExprVisitor):
         def fold_op(self, x, y): return (x or set()).union(y or set())
-        def visit_Predicate(self, expr): return set(map(str, [expr.name]+expr.args.to_list()))
+        def visit_Var(self, expr): return set([str(expr.name)])
         def visit_Quantifier(self, expr): return self.visit(expr.body).difference(set([str(expr.name)]))
     return FV().visit(expr)
 
@@ -166,9 +174,10 @@ parse = lambda s: aris.aris_expr_parse(s)
 #x = parse('exists x, AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA -> (forall y, b+c) -> (AAAAAAAAAAAAAAAAAAAAA & BBBBBBBBBBBBBBBB & CCCCCCCCCCCCCCcc & DDDDDDDDDDDD & EEEEEEEEEEEEE)')
 x = parse('exists x, AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA -> (forall y, b+c(x)) -> (AAAAAAAAAAAAAAAAAAAAA & ~BBBBBBBBBBBBBBBB & CCCCCCCCCCCCCCcc & DDDDDDDDDDDD & EEEEEEEEEEEEE & _|_)')
 
-print x.contents.downcast()
-print repr(x.contents)
-print freevars(x.contents)
-print freevars(parse('q & exists q, forall x, exists y, x+y+z').contents)
+if __name__ == '__main__':
+    print x.contents.downcast()
+    print repr(x.contents)
+    print freevars(x.contents)
+    print freevars(parse('q & exists q, forall x, exists y, x+y+z').contents)
 
-#deref_word(0x41414141, 1)
+    #deref_word(0x41414141, 1)
