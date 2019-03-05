@@ -61,6 +61,7 @@ impl<T: Clone+Default, U: Clone+Default> Proof for TreeProof<T, U> {
     type SubproofReference = SubproofDep;
     type Subproof = Self;
     fn new() -> Self { TreeProof(TreeSubproof { premises: vec![], lines: vec![] }) }
+    fn top_level_proof(&self) -> &Self { self }
     fn lookup(&self, LineDep(line): Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference, Self::SubproofReference>)> {
         self.0.lookup_line(line-1)
     }

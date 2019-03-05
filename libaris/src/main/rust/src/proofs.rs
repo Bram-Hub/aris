@@ -35,6 +35,9 @@ pub mod pooledproof;
 /// java_shallow_proof only represents things from edu.rpi.aris.rules.Premise, for the purpose of shimming into RuleT::check
 pub mod java_shallow_proof;
 
+/// A LinedProof is a wrapper around another proof type that adds lines and strings, for interfacing with the GUI
+pub mod lined_proof;
+
 /// DisplayIndented gives a convention for passing around state to pretty printers
 /// it is intended that objects that implement this implement display as:
 /// `fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> { self.display_indented(fmt, 1, &mut 1) }`
@@ -48,6 +51,7 @@ pub trait Proof: Sized {
     type SubproofReference: Clone;
     type Subproof: Proof<Reference=Self::Reference, SubproofReference=Self::SubproofReference, Subproof=Self::Subproof>;
     fn new() -> Self;
+    fn top_level_proof(&self) -> &Self::Subproof;
     fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference, Self::SubproofReference>)>;
     fn lookup_subproof(&self, r: Self::SubproofReference) -> Option<Self::Subproof>;
     fn with_mut_subproof<A, F: FnOnce(&mut Self::Subproof) -> A>(&mut self, r: &Self::SubproofReference, f: F) -> Option<A>;

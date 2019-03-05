@@ -11,6 +11,9 @@ impl Proof for JavaShallowProof {
     fn new() -> Self {
         JavaShallowProof(vec![])
     }
+    fn top_level_proof(&self) -> &Self {
+        self
+    }
     fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference, Self::SubproofReference>)> {
         Some(Coproduct::inject(r))
     }

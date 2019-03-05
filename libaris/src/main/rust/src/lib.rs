@@ -3,6 +3,8 @@
 extern crate jni;
 extern crate petgraph;
 
+pub mod zipper_vec;
+use zipper_vec::*;
 pub mod parser;
 pub mod expression;
 use expression::*;
