@@ -32,6 +32,15 @@ impl Proof for JavaShallowProof {
     fn add_step(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>) -> Self::Reference {
         just.0
     }
+    fn add_premise_relative(&mut self, e: Expr, _: Self::Reference, _: bool) -> Self::Reference {
+        self.add_premise(e)
+    }
+    fn add_subproof_relative(&mut self, _: Self::Reference, _: bool) -> Self::SubproofReference {
+        self.add_subproof()
+    }
+    fn add_step_relative(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>, _: Self::Reference, _: bool) -> Self::Reference {
+        self.add_step(just)
+    }
     fn premises(&self) -> Vec<Self::Reference> {
         if self.0.len() >= 1 { vec![self.0[0].clone()] } else { vec![] }
     }

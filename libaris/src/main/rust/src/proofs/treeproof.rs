@@ -77,6 +77,9 @@ impl<T: Clone+Default, U: Clone+Default> Proof for TreeProof<T, U> {
     fn add_premise(&mut self, e: Expr) -> Self::Reference { self.0.premises.push((Default::default(), e)); let i = self.0.premises.len(); LineDep(i) }
     fn add_subproof(&mut self) -> Self::SubproofReference { let i = self.0.count_lines(); self.0.lines.push(Line::Subproof(Default::default(), TreeSubproof { premises: vec![], lines: vec![] })); let j = self.0.count_lines(); SubproofDep((i+1)..j) }
     fn add_step(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>) -> Self::Reference { self.0.lines.push(Line::Direct(Default::default(), just)); let i = self.0.count_lines(); LineDep(i) }
+    fn add_premise_relative(&mut self, _: Expr, _: Self::Reference, _: bool) -> Self::Reference { unimplemented!() }
+    fn add_subproof_relative(&mut self, _: Self::Reference, _: bool) -> Self::SubproofReference { unimplemented!() }
+    fn add_step_relative(&mut self, _: Justification<Expr, Self::Reference, Self::SubproofReference>, _: Self::Reference, _: bool) -> Self::Reference { unimplemented!() }
     fn premises(&self) -> Vec<Self::Reference> {
         //let prf = decorate_references(self.clone());
         //let res = vec![];

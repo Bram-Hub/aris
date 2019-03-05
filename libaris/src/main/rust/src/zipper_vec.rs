@@ -12,9 +12,11 @@ impl<T> ZipperVec<T> {
     pub fn from_vec(v: Vec<T>) -> Self { ZipperVec { prefix: v, suffix_r: Vec::new() } }
     pub fn cursor_pos(&self) -> usize { self.prefix.len() }
     pub fn len(&self) -> usize { self.prefix.len() + self.suffix_r.len() }
+    pub fn inc_cursor(&mut self) { if let Some(x) = self.prefix.pop() { self.suffix_r.push(x); } }
+    pub fn dec_cursor(&mut self) { if let Some(x) = self.suffix_r.pop() { self.prefix.push(x); } }
     pub fn move_cursor(&mut self, mut to: usize) {
-        while to > self.cursor_pos() { if let Some(x) = self.suffix_r.pop() { self.prefix.push(x); }; to -= 1 }
-        while to < self.cursor_pos() { if let Some(x) = self.prefix.pop() { self.suffix_r.push(x); }; to += 1 }
+        while to > self.cursor_pos() { self.dec_cursor(); to -= 1 }
+        while to < self.cursor_pos() { self.inc_cursor(); to += 1 }
     }
     pub fn push(&mut self, x: T) {
         let len = self.len();
@@ -26,3 +28,16 @@ impl<T> ZipperVec<T> {
     }
 }
 
+impl<T: PartialEq> ZipperVec<T> {
+    pub fn insert_relative(&mut self, val: T, rel: &T, after: bool) {
+        if self.len() == 0 {
+            self.prefix.push(val);
+        } else {
+            self.move_cursor(0); // TODO: try to insert while backwards sweeping to 0 for more efficiency
+            while self.suffix_r.len() > 0 && &self.suffix_r[self.suffix_r.len()-1] != rel {
+                self.inc_cursor();
+            }
+            (if after { &mut self.suffix_r } else { &mut self.prefix }).push(val);
+        }
+    }
+}
