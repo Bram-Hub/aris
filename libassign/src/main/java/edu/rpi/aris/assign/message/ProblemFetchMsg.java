@@ -28,8 +28,9 @@ public class ProblemFetchMsg<T extends ArisModule> extends ProblemMessage<T> {
     @Nullable
     @Override
     public ErrorType processProblemMessage(@NotNull Connection connection, @NotNull User user, @NotNull ServerPermissions permissions) throws Exception {
-        try (PreparedStatement statement = connection.prepareStatement("SELECT module_name, data, problem_hash FROM problem WHERE id = ?;")) {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT DISTINCT p.module_name, p.data, p.problem_hash FROM problem p, assignment a, user_class uc WHERE p.id = ? AND a.problem_id = p.id AND a.class_id = uc.class_id AND uc.user_id = ?;")) {
             statement.setInt(1, pid);
+            statement.setInt(2, user.uid);
             try (ResultSet rs = statement.executeQuery()) {
                 if (!rs.next())
                     return ErrorType.NOT_FOUND;

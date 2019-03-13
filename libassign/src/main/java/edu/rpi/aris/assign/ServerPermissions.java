@@ -68,7 +68,7 @@ public class ServerPermissions {
                         addPerm.addBatch();
                         roleId = role.getId();
                     }
-                    permissionMap.put(p.name(), new Permission(p.name(), roleId));
+                    permissionMap.put(p.name(), new Permission(p, roleId));
                 }
                 addPerm.executeBatch();
             }
