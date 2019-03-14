@@ -4,6 +4,9 @@ import edu.rpi.aris.assign.LibAssign;
 import edu.rpi.aris.assign.Permission;
 import edu.rpi.aris.assign.ServerRole;
 import edu.rpi.aris.assign.client.model.ServerConfig;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.ChoiceBox;
@@ -17,7 +20,8 @@ import java.util.stream.Collectors;
 
 public class PermRowGui {
 
-    private final Permission perm;
+    private final BooleanProperty disableProperty;
+    private Permission perm;
     @FXML
     private Label name;
     @FXML
@@ -25,11 +29,13 @@ public class PermRowGui {
     @FXML
     private ChoiceBox<ServerRole> roleChoice;
     private HBox root;
-    private ServerRole currentRole;
+    private SimpleObjectProperty<ServerRole> currentRole;
+    private SimpleBooleanProperty modified = new SimpleBooleanProperty(false);
 
-    public PermRowGui(Permission perm) {
+    public PermRowGui(Permission perm, BooleanProperty disableProperty) {
         this.perm = perm;
-        currentRole = ServerConfig.getPermissions().getRole(perm.getRollId());
+        currentRole = new SimpleObjectProperty<>(ServerConfig.getPermissions().getRole(perm.getRollId()));
+        this.disableProperty = disableProperty;
         FXMLLoader loader = new FXMLLoader(PermRowGui.class.getResource("/edu/rpi/aris/assign/client/view/perm_row.fxml"));
         loader.setController(this);
         try {
@@ -55,7 +61,9 @@ public class PermRowGui {
             }
         });
         roleChoice.getItems().setAll(ServerConfig.getPermissions().getRoles().stream().sorted(Comparator.comparingInt(ServerRole::getId)).collect(Collectors.toList()));
-        roleChoice.getSelectionModel().select(currentRole);
+        roleChoice.getSelectionModel().select(currentRole.get());
+        roleChoice.disableProperty().bind(disableProperty);
+        modified.bind(currentRole.isNotEqualTo(roleChoice.getSelectionModel().selectedItemProperty()));
     }
 
     public HBox getRoot() {
@@ -66,12 +74,30 @@ public class PermRowGui {
         return perm;
     }
 
+    public BooleanProperty modifiedProperty() {
+        return modified;
+    }
+
+    public boolean isModified() {
+        return modified.get();
+    }
+
+    public ServerRole getSelectedRole() {
+        return roleChoice.getSelectionModel().getSelectedItem();
+    }
+
     public void commit() {
-        currentRole = roleChoice.getSelectionModel().getSelectedItem();
+        currentRole.set(roleChoice.getSelectionModel().getSelectedItem());
     }
 
     public void revert() {
-        roleChoice.getSelectionModel().select(currentRole);
+        roleChoice.getSelectionModel().select(currentRole.get());
     }
 
+    public void updateRole() {
+        perm = ServerConfig.getPermissions().getPermission(perm.getPerm());
+        ServerRole role = ServerConfig.getPermissions().getRole(perm.getRollId());
+        currentRole.set(role);
+        roleChoice.getSelectionModel().select(role);
+    }
 }

@@ -185,28 +185,29 @@ public abstract class ClientHandler implements Runnable, MessageCommunication {
                             else {
                                 if (error == ErrorType.UNAUTHORIZED) {
                                     logger.warn("User does not have permission: " + perm);
-                                    new ErrorMsg(error, perm == null ? null : perm.name()).send(this);
+                                    new ErrorMsg(ErrorType.UNAUTHORIZED, perm == null ? null : perm.name()).send(this);
                                 } else
                                     new ErrorMsg(error).send(this);
                             }
                         }
-                    } catch (IOException | SQLException e) {
-                        logger.error("Exception occurred! Rolling back changes");
+                    } catch (SQLException e) {
+                        logger.error("SQLException occurred! Rolling back changes", e);
                         connection.rollback();
-                        throw e;
+                        new ErrorMsg(ErrorType.SQL_ERR, e.getMessage()).send(this);
+                    } catch (IOException e) {
+                        logger.error("IOException occurred! Rolling back changes", e);
+                        connection.rollback();
+                        new ErrorMsg(ErrorType.IO_ERROR, e.getMessage()).send(this);
                     } catch (Throwable e) {
-                        logger.error("Exception occurred! Rolling back changes");
+                        logger.error("Unknown Exception occurred! Rolling back changes", e);
                         connection.rollback();
                         new ErrorMsg(ErrorType.EXCEPTION, e.getClass().getCanonicalName() + ": " + e.getMessage()).send(this);
-                        throw e;
                     }
                 }
             } catch (SQLException e) {
                 logger.error("SQL Error", e);
                 new ErrorMsg(ErrorType.SQL_ERR, e.getMessage()).send(this);
             }
-        } catch (IOException ignored) {
-            // ignored so we don't log an exception whenever client disconnects
         } catch (Throwable e) {
             logger.error("Unexpected error occurred", e);
         }

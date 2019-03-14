@@ -49,6 +49,7 @@ public class AssignClient extends Application implements ArisExceptionHandler {
     }
 
     public static void main(String[] args) throws IOException {
+        System.setProperty("sun.awt.disablegrab", "true");
         LibAssign.setLogLocation(new File(LocalConfig.CLIENT_STORAGE_DIR, "logs"));
         LibAssign.initModuleService(LocalConfig.CLIENT_MODULES_DIR, false);
         logger.info("Starting Assign Client with Java " + SystemUtils.JAVA_RUNTIME_VERSION + " " + SystemUtils.JAVA_VENDOR);

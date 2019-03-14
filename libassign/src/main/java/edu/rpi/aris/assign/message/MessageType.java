@@ -35,7 +35,8 @@ public enum MessageType {
     USER_CLASS_REMOVE(UserClassRemoveMsg.class),
     USER_CREATE(UserCreateMsg.class),
     USER_DELETE(UserDeleteMsg.class),
-    BATCH_USER_IMPORT(BatchUserImportMsg.class);
+    BATCH_USER_IMPORT(BatchUserImportMsg.class),
+    EDIT_PERMISSION(PermissionEditMsg.class);
 
     public final Class<? extends Message> msgClass;
 
