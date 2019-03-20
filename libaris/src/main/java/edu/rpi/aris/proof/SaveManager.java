@@ -31,7 +31,6 @@ import java.util.stream.Collectors;
 
 public class SaveManager implements ProblemConverter<LibAris> {
 
-    @SuppressWarnings("SpellCheckingInspection")
     public static final String FILE_EXTENSION = "bram";
     public static final String FITCH_FILE_EXT = "prf";
     private final SaveInfoListener listener;
@@ -43,10 +42,12 @@ public class SaveManager implements ProblemConverter<LibAris> {
         Objects.requireNonNull(listener);
         this.listener = listener;
         try {
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
-            documentBuilder = factory.newDocumentBuilder();
-            transformer = TransformerFactory.newInstance().newTransformer();
+            documentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            transformerFactory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+            transformerFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+            transformerFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
+            transformer = transformerFactory.newTransformer();
             hash = MessageDigest.getInstance("SHA-256");
             transformer.setOutputProperty(OutputKeys.INDENT, "yes");
             transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
