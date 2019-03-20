@@ -14,6 +14,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -42,7 +43,9 @@ public class SaveManager implements ProblemConverter<LibAris> {
         Objects.requireNonNull(listener);
         this.listener = listener;
         try {
-            documentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+            documentBuilder = factory.newDocumentBuilder();
             transformer = TransformerFactory.newInstance().newTransformer();
             hash = MessageDigest.getInstance("SHA-256");
             transformer.setOutputProperty(OutputKeys.INDENT, "yes");
