@@ -80,6 +80,8 @@ impl<T: Clone+Default, U: Clone+Default> Proof for TreeProof<T, U> {
     fn add_premise_relative(&mut self, _: Expr, _: Self::Reference, _: bool) -> Self::Reference { unimplemented!() }
     fn add_subproof_relative(&mut self, _: Self::Reference, _: bool) -> Self::SubproofReference { unimplemented!() }
     fn add_step_relative(&mut self, _: Justification<Expr, Self::Reference, Self::SubproofReference>, _: Self::Reference, _: bool) -> Self::Reference { unimplemented!() }
+    fn remove_line(&mut self, _: Self::Reference) { unimplemented!() }
+    fn remove_subproof(&mut self, _: Self::SubproofReference) { unimplemented!() }
     fn premises(&self) -> Vec<Self::Reference> {
         //let prf = decorate_references(self.clone());
         //let res = vec![];

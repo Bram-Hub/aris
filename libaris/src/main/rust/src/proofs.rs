@@ -61,6 +61,8 @@ pub trait Proof: Sized {
     fn add_premise_relative(&mut self, e: Expr, r: Self::Reference, after: bool) -> Self::Reference;
     fn add_subproof_relative(&mut self, r: Self::Reference, after: bool) -> Self::SubproofReference;
     fn add_step_relative(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>, r: Self::Reference, after: bool) -> Self::Reference;
+    fn remove_line(&mut self, r: Self::Reference);
+    fn remove_subproof(&mut self, r: Self::SubproofReference);
     fn premises(&self) -> Vec<Self::Reference>;
     fn lines(&self) -> Vec<Coprod!(Self::Reference, Self::SubproofReference)>;
     fn verify_line(&self, r: &Self::Reference) -> Result<(), ProofCheckError<Self::Reference, Self::SubproofReference>>;

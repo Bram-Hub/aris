@@ -41,6 +41,8 @@ impl Proof for JavaShallowProof {
     fn add_step_relative(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>, _: Self::Reference, _: bool) -> Self::Reference {
         self.add_step(just)
     }
+    fn remove_line(&mut self, _: Self::Reference) {}
+    fn remove_subproof(&mut self, _: Self::SubproofReference) {}
     fn premises(&self) -> Vec<Self::Reference> {
         if self.0.len() >= 1 { vec![self.0[0].clone()] } else { vec![] }
     }

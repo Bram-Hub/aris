@@ -31,6 +31,39 @@ impl<T> Pools<T> {
     fn parent_of(&self, idx: &Coprod!(PremKey, JustKey)) -> Option<SubKey> {
         self.containing_subproof.get(idx).map(|x| x.clone())
     }
+    fn remove_line(&mut self, idx: &Coprod!(PremKey, JustKey)) {
+        use frunk::Coproduct::{Inl, Inr};
+        match idx {
+            Inl(prem) => self.remove_premise(prem),
+            Inr(Inl(just)) => self.remove_step(just),
+            Inr(Inr(void)) => match *void {},
+        }
+        let just_map = std::mem::replace(&mut self.just_map, BTreeMap::new());
+        self.just_map = just_map.into_iter().map(|(k, Justification(expr, rule, deps, sdeps))| (k, Justification(expr, rule, deps.into_iter().filter(|d| d != idx).collect(), sdeps))).collect();
+    }
+    fn remove_premise(&mut self, idx: &PremKey) {
+        self.prem_map.remove(idx);
+        for (_, v) in self.sub_map.iter_mut() {
+            let premise_list = std::mem::replace(&mut v.premise_list, ZipperVec::new());
+            v.premise_list = ZipperVec::from_vec(premise_list.iter().filter(|x| x != &idx).cloned().collect());
+        }
+    }
+    fn remove_step(&mut self, idx: &JustKey) {
+        self.just_map.remove(idx);
+        for (_, v) in self.sub_map.iter_mut() {
+            let line_list = std::mem::replace(&mut v.line_list, ZipperVec::new());
+            v.line_list = ZipperVec::from_vec(line_list.iter().filter(|x| x.get() != Some(idx)).cloned().collect());
+        }
+    }
+    fn remove_subproof(&mut self, idx: &SubKey) {
+        self.sub_map.remove(idx);
+        for (_, v) in self.sub_map.iter_mut() {
+            let line_list = std::mem::replace(&mut v.line_list, ZipperVec::new());
+            v.line_list = ZipperVec::from_vec(line_list.iter().filter(|x| x.get() != Some(idx)).cloned().collect());
+        }
+        let just_map = std::mem::replace(&mut self.just_map, BTreeMap::new());
+        self.just_map = just_map.into_iter().map(|(k, Justification(expr, rule, deps, sdeps))| (k, Justification(expr, rule, deps, sdeps.into_iter().filter(|d| d != idx).collect()))).collect();
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -182,6 +215,14 @@ impl<Tail: Default+Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
         }
         Coproduct::inject(idx)
     }
+    fn remove_line(&mut self, r: Self::Reference) {
+        let pools = unsafe { &mut *self.pools };
+        pools.remove_line(&r);
+    }
+    fn remove_subproof(&mut self, r: Self::SubproofReference) {
+        let pools = unsafe { &mut *self.pools };
+        pools.remove_subproof(&r);
+    }
     fn premises(&self) -> Vec<Self::Reference> {
         self.premise_list.iter().cloned().map(|x| Coproduct::inject(x)).collect()
     }
@@ -223,6 +264,8 @@ impl<Tail: Default+Clone> Proof for PooledProof<HCons<Expr, Tail>> {
     fn add_subproof_relative(&mut self, r: Self::Reference, after: bool) -> Self::SubproofReference { self.proof.add_subproof_relative(r, after) }
     fn add_step_relative(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>, r: Self::Reference, after: bool) -> Self::Reference { self.proof.add_step_relative(just, r, after) }
     fn add_step(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>) -> Self::Reference { self.proof.add_step(just) }
+    fn remove_line(&mut self, r: Self::Reference) { self.proof.remove_line(r) }
+    fn remove_subproof(&mut self, r: Self::SubproofReference) { self.proof.remove_subproof(r) }
     fn premises(&self) -> Vec<Self::Reference> { self.proof.premises() }
     fn lines(&self) -> Vec<Coprod!(Self::Reference, Self::SubproofReference)> { self.proof.lines() }
     fn verify_line(&self, r: &Self::Reference) -> Result<(), ProofCheckError<Self::Reference, Self::SubproofReference>> { self.proof.verify_line(r) }
