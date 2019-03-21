@@ -42,17 +42,17 @@ impl<P: Proof+Debug> Debug for LinedProof<P> where P::Reference: Debug, P::Subpr
 }
 
 
-impl<P: Proof> LinedProof<P> {
-    fn new() -> Self {
+impl<P: Proof+Debug> LinedProof<P> where P::Reference: Debug, P::SubproofReference: Debug {
+    pub fn new() -> Self {
         LinedProof {
             proof: P::new(),
             lines: ZipperVec::new(),
         }
     }
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.lines.len()
     }
-    fn from_proof(p: P) -> Self {
+    pub fn from_proof(p: P) -> Self {
         fn aux<P: Proof>(p: &P::Subproof, ret: &mut LinedProof<P>, current_sub: Option<P::SubproofReference>) {
             use frunk::Coproduct::{Inl, Inr};
             for prem in p.premises() {
@@ -78,11 +78,33 @@ impl<P: Proof> LinedProof<P> {
         ret.proof = p;
         ret
     }
+    pub fn delete(&mut self, i: usize) {
+        if (i >= 1 || self.proof.premises().len() > 1) && i < self.lines.len() {
+            let line = self.lines.pop(i).unwrap();
+            println!("Deleting {:?}", line);
+            self.proof.remove_line(line.reference.clone());
+            if let Some(subreference) = line.subreference {
+                if let Some(sub) = self.proof.lookup_subproof(subreference.clone()) {
+                    if sub.premises().len() + sub.lines().len() == 0 {
+                        self.proof.remove_subproof(subreference);
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[test]
 fn test_from_proof() {
     let (p, _, _) = proof_tests::test_forallintro::<super::pooledproof::PooledProof<Hlist![Expr]>>();
-    println!("{:#?}", LinedProof::from_proof(p));
+    let mut lp = LinedProof::from_proof(p);
+    println!("{:?}\n{}", lp, lp.proof);
+    let mut f = |i: usize| { println!("Deleting {}:", i+1); lp.delete(i); println!("{}", lp.proof); };
+    f(1);
+    f(3);
+    f(6);
+    f(3);
+    f(0);
+    f(1);
 }
 

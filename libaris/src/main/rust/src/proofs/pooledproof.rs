@@ -264,8 +264,18 @@ impl<Tail: Default+Clone> Proof for PooledProof<HCons<Expr, Tail>> {
     fn add_subproof_relative(&mut self, r: Self::Reference, after: bool) -> Self::SubproofReference { self.proof.add_subproof_relative(r, after) }
     fn add_step_relative(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>, r: Self::Reference, after: bool) -> Self::Reference { self.proof.add_step_relative(just, r, after) }
     fn add_step(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>) -> Self::Reference { self.proof.add_step(just) }
-    fn remove_line(&mut self, r: Self::Reference) { self.proof.remove_line(r) }
-    fn remove_subproof(&mut self, r: Self::SubproofReference) { self.proof.remove_subproof(r) }
+    fn remove_line(&mut self, r: Self::Reference) {
+        let premise_list = std::mem::replace(&mut self.proof.premise_list, ZipperVec::new());
+        self.proof.premise_list = ZipperVec::from_vec(premise_list.iter().filter(|x| Some(x) != r.get().as_ref()).cloned().collect());
+        let line_list = std::mem::replace(&mut self.proof.line_list, ZipperVec::new());
+        self.proof.line_list = ZipperVec::from_vec(line_list.iter().filter(|x| (x.get::<JustKey, _>() != r.get()) || x.get::<SubKey, _>().is_some()).cloned().collect());
+        self.proof.remove_line(r);
+    }
+    fn remove_subproof(&mut self, r: Self::SubproofReference) {
+        let line_list = std::mem::replace(&mut self.proof.line_list, ZipperVec::new());
+        self.proof.line_list = ZipperVec::from_vec(line_list.iter().filter(|x| x.get() != Some(&r)).cloned().collect());
+        self.proof.remove_subproof(r);
+    }
     fn premises(&self) -> Vec<Self::Reference> { self.proof.premises() }
     fn lines(&self) -> Vec<Coprod!(Self::Reference, Self::SubproofReference)> { self.proof.lines() }
     fn verify_line(&self, r: &Self::Reference) -> Result<(), ProofCheckError<Self::Reference, Self::SubproofReference>> { self.proof.verify_line(r) }

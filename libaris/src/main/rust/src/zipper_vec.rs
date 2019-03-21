@@ -7,6 +7,18 @@ pub struct ZipperVec<T> {
     prefix: Vec<T>,
     suffix_r: Vec<T>,
 }
+
+/*
+impl<T> std::fmt::Debug for ZipperVec<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("ZipperVec")
+            .field("prefix", &self.prefix.iter().map(|_| ()).collect::<Vec<_>>())
+            .field("suffix_r", &self.suffix_r.iter().map(|_| ()).collect::<Vec<_>>())
+            .finish()
+    }
+}
+*/
+
 impl<T> ZipperVec<T> {
     pub fn new() -> Self { ZipperVec { prefix: Vec::new(), suffix_r: Vec::new() } }
     pub fn from_vec(v: Vec<T>) -> Self { ZipperVec { prefix: v, suffix_r: Vec::new() } }
@@ -14,9 +26,9 @@ impl<T> ZipperVec<T> {
     pub fn len(&self) -> usize { self.prefix.len() + self.suffix_r.len() }
     pub fn inc_cursor(&mut self) { if let Some(x) = self.prefix.pop() { self.suffix_r.push(x); } }
     pub fn dec_cursor(&mut self) { if let Some(x) = self.suffix_r.pop() { self.prefix.push(x); } }
-    pub fn move_cursor(&mut self, mut to: usize) {
-        while to > self.cursor_pos() { self.dec_cursor(); to -= 1 }
-        while to < self.cursor_pos() { self.inc_cursor(); to += 1 }
+    pub fn move_cursor(&mut self, to: usize) {
+        while to > self.cursor_pos() { self.dec_cursor(); }
+        while to < self.cursor_pos() { self.inc_cursor(); }
     }
     pub fn push(&mut self, x: T) {
         let len = self.len();
@@ -25,6 +37,42 @@ impl<T> ZipperVec<T> {
     }
     pub fn iter(&self) -> impl Iterator<Item=&T> {
         self.prefix.iter().chain(self.suffix_r.iter().rev())
+    }
+    pub fn get(&self, i: usize) -> Option<&T> {
+        let j = self.cursor_pos();
+        let k = self.suffix_r.len();
+        if i < j {
+            self.prefix.get(i)
+        } else if i - j < k {
+            self.suffix_r.get(i - j)
+        } else {
+            None
+        }
+    }
+    pub fn pop(&mut self, i: usize) -> Option<T> {
+        if i < self.len() {
+            self.move_cursor(i);
+            self.suffix_r.pop()
+        } else {
+            None
+        }
+    }
+}
+
+#[test]
+fn test_zippervec_pop() {
+    let a = ZipperVec::from_vec((0usize..10).into_iter().collect());
+    let pop_spec = |i| -> (Option<usize>, Vec<usize>) { (Some(a.iter().cloned().collect::<Vec<usize>>()[i]), a.iter().enumerate().filter_map(|(j, y)| if i == j { None } else { Some(*y) }).collect::<Vec<_>>()) };
+    for i in 0..10 {
+        for j in 0..10 {
+            let mut b = a.clone();
+            b.move_cursor(i);
+            assert_eq!(b.cursor_pos(), i);
+            let x = b.pop(j);
+            let (y, z) = pop_spec(j);
+            assert_eq!(x, y);
+            assert_eq!(b.iter().cloned().collect::<Vec<usize>>(), z);
+        }
     }
 }
 
