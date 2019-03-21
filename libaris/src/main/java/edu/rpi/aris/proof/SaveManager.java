@@ -13,16 +13,20 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+import org.xml.sax.XMLReader;
 
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParserFactory;
 import javax.xml.transform.*;
 import javax.xml.transform.dom.DOMResult;
 import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.sax.SAXSource;
 import javax.xml.transform.stream.StreamResult;
-import javax.xml.transform.stream.StreamSource;
 import java.io.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -36,6 +40,7 @@ public class SaveManager implements ProblemConverter<LibAris> {
     private final SaveInfoListener listener;
     private DocumentBuilder documentBuilder;
     private Transformer transformer;
+    private XMLReader xmlReader;
     private MessageDigest hash;
 
     public SaveManager(SaveInfoListener listener) {
@@ -51,7 +56,16 @@ public class SaveManager implements ProblemConverter<LibAris> {
             hash = MessageDigest.getInstance("SHA-256");
             transformer.setOutputProperty(OutputKeys.INDENT, "yes");
             transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
-        } catch (ParserConfigurationException | TransformerConfigurationException | NoSuchAlgorithmException e) {
+            // create a SAX parser factor to be used for parsing the XML
+            // we are using this instead of the default transformer to prevent xml xxe exploits
+            SAXParserFactory spf = SAXParserFactory.newInstance();
+            spf.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+            spf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            spf.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            spf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            spf.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+            xmlReader = spf.newSAXParser().getXMLReader();
+        } catch (ParserConfigurationException | TransformerConfigurationException | NoSuchAlgorithmException | SAXException e) {
             throw new RuntimeException("Failed to initialize file saving", e);
         }
     }
@@ -241,7 +255,8 @@ public class SaveManager implements ProblemConverter<LibAris> {
     }
 
     private synchronized Proof loadProof(InputStream in, String name, String author, boolean verifyIntegrity) throws TransformerException, IOException {
-        StreamSource src = new StreamSource(in);
+        // using the SAXSource so we can specify an xml reader that prevents xxe exploits
+        SAXSource src = new SAXSource(xmlReader, new InputSource(in));
         DOMResult result = new DOMResult();
         transformer.transform(src, result);
 
