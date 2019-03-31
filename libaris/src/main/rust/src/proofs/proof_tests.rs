@@ -38,6 +38,8 @@ fn test_rules_with_subproofs<P: Proof+Display+Debug>() where P::Reference: Debug
     run_test::<P, _>(test_impintro);
     run_test::<P, _>(test_notintro);
     run_test::<P, _>(test_orelim);
+    run_test::<P, _>(test_equivelim);
+    run_test::<P, _>(test_equivintro);
 }
 
 #[test] fn test_rules_on_treeproof() { test_rules::<treeproof::TreeProof<(), ()>>(); }
@@ -169,6 +171,7 @@ pub fn test_impelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
     (prf, vec![r6, r7, r13], vec![r8, r9, r10, r11, r12])
 }
 
+
 pub fn test_biconelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
     let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
     let mut prf = P::new();
@@ -261,7 +264,6 @@ pub fn test_orelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
     (prf, vec![r11], vec![r12, r13])
 }
 
-
 pub fn test_biconintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Reference>) where P::Subproof: Debug {
     let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
     let mut prf = P::new();
@@ -271,14 +273,14 @@ pub fn test_biconintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Refere
     let r4 = prf.add_premise(p("R -> Q"));
     let r5 = prf.add_premise(p("R -> P"));
     let r6 = prf.add_premise(p("A -> A"));
-    let r7 = prf.add_step(Justification(p("A <-> A <-> A <-> A <-> A"), RuleM::BiconditionalIntro, vec![r6.clone()], vec![]));
+    let r7 = prf.add_step(Justification(p("A <-> A"), RuleM::BiconditionalIntro, vec![r6.clone()], vec![]));
     let r8 = prf.add_step(Justification(p("P <-> Q <-> R"), RuleM::BiconditionalIntro, vec![r1.clone(), r2.clone(), r3.clone(), r4.clone()], vec![]));
     let r9 = prf.add_step(Justification(p("P <-> Q <-> R"), RuleM::BiconditionalIntro, vec![r1.clone(), r2.clone(), r5.clone()], vec![]));
     let r10 = prf.add_subproof();
     prf.with_mut_subproof(&r10, |sub1| {
         sub1.add_premise(p("B"));
     });
-    let r11 = prf.add_step(Justification(p("B <-> B <-> B"), RuleM::BiconditionalIntro, vec![], vec![r10.clone()]));
+    let r11 = prf.add_step(Justification(p("B <-> B"), RuleM::BiconditionalIntro, vec![], vec![r10.clone()]));
     let r12 = prf.add_step(Justification(p("P <-> Q <-> R <-> S"), RuleM::BiconditionalIntro, vec![r1.clone(), r2.clone(), r3.clone(), r4.clone()], vec![]));
     let r13 = prf.add_step(Justification(p("P <-> Q <-> R <-> S"), RuleM::BiconditionalIntro, vec![r1.clone(), r2.clone(), r5.clone()], vec![]));
     let r14 = prf.add_subproof();
@@ -301,7 +303,62 @@ pub fn test_biconintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Refere
         sub2.add_step(Justification(p("Q"), RuleM::Reit, vec![], vec![]));
     });
     let r19 = prf.add_step(Justification(p("P <-> Q"), RuleM::BiconditionalIntro, vec![r3.clone()], vec![r18.clone()]));
+    (prf, vec![r7, r11, r16, r19], vec![r8, r9, r12, r13, r17])
+}
+
+pub fn test_equivintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Reference>) where P::Subproof: Debug {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let mut prf = P::new();
+    let r1 = prf.add_premise(p("P -> Q"));
+    let r2 = prf.add_premise(p("Q -> R"));
+    let r3 = prf.add_premise(p("Q -> P"));
+    let r4 = prf.add_premise(p("R -> Q"));
+    let r5 = prf.add_premise(p("R -> P"));
+    let r6 = prf.add_premise(p("A -> A"));
+    let r7 = prf.add_step(Justification(p("A === A === A === A === A"), RuleM::EquivalenceIntro, vec![r6.clone()], vec![]));
+    let r8 = prf.add_step(Justification(p("P === Q === R"), RuleM::EquivalenceIntro, vec![r1.clone(), r2.clone(), r3.clone(), r4.clone()], vec![]));
+    let r9 = prf.add_step(Justification(p("P === Q === R"), RuleM::EquivalenceIntro, vec![r1.clone(), r2.clone(), r5.clone()], vec![]));
+    let r10 = prf.add_subproof();
+    prf.with_mut_subproof(&r10, |sub1| {
+        sub1.add_premise(p("B"));
+    });
+    let r11 = prf.add_step(Justification(p("B === B === B"), RuleM::EquivalenceIntro, vec![], vec![r10.clone()]));
+    let r12 = prf.add_step(Justification(p("P === Q === R === S"), RuleM::EquivalenceIntro, vec![r1.clone(), r2.clone(), r3.clone(), r4.clone()], vec![]));
+    let r13 = prf.add_step(Justification(p("P === Q === R === S"), RuleM::EquivalenceIntro, vec![r1.clone(), r2.clone(), r5.clone()], vec![]));
+    let r14 = prf.add_subproof();
+    prf.with_mut_subproof(&r14, |sub2| {
+        sub2.add_premise(p("A"));
+        sub2.add_step(Justification(p("B"), RuleM::Reit, vec![], vec![]));
+        sub2.add_step(Justification(p("C"), RuleM::Reit, vec![], vec![]));
+    });
+    let r15 = prf.add_subproof();
+    prf.with_mut_subproof(&r15, |sub2| {
+        sub2.add_premise(p("B"));
+        sub2.add_step(Justification(p("A"), RuleM::Reit, vec![], vec![]));
+        sub2.add_step(Justification(p("C"), RuleM::Reit, vec![], vec![]));
+    });
+    let r16 = prf.add_step(Justification(p("A === B"), RuleM::EquivalenceIntro, vec![], vec![r14.clone(), r15.clone()]));
+    let r17 = prf.add_step(Justification(p("A === C"), RuleM::EquivalenceIntro, vec![], vec![r14.clone(), r15.clone()]));
+    let r18 = prf.add_subproof();
+    prf.with_mut_subproof(&r18, |sub2| {
+        sub2.add_premise(p("P"));
+        sub2.add_step(Justification(p("Q"), RuleM::Reit, vec![], vec![]));
+    });
+    let r19 = prf.add_step(Justification(p("P === Q"), RuleM::EquivalenceIntro, vec![r3.clone()], vec![r18.clone()]));
     (prf, vec![r7, r8, r9, r11, r16, r19], vec![r12, r13, r17])
+}
+
+pub fn test_equivelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let mut prf = P::new();
+    let r1 = prf.add_premise(p("A === B === C"));
+    let r2 = prf.add_premise(p("A"));
+    let r3 = prf.add_step(Justification(p("B"), RuleM::EquivalenceElim, vec![r1.clone(), r2.clone()], vec![]));
+    let r4 = prf.add_step(Justification(p("C"), RuleM::EquivalenceElim, vec![r1.clone(), r2.clone()], vec![]));
+    let r5 = prf.add_step(Justification(p("A"), RuleM::EquivalenceElim, vec![r1.clone(), r4.clone()], vec![]));
+    let r6 = prf.add_step(Justification(p("D"), RuleM::EquivalenceElim, vec![r1.clone(), r4.clone()], vec![]));
+    let r7 = prf.add_step(Justification(p("A"), RuleM::EquivalenceElim, vec![r1.clone(), r6.clone()], vec![]));
+    (prf, vec![r3, r4, r5], vec![r6, r7])
 }
 
 pub fn test_forallelim<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Reference>) where P::Subproof: Debug {

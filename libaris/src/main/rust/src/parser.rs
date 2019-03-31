@@ -38,9 +38,10 @@ named!(binopterm<&str, Expr>, do_parse!(left: paren_expr >> space >> symbol: bin
 named!(andrepr<&str, ASymbol>, do_parse!(alt!(tag!("&") | tag!("∧") | tag!("/\\")) >> (ASymbol::And)));
 named!(orrepr<&str, ASymbol>, do_parse!(alt!(tag!("|") | tag!("∨") | tag!("\\/")) >> (ASymbol::Or)));
 named!(biconrepr<&str, ASymbol>, do_parse!(alt!(tag!("<->") | tag!("↔")) >> (ASymbol::Bicon)));
+named!(equivrepr<&str, ASymbol>, do_parse!(alt!(tag!("===") | tag!("≡")) >> (ASymbol::Equiv)));
 
 named!(assoctermaux<&str, (Vec<Expr>, Vec<ASymbol>)>, alt!(
-    do_parse!(space >> e: paren_expr >> space >> sym: alt!(andrepr | orrepr | biconrepr) >> space >> rec: assoctermaux >> ({ let (mut es, mut syms) = rec; es.push(e); syms.push(sym); (es, syms) })) |
+    do_parse!(space >> e: paren_expr >> space >> sym: alt!(andrepr | orrepr | biconrepr | equivrepr) >> space >> rec: assoctermaux >> ({ let (mut es, mut syms) = rec; es.push(e); syms.push(sym); (es, syms) })) |
     do_parse!(e: paren_expr >> (vec![e], vec![]))
     ));
 

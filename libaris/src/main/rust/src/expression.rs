@@ -9,7 +9,7 @@ pub enum USymbol { Not }
 pub enum BSymbol { Implies, Plus, Mult }
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[repr(C)]
-pub enum ASymbol { And, Or, Bicon }
+pub enum ASymbol { And, Or, Bicon, Equiv }
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[repr(C)]
 pub enum QSymbol { Forall, Exists }
@@ -48,6 +48,7 @@ impl std::fmt::Display for ASymbol {
             ASymbol::And => write!(f, "∧"),
             ASymbol::Or => write!(f, "∨"),
             ASymbol::Bicon => write!(f, "↔"),
+            ASymbol::Equiv => write!(f, "≡"),
         }
     }
 }

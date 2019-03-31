@@ -156,6 +156,7 @@ impl HasClass for ASymbol {
             ASymbol::And => "Ledu/rpi/aris/ast/Expression$AndExpression;",
             ASymbol::Or => "Ledu/rpi/aris/ast/Expression$OrExpression;",
             ASymbol::Bicon => "Ledu/rpi/aris/ast/Expression$BiconExpression;",
+            ASymbol::Equiv => "Ledu/rpi/aris/ast/Expression$EquivExpression;",
         }
     }
 }

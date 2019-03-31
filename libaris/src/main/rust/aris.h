@@ -7,6 +7,7 @@ typedef enum {
   And,
   Or,
   Bicon,
+  Equiv,
 } ASymbol;
 
 typedef enum {

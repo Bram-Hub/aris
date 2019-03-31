@@ -46,6 +46,7 @@ public class Expression {
     public static class AndExpression extends Expression.AssociativeBinopExpression {}
     public static class OrExpression extends Expression.AssociativeBinopExpression {}
     public static class BiconExpression extends Expression.AssociativeBinopExpression {}
+    public static class EquivExpression extends Expression.AssociativeBinopExpression {}
 
     public static abstract class QuantifierExpression extends Expression {
         public String boundvar; public Expression body;

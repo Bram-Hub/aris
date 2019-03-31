@@ -13,6 +13,7 @@ pub enum PrepositionalInference {
     NotIntro, NotElim,
     ContradictionIntro, ContradictionElim,
     BiconditionalIntro, BiconditionalElim,
+    EquivalenceIntro, EquivalenceElim,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -57,6 +58,8 @@ pub mod RuleM {
     pub static ContradictionElim: Rule = SharedChecks(Inl(PrepositionalInference::ContradictionElim));
     pub static BiconditionalIntro: Rule = SharedChecks(Inl(PrepositionalInference::BiconditionalIntro));
     pub static BiconditionalElim: Rule = SharedChecks(Inl(PrepositionalInference::BiconditionalElim));
+    pub static EquivalenceIntro: Rule = SharedChecks(Inl(PrepositionalInference::EquivalenceIntro));
+    pub static EquivalenceElim: Rule = SharedChecks(Inl(PrepositionalInference::EquivalenceElim));
 
     pub static ForallIntro: Rule = SharedChecks(Inr(Inl(PredicateInference::ForallIntro)));
     pub static ForallElim: Rule = SharedChecks(Inr(Inl(PredicateInference::ForallElim)));
@@ -147,6 +150,8 @@ impl RuleT for PrepositionalInference {
             ContradictionElim => "⊥ Elimination",
             BiconditionalIntro => "↔ Introduction",
             BiconditionalElim => "↔ Elimination",
+            EquivalenceIntro => "≡ Introduction",
+            EquivalenceElim => "≡ Elimination",
         }.into()
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
@@ -154,8 +159,8 @@ impl RuleT for PrepositionalInference {
         let mut ret = [Inference].iter().cloned().collect::<HashSet<_>>();
         match self {
             Reit => (),
-            AndIntro | OrIntro | ImpIntro | NotIntro | ContradictionIntro | BiconditionalIntro => { ret.insert(Introduction); },
-            AndElim | OrElim | ImpElim | NotElim | ContradictionElim | BiconditionalElim => { ret.insert(Elimination); },
+            AndIntro | OrIntro | ImpIntro | NotIntro | ContradictionIntro | BiconditionalIntro | EquivalenceIntro => { ret.insert(Introduction); },
+            AndElim | OrElim | ImpElim | NotElim | ContradictionElim | BiconditionalElim | EquivalenceElim => { ret.insert(Elimination); },
         }
         ret
     }
@@ -163,17 +168,17 @@ impl RuleT for PrepositionalInference {
         use PrepositionalInference::*;
         match self {
             Reit | AndElim | OrIntro | OrElim | NotElim | ContradictionElim => Some(1),
-            ContradictionIntro | ImpElim | BiconditionalElim => Some(2),
+            ContradictionIntro | ImpElim | BiconditionalElim | EquivalenceElim => Some(2),
             NotIntro | ImpIntro => Some(0),
-            AndIntro | BiconditionalIntro => None, // AndIntro can have arbitrarily many conjuncts in one application
+            AndIntro | BiconditionalIntro | EquivalenceIntro => None, // AndIntro can have arbitrarily many conjuncts in one application
         }
     }
     fn num_subdeps(&self) -> Option<usize> {
         use PrepositionalInference::*;
         match self {
             NotIntro | ImpIntro => Some(1),
-            Reit | AndElim | OrIntro | NotElim | ContradictionElim | ContradictionIntro | ImpElim | AndIntro | BiconditionalElim => Some(0),
-            OrElim | BiconditionalIntro => None,
+            Reit | AndElim | OrIntro | NotElim | ContradictionElim | ContradictionIntro | ImpElim | AndIntro | BiconditionalElim | EquivalenceElim => Some(0),
+            OrElim | BiconditionalIntro | EquivalenceIntro => None,
         }
     }
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<P::Reference>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
@@ -358,72 +363,6 @@ impl RuleT for PrepositionalInference {
                     return Err(DepOfWrongForm(prem.clone(), Expr::Bottom));
                 }
             },
-            BiconditionalIntro => {
-                if let Expr::AssocBinop { symbol: ASymbol::Bicon, ref exprs } = conclusion {
-                    let prems = deps.into_iter().map(|r| p.lookup_expr_or_die(r)).collect::<Result<Vec<Expr>,_>>()?;
-                    let sproofs = sdeps.into_iter().map(|r| p.lookup_subproof_or_die(r)).collect::<Result<Vec<_>,_>>()?;
-                    let mut slab = HashMap::new();
-                    let mut counter = 0;
-                    let mut next: &mut FnMut()->_ = &mut || { counter += 1; counter };
-                    let mut g = DiGraphMap::new();
-                    for prem in prems.iter() {
-                        match prem {
-                            Expr::AssocBinop { symbol: ASymbol::Bicon, ref exprs } => {
-                                for e1 in exprs.iter() {
-                                    for e2 in exprs.iter() {
-                                        slab.entry(e1.clone()).or_insert_with(|| next());
-                                        slab.entry(e2.clone()).or_insert_with(|| next());
-                                        g.add_edge(slab[e1], slab[e2], ());
-                                    }
-                                }
-                            },
-                            Expr::Binop { symbol: BSymbol::Implies, ref left, ref right } => {
-                                slab.entry(*left.clone()).or_insert_with(|| next());
-                                slab.entry(*right.clone()).or_insert_with(|| next());
-                                g.add_edge(slab[left], slab[right], ());
-                            },
-                            _ => return Err(OneOf(vec![
-                                DepOfWrongForm(prem.clone(), expression_builders::assocplaceholder(ASymbol::Bicon)),
-                                DepOfWrongForm(prem.clone(), expression_builders::binopplaceholder(BSymbol::Implies)),
-                            ])),
-                        }
-                    }
-                    for sproof in sproofs.iter() {
-                        assert_eq!(sproof.premises().len(), 1);
-                        let prem = sproof.lookup_expr_or_die(sproof.premises()[0].clone())?;
-                        slab.entry(prem.clone()).or_insert_with(|| next());
-                        for r in sproof.exprs() {
-                            let e = sproof.lookup_expr_or_die(r)?.clone();
-                            slab.entry(e.clone()).or_insert_with(|| next());
-                            g.add_edge(slab[&prem], slab[&e], ());
-                        }
-                    }
-                    let rslab = slab.clone().into_iter().map(|(k, v)| (v, k)).collect::<HashMap<_,_>>();
-                    let sccs = tarjan_scc(&g).iter().map(|x| x.iter().map(|i| rslab[i].clone()).collect()).collect::<Vec<HashSet<_>>>();
-                    println!("sccs: {:?}", sccs);
-                    if sccs.iter().any(|s| exprs.iter().all(|e| s.contains(e))) {
-                        Ok(())
-                    } else {
-                        let mut errstring = format!("Not all elements of the conclusion are mutually implied by the premises.");
-                        if let Some(e) = exprs.iter().find(|e| !sccs.iter().any(|s| s.contains(e))) {
-                            errstring += &format!("\nThe expression {} occurs in the conclusion, but not in any of the premises.", e);
-                        } else {
-                            exprs.iter().any(|e1| exprs.iter().any(|e2| {
-                                for i in 0..sccs.len() {
-                                    if sccs[i].contains(e2) && !sccs[i..].iter().any(|s| s.contains(e1)) {
-                                        errstring += &format!("\nThe expression {} is unreachable from {} by the premises.", e2, e1);
-                                        return true;
-                                    }
-                                }
-                                false
-                            }));
-                        }
-                        Err(Other(errstring))
-                    }
-                } else {
-                    return Err(ConclusionOfWrongForm(expression_builders::assocplaceholder(ASymbol::Bicon)));
-                }
-            },
             BiconditionalElim => {
                 let mut prems = vec![];
                 prems.push(p.lookup_expr_or_die(deps[0].clone())?);
@@ -452,6 +391,98 @@ impl RuleT for PrepositionalInference {
                     }
                 }
                 return Err(DepDoesNotExist(expression_builders::assocplaceholder(ASymbol::Bicon), true));
+            },
+            EquivalenceIntro | BiconditionalIntro => {
+                let sym = if let EquivalenceIntro = self { ASymbol::Equiv } else { ASymbol::Bicon };
+                if let Expr::AssocBinop { symbol, ref exprs } = conclusion { if sym == symbol {
+                    if let BiconditionalIntro = self { if exprs.len() != 2 {
+                        use expression_builders::var;
+                        return Err(ConclusionOfWrongForm(Expr::AssocBinop { symbol: ASymbol::Bicon, exprs: vec![var("_"), var("_")] }))
+                    }}
+                    let prems = deps.into_iter().map(|r| p.lookup_expr_or_die(r)).collect::<Result<Vec<Expr>, _>>()?;
+                    let sproofs = sdeps.into_iter().map(|r| p.lookup_subproof_or_die(r)).collect::<Result<Vec<_>, _>>()?;
+                    let mut slab = HashMap::new();
+                    let mut counter = 0;
+                    let mut next: &mut FnMut() -> _ = &mut || {
+                        counter += 1;
+                        counter
+                    };
+                    let mut g = DiGraphMap::new();
+                    for prem in prems.iter() {
+                        match prem {
+                            Expr::AssocBinop { symbol, ref exprs } if &sym == symbol => {
+                                for e1 in exprs.iter() {
+                                    for e2 in exprs.iter() {
+                                        slab.entry(e1.clone()).or_insert_with(|| next());
+                                        slab.entry(e2.clone()).or_insert_with(|| next());
+                                        g.add_edge(slab[e1], slab[e2], ());
+                                    }
+                                }
+                            },
+                            Expr::Binop { symbol: BSymbol::Implies, ref left, ref right } => {
+                                slab.entry(*left.clone()).or_insert_with(|| next());
+                                slab.entry(*right.clone()).or_insert_with(|| next());
+                                g.add_edge(slab[left], slab[right], ());
+                            },
+                            _ => return Err(OneOf(vec![
+                                DepOfWrongForm(prem.clone(), expression_builders::assocplaceholder(sym)),
+                                DepOfWrongForm(prem.clone(), expression_builders::binopplaceholder(BSymbol::Implies)),
+                            ])),
+                        }
+                    }
+                    for sproof in sproofs.iter() {
+                        assert_eq!(sproof.premises().len(), 1);
+                        let prem = sproof.lookup_expr_or_die(sproof.premises()[0].clone())?;
+                        slab.entry(prem.clone()).or_insert_with(|| next());
+                        for r in sproof.exprs() {
+                            let e = sproof.lookup_expr_or_die(r)?.clone();
+                            slab.entry(e.clone()).or_insert_with(|| next());
+                            g.add_edge(slab[&prem], slab[&e], ());
+                        }
+                    }
+                    let rslab = slab.clone().into_iter().map(|(k, v)| (v, k)).collect::<HashMap<_, _>>();
+                    let sccs = tarjan_scc(&g).iter().map(|x| x.iter().map(|i| rslab[i].clone()).collect()).collect::<Vec<HashSet<_>>>();
+                    println!("sccs: {:?}", sccs);
+                    if sccs.iter().any(|s| exprs.iter().all(|e| s.contains(e))) {
+                        return Ok(());
+                    } else {
+                        let mut errstring = format!("Not all elements of the conclusion are mutually implied by the premises.");
+                        if let Some(e) = exprs.iter().find(|e| !sccs.iter().any(|s| s.contains(e))) {
+                            errstring += &format!("\nThe expression {} occurs in the conclusion, but not in any of the premises.", e);
+                        } else {
+                            exprs.iter().any(|e1| exprs.iter().any(|e2| {
+                                for i in 0..sccs.len() {
+                                    if sccs[i].contains(e2) && !sccs[i..].iter().any(|s| s.contains(e1)) {
+                                        errstring += &format!("\nThe expression {} is unreachable from {} by the premises.", e2, e1);
+                                        return true;
+                                    }
+                                }
+                                false
+                            }));
+                        }
+                        return Err(Other(errstring));
+                    }}
+                }
+                return Err(ConclusionOfWrongForm(expression_builders::assocplaceholder(sym)));
+            },
+            EquivalenceElim => {
+                let mut prems = vec![];
+                prems.push(p.lookup_expr_or_die(deps[0].clone())?);
+                prems.push(p.lookup_expr_or_die(deps[1].clone())?);
+
+                for (i, j) in [(0,1), (1,0)].iter().cloned() {
+                    if let Expr::AssocBinop { symbol: ASymbol::Equiv, ref exprs } = prems[i] {
+                        // TODO: Negation?
+                        if exprs.iter().find(|x| x == &&prems[j]).is_none() {
+                            return Err(DoesNotOccur(prems[j].clone(), prems[i].clone()));
+                        }
+                        if exprs.iter().find(|x| x == &&conclusion).is_none() {
+                            return Err(DoesNotOccur(conclusion.clone(), prems[i].clone()));
+                        }
+                        return Ok(());
+                    }
+                }
+                return Err(DepDoesNotExist(expression_builders::assocplaceholder(ASymbol::Equiv), true));
             },
         }
     }

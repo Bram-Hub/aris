@@ -18,6 +18,7 @@ public interface ASTVisitor<T> {
     public T visitAndExpression(AndExpression e);
     public T visitOrExpression(OrExpression e);
     public T visitBiconExpression(BiconExpression e);
+    public T visitEquivExpression(EquivExpression e);
     public T visitQuantifierExpression(QuantifierExpression e);
     public T visitForallExpression(ForallExpression e);
     public T visitExistsExpression(ExistsExpression e);
