@@ -27,6 +27,9 @@ pub extern "system" fn Java_edu_rpi_aris_rules_Rule_fromRule(env: JNIEnv, _: JOb
             "PRINCIPLE_OF_EXPLOSION" => RuleM::ContradictionElim,
             "BICONDITIONAL_INTRO" => RuleM::BiconditionalIntro,
             "BICONDITIONAL_ELIM" => RuleM::BiconditionalElim,
+            "EQUIVALENCE_INTRO" => RuleM::EquivalenceIntro,
+            "EQUIVALENCE_ELIM" => RuleM::EquivalenceElim,
+
 
             "UNIVERSAL_GENERALIZATION" => RuleM::ForallIntro,
             "UNIVERSAL_INSTANTIATION" => RuleM::ForallElim,
