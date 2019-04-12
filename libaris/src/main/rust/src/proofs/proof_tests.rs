@@ -134,7 +134,8 @@ pub fn test_contradictionintro<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Refe
     let r7 = prf.add_step(Justification(p("_|_"), RuleM::ContradictionIntro, vec![r1.clone(), r3.clone()], vec![]));
     let r8 = prf.add_step(Justification(p("_|_"), RuleM::ContradictionIntro, vec![r1.clone(), r4.clone()], vec![]));
     let r9 = prf.add_step(Justification(p("Q(E,D)"), RuleM::ContradictionIntro, vec![r1.clone(), r2.clone()], vec![]));
-    (prf, vec![r5, r6], vec![r7, r8, r9])
+    let r10 = prf.add_step(Justification(p("_|_"), RuleM::ContradictionIntro, vec![r2.clone(), r1.clone()], vec![]));
+    (prf, vec![r5, r6, r10], vec![r7, r8, r9])
 }
 
 pub fn test_notelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
@@ -168,7 +169,8 @@ pub fn test_impelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
     let r11 = prf.add_step(Justification(p("B"), RuleM::ImpElim, vec![r3.clone(), r4.clone()], vec![]));
     let r12 = prf.add_step(Justification(p("Q"), RuleM::ImpElim, vec![r2.clone(), r4.clone()], vec![]));
     let r13 = prf.add_step(Justification(p("A"), RuleM::ImpElim, vec![r4.clone(), r5.clone()], vec![]));
-    (prf, vec![r6, r7, r13], vec![r8, r9, r10, r11, r12])
+    let r14 = prf.add_step(Justification(p("Q"), RuleM::ImpElim, vec![r2.clone(), r1.clone()], vec![]));
+    (prf, vec![r6, r7, r13, r14], vec![r8, r9, r10, r11, r12])
 }
 
 
@@ -192,11 +194,12 @@ pub fn test_biconelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
     let r12 = prf.add_premise(p("A <-> B <-> C <-> D"));
     let r13 = prf.add_step(Justification(p("A <-> C <-> D"), RuleM::BiconditionalElim, vec![r10.clone(), r12.clone()], vec![]));
     let r14 = prf.add_step(Justification(p("C"), RuleM::BiconditionalElim, vec![r1.clone(), r9.clone()], vec![]));
+    let r15 = prf.add_step(Justification(p("B <-> C"), RuleM::BiconditionalElim, vec![r2.clone(), r1.clone()], vec![]));
     static BICON_COMMUTATIVITY: bool = false;
     if BICON_COMMUTATIVITY {
-        (prf, vec![r3, r4, r11, r13], vec![r5, r7, r10])
+        (prf, vec![r3, r4, r11, r13, r15], vec![r5, r7, r10])
     } else {
-        (prf, vec![r3, r11, r13, r14], vec![r4, r5, r7, r10])
+        (prf, vec![r3, r11, r13, r14, r15], vec![r4, r5, r7, r10])
     }
 }
 
@@ -358,6 +361,7 @@ pub fn test_equivelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
     let r5 = prf.add_step(Justification(p("A"), RuleM::EquivalenceElim, vec![r1.clone(), r4.clone()], vec![]));
     let r6 = prf.add_step(Justification(p("D"), RuleM::EquivalenceElim, vec![r1.clone(), r4.clone()], vec![]));
     let r7 = prf.add_step(Justification(p("A"), RuleM::EquivalenceElim, vec![r1.clone(), r6.clone()], vec![]));
+    let r8 = prf.add_step(Justification(p("B"), RuleM::EquivalenceElim, vec![r2.clone(), r1.clone()], vec![]));
     (prf, vec![r3, r4, r5], vec![r6, r7])
 }
 

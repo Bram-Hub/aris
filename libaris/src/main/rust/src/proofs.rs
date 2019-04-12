@@ -48,7 +48,7 @@ pub trait DisplayIndented {
 
 pub trait Proof: Sized {
     type Reference: Clone + Eq + Hash;
-    type SubproofReference: Clone;
+    type SubproofReference: Clone + Eq + Hash;
     type Subproof: Proof<Reference=Self::Reference, SubproofReference=Self::SubproofReference, Subproof=Self::Subproof>;
     fn new() -> Self;
     fn top_level_proof(&self) -> &Self::Subproof;

@@ -282,7 +282,7 @@ impl RuleT for PrepositionalInference {
                 prems.push(p.lookup_expr_or_die(deps[0].clone())?);
                 prems.push(p.lookup_expr_or_die(deps[1].clone())?);
 
-                for (i, j) in [(0,1), (1,0)].iter().cloned(){
+                either_order(|i, j| {
                     if let Expr::Binop{symbol: BSymbol::Implies, ref left, ref right} = prems[i]{
                         //bad case, p -> q, a therefore --doesn't matter, nothing can be said
                         //with a
@@ -297,11 +297,11 @@ impl RuleT for PrepositionalInference {
 
                         //good case, p -> q, p therefore q
                         if **left == prems[j] && **right == conclusion{
-                            return Ok(());
+                            return Ok(Some(()));
                         }
                     }
-                }
-                return Err(DepDoesNotExist(expression_builders::binopplaceholder(BSymbol::Implies), true));
+                    Ok(None)
+                }, || Err(DepDoesNotExist(expression_builders::binopplaceholder(BSymbol::Implies), true)))
 
             },
             NotIntro => {
@@ -343,14 +343,14 @@ impl RuleT for PrepositionalInference {
                     let mut prems = vec![];
                     prems.push(p.lookup_expr_or_die(deps[0].clone())?);
                     prems.push(p.lookup_expr_or_die(deps[1].clone())?);
-                    for (i, j) in [(0, 1), (1, 0)].iter().cloned() {
+                    either_order(|i, j| {
                         if let Expr::Unop { symbol: USymbol::Not, ref operand } = prems[i] {
                             if **operand == prems[j] {
-                                return Ok(());
+                                return Ok(Some(()));
                             }
                         }
-                    }
-                    return Err(Other("Expected one dependency to be the negation of the other.".into()));
+                       Ok(None)
+                    }, || Err(Other("Expected one dependency to be the negation of the other.".into())))
                 } else {
                     return Err(ConclusionOfWrongForm(Expr::Bottom));
                 }
@@ -368,7 +368,7 @@ impl RuleT for PrepositionalInference {
                 prems.push(p.lookup_expr_or_die(deps[0].clone())?);
                 prems.push(p.lookup_expr_or_die(deps[1].clone())?);
 
-                for (i, j) in [(0,1), (1,0)].iter().cloned() {
+                either_order(|i, j| {
                     if let Expr::AssocBinop { symbol: ASymbol::Bicon, ref exprs } = prems[i] {
                         let mut s = HashSet::new();
                         if let Expr::AssocBinop { symbol: ASymbol::Bicon, ref exprs } = prems[j] {
@@ -385,12 +385,12 @@ impl RuleT for PrepositionalInference {
                         let expected = if terms.len() == 1 { terms[0].clone() } else { expression_builders::assocbinop(ASymbol::Bicon, &terms[..]) };
                         // TODO: maybe commutativity
                         if conclusion != expected {
-                            return Err(DoesNotOccur(conclusion, expected));
+                            return Err(DoesNotOccur(conclusion.clone(), expected));
                         }
-                        return Ok(());
+                        return Ok(Some(()));
                     }
-                }
-                return Err(DepDoesNotExist(expression_builders::assocplaceholder(ASymbol::Bicon), true));
+                  Ok(None)
+                }, || Err(DepDoesNotExist(expression_builders::assocplaceholder(ASymbol::Bicon), true)))
             },
             EquivalenceIntro | BiconditionalIntro => {
                 let sym = if let EquivalenceIntro = self { ASymbol::Equiv } else { ASymbol::Bicon };
@@ -470,7 +470,7 @@ impl RuleT for PrepositionalInference {
                 prems.push(p.lookup_expr_or_die(deps[0].clone())?);
                 prems.push(p.lookup_expr_or_die(deps[1].clone())?);
 
-                for (i, j) in [(0,1), (1,0)].iter().cloned() {
+                either_order(|i, j| {
                     if let Expr::AssocBinop { symbol: ASymbol::Equiv, ref exprs } = prems[i] {
                         // TODO: Negation?
                         if exprs.iter().find(|x| x == &&prems[j]).is_none() {
@@ -479,10 +479,10 @@ impl RuleT for PrepositionalInference {
                         if exprs.iter().find(|x| x == &&conclusion).is_none() {
                             return Err(DoesNotOccur(conclusion.clone(), prems[i].clone()));
                         }
-                        return Ok(());
+                        return Ok(Some(()));
                     }
-                }
-                return Err(DepDoesNotExist(expression_builders::assocplaceholder(ASymbol::Equiv), true));
+                  Ok(None)
+                }, || Err(DepDoesNotExist(expression_builders::assocplaceholder(ASymbol::Equiv), true)))
             },
         }
     }
@@ -631,6 +631,24 @@ impl RuleT for RedundantPrepositionalInference {
     fn num_deps(&self) -> Option<usize> { unimplemented!() }
     fn num_subdeps(&self) -> Option<usize> { unimplemented!() }
     fn check<P: Proof>(self, _p: &P, _expr: Expr, _deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> { unimplemented!() }
+}
+
+fn either_order<T, R: Eq, S: Eq, F: FnMut(usize, usize)->Result<Option<T>, ProofCheckError<R, S>>, G: FnOnce()->Result<T, ProofCheckError<R, S>>>(mut f: F, g: G) -> Result<T, ProofCheckError<R, S>> {
+  macro_rules! h {
+    ($i:expr, $j:expr) => (
+      match f($i, $j) {
+        Ok(Some(x)) => return Ok(x),
+        Ok(None) => None,
+        Err(e) => Some(e),
+      }
+    );
+  };
+  match (h!(0, 1), h!(1, 0)) {
+    (None, None) => g(),
+    (Some(e), None) => Err(e),
+    (None, Some(e)) => Err(e),
+    (Some(e1), Some(e2)) => { if e1 == e2 { Err(e1) } else { Err(ProofCheckError::OneOf(vec![e1, e2]))} },
+  }
 }
 
 #[derive(Debug, PartialEq, Eq)]
