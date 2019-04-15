@@ -238,6 +238,7 @@ public class Line {
     }
 
     public void setExpressionString(String expressionString, boolean buildImmediately) {
+        this.proof.rustProof.setExpressionString(this.lineNumber, expressionString);
         this.expressionString = expressionString;
         synchronized (Line.this) {
             expression = null;
@@ -260,6 +261,7 @@ public class Line {
     }
 
     public void setUnderlined(boolean underlined) {
+        this.proof.rustProof.moveCursor(this.lineNumber);
         this.underlined = underlined;
         if (listener != null)
             listener.underlined(underlined);

@@ -171,14 +171,21 @@ impl<Tail: Default+Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
         let idx = pools.next_premkey();
         pools.prem_map.insert(idx, HCons { head: e, tail: Tail::default() });
         pools.set_parent(Coproduct::inject(idx), self);
+        use self::Coproduct::{Inl, Inr};
         if let Some(s) = pools.parent_of(&r) {
             self.with_mut_subproof(&s, |sub| {
-                let pr: &PremKey = r.get().unwrap(); // TODO: allow r to be a JustKey if after is true
-                sub.premise_list.insert_relative(idx, pr, after);
+                match r {
+                    Inl(pr) => sub.premise_list.insert_relative(idx, &pr, after),
+                    Inr(Inl(_)) => sub.premise_list.push(idx), // if inserting before a step, insert at the end of premises
+                    Inr(Inr(void)) => match void {},
+                }
             });
         } else {
-            let pr: &PremKey = r.get().unwrap(); // TODO: allow r to be a JustKey if after is true
-            self.premise_list.insert_relative(idx, pr, after);
+            match r {
+                Inl(pr) => self.premise_list.insert_relative(idx, &pr, after),
+                Inr(Inl(_)) => self.premise_list.push(idx), // if inserting before a step, insert at the end of premises
+                Inr(Inr(void)) => match void {},
+            }
         }
         Coproduct::inject(idx)
     }
@@ -204,14 +211,21 @@ impl<Tail: Default+Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
         // TODO: occurs-before check
         pools.just_map.insert(idx, Justification(HCons { head: just.0, tail: Tail::default() }, just.1, just.2, just.3));
         pools.set_parent(Coproduct::inject(idx), self);
+        use self::Coproduct::{Inl, Inr};
         if let Some(s) = pools.parent_of(&r) {
             self.with_mut_subproof(&s, |sub| {
-                let jr: &JustKey = r.get().unwrap(); // TODO: allow r to be a PremKey if after is true
-                sub.line_list.insert_relative(Coproduct::inject(idx), &Coproduct::inject(*jr), after);
+                match r {
+                    Inl(_) => sub.line_list.push_front(Coproduct::inject(idx)), // if inserting after a premise, insert at the beginning of lines
+                    Inr(Inl(jr)) => sub.line_list.insert_relative(Coproduct::inject(idx), &Coproduct::inject(jr.clone()), after),
+                    Inr(Inr(void)) => match void {},
+                }
             });
         } else {
-            let jr: &JustKey = r.get().unwrap(); // TODO: allow r to be a PremKey if after is true
-            self.line_list.insert_relative(Coproduct::inject(idx), &Coproduct::inject(*jr), after);
+            match r {
+                Inl(_) => self.line_list.push_front(Coproduct::inject(idx)), // if inserting after a premise, insert at the beginning of lines
+                Inr(Inl(jr)) => self.line_list.insert_relative(Coproduct::inject(idx), &Coproduct::inject(jr.clone()), after),
+                Inr(Inr(void)) => match void {},
+            }
         }
         Coproduct::inject(idx)
     }

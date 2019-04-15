@@ -1,12 +1,26 @@
 use super::*;
 use std::fmt::Debug;
 
-#[derive(Clone)]
 pub struct Line<P: Proof> {
     pub raw_expr: String,
     pub is_premise: bool,
     pub reference: P::Reference,
     pub subreference: Option<P::SubproofReference>, // None for toplevel lines
+}
+
+impl<P: Proof> Clone for Line<P> {
+    fn clone(&self) -> Self {
+        Line { raw_expr: self.raw_expr.clone(), is_premise: self.is_premise, reference: self.reference.clone(), subreference: self.subreference.clone() }
+    }
+}
+
+impl<P: Proof> PartialEq for Line<P> {
+    fn eq(&self, other: &Self) -> bool {
+        self.raw_expr == other.raw_expr &&
+        self.is_premise == other.is_premise &&
+        self.reference == other.reference &&
+        self.subreference == other.subreference
+    }
 }
 
 impl<P: Proof+Debug> Debug for Line<P> where P::Reference: Debug, P::SubproofReference: Debug {
@@ -77,6 +91,30 @@ impl<P: Proof+Debug> LinedProof<P> where P::Reference: Debug, P::SubproofReferen
         aux(p.top_level_proof(), &mut ret, None);
         ret.proof = p;
         ret
+    }
+    pub fn add_line(&mut self, i: usize, is_premise: bool) {
+        println!("add_line {:?} {:?}", i, is_premise);
+        let const_true = expression_builders::not(Expr::Bottom);
+        let line: Option<Line<P>> = self.lines.get(i).map(|x| x.clone());
+        match line {
+            None => {
+                let r = if is_premise { self.proof.add_premise(const_true) } else { self.proof.add_step(Justification(const_true, RuleM::Reit, vec![], vec![])) };
+                self.lines.push(Line { raw_expr: "".into(), is_premise, reference: r, subreference: None });
+            },
+            Some(line) => {
+                let r = if is_premise { self.proof.add_premise_relative(const_true, line.reference.clone(), true) } else { self.proof.add_step_relative(Justification(const_true, RuleM::Reit, vec![], vec![]), line.reference.clone(), true) };
+                self.lines.insert_relative(Line { raw_expr: "".into(), is_premise, reference: r, subreference: None /* TODO */}, &line, true);
+            },
+        };
+
+        println!("{:?}", self.proof);
+    }
+    pub fn set_expr(&mut self, i: usize, text: String) {
+        println!("set_expr {:?} {:?}", i, text);
+    }
+    pub fn move_cursor(&mut self, i: usize) {
+        println!("move_cursor {:?}", i);
+        self.lines.move_cursor(i);
     }
     pub fn delete(&mut self, i: usize) {
         if (i >= 1 || self.proof.premises().len() > 1) && i < self.lines.len() {

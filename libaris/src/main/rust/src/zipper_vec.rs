@@ -24,15 +24,21 @@ impl<T> ZipperVec<T> {
     pub fn from_vec(v: Vec<T>) -> Self { ZipperVec { prefix: v, suffix_r: Vec::new() } }
     pub fn cursor_pos(&self) -> usize { self.prefix.len() }
     pub fn len(&self) -> usize { self.prefix.len() + self.suffix_r.len() }
-    pub fn inc_cursor(&mut self) { if let Some(x) = self.prefix.pop() { self.suffix_r.push(x); } }
-    pub fn dec_cursor(&mut self) { if let Some(x) = self.suffix_r.pop() { self.prefix.push(x); } }
+    pub fn dec_cursor(&mut self) { if let Some(x) = self.prefix.pop() { self.suffix_r.push(x); } }
+    pub fn inc_cursor(&mut self) { if let Some(x) = self.suffix_r.pop() { self.prefix.push(x); } }
     pub fn move_cursor(&mut self, to: usize) {
-        while to > self.cursor_pos() { self.dec_cursor(); }
-        while to < self.cursor_pos() { self.inc_cursor(); }
+        if to < self.len() {
+            while to > self.cursor_pos() { self.inc_cursor(); }
+            while to < self.cursor_pos() { self.dec_cursor(); }
+        }
     }
     pub fn push(&mut self, x: T) {
         let len = self.len();
         self.move_cursor(len);
+        self.prefix.push(x);
+    }
+    pub fn push_front(&mut self, x: T) {
+        self.move_cursor(0);
         self.prefix.push(x);
     }
     pub fn iter(&self) -> impl Iterator<Item=&T> {

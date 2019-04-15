@@ -184,17 +184,50 @@ pub fn unify(mut c: HashSet<Constraint<Expr>>) -> Option<Substitution<String, Ex
 #[test]
 fn test_unify() {
     let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
-    let u = |s, t| { unify(vec![Constraint::Equal(p(s), p(t))].into_iter().collect()) };
+    let u = |s, t| {
+        let l = p(s);
+        let r = p(t);
+        let ret = unify(vec![Constraint::Equal(l.clone(), r.clone())].into_iter().collect());
+        if let Some(ref ret) = ret {
+            let subst_l = ret.0.iter().fold(l.clone(), |z, (x, y)| subst(&z, x, y.clone()));
+            let subst_r = ret.0.iter().fold(r.clone(), |z, (x, y)| subst(&z, x, y.clone()));
+            // TODO: assert alpha_equal(subst_l, subst_r);
+            println!("{} {} {:?} {} {}", l, r, ret, subst_l, subst_r);
+        }
+        ret
+    };
     println!("{:?}", u("x", "forall y, y"));
     println!("{:?}", u("forall y, y", "y"));
     println!("{:?}", u("x", "x"));
-    println!("{:?}", u("forall x, x", "forall y, y")); // should be equal with no substitution since unification is modulo alpha equivalence
+    assert_eq!(u("forall x, x", "forall y, y"), Some(Substitution(vec![]))); // should be equal with no substitution since unification is modulo alpha equivalence
     println!("{:?}", u("f(x,y,z)", "g(x,y,y)"));
+    println!("{:?}", u("g(x,y,y)", "f(x,y,z)"));
     println!("{:?}", u("forall foo, foo(x,y,z) & bar", "forall bar, bar(x,y,z) & baz"));
 
     assert_eq!(u("forall x, z", "forall y, y"), None);
     assert_eq!(u("x & y", "x | y"), None);
 }
+
+/*
+pub fn to_prenex(e: &Expr) -> Expr {
+    use Expr::*; use QSymbol::*;
+    match e {
+        Bottom => Bottom,
+        Predicate { .. } => e.clone(),
+        Unop { symbol: USymbol::Not, operand } => match to_prenex(&operand) {
+            Quantifier { symbol, name, body } => Quantifier { symbol: match symbol { Forall => Exists, Exists => Forall }, name, body: Box::new(expression_builders::not(*body)) },
+            e => e
+        },
+        Binop { symbol: BSymbol::Implies, left, right } => unimplemented!(),
+        Binop { symbol: _, left, right } => unimplemented!(),
+        AssocBinop { symbol, exprs } => {
+            let exprs: Vec<Expr> = exprs.iter().map(to_prenex).collect();
+            unimplemented!()
+        },
+        Quantifier { name, body, .. } => unimplemented!(),
+    }
+}
+*/
 
 pub mod expression_builders {
     use super::{Expr, USymbol, BSymbol, ASymbol, QSymbol};

@@ -241,6 +241,7 @@ impl RuleT for PrepositionalInference {
                 let prem = p.lookup_expr_or_die(deps[0].clone())?;
                 if let Expr::AssocBinop { symbol: ASymbol::Or, ref exprs } = prem {
                     let sproofs = sdeps.into_iter().map(|r| p.lookup_subproof_or_die(r.clone())).collect::<Result<Vec<_>,_>>()?;
+                    // if not all the subproofs have lines whose expressions contain the conclusion, return an error
                     if !sproofs.iter().all(|sproof| {
                             sproof.lines().into_iter().filter_map(|x| x.get::<P::Reference,_>().and_then(|y| p.lookup_expr(y.clone())).map(|y| y.clone())).find(|c| *c == conclusion).is_some()
                         }) {

@@ -11,7 +11,7 @@ import java.util.HashSet;
 import java.util.Objects;
 
 public class Proof {
-
+    public RustProof rustProof;
     private final HashSet<String> authors = new HashSet<>();
     private final HashSet<RuleList> allowedRules = new HashSet<>();
     private ArrayList<Line> lines = new ArrayList<>();
@@ -20,6 +20,7 @@ public class Proof {
     private boolean modified = false;
 
     public Proof(String author) {
+        rustProof = RustProof.createProof();
         authors.add(author == null ? "UNKNOWN" : author);
         modify();
     }
@@ -60,6 +61,7 @@ public class Proof {
     }
 
     public Line addLine(int index, boolean isAssumption, int subProofLevel) {
+        rustProof.addLine(index, isAssumption);
         if (index <= lines.size()) {
             Line l = new Line(subProofLevel, isAssumption, this);
             lines.add(index, l);

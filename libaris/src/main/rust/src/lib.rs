@@ -19,6 +19,7 @@ pub mod java_interop {
     pub mod java_rule;
     pub mod java_expression;
     use java_expression::*;
+    pub mod java_proof;
 
     use jni::JNIEnv;
     use jni::strings::JavaStr;
