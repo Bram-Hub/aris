@@ -12,7 +12,7 @@ public class RustProof {
 
     @Override public native String toString();
 
-    public native void addLine(long index, boolean isAssumption);
+    public native void addLine(long index, boolean isAssumption, int subProofLevel);
     public native void setExpressionString(long index, String expressionString);
     public native void moveCursor(long index);
 }

@@ -62,6 +62,7 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
         "edu.rpi.aris.ast.Expression$AndExpression" => handle_abe(ASymbol::And),
         "edu.rpi.aris.ast.Expression$OrExpression" => handle_abe(ASymbol::Or),
         "edu.rpi.aris.ast.Expression$BiconExpression" => handle_abe(ASymbol::Bicon),
+        "edu.rpi.aris.ast.Expression$EquivExpression" => handle_abe(ASymbol::Equiv),
         "edu.rpi.aris.ast.Expression$ForallExpression" => handle_quantifier(QSymbol::Forall),
         "edu.rpi.aris.ast.Expression$ExistsExpression" => handle_quantifier(QSymbol::Exists),
         "edu.rpi.aris.ast.Expression$BottomExpression" => Ok(Expr::Bottom),

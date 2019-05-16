@@ -13,14 +13,14 @@ pub struct Pools<T> {
     prem_map: BTreeMap<PremKey, T>,
     just_map: BTreeMap<JustKey, Justification<T, PooledRef, SubKey>>,
     sub_map: BTreeMap<SubKey, PooledSubproof<T>>,
-    containing_subproof: BTreeMap<Coproduct<PremKey, Coproduct<JustKey, frunk::coproduct::CNil>>, SubKey>,
+    containing_subproof: BTreeMap<Coproduct<PremKey, Coproduct<JustKey, Coproduct<SubKey, frunk::coproduct::CNil>>>, SubKey>,
 }
 
 impl<T> Pools<T> {
     fn new() -> Self {
         Pools { prem_map: BTreeMap::new(), just_map: BTreeMap::new(), sub_map: BTreeMap::new(), containing_subproof: BTreeMap::new() }
     }
-    fn set_parent(&mut self, idx: Coprod!(PremKey, JustKey), sub: &PooledSubproof<T>) {
+    fn set_parent(&mut self, idx: Coprod!(PremKey, JustKey, SubKey), sub: &PooledSubproof<T>) {
         for (k, v) in self.sub_map.iter() {
             if v as *const _ as usize == sub as *const _ as usize {
                 self.containing_subproof.insert(idx, *k);
@@ -28,7 +28,7 @@ impl<T> Pools<T> {
             }
         }
     }
-    fn parent_of(&self, idx: &Coprod!(PremKey, JustKey)) -> Option<SubKey> {
+    fn parent_of(&self, idx: &Coprod!(PremKey, JustKey, SubKey)) -> Option<SubKey> {
         self.containing_subproof.get(idx).map(|x| x.clone())
     }
     fn remove_line(&mut self, idx: &Coprod!(PremKey, JustKey)) {
@@ -153,6 +153,7 @@ impl<Tail: Default+Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
     fn add_subproof(&mut self) -> Self::SubproofReference {
         let pools = unsafe { &mut *self.pools };
         let idx = pools.next_subkey();
+        pools.set_parent(Coproduct::inject(idx), self);
         let sub = PooledSubproof::new(pools);
         pools.sub_map.insert(idx, sub);
         self.line_list.push(Coproduct::inject(idx));
@@ -172,7 +173,7 @@ impl<Tail: Default+Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
         pools.prem_map.insert(idx, HCons { head: e, tail: Tail::default() });
         pools.set_parent(Coproduct::inject(idx), self);
         use self::Coproduct::{Inl, Inr};
-        if let Some(s) = pools.parent_of(&r) {
+        if let Some(s) = pools.parent_of(&Coproduct::embed(r)) {
             self.with_mut_subproof(&s, |sub| {
                 match r {
                     Inl(pr) => sub.premise_list.insert_relative(idx, &pr, after),
@@ -194,7 +195,7 @@ impl<Tail: Default+Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
         let idx = pools.next_subkey();
         let sub = PooledSubproof::new(pools);
         pools.sub_map.insert(idx, sub);
-        if let Some(s) = pools.parent_of(&r) {
+        if let Some(s) = pools.parent_of(&Coproduct::embed(r)) {
             self.with_mut_subproof(&s, |sub| {
                 let jr: &JustKey = r.get().unwrap(); // TODO: allow r to be a PremKey if after is true
                 sub.line_list.insert_relative(Coproduct::inject(idx), &Coproduct::inject(*jr), after);
@@ -212,7 +213,7 @@ impl<Tail: Default+Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
         pools.just_map.insert(idx, Justification(HCons { head: just.0, tail: Tail::default() }, just.1, just.2, just.3));
         pools.set_parent(Coproduct::inject(idx), self);
         use self::Coproduct::{Inl, Inr};
-        if let Some(s) = pools.parent_of(&r) {
+        if let Some(s) = pools.parent_of(&Coproduct::embed(r)) {
             self.with_mut_subproof(&s, |sub| {
                 match r {
                     Inl(_) => sub.line_list.push_front(Coproduct::inject(idx)), // if inserting after a premise, insert at the beginning of lines
@@ -246,6 +247,15 @@ impl<Tail: Default+Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
             Inl(x) => Coproduct::inject(Coproduct::inject(x)),
             Inr(x) => Coproduct::embed(x),
         }).collect()
+    }
+    fn parent_of_line(&self, r: &Coprod!(Self::Reference, Self::SubproofReference)) -> Option<Self::SubproofReference> {
+        let pools = unsafe { &mut *self.pools };
+        use self::Coproduct::{Inl, Inr};
+        match r {
+            Inl(r) => pools.parent_of(&Coproduct::embed(*r)),
+            Inr(Inl(r)) => pools.parent_of(&Coproduct::inject(*r)),
+            Inr(Inr(void)) => match *void {},
+        }
     }
     fn verify_line(&self, r: &Self::Reference) -> Result<(), ProofCheckError<Self::Reference, Self::SubproofReference>> {
         // TODO: ReferencesLaterLine check (or should that go in SharedChecks?)
@@ -292,6 +302,7 @@ impl<Tail: Default+Clone> Proof for PooledProof<HCons<Expr, Tail>> {
     }
     fn premises(&self) -> Vec<Self::Reference> { self.proof.premises() }
     fn lines(&self) -> Vec<Coprod!(Self::Reference, Self::SubproofReference)> { self.proof.lines() }
+    fn parent_of_line(&self, r: &Coprod!(Self::Reference, Self::SubproofReference)) -> Option<Self::SubproofReference> { self.proof.parent_of_line(r) }
     fn verify_line(&self, r: &Self::Reference) -> Result<(), ProofCheckError<Self::Reference, Self::SubproofReference>> { self.proof.verify_line(r) }
 }
 

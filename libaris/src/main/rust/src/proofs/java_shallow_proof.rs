@@ -49,6 +49,7 @@ impl Proof for JavaShallowProof {
     fn lines(&self) -> Vec<Coprod!(Self::Reference, Self::SubproofReference)> {
         (1..self.0.len()).map(|i| Coproduct::Inl(self.0[i].clone())).collect()
     }
+    fn parent_of_line(&self, _: &Coprod!(Self::Reference, Self::SubproofReference)) -> Option<Self::SubproofReference> { unimplemented!() }
     fn verify_line(&self, r: &Self::Reference) -> Result<(), ProofCheckError<Self::Reference, Self::SubproofReference>> {
         use self::Coproduct::{Inl, Inr};
         match self.lookup(r.clone()) {

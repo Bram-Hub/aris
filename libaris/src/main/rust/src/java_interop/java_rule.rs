@@ -13,40 +13,9 @@ pub extern "system" fn Java_edu_rpi_aris_rules_Rule_fromRule(env: JNIEnv, _: JOb
 
         let name = String::from(env.get_string(JString::from(env.call_method(rule, "name", "()Ljava/lang/String;", &[])?.l()?))?);
         println!("Rule.fromRule, rule enum name: {:?}", name);
-        let rule = match &*name {
-            "REITERATION" => RuleM::Reit,
-            "CONJUNCTION" => RuleM::AndIntro,
-            "SIMPLIFICATION" => RuleM::AndElim,
-            "ADDITION" => RuleM::OrIntro,
-            "DISJUNCTIVE_SYLLOGISM" => RuleM::OrElim,
-            "CONDITIONAL_PROOF" => RuleM::ImpIntro,
-            "MODUS_PONENS" => RuleM::ImpElim,
-            "PROOF_BY_CONTRADICTION" => RuleM::NotIntro,
-            "DOUBLENEGATION" => RuleM::NotElim,
-            "CONTRADICTION" => RuleM::ContradictionIntro,
-            "PRINCIPLE_OF_EXPLOSION" => RuleM::ContradictionElim,
-            "BICONDITIONAL_INTRO" => RuleM::BiconditionalIntro,
-            "BICONDITIONAL_ELIM" => RuleM::BiconditionalElim,
-            "EQUIVALENCE_INTRO" => RuleM::EquivalenceIntro,
-            "EQUIVALENCE_ELIM" => RuleM::EquivalenceElim,
-
-
-            "UNIVERSAL_GENERALIZATION" => RuleM::ForallIntro,
-            "UNIVERSAL_INSTANTIATION" => RuleM::ForallElim,
-            "EXISTENTIAL_GENERALIZATION" => RuleM::ExistsIntro,
-            "EXISTENTIAL_INSTANTIATION" => RuleM::ExistsElim,
-
-            "MODUS_TOLLENS" => RuleM::ModusTollens,
-            "HYPOTHETICAL_SYLLOGISM" => RuleM::HypotheticalSyllogism,
-            "EXCLUDED_MIDDLE" => RuleM::ExcludedMiddle,
-            "CONSTRUCTIVE_DILEMMA" => RuleM::ConstructiveDilemma,
-
-            "ASSOCIATION" => RuleM::Association,
-            "COMMUTATION" => RuleM::Commutation,
-            "IDEMPOTENCE" => RuleM::Idempotence,
-            "DE_MORGAN" => RuleM::DeMorgan,
-            "DISTRIBUTION" => RuleM::Distribution,
-            _ => { return Err(jni::errors::Error::from_kind(jni::errors::ErrorKind::Msg(format!("Rule::fromRule: unknown enum name {}", name)))) },
+        let rule = match RuleM::from_serialized_name(&name) {
+            Some(rule) => rule,
+            _ => return Err(jni::errors::Error::from_kind(jni::errors::ErrorKind::Msg(format!("Rule::fromRule: unknown enum name {}", name)))),
         };
         let boxed_rule = Box::into_raw(Box::new(rule)); // prevent boxed_rule from being freed, since it's to be referenced through the java heap
 

@@ -65,6 +65,7 @@ pub trait Proof: Sized {
     fn remove_subproof(&mut self, r: Self::SubproofReference);
     fn premises(&self) -> Vec<Self::Reference>;
     fn lines(&self) -> Vec<Coprod!(Self::Reference, Self::SubproofReference)>;
+    fn parent_of_line(&self, r: &Coprod!(Self::Reference, Self::SubproofReference)) -> Option<Self::SubproofReference>;
     fn verify_line(&self, r: &Self::Reference) -> Result<(), ProofCheckError<Self::Reference, Self::SubproofReference>>;
 
     fn lookup_expr(&self, r: Self::Reference) -> Option<Expr> {
@@ -109,6 +110,15 @@ pub trait Proof: Sized {
         }
         result
     }
+    fn depth_of_line(&self, r: &Coprod!(Self::Reference, Self::SubproofReference)) -> usize {
+        let mut result = 0;
+        let mut current = r.clone();
+        while let Some(parent) = self.parent_of_line(&current) {
+            result += 1;
+            current = Coproduct::inject(parent);
+        }
+        result
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -147,3 +157,114 @@ impl<T: JustificationExprDisplay, R: std::fmt::Debug, S: std::fmt::Debug> Displa
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LineAndIndent { pub line: usize, pub indent: usize }
+
+#[test]
+fn test_xml() {
+    use xml::reader::EventReader;
+    let data = &include_bytes!("../propositional_logic_arguments_for_proofs_ii_problem_10.bram")[..];
+    let mut er = EventReader::new(data);
+
+    let mut author = None;
+    let mut hash = None;
+
+    let mut element_stack = vec![];
+    let mut attribute_stack = vec![];
+    let mut contents = String::new();
+
+    type P = super::proofs::pooledproof::PooledProof<Hlist![Expr]>;
+    let parse = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use std::collections::HashMap;
+    let mut subproofs: HashMap<_, <P as Proof>::SubproofReference> = HashMap::new();
+    let mut lines_to_subs = HashMap::new();
+    let mut line_refs: HashMap<_, <P as Proof>::Reference> = HashMap::new();
+    let mut last_linenum = "".into();
+    let mut proof = P::new();
+    let mut current_proof_id = "0".into();
+    let mut last_raw = "".into();
+
+    let mut last_rule = "".into();
+    let mut seen_premises = vec![];
+
+    loop {
+        use xml::reader::XmlEvent::{self, *};
+        match er.next() {
+            Ok(StartElement { name, attributes, namespace: _ }) => {
+                let element = name.local_name;
+                element_stack.push(element.clone());
+                attribute_stack.push(attributes.clone());
+                contents = String::new();
+                match &*element {
+                    "proof" => {
+                        let id = attributes.iter().find(|x| x.name.local_name == "id").expect("proof element has no id attribute");
+                        current_proof_id = id.value.clone();
+                    },
+                    "assumption" => {
+                        let linenum = attributes.iter().find(|x| x.name.local_name == "linenum").expect("assumption element has no linenum attribute");
+                        last_linenum = linenum.value.clone();
+                    },
+                    "step" => {
+                        let linenum = attributes.iter().find(|x| x.name.local_name == "linenum").expect("step element has no linenum attribute");
+                        last_linenum = linenum.value.clone();
+                        last_rule = "".into();
+                        seen_premises = vec![];
+                    }
+                    _ => (),
+                }
+            },
+            Ok(Characters(data)) => { contents += &data; },
+            Ok(EndElement { name }) => {
+                println!("end {:?} {:?}", element_stack, contents);
+                let element = element_stack.pop().unwrap();
+                assert_eq!(name.local_name, element);
+                let attributes = attribute_stack.pop().unwrap();
+                println!("{:?} {:?}", element, attributes);
+                match &*element {
+                    "author" => { author = Some(contents.clone()) },
+                    "hash" => { hash = Some(contents.clone()) },
+                    "raw" => { last_raw = contents.clone(); },
+                    "assumption" => {
+                        match &*current_proof_id {
+                            "0" => { let p = proof.add_premise(parse(&last_raw)); line_refs.insert(last_linenum.clone(), p); },
+                            r => { let key = subproofs[r].clone(); proof.with_mut_subproof(&key, |sub| { let p = sub.add_premise(parse(&last_raw)); line_refs.insert(last_linenum.clone(), p); }); },
+                        }
+                    },
+                    "rule" => { last_rule = contents.clone(); },
+                    "premise" => { seen_premises.push(contents.clone()); },
+                    "step" => {
+                        println!("step {:?} {:?}", last_rule, seen_premises);
+                        match &*last_rule {
+                            "SUBPROOF" => {
+                                match &*current_proof_id {
+                                    "0" => { let p = proof.add_subproof(); subproofs.insert(seen_premises[0].clone(), p); lines_to_subs.insert(last_linenum.clone(), p); },
+                                    r => { let key = subproofs[r].clone(); proof.with_mut_subproof(&key, |sub| { let p = sub.add_subproof(); subproofs.insert(seen_premises[0].clone(), p); lines_to_subs.insert(last_linenum.clone(), p); }); },
+                                }
+                            }
+                            rulename => {
+                                let rule = RuleM::from_serialized_name(rulename).unwrap();
+                                println!("{:?}", rule);
+                                let deps = seen_premises.iter().filter_map(|x| line_refs.get(x)).cloned().collect::<Vec<_>>();
+                                let sdeps = seen_premises.iter().filter_map(|x| lines_to_subs.get(x)).cloned().collect::<Vec<_>>();
+                                println!("{:?} {:?}", line_refs, subproofs);
+                                println!("{:?} {:?}", deps, sdeps);
+                                let just = Justification(parse(&last_raw), rule, deps, sdeps);
+                                println!("{:?}", just);
+                                match &*current_proof_id {
+                                    "0" => { let p = proof.add_step(just); line_refs.insert(last_linenum.clone(), p); },
+                                    r => { let key = subproofs[r].clone(); proof.with_mut_subproof(&key, |sub| { let p = sub.add_step(just); line_refs.insert(last_linenum.clone(), p); }); },
+                                }
+                                
+                            },
+                        }
+                    },
+                    _ => (),
+                }
+            },
+            Ok(Whitespace(_)) => (),
+            Ok(EndDocument) => break,
+            e => { println!("{:?}", e); },
+        }
+    }
+    println!("{:?} {:?}", author, hash);
+    println!("{}\n-----", proof);
+    println!("{:?}", subproofs);
+}

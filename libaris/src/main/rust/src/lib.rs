@@ -2,6 +2,7 @@
 #[macro_use] extern crate nom;
 extern crate jni;
 extern crate petgraph;
+extern crate xml;
 
 pub mod zipper_vec;
 use zipper_vec::*;

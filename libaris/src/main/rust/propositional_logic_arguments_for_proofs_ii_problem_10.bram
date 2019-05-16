@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<bram>
+  <program>Aris</program>
+  <version>0.0.173</version>
+  <metadata>
+    <author>UNKNOWN</author>
+    <hash>NEt9dnXdF1Ex0MuAGgAYmhhVCf4zTQH4h/GGLSdN1zE=</hash>
+  </metadata>
+  <proof id="0">
+    <assumption linenum="0">
+      <sen>(~A \/ B)</sen>
+      <raw>¬A ∨ B</raw>
+    </assumption>
+    <assumption linenum="1">
+      <sen>(A \/ C)</sen>
+      <raw>A ∨ C</raw>
+    </assumption>
+    <assumption linenum="2">
+      <sen>~D -&gt; ~C</sen>
+      <raw>¬D → ¬ C</raw>
+    </assumption>
+    <step linenum="3">
+      <rule>SUBPROOF</rule>
+      <premise>1</premise>
+    </step>
+    <step linenum="10">
+      <rule>SUBPROOF</rule>
+      <premise>4</premise>
+    </step>
+    <step linenum="17">
+      <sen>(B \/ D)</sen>
+      <raw>B ∨ D</raw>
+      <rule>DISJUNCTIVE_SYLLOGISM</rule>
+      <premise>10</premise>
+      <premise>1</premise>
+      <premise>3</premise>
+    </step>
+    <goal>
+      <sen>(B \/ D)</sen>
+      <raw>B∨D</raw>
+    </goal>
+  </proof>
+  <proof id="1">
+    <assumption linenum="3">
+      <sen>A</sen>
+      <raw>A</raw>
+    </assumption>
+    <step linenum="4">
+      <rule>SUBPROOF</rule>
+      <premise>2</premise>
+    </step>
+    <step linenum="7">
+      <rule>SUBPROOF</rule>
+      <premise>3</premise>
+    </step>
+    <step linenum="9">
+      <sen>(B \/ D)</sen>
+      <raw>B∨D</raw>
+      <rule>DISJUNCTIVE_SYLLOGISM</rule>
+      <premise>0</premise>
+      <premise>4</premise>
+      <premise>7</premise>
+    </step>
+  </proof>
+  <proof id="2">
+    <assumption linenum="4">
+      <sen>~A</sen>
+      <raw>¬A</raw>
+    </assumption>
+    <step linenum="5">
+      <sen>_|_</sen>
+      <raw>⊥</raw>
+      <rule>CONTRADICTION</rule>
+      <premise>3</premise>
+      <premise>4</premise>
+    </step>
+    <step linenum="6">
+      <sen>(B \/ D)</sen>
+      <raw>B ∨D </raw>
+      <rule>PRINCIPLE_OF_EXPLOSION</rule>
+      <premise>5</premise>
+    </step>
+  </proof>
+  <proof id="3">
+    <assumption linenum="7">
+      <sen>B</sen>
+      <raw>B</raw>
+    </assumption>
+    <step linenum="8">
+      <sen>(B \/ D)</sen>
+      <raw>B∨D</raw>
+      <rule>ADDITION</rule>
+      <premise>7</premise>
+    </step>
+  </proof>
+  <proof id="4">
+    <assumption linenum="10">
+      <sen>C</sen>
+      <raw>C</raw>
+    </assumption>
+    <step linenum="11">
+      <rule>SUBPROOF</rule>
+      <premise>5</premise>
+    </step>
+    <step linenum="14">
+      <sen>~~D</sen>
+      <raw>¬¬D</raw>
+      <rule>PROOF_BY_CONTRADICTION</rule>
+      <premise>11</premise>
+    </step>
+    <step linenum="15">
+      <sen>D</sen>
+      <raw>D</raw>
+      <rule>DOUBLENEGATION</rule>
+      <premise>14</premise>
+    </step>
+    <step linenum="16">
+      <sen>(B \/ D)</sen>
+      <raw>B∨D</raw>
+      <rule>ADDITION</rule>
+      <premise>15</premise>
+    </step>
+  </proof>
+  <proof id="5">
+    <assumption linenum="11">
+      <sen>~D</sen>
+      <raw>¬D</raw>
+    </assumption>
+    <step linenum="12">
+      <sen>~C</sen>
+      <raw>¬C</raw>
+      <rule>MODUS_PONENS</rule>
+      <premise>2</premise>
+      <premise>11</premise>
+    </step>
+    <step linenum="13">
+      <sen>_|_</sen>
+      <raw>⊥</raw>
+      <rule>CONTRADICTION</rule>
+      <premise>10</premise>
+      <premise>12</premise>
+    </step>
+  </proof>
+</bram>

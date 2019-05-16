@@ -61,7 +61,7 @@ public class Proof {
     }
 
     public Line addLine(int index, boolean isAssumption, int subProofLevel) {
-        rustProof.addLine(index, isAssumption);
+        rustProof.addLine(index, isAssumption, subProofLevel);
         if (index <= lines.size()) {
             Line l = new Line(subProofLevel, isAssumption, this);
             lines.add(index, l);

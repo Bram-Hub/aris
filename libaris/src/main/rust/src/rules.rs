@@ -77,6 +77,42 @@ pub mod RuleM {
     pub static ExcludedMiddle: Rule = SharedChecks(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ExcludedMiddle)))));
     pub static ConstructiveDilemma: Rule = SharedChecks(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ConstructiveDilemma)))));
 
+    pub fn from_serialized_name(name: &str) -> Option<Rule> {
+        Some(match name {
+            "REITERATION" => RuleM::Reit,
+            "CONJUNCTION" => RuleM::AndIntro,
+            "SIMPLIFICATION" => RuleM::AndElim,
+            "ADDITION" => RuleM::OrIntro,
+            "DISJUNCTIVE_SYLLOGISM" => RuleM::OrElim,
+            "CONDITIONAL_PROOF" => RuleM::ImpIntro,
+            "MODUS_PONENS" => RuleM::ImpElim,
+            "PROOF_BY_CONTRADICTION" => RuleM::NotIntro,
+            "DOUBLENEGATION" => RuleM::NotElim,
+            "CONTRADICTION" => RuleM::ContradictionIntro,
+            "PRINCIPLE_OF_EXPLOSION" => RuleM::ContradictionElim,
+            "BICONDITIONAL_INTRO" => RuleM::BiconditionalIntro,
+            "BICONDITIONAL_ELIM" => RuleM::BiconditionalElim,
+            "EQUIVALENCE_INTRO" => RuleM::EquivalenceIntro,
+            "EQUIVALENCE_ELIM" => RuleM::EquivalenceElim,
+
+            "UNIVERSAL_GENERALIZATION" => RuleM::ForallIntro,
+            "UNIVERSAL_INSTANTIATION" => RuleM::ForallElim,
+            "EXISTENTIAL_GENERALIZATION" => RuleM::ExistsIntro,
+            "EXISTENTIAL_INSTANTIATION" => RuleM::ExistsElim,
+
+            "MODUS_TOLLENS" => RuleM::ModusTollens,
+            "HYPOTHETICAL_SYLLOGISM" => RuleM::HypotheticalSyllogism,
+            "EXCLUDED_MIDDLE" => RuleM::ExcludedMiddle,
+            "CONSTRUCTIVE_DILEMMA" => RuleM::ConstructiveDilemma,
+
+            "ASSOCIATION" => RuleM::Association,
+            "COMMUTATION" => RuleM::Commutation,
+            "IDEMPOTENCE" => RuleM::Idempotence,
+            "DE_MORGAN" => RuleM::DeMorgan,
+            "DISTRIBUTION" => RuleM::Distribution,
+            _ => { return None },
+        })
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

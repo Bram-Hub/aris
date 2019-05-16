@@ -88,6 +88,7 @@ impl<T: Clone+Default, U: Clone+Default> Proof for TreeProof<T, U> {
         unimplemented!();
     }
     fn lines(&self) -> Vec<Coprod!(Self::Reference, Self::SubproofReference)> { unimplemented!() }
+    fn parent_of_line(&self, _: &Coprod!(Self::Reference, Self::SubproofReference)) -> Option<Self::SubproofReference> { unimplemented!() }
     fn verify_line(&self, &LineDep(i): &Self::Reference) -> Result<(), ProofCheckError<Self::Reference, Self::SubproofReference>> {
         let prf = decorate_line_and_indent(self.clone()).bimap(&mut |(x,_)| x, &mut |_| ());
         check_rule_at_line(&prf, i)

@@ -24,11 +24,11 @@ pub extern "system" fn Java_edu_rpi_aris_proof_RustProof_createProof(env: JNIEnv
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern "system" fn Java_edu_rpi_aris_proof_RustProof_addLine(env: JNIEnv, this: JObject, index: jni::sys::jlong, is_assumption: jni::sys::jboolean) {
+pub extern "system" fn Java_edu_rpi_aris_proof_RustProof_addLine(env: JNIEnv, this: JObject, index: jni::sys::jlong, is_assumption: jni::sys::jboolean, subproof_level: jni::sys::jlong) {
     with_thrown_errors(&env, |env| {
         let ptr: jni::sys::jlong = env.get_field(this, "pointerToRustHeap", "J")?.j()?;
         let self_: &mut LinedProof<PooledProof<Hlist![Expr]>> = unsafe { &mut*(ptr as *mut _) };
-        self_.add_line(index as _, is_assumption != 0);
+        self_.add_line(index as _, is_assumption != 0, subproof_level as _);
         Ok(())
     })
 }
