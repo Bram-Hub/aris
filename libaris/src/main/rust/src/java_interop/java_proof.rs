@@ -54,3 +54,16 @@ pub extern "system" fn Java_edu_rpi_aris_proof_RustProof_moveCursor(env: JNIEnv,
         Ok(())
     })
 }
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern "system" fn Java_edu_rpi_aris_proof_RustProof_fromXml(env: JNIEnv, _: JObject, jxml: JString) -> jobject {
+    with_thrown_errors(&env, |env| {
+        let xml = String::from(env.get_string(jxml)?);
+        println!("{:?}", xml);
+        if let Some((prf, _, _)) = xml_interop::proof_from_xml::<PooledProof<Hlist![Expr]>, _>(xml.as_bytes()) {
+            println!("{}", prf);
+        }
+        Ok(std::ptr::null_mut())
+    })
+}

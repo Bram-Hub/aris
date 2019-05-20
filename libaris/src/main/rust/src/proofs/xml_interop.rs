@@ -87,9 +87,8 @@ pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Option<(P, Option<String>, Opt
                                 on_current_proof! { proof, { let p = proof.add_subproof(); subproofs.insert(seen_premises[0].clone(), p.clone()); lines_to_subs.insert(last_linenum.clone(), p) } }
                             }
                             rulename => {
-                                let rule = RuleM::from_serialized_name(rulename).unwrap();
+                                let rule = RuleM::from_serialized_name(rulename).unwrap_or(RuleM::Reit); // TODO: explicit RuleM::NoSelectionMade?
                                 //println!("{:?}", rule);
-                                // TODO: disambiguate reference to the first line of a subproof from the whole subproof
                                 let deps = seen_premises.iter().filter_map(|x| line_refs.get(x)).cloned().collect::<Vec<_>>();
                                 let sdeps = seen_premises.iter().filter_map(|x| lines_to_subs.get(x)).cloned().collect::<Vec<_>>();
                                 //println!("{:?} {:?}", line_refs, subproofs);

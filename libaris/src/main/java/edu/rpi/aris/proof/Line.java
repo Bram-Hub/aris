@@ -5,6 +5,7 @@ import edu.rpi.aris.rules.RuleList;
 import org.apache.commons.lang3.Range;
 
 import java.util.*;
+import java.io.ByteArrayOutputStream;
 
 public class Line {
 
@@ -212,6 +213,19 @@ public class Line {
     }
 
     private synchronized boolean verifyClaim(boolean stopTimer) {
+        try {
+            ByteArrayOutputStream boas = new ByteArrayOutputStream();
+            new SaveManager(new SaveInfoListener() {
+                public boolean notArisFile(String filename, String programName, String programVersion) { return false; }
+                public void integrityCheckFailed(String filename) { }
+            }).saveProof(proof, boas);
+            String xml = boas.toString("utf8");
+            if(proof.getNumLines() > 0) {
+                RustProof rp = RustProof.fromXml(xml);
+            }
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
         if (stopTimer)
             stopTimer();
         buildClaim();

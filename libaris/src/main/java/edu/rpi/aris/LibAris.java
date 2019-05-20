@@ -88,7 +88,7 @@ public class LibAris implements ArisModule<LibAris> {
                 //noinspection unchecked
                 serverModule = (ArisServerModule<LibAris>) clazz.getMethod("getInstance").invoke(null);
             } catch (ClassNotFoundException | NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-                logger.fatal("Failed get Aris client class", e);
+                logger.fatal("Failed get Aris server class", e);
                 return serverModule;
             }
         }

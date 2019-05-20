@@ -9,6 +9,7 @@ public class RustProof {
     protected RustProof(long p) { pointerToRustHeap = p; }
     // TODO: native finalizer
     public static native RustProof createProof();
+    public static native RustProof fromXml(String xml);
 
     @Override public native String toString();
 
