@@ -31,6 +31,14 @@ impl<T> Pools<T> {
     fn parent_of(&self, idx: &Coprod!(PremKey, JustKey, SubKey)) -> Option<SubKey> {
         self.containing_subproof.get(idx).map(|x| x.clone())
     }
+    fn transitive_parents(&self, mut idx: Coprod!(PremKey, JustKey, SubKey)) -> HashSet<SubKey> {
+        let mut result = HashSet::new();
+        while let Some(s) = self.parent_of(&idx) {
+            result.insert(s);
+            idx = Coproduct::inject(s);
+        }
+        result
+    }
     fn remove_line(&mut self, idx: &Coprod!(PremKey, JustKey)) {
         use frunk::Coproduct::{Inl, Inr};
         match idx {
@@ -162,9 +170,22 @@ impl<Tail: Default+Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
     fn add_step(&mut self, just: Justification<Expr, Self::Reference, Self::SubproofReference>) -> Self::Reference {
         let pools = unsafe { &mut *self.pools };
         let idx = pools.next_justkey();
-        pools.just_map.insert(idx, Justification(HCons { head: just.0, tail: Tail::default() }, just.1, just.2, just.3));
         pools.set_parent(Coproduct::inject(idx), self);
+
+        // Prevent a justification from depending on the whole subproof that it resides in, as that leads to unsoundness
+        // 1 | | Top
+        //   | | -----
+        // 2 | | Top -> P ; -> Intro subproof_beginning_at(1) // problematic line, depends on conclusion
+        // 3 | | P ; -> Elim statement_at(1), statement_at(2)
+        // 4 | Top -> P ; -> Intro subproof_beginning_at(1)
+        let tps = pools.transitive_parents(Coproduct::inject(idx));
+        let Justification(e, r, deps, mut sdeps) = just;
+        // silently remove sdeps that are invalid due to this pattern, as they show up naturally when parsing Aris's xml due to an ambiguity between deps and sdeps
+        sdeps = sdeps.into_iter().filter(|x| !tps.contains(x)).collect();
+
         self.line_list.push(Coproduct::inject(idx));
+        pools.just_map.insert(idx, Justification(HCons { head: e, tail: Tail::default() }, r, deps, sdeps));
+
         Self::Reference::inject(idx)
     }
     fn add_premise_relative(&mut self, e: Expr, r: Self::Reference, after: bool) -> Self::Reference {

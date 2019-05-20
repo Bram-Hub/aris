@@ -156,4 +156,13 @@ fn test_xml2() {
     type P = super::proofs::pooledproof::PooledProof<Hlist![Expr]>;
     let (prf, author, hash) = proof_from_xml::<P, _>(&xml[..]).unwrap();
     println!("{:?} {:?}\n{}", author, hash, prf);
+    let lines = prf.lines();
+    let sub = prf.lookup_subproof(lines[0].get::<<P as Proof>::SubproofReference, _>().unwrap().clone()).unwrap();
+    use expression_builders::{var, binop};
+    assert_eq!(prf.lookup_expr(sub.premises()[0]), Some(var("A")));
+    let sub_lines = sub.lines();
+    let Justification(e1, r1, d1, s1) = prf.lookup(sub_lines[0].get::<<P as Proof>::Reference, _>().unwrap().clone()).unwrap().get::<Justification<_, _, _>, _>().unwrap().clone();
+    assert_eq!(e1, var("A")); assert_eq!(r1, RuleM::Reit); assert_eq!(d1.len(), 1); assert_eq!(s1.len(), 0);
+    let Justification(e2, r2, d2, s2) = prf.lookup(lines[1].get::<<P as Proof>::Reference, _>().unwrap().clone()).unwrap().get::<Justification<_, _, _>, _>().unwrap().clone();
+    assert_eq!(e2, binop(BSymbol::Implies, var("A"), var("A"))); assert_eq!(r2, RuleM::ImpIntro); assert_eq!(d2.len(), 0); assert_eq!(s2.len(), 1);
 }
