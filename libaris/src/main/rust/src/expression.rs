@@ -17,7 +17,8 @@ pub enum QSymbol { Forall, Exists }
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[repr(C)]
 pub enum Expr {
-    Bottom,
+    Contradiction,
+    Tautology,
     Var { name: String },
     Apply { func: Box<Expr>, args: Vec<Expr> },
     Unop { symbol: USymbol, operand: Box<Expr> },
@@ -66,7 +67,8 @@ impl std::fmt::Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         use Expr::*;
         match self {
-            Bottom => write!(f, "⊥"),
+            Contradiction => write!(f, "⊥"),
+            Tautology => write!(f, "⊤"),
             Var { name } => write!(f, "{}", name),
             Apply { func, args } => { write!(f, "{}", func)?; if args.len() > 0 { write!(f, "({})", args.iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join(", "))? }; Ok(()) }
             Unop { symbol, operand } => write!(f, "{}{}", symbol, operand),
@@ -104,7 +106,8 @@ impl PossiblyCommutative for ASymbol {
 pub fn freevars(e: &Expr) -> HashSet<String> {
     let mut r = HashSet::new();
     match e {
-        Expr::Bottom => (),
+        Expr::Contradiction => (),
+        Expr::Tautology => (),
         Expr::Var { name } => { r.insert(name.clone()); }
         Expr::Apply { func, args } => { r.extend(freevars(func)); for s in args.iter().map(|x| freevars(x)) { r.extend(s); } },
         Expr::Unop { operand, .. } => { r.extend(freevars(operand)); },
@@ -127,7 +130,8 @@ pub fn gensym(orig: &str, avoid: &HashSet<String>) -> String {
 
 pub fn subst(e: &Expr, to_replace: &str, with: Expr) -> Expr {
     match e {
-        Expr::Bottom => Expr::Bottom,
+        Expr::Contradiction => Expr::Contradiction,
+        Expr::Tautology => Expr::Tautology,
         Expr::Var { ref name } => if name == to_replace { with } else { Expr::Var { name: name.clone() } },
         Expr::Apply { ref func, ref args } => Expr::Apply { func: Box::new(subst(func, to_replace, with.clone())), args: args.iter().map(|e2| subst(e2, to_replace, with.clone())).collect() },
         Expr::Unop { symbol, operand } => Expr::Unop { symbol: symbol.clone(), operand: Box::new(subst(operand, to_replace, with)) },
@@ -236,7 +240,8 @@ pub fn sort_commutative_ops(e: Expr) -> Expr {
     use Expr::*;
     let rec = |x: Box<_>| Box::new(sort_commutative_ops(*x));
     match e {
-        Bottom => Bottom,
+        Contradiction => Contradiction,
+        Tautology => Tautology,
         Var { name } => Var { name },
         Apply { func, args } => Apply { func: rec(func), args: args.into_iter().map(sort_commutative_ops).collect() },
         Unop { symbol, operand } => Unop { symbol, operand: rec(operand) },
@@ -261,7 +266,8 @@ pub fn combine_associative_ops(e: Expr) -> Expr {
     use Expr::*;
     let rec = |x: Box<_>| Box::new(combine_associative_ops(*x));
     match e {
-        Bottom => Bottom,
+        Contradiction => Contradiction,
+        Tautology => Tautology,
         Var { name } => Var { name },
         Apply { func, args } => Apply { func: rec(func), args: args.into_iter().map(combine_associative_ops).collect() },
         Unop { symbol, operand } => Unop { symbol, operand: rec(operand) },
@@ -301,7 +307,7 @@ pub fn test_combine_associative_ops() {
 pub fn to_prenex(e: &Expr) -> Expr {
     use Expr::*; use QSymbol::*;
     match e {
-        Bottom => Bottom,
+        Contradiction => Contradiction,
         Predicate { .. } => e.clone(),
         Unop { symbol: USymbol::Not, operand } => match to_prenex(&operand) {
             Quantifier { symbol, name, body } => Quantifier { symbol: match symbol { Forall => Exists, Exists => Forall }, name, body: Box::new(expression_builders::not(*body)) },

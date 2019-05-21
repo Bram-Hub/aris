@@ -18,7 +18,8 @@ named!(space<&str, ()>, do_parse!(many0!(one_of!(" \t")) >> (())));
 named!(variable_<&str, String>, do_parse!(x: many1!(one_of!("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")) >> ({let mut y = String::new(); for c in x { y.push(c); }; y})));
 named!(keyword<&str, &str>, alt!(tag!("forall") | tag!("exists")));
 
-named!(bottom<&str, Expr>, do_parse!(alt!(tag!("_|_") | tag!("⊥")) >> (Expr::Bottom)));
+named!(contradiction<&str, Expr>, do_parse!(alt!(tag!("_|_") | tag!("⊥")) >> (Expr::Contradiction)));
+named!(tautology<&str, Expr>, do_parse!(alt!(tag!("^|^") | tag!("⊤")) >> (Expr::Tautology)));
 
 named!(notterm<&str, Expr>, do_parse!(alt!(tag!("~") | tag!("¬")) >> e: paren_expr >> (Expr::Unop { symbol: USymbol::Not, operand: Box::new(e) })));
 
@@ -59,7 +60,7 @@ fn assocterm(s: &str) -> nom::IResult<&str, Expr> {
     Ok((rest, Expr::AssocBinop { symbol, exprs }))
 }
 
-named!(paren_expr<&str, Expr>, alt!(bottom | predicate | notterm | binder | do_parse!(space >> tag!("(") >> space >> e: expr >> space >> tag!(")") >> space >> (e))));
+named!(paren_expr<&str, Expr>, alt!(contradiction | tautology | predicate | notterm | binder | do_parse!(space >> tag!("(") >> space >> e: expr >> space >> tag!(")") >> space >> (e))));
 named!(pub expr<&str, Expr>, alt!(assocterm | binopterm | paren_expr));
 named!(pub main<&str, Expr>, do_parse!(e: expr >> tag!("\n") >> (e)));
 

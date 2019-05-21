@@ -65,7 +65,8 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
         "edu.rpi.aris.ast.Expression$EquivExpression" => handle_abe(ASymbol::Equiv),
         "edu.rpi.aris.ast.Expression$ForallExpression" => handle_quantifier(QSymbol::Forall),
         "edu.rpi.aris.ast.Expression$ExistsExpression" => handle_quantifier(QSymbol::Exists),
-        "edu.rpi.aris.ast.Expression$BottomExpression" => Ok(Expr::Bottom),
+        "edu.rpi.aris.ast.Expression$ContradictionExpression" => Ok(Expr::Contradiction),
+        "edu.rpi.aris.ast.Expression$TautologyExpression" => Ok(Expr::Tautology),
         "edu.rpi.aris.ast.Expression$ApplyExpression" => {
             let func = jobject_to_expr(env, env.get_field(obj, "func", "Ledu/rpi/aris/ast/Expression;")?.l()?)?;
             let mut args = vec![];
@@ -102,7 +103,8 @@ pub fn expr_to_jobject<'a>(env: &'a JNIEnv, e: Expr) -> jni::errors::Result<JObj
     let jv = |s: &str| -> jni::errors::Result<JValue> { Ok(JObject::from(env.new_string(s)?).into()) };
     let rec = |e: Expr| -> jni::errors::Result<JValue> { Ok(JObject::from(expr_to_jobject(env, e)?).into()) };
     match e {
-        Expr::Bottom => (),
+        Expr::Contradiction => (),
+        Expr::Tautology => (),
         Expr::Var { name } => env.set_field(obj, "name", "Ljava/lang/String;", jv(&name)?)?,
         Expr::Apply { func, args } => {
             env.set_field(obj, "func", "Ledu/rpi/aris/ast/Expression;", rec(*func)?)?;
@@ -172,7 +174,8 @@ impl HasClass for QSymbol {
 impl HasClass for Expr {
     fn get_class(&self) -> &'static str {
         match self {
-            Expr::Bottom => "Ledu/rpi/aris/ast/Expression$BottomExpression;",
+            Expr::Contradiction => "Ledu/rpi/aris/ast/Expression$ContradictionExpression;",
+            Expr::Tautology => "Ledu/rpi/aris/ast/Expression$TautologyExpression;",
             Expr::Var { .. } => "Ledu/rpi/aris/ast/Expression$VarExpression;",
             Expr::Apply { .. } => "Ledu/rpi/aris/ast/Expression$ApplyExpression;",
             Expr::Unop { symbol, .. } => symbol.get_class(),

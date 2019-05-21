@@ -12,7 +12,8 @@ public class Expression {
 
     @Override public native boolean equals(Object e);
 
-    public static class BottomExpression extends Expression {}
+    public static class ContradictionExpression extends Expression {}
+    public static class TautologyExpression extends Expression {}
 
     public static class VarExpression extends Expression {
         public String name;

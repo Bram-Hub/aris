@@ -94,7 +94,7 @@ impl<P: Proof+Debug> LinedProof<P> where P::Reference: Debug, P::SubproofReferen
     }
     pub fn add_line(&mut self, i: usize, is_premise: bool, subproof_level: usize) {
         println!("add_line {:?} {:?} {:?}", i, is_premise, subproof_level);
-        let const_true = expression_builders::not(Expr::Bottom);
+        let const_true = Expr::Tautology;
         let line: Option<Line<P>> = self.lines.get(i).map(|x| x.clone());
         match line {
             None => {

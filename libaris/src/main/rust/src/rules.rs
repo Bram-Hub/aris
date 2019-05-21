@@ -352,8 +352,8 @@ impl RuleT for PrepositionalInference {
                     }
                     let conc = sproof.lines().into_iter().filter_map(|x| x.get::<P::Reference,_>().map(|y| y.clone()))
                         .map(|r| p.lookup_expr_or_die(r.clone())).collect::<Result<Vec<Expr>,_>>()?;
-                    if conc.iter().find(|x| **x == Expr::Bottom).is_none() {
-                        return Err(DepDoesNotExist(Expr::Bottom, false));
+                    if conc.iter().find(|x| **x == Expr::Contradiction).is_none() {
+                        return Err(DepDoesNotExist(Expr::Contradiction, false));
                     }
                     return Ok(());
                 } else {
@@ -376,7 +376,7 @@ impl RuleT for PrepositionalInference {
                 }
             },
             ContradictionIntro => {
-                if let Expr::Bottom = conclusion {
+                if let Expr::Contradiction = conclusion {
                     let mut prems = vec![];
                     prems.push(p.lookup_expr_or_die(deps[0].clone())?);
                     prems.push(p.lookup_expr_or_die(deps[1].clone())?);
@@ -389,15 +389,15 @@ impl RuleT for PrepositionalInference {
                        Ok(None)
                     }, || Err(Other("Expected one dependency to be the negation of the other.".into())))
                 } else {
-                    return Err(ConclusionOfWrongForm(Expr::Bottom));
+                    return Err(ConclusionOfWrongForm(Expr::Contradiction));
                 }
             },
             ContradictionElim => {
                 let prem = p.lookup_expr_or_die(deps[0].clone())?;
-                if let Expr::Bottom = prem {
+                if let Expr::Contradiction = prem {
                     return Ok(());
                 } else {
-                    return Err(DepOfWrongForm(prem.clone(), Expr::Bottom));
+                    return Err(DepOfWrongForm(prem.clone(), Expr::Contradiction));
                 }
             },
             BiconditionalElim => {

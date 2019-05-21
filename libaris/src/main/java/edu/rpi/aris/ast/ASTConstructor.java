@@ -128,7 +128,7 @@ public class ASTConstructor extends ParseExpressionBaseVisitor<Expression> imple
         return ue;
     }
 	@Override public Expression visitBottom(ParseExpressionParser.BottomContext ctx) {
-        return new BottomExpression();
+        return new ContradictionExpression();
     }
 	@Override public Expression visitParen_expr(ParseExpressionParser.Paren_exprContext ctx) {
         Expression e = visitChildren(ctx);

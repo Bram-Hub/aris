@@ -5,7 +5,8 @@ import java.util.*;
 
 public interface ASTVisitor<T> {
     public T visitExpression(Expression e);
-    public T visitBottomExpression(BottomExpression e);
+    public T visitContradictionExpression(ContradictionExpression e);
+    public T visitTautologyExpression(TautologyExpression e);
     public T visitVarExpression(VarExpression e);
     public T visitApplyExpression(ApplyExpression e);
     public T visitUnaryExpression(UnaryExpression e);
