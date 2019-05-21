@@ -19,7 +19,7 @@ fn run_test<P: Proof+Display+Debug, F: FnOnce() -> (P, Vec<P::Reference>, Vec<P:
     } 
 }
 
-fn test_rules<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq {
+fn test_rules<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq, P::Subproof: Debug {
     run_test::<P, _>(test_andelim);
     run_test::<P, _>(test_contelim);
     run_test::<P, _>(test_orintro);
@@ -28,6 +28,7 @@ fn test_rules<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::Subproo
     run_test::<P, _>(test_contradictionintro);
     run_test::<P, _>(test_notelim);
     run_test::<P, _>(test_impelim);
+    run_test::<P, _>(test_commutation);
 }
 
 fn test_rules_with_subproofs<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq, P::Subproof: Debug {
@@ -400,4 +401,19 @@ pub fn test_forallintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Refer
     }).unwrap();
     let r12 = prf.add_step(Justification(p("forall y, r(y)"), RuleM::ForallIntro, vec![], vec![r10.clone()]));
     (prf, vec![r5, r6, r7, r8, r11], vec![r9, r12])
+}
+
+pub fn test_commutation<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let mut prf = P::new();
+    let r1 = prf.add_premise(p("(A & B & C) | (P & Q & R & S)"));
+    let r2 = prf.add_premise(p("(a <-> b <-> c <-> d) === (bar -> quux)"));
+    let r3 = prf.add_step(Justification(p("(Q & R & S & P) | (C & A & B)"), RuleM::Commutation, vec![r1.clone()], vec![]));
+    let r4 = prf.add_step(Justification(p("(A & B & C) | (P & Q & R & S)"), RuleM::Commutation, vec![r1.clone()], vec![]));
+    let r5 = prf.add_step(Justification(p("(A & B & C) & (P & Q & R & S)"), RuleM::Commutation, vec![r1.clone()], vec![]));
+    let r6 = prf.add_step(Justification(p("(a <-> b <-> c <-> d) === (bar -> quux)"), RuleM::Commutation, vec![r2.clone()], vec![]));
+    let r7 = prf.add_step(Justification(p("(d <-> a <-> b <-> c) === (bar -> quux)"), RuleM::Commutation, vec![r2.clone()], vec![]));
+    let r8 = prf.add_step(Justification(p("(bar -> quux) === (d <-> a <-> b <-> c)"), RuleM::Commutation, vec![r2.clone()], vec![]));
+    let r9 = prf.add_step(Justification(p("(a <-> b <-> c <-> d) === (quux -> bar)"), RuleM::Commutation, vec![r2.clone()], vec![]));
+    (prf, vec![r3, r4, r6, r7, r8], vec![r5, r9])
 }

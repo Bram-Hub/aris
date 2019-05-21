@@ -77,6 +77,30 @@ impl std::fmt::Display for Expr {
     }
 }
 
+trait PossiblyCommutative {
+    fn is_commutative(&self) -> bool;
+}
+
+impl PossiblyCommutative for BSymbol {
+    fn is_commutative(&self) -> bool {
+        use BSymbol::*;
+        match self {
+            Implies => false,
+            Plus | Mult => true,
+        }
+    }
+}
+
+impl PossiblyCommutative for ASymbol {
+    fn is_commutative(&self) -> bool {
+        use ASymbol::*;
+        match self {
+            // currently, all the implemented associative connectives are also commutative, but that's not true in general, so this is future-proofing
+            And | Or | Bicon | Equiv => true,
+        }
+    }
+}
+
 pub fn freevars(e: &Expr) -> HashSet<String> {
     let mut r = HashSet::new();
     match e {
@@ -206,6 +230,30 @@ fn test_unify() {
 
     assert_eq!(u("forall x, z", "forall y, y"), None);
     assert_eq!(u("x & y", "x | y"), None);
+}
+
+pub fn sort_commutative_ops(e: Expr) -> Expr {
+    use Expr::*;
+    match e {
+        Bottom => Bottom,
+        Var { name } => Var { name },
+        Apply { func, args } => Apply { func: Box::new(sort_commutative_ops(*func)), args: args.into_iter().map(sort_commutative_ops).collect() },
+        Unop { symbol, operand } => Unop { symbol, operand: Box::new(sort_commutative_ops(*operand)) },
+        Binop { symbol, left, right } => {
+            let a = Box::new(sort_commutative_ops(*left)); let b = Box::new(sort_commutative_ops(*right));
+            if symbol.is_commutative() {
+                let (left, right) = if a <= b { (a, b) } else { (b, a) };
+                Binop { symbol, left, right }
+            }
+            else { Binop { symbol, left: a, right: b } }
+        },
+        AssocBinop { symbol, exprs } => {
+            let mut exprs: Vec<_> = exprs.into_iter().map(sort_commutative_ops).collect();
+            if symbol.is_commutative() { exprs.sort() };
+            AssocBinop { symbol, exprs }
+        },
+        Quantifier { symbol, name, body } => Quantifier { symbol, name, body: Box::new(sort_commutative_ops(*body)) },
+    }
 }
 
 /*

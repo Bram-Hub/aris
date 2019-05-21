@@ -640,12 +640,21 @@ impl RuleT for Equivalence {
     }
     fn num_deps(&self) -> Option<usize> { Some(1) } // all equivalence rules rewrite a single statement
     fn num_subdeps(&self) -> Option<usize> { Some(0) }
-    fn check<P: Proof>(self, _p: &P, _expr: Expr, _deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
+    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
         use ProofCheckError::*; use Equivalence::*;
         match self {
             DeMorgan => unimplemented!(),
             Association => unimplemented!(),
-            Commutation => unimplemented!(),
+            Commutation => {
+                let premise = p.lookup_expr_or_die(deps[0].clone())?;
+                let p = sort_commutative_ops(premise);
+                let q = sort_commutative_ops(conclusion);
+                if p == q {
+                    Ok(())
+                } else {
+                    Err(Other(format!("{} and {} are not equal.", p, q)))
+                }
+            },
             Idempotence => unimplemented!(),
             Distribution => unimplemented!(),
         }
