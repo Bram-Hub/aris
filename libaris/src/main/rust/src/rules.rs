@@ -644,16 +644,19 @@ impl RuleT for Equivalence {
         use ProofCheckError::*; use Equivalence::*;
         match self {
             DeMorgan => unimplemented!(),
-            Association => unimplemented!(),
+            Association => {
+                let premise = p.lookup_expr_or_die(deps[0].clone())?;
+                let p = combine_associative_ops(premise);
+                let q = combine_associative_ops(conclusion);
+                if p == q { Ok(()) }
+                else { Err(Other(format!("{} and {} are not equal.", p, q))) }
+            },
             Commutation => {
                 let premise = p.lookup_expr_or_die(deps[0].clone())?;
                 let p = sort_commutative_ops(premise);
                 let q = sort_commutative_ops(conclusion);
-                if p == q {
-                    Ok(())
-                } else {
-                    Err(Other(format!("{} and {} are not equal.", p, q)))
-                }
+                if p == q { Ok(()) }
+                else { Err(Other(format!("{} and {} are not equal.", p, q))) }
             },
             Idempotence => unimplemented!(),
             Distribution => unimplemented!(),

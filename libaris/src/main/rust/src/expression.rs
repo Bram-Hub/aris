@@ -234,13 +234,14 @@ fn test_unify() {
 
 pub fn sort_commutative_ops(e: Expr) -> Expr {
     use Expr::*;
+    let rec = |x: Box<_>| Box::new(sort_commutative_ops(*x));
     match e {
         Bottom => Bottom,
         Var { name } => Var { name },
-        Apply { func, args } => Apply { func: Box::new(sort_commutative_ops(*func)), args: args.into_iter().map(sort_commutative_ops).collect() },
-        Unop { symbol, operand } => Unop { symbol, operand: Box::new(sort_commutative_ops(*operand)) },
+        Apply { func, args } => Apply { func: rec(func), args: args.into_iter().map(sort_commutative_ops).collect() },
+        Unop { symbol, operand } => Unop { symbol, operand: rec(operand) },
         Binop { symbol, left, right } => {
-            let a = Box::new(sort_commutative_ops(*left)); let b = Box::new(sort_commutative_ops(*right));
+            let a = rec(left); let b = rec(right);
             if symbol.is_commutative() {
                 let (left, right) = if a <= b { (a, b) } else { (b, a) };
                 Binop { symbol, left, right }
@@ -252,8 +253,48 @@ pub fn sort_commutative_ops(e: Expr) -> Expr {
             if symbol.is_commutative() { exprs.sort() };
             AssocBinop { symbol, exprs }
         },
-        Quantifier { symbol, name, body } => Quantifier { symbol, name, body: Box::new(sort_commutative_ops(*body)) },
+        Quantifier { symbol, name, body } => Quantifier { symbol, name, body: rec(body) },
     }
+}
+
+pub fn combine_associative_ops(e: Expr) -> Expr {
+    use Expr::*;
+    let rec = |x: Box<_>| Box::new(combine_associative_ops(*x));
+    match e {
+        Bottom => Bottom,
+        Var { name } => Var { name },
+        Apply { func, args } => Apply { func: rec(func), args: args.into_iter().map(combine_associative_ops).collect() },
+        Unop { symbol, operand } => Unop { symbol, operand: rec(operand) },
+        Binop { symbol, left, right } => Binop { symbol, left: rec(left), right: rec(right) },
+        AssocBinop { symbol: symbol1, exprs: exprs1 } => {
+            let mut result = vec![];
+            for expr in exprs1.into_iter().map(combine_associative_ops) {
+                if let AssocBinop { symbol: symbol2, exprs: exprs2 } = expr {
+                    if symbol1 == symbol2 {
+                        result.extend(exprs2);
+                    } else {
+                        result.push(AssocBinop { symbol: symbol2, exprs: exprs2 });
+                    }
+                } else {
+                    result.push(expr);
+                }
+            }
+            AssocBinop { symbol: symbol1, exprs: result }
+        },
+        Quantifier { symbol, name, body } => Quantifier { symbol, name, body: rec(body) },
+    }
+}
+
+#[test]
+pub fn test_combine_associative_ops() {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let f = |s: &str| {
+        let e = p(s);
+        println!("association of {} is {}", e, combine_associative_ops(e.clone()));
+    };
+    f("a & (b & (c | (p -> (q <-> (r <-> s)))) & ((t === u) === (v === ((w | x) | y))))");
+    f("a & ((b & c) | (q | r))");
+    f("(a & (b & c)) | (q | r)");
 }
 
 /*

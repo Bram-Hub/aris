@@ -29,6 +29,7 @@ fn test_rules<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::Subproo
     run_test::<P, _>(test_notelim);
     run_test::<P, _>(test_impelim);
     run_test::<P, _>(test_commutation);
+    run_test::<P, _>(test_association);
 }
 
 fn test_rules_with_subproofs<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq, P::Subproof: Debug {
@@ -416,4 +417,13 @@ pub fn test_commutation<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>)
     let r8 = prf.add_step(Justification(p("(bar -> quux) === (d <-> a <-> b <-> c)"), RuleM::Commutation, vec![r2.clone()], vec![]));
     let r9 = prf.add_step(Justification(p("(a <-> b <-> c <-> d) === (quux -> bar)"), RuleM::Commutation, vec![r2.clone()], vec![]));
     (prf, vec![r3, r4, r6, r7, r8], vec![r5, r9])
+}
+
+pub fn test_association<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let mut prf = P::new();
+    let r1 = prf.add_premise(p("(A & B & C) | (P & Q & R & S) | (U <-> V <-> W)"));
+    let r2 = prf.add_step(Justification(p("(A & (B & C)) | ((((P & Q) & (R & S)) | ((U <-> V) <-> W)))"), RuleM::Association, vec![r1.clone()], vec![]));
+    let r3 = prf.add_step(Justification(p("(A & B & C) | (P & Q & R & S) | (U | V | W)"), RuleM::Association, vec![r1.clone()], vec![]));
+    (prf, vec![r2], vec![r3])
 }
