@@ -315,16 +315,14 @@ impl RuleT for PrepositionalInference {
                 }
             },
             ImpElim => {
-                let mut prems = vec![];
-                prems.push(p.lookup_expr_or_die(deps[0].clone())?);
-                prems.push(p.lookup_expr_or_die(deps[1].clone())?);
-
-                either_order(|i, j| {
-                    if let Expr::Binop{symbol: BSymbol::Implies, ref left, ref right} = prems[i]{
+                let prem1 =p.lookup_expr_or_die(deps[0].clone())?;
+                let prem2 =p.lookup_expr_or_die(deps[1].clone())?;
+                either_order(&prem1, &prem2, |i, j| {
+                    if let Expr::Binop{symbol: BSymbol::Implies, ref left, ref right} = i{
                         //bad case, p -> q, a therefore --doesn't matter, nothing can be said
                         //with a
-                        if **left != prems[j] {
-                            return Err(DoesNotOccur(prems[i].clone(), prems[j].clone()));
+                        if **left != *j {
+                            return Err(DoesNotOccur(i.clone(), j.clone()));
                         }
 
                         //bad case, p -> q, p therefore a which does not follow
@@ -333,7 +331,7 @@ impl RuleT for PrepositionalInference {
                         }
 
                         //good case, p -> q, p therefore q
-                        if **left == prems[j] && **right == conclusion{
+                        if **left == *j && **right == conclusion{
                             return Ok(Some(()));
                         }
                     }
@@ -377,12 +375,11 @@ impl RuleT for PrepositionalInference {
             },
             ContradictionIntro => {
                 if let Expr::Contradiction = conclusion {
-                    let mut prems = vec![];
-                    prems.push(p.lookup_expr_or_die(deps[0].clone())?);
-                    prems.push(p.lookup_expr_or_die(deps[1].clone())?);
-                    either_order(|i, j| {
-                        if let Expr::Unop { symbol: USymbol::Not, ref operand } = prems[i] {
-                            if **operand == prems[j] {
+                    let prem1 = p.lookup_expr_or_die(deps[0].clone())?;
+                    let prem2 = p.lookup_expr_or_die(deps[1].clone())?;
+                    either_order(&prem1, &prem2, |i, j| {
+                        if let Expr::Unop { symbol: USymbol::Not, ref operand } = i {
+                            if **operand == *j {
                                 return Ok(Some(()));
                             }
                         }
@@ -401,21 +398,19 @@ impl RuleT for PrepositionalInference {
                 }
             },
             BiconditionalElim => {
-                let mut prems = vec![];
-                prems.push(p.lookup_expr_or_die(deps[0].clone())?);
-                prems.push(p.lookup_expr_or_die(deps[1].clone())?);
-
-                either_order(|i, j| {
-                    if let Expr::AssocBinop { symbol: ASymbol::Bicon, ref exprs } = prems[i] {
+                let prem1 = p.lookup_expr_or_die(deps[0].clone())?;
+                let prem2 = p.lookup_expr_or_die(deps[1].clone())?;
+                either_order(&prem1, &prem2, |i, j| {
+                    if let Expr::AssocBinop { symbol: ASymbol::Bicon, ref exprs } = i {
                         let mut s = HashSet::new();
-                        if let Expr::AssocBinop { symbol: ASymbol::Bicon, ref exprs } = prems[j] {
+                        if let Expr::AssocBinop { symbol: ASymbol::Bicon, ref exprs } = j {
                             s.extend(exprs.iter().cloned());
                         } else {
-                            s.insert(prems[j].clone());
+                            s.insert(j.clone());
                         }
                         for prem in s.iter() {
                             if exprs.iter().find(|x| x == &prem).is_none() {
-                                return Err(DoesNotOccur(prem.clone(), prems[i].clone()));
+                                return Err(DoesNotOccur(prem.clone(), i.clone()));
                             }
                         }
                         let terms = exprs.iter().filter(|x| !s.contains(x)).cloned().collect::<Vec<_>>();
@@ -503,18 +498,16 @@ impl RuleT for PrepositionalInference {
                 return Err(ConclusionOfWrongForm(expression_builders::assocplaceholder(sym)));
             },
             EquivalenceElim => {
-                let mut prems = vec![];
-                prems.push(p.lookup_expr_or_die(deps[0].clone())?);
-                prems.push(p.lookup_expr_or_die(deps[1].clone())?);
-
-                either_order(|i, j| {
-                    if let Expr::AssocBinop { symbol: ASymbol::Equiv, ref exprs } = prems[i] {
+                let prem1 = p.lookup_expr_or_die(deps[0].clone())?;
+                let prem2 = p.lookup_expr_or_die(deps[1].clone())?;
+                either_order(&prem1, &prem2, |i, j| {
+                    if let Expr::AssocBinop { symbol: ASymbol::Equiv, ref exprs } = i {
                         // TODO: Negation?
-                        if exprs.iter().find(|x| x == &&prems[j]).is_none() {
-                            return Err(DoesNotOccur(prems[j].clone(), prems[i].clone()));
+                        if exprs.iter().find(|x| x == &j).is_none() {
+                            return Err(DoesNotOccur(j.clone(), i.clone()));
                         }
                         if exprs.iter().find(|x| x == &&conclusion).is_none() {
-                            return Err(DoesNotOccur(conclusion.clone(), prems[i].clone()));
+                            return Err(DoesNotOccur(conclusion.clone(), i.clone()));
                         }
                         return Ok(Some(()));
                     }
@@ -682,7 +675,7 @@ impl RuleT for RedundantPrepositionalInference {
     fn check<P: Proof>(self, _p: &P, _expr: Expr, _deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> { unimplemented!() }
 }
 
-fn either_order<T, R: Eq, S: Eq, F: FnMut(usize, usize)->Result<Option<T>, ProofCheckError<R, S>>, G: FnOnce()->Result<T, ProofCheckError<R, S>>>(mut f: F, g: G) -> Result<T, ProofCheckError<R, S>> {
+fn either_order<A, T, R: Eq, S: Eq, F: FnMut(&A, &A)->Result<Option<T>, ProofCheckError<R, S>>, G: FnOnce()->Result<T, ProofCheckError<R, S>>>(a1: &A, a2: &A, mut f: F, g: G) -> Result<T, ProofCheckError<R, S>> {
   macro_rules! h {
     ($i:expr, $j:expr) => (
       match f($i, $j) {
@@ -692,7 +685,7 @@ fn either_order<T, R: Eq, S: Eq, F: FnMut(usize, usize)->Result<Option<T>, Proof
       }
     );
   };
-  match (h!(0, 1), h!(1, 0)) {
+  match (h!(a1, a2), h!(a2, a1)) {
     (None, None) => g(),
     (Some(e), None) => Err(e),
     (None, Some(e)) => Err(e),

@@ -34,7 +34,8 @@ typedef struct Vec_Expr Vec_Expr;
 typedef struct Vec_String Vec_String;
 
 typedef enum {
-  Bottom,
+  Contradiction,
+  Tautology,
   Var,
   Apply,
   Unop,
