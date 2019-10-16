@@ -24,6 +24,8 @@ public class SharedObjectLoader {
             return "lib" + libName + ".so";
         } else if (SystemUtils.IS_OS_WINDOWS) {
             return libName + ".dll";
+        } else if (SystemUtils.IS_OS_MAC) {
+            return "lib" + libName + ".dylib";
         }
         return null;
     }
