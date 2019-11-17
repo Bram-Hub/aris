@@ -303,6 +303,115 @@ pub fn test_combine_associative_ops() {
     f("(a & (b & c)) | (q | r)");
 }
 
+/// Helper function for normalize_demorgans
+/// Returns true on ~(A ^ B) / ~(A v B) constructions
+/// Returns false otherwise
+fn is_outermost_demorgansable(e: &Expr) -> bool {
+    use Expr::*;
+    match e {
+        Unop { symbol: USymbol::Not, operand } => {
+            match **operand {
+                AssocBinop { symbol: ASymbol::And, .. } => true,
+                AssocBinop { symbol: ASymbol::Or, .. } => true,
+                _ => false
+            }
+        }
+        _ => false
+    }
+}
+
+/// Simplify an expression with recursive DeMorgan's
+/// ~(A ^ B) <=> ~A v ~B  /  ~(A v B) <=> ~A ^ ~B
+/// Strategy: Apply this to all ~(A ^ B) constructions
+/// This should leave us with an expression in "DeMorgans'd normal form"
+/// With no ~(A ^ B) / ~(A v B) expressions
+pub fn normalize_demorgans(e: Expr) -> Expr {
+    use Expr::*;
+
+    match e {
+        Contradiction => Contradiction,
+        Tautology => Tautology,
+        v @ Var { .. } => v,
+        Apply { func, args } => {
+            Apply {
+                func: Box::new(normalize_demorgans(*func)),
+                args: args.into_iter().map(normalize_demorgans).collect()
+            }
+        },
+        Unop { symbol: USymbol::Not, operand } => {
+            // Throwing the default case into a lambda so we don't have to write it twice
+            let unop_recurse = |operand: Expr| {
+                let mut expr = Unop {
+                    symbol: USymbol::Not,
+                    operand: Box::new(normalize_demorgans(operand))
+                };
+                // If we're a unary not, but not a demorgansable pattern, we need to reduce our inner
+                // expression. This could turn us into a demorgansable pattern, eg ~~(A & B) we reduce
+                // to ~(~A | ~B), so use worklist to handle this case.
+                while is_outermost_demorgansable(&expr) {
+                    expr = normalize_demorgans(expr);
+                }
+                expr
+            };
+
+            match *operand {
+                AssocBinop { symbol, exprs } => {
+
+                    let demorgans = |new_symbol, exprs: Vec<Expr>| {
+                        normalize_demorgans(AssocBinop {
+                            symbol: new_symbol,
+                            exprs: exprs.into_iter().map(|expr| Unop {
+                                symbol: USymbol::Not,
+                                operand: Box::new(expr)
+                            }).collect()
+                        })
+                    };
+
+                    match symbol {
+                        ASymbol::And => {
+                            demorgans(ASymbol::Or, exprs)
+                        },
+                        ASymbol::Or => {
+                            demorgans(ASymbol::And, exprs)
+                        },
+                        _ => unop_recurse(AssocBinop {symbol, exprs})
+                    }
+                },
+                op @ _ => unop_recurse(op)
+            }
+        },
+        /*
+        This pattern is unreachable until Unop has more symbols than just Not
+        Unop { symbol, operand } => {
+            Unop {
+                symbol,
+                operand: Box::new(normalize_demorgans(*operand)),
+            }
+        },
+        */
+        Binop { symbol, left, right } => {
+            Binop {
+                symbol,
+                left: Box::new(normalize_demorgans(*left)),
+                right: Box::new(normalize_demorgans(*right)),
+            }
+        },
+        AssocBinop { symbol, exprs } => {
+            AssocBinop {
+                symbol,
+                exprs: exprs.into_iter().map(normalize_demorgans).collect()
+            }
+        },
+        Quantifier { symbol, name, body } => {
+            Quantifier {
+                symbol,
+                name,
+                body: Box::new(normalize_demorgans(*body))
+            }
+        },
+    }
+}
+
 /*
 pub fn to_prenex(e: &Expr) -> Expr {
     use Expr::*; use QSymbol::*;

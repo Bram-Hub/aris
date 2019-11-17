@@ -30,6 +30,7 @@ fn test_rules<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::Subproo
     run_test::<P, _>(test_impelim);
     run_test::<P, _>(test_commutation);
     run_test::<P, _>(test_association);
+    run_test::<P, _>(test_demorgan);
 }
 
 fn test_rules_with_subproofs<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq, P::Subproof: Debug {
@@ -426,4 +427,42 @@ pub fn test_association<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>)
     let r2 = prf.add_step(Justification(p("(A & (B & C)) | ((((P & Q) & (R & S)) | ((U <-> V) <-> W)))"), RuleM::Association, vec![r1.clone()], vec![]));
     let r3 = prf.add_step(Justification(p("(A & B & C) | (P & Q & R & S) | (U | V | W)"), RuleM::Association, vec![r1.clone()], vec![]));
     (prf, vec![r2], vec![r3])
+}
+
+pub fn test_demorgan<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let mut prf = P::new();
+
+    let r1 = prf.add_premise(p("~(A & B)"));
+    let r2 = prf.add_premise(p("~(A | B)"));
+    let r3 = prf.add_premise(p("~(A | B | C)"));
+    let r4 = prf.add_premise(p("~~(A | B)"));
+    let r5 = prf.add_premise(p("~(~(A & B) | ~(C | D))"));
+    let r6 = prf.add_premise(p("~~~~~~~~~~~~~~~~(A & B)"));
+    let r7 = prf.add_step(Justification(p("~A | ~B"), RuleM::DeMorgan, vec![r1.clone()], vec![]));
+    let r8 = prf.add_step(Justification(p("~(A | B)"), RuleM::DeMorgan, vec![r1.clone()], vec![]));
+    let r9 = prf.add_step(Justification(p("~(~A & ~B)"), RuleM::DeMorgan, vec![r1.clone()], vec![]));
+    let r10 = prf.add_step(Justification(p("~(~A | ~B)"), RuleM::DeMorgan, vec![r1.clone()], vec![]));
+    let r11 = prf.add_step(Justification(p("~A & ~B"), RuleM::DeMorgan, vec![r2.clone()], vec![]));
+    let r12 = prf.add_step(Justification(p("~(A & B)"), RuleM::DeMorgan, vec![r2.clone()], vec![]));
+    let r13 = prf.add_step(Justification(p("~(~A | ~B)"), RuleM::DeMorgan, vec![r2.clone()], vec![]));
+    let r14 = prf.add_step(Justification(p("~(~A & ~B)"), RuleM::DeMorgan, vec![r2.clone()], vec![]));
+    let r15 = prf.add_step(Justification(p("~A & ~B & ~C"), RuleM::DeMorgan, vec![r3.clone()], vec![]));
+    let r16 = prf.add_step(Justification(p("~(A & B & C)"), RuleM::DeMorgan, vec![r3.clone()], vec![]));
+    let r17 = prf.add_step(Justification(p("~A | ~B | ~C"), RuleM::DeMorgan, vec![r3.clone()], vec![]));
+    let r18 = prf.add_step(Justification(p("~~A | ~~B"), RuleM::DeMorgan, vec![r4.clone()], vec![]));
+    let r19 = prf.add_step(Justification(p("~(~A & ~B)"), RuleM::DeMorgan, vec![r4.clone()], vec![]));
+    let r20 = prf.add_step(Justification(p("~((~A | ~B) | ~(C | D))"), RuleM::DeMorgan, vec![r5.clone()], vec![]));
+    let r21 = prf.add_step(Justification(p("~(~(A & B) | (~C & ~D))"), RuleM::DeMorgan, vec![r5.clone()], vec![]));
+    let r22 = prf.add_step(Justification(p("~((~A | ~B) | (~C & ~D))"), RuleM::DeMorgan, vec![r5.clone()], vec![]));
+    let r23 = prf.add_step(Justification(p("~(~A | ~B) & ~(~C & ~D)"), RuleM::DeMorgan, vec![r5.clone()], vec![]));
+    let r24 = prf.add_step(Justification(p("(~~A & ~~B) & (~~C | ~~D)"), RuleM::DeMorgan, vec![r5.clone()], vec![]));
+    let r25 = prf.add_step(Justification(p("(~~(A & B) & ~~(C | D))"), RuleM::DeMorgan, vec![r5.clone()], vec![]));
+    let r26 = prf.add_step(Justification(p("~~((A & B) & (C | D))"), RuleM::DeMorgan, vec![r5.clone()], vec![]));
+    let r27 = prf.add_step(Justification(p("~((A | B) | (C & D))"), RuleM::DeMorgan, vec![r5.clone()], vec![]));
+    let r28 = prf.add_step(Justification(p("~~((A & B) | (C | D))"), RuleM::DeMorgan, vec![r5.clone()], vec![]));
+    let r29 = prf.add_step(Justification(p("~~~~~~~~~~~~~~~~A & ~~~~~~~~~~~~~~~~B"), RuleM::DeMorgan, vec![r6.clone()], vec![]));
+    let r30 = prf.add_step(Justification(p("~~~~~~~~~~~~~~~~A | ~~~~~~~~~~~~~~~~B"), RuleM::DeMorgan, vec![r6.clone()], vec![]));
+
+    (prf, vec![r7, r11, r15, r18, r19, r20, r21, r22, r23, r24, r25, r26, r29], vec![r8, r9, r10, r12, r13, r14, r16, r17, r27, r28, r30])
 }

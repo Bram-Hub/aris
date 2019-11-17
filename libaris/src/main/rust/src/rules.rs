@@ -636,7 +636,13 @@ impl RuleT for Equivalence {
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
         use ProofCheckError::*; use Equivalence::*;
         match self {
-            DeMorgan => unimplemented!(),
+            DeMorgan => {
+                let premise = p.lookup_expr_or_die(deps[0].clone())?;
+                let p = normalize_demorgans(premise);
+                let q = normalize_demorgans(conclusion);
+                if p == q { Ok(()) }
+                else { Err(Other(format!("{} and {} are not equal.", p, q))) }
+            },
             Association => {
                 let premise = p.lookup_expr_or_die(deps[0].clone())?;
                 let p = combine_associative_ops(premise);
