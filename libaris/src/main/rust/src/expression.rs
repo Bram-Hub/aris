@@ -303,21 +303,86 @@ pub fn test_combine_associative_ops() {
     f("(a & (b & c)) | (q | r)");
 }
 
-/// Helper function for normalize_demorgans
-/// Returns true on ~(A ^ B) / ~(A v B) constructions
-/// Returns false otherwise
-fn is_outermost_demorgansable(e: &Expr) -> bool {
+/// Recursive transforming visitor over an expression
+/// trans_fn is a function that takes an Expr and returns one of two things:
+/// 1. If this expression is not transformable, (original expr, false)
+/// 2. If this expression is transformable, (transformed expr, true)
+///
+/// This function basically does a recursive worklist over the expression hierarchy, trying to transform
+/// any expression and all the sub-expressions it contains. If your transformation function succeeds,
+/// it will also traverse your result. This will loop infinitely if your transformation creates patterns
+/// that it matches.
+pub fn transform_expr<Trans>(e: Expr, trans_fn: &Trans) -> Expr
+where Trans: Fn(Expr) -> (Expr, bool) {
     use Expr::*;
-    match e {
-        Unop { symbol: USymbol::Not, operand } => {
-            match **operand {
-                AssocBinop { symbol: ASymbol::And, .. } => true,
-                AssocBinop { symbol: ASymbol::Or, .. } => true,
-                _ => false
-            }
-        }
-        _ => false
+
+    // Because I don't like typing
+    fn box_transform_expr_inner<Trans>(expr: Box<Expr>, trans: &Trans) -> (Box<Expr>, bool)
+    where Trans: Fn(Expr) -> (Expr, bool) {
+        let (result, status) = transform_expr_inner(*expr, trans);
+        return (Box::new(result), status);
     }
+
+    fn transform_expr_inner<Trans>(expr: Expr, trans: &Trans) -> (Expr, bool)
+    where Trans: Fn(Expr) -> (Expr, bool) {
+        let (result, status) = trans(expr);
+        let (result, status2) = match result {
+            // Base cases: these just got transformed above so no need to recurse them
+            e @ Contradiction => (e, false),
+            e @ Tautology => (e, false),
+            e @ Var { .. } => (e, false),
+
+            // Recursive cases: transform each of the sub-expressions of the various compound expressions
+            // and then construct a new instance of that compound expression with their transformed results.
+            // If any transformation is successful, we return success
+            Apply { func, args } => {
+                let (func, fs) = box_transform_expr_inner(func, trans);
+                // Fancy iterator hackery to transform each sub expr and then collect all their results
+                let (args, stats) : (Vec<_>, Vec<_>) = args.into_iter().map(move |expr| transform_expr_inner(expr, trans)).unzip();
+                let success = fs || stats.into_iter().any(|x| x);
+                (Apply { func, args }, success)
+            },
+            Unop { symbol, operand } => {
+                let (operand, success) = box_transform_expr_inner(operand, trans);
+                (Unop { symbol, operand }, success)
+            },
+            Binop { symbol, left, right } => {
+                let (left, ls) = box_transform_expr_inner(left, trans);
+                let (right, rs) = box_transform_expr_inner(right, trans);
+                let success = ls || rs;
+                (Binop { symbol, left, right }, success)
+            },
+            AssocBinop { symbol, exprs } => {
+                let (exprs, stats): (Vec<_>, Vec<_>) = exprs.into_iter().map(move |expr| transform_expr_inner(expr, trans)).unzip();
+                let success = stats.into_iter().any(|x| x);
+                (AssocBinop { symbol, exprs }, success)
+            },
+            Quantifier { symbol, name, body } => {
+                let (body, success) = box_transform_expr_inner(body, trans);
+                (Quantifier { symbol, name, body }, success)
+            },
+        };
+        // The key to this function is that it returns true if ANYTHING was transformed. That means
+        // if either the whole expression or any of the inner expressions, we should re-run on everything.
+        if status || status2 {
+            let (rr, rs) = transform_expr_inner(result, trans);
+            // We know we already did something, so no need to care about the inner result
+            (rr, true)
+        } else {
+            (result, false)
+        }
+    }
+
+    // Worklist: Keep reducing and transforming as long as something changes. This will loop infinitely
+    // if your transformation creates patterns that it matches.
+    let (mut result, mut status) = transform_expr_inner(e, trans_fn);
+    while status {
+        // Rust pls
+        let (x, y) = transform_expr_inner(result, trans_fn);
+        result = x;
+        status = y;
+    }
+    result
 }
 
 /// Simplify an expression with recursive DeMorgan's
@@ -328,88 +393,30 @@ fn is_outermost_demorgansable(e: &Expr) -> bool {
 pub fn normalize_demorgans(e: Expr) -> Expr {
     use Expr::*;
 
-    match e {
-        Contradiction => Contradiction,
-        Tautology => Tautology,
-        v @ Var { .. } => v,
-        Apply { func, args } => {
-            Apply {
-                func: Box::new(normalize_demorgans(*func)),
-                args: args.into_iter().map(normalize_demorgans).collect()
-            }
-        },
-        Unop { symbol: USymbol::Not, operand } => {
-            // Throwing the default case into a lambda so we don't have to write it twice
-            let unop_recurse = |operand: Expr| {
-                let mut expr = Unop {
-                    symbol: USymbol::Not,
-                    operand: Box::new(normalize_demorgans(operand))
-                };
-                // If we're a unary not, but not a demorgansable pattern, we need to reduce our inner
-                // expression. This could turn us into a demorgansable pattern, eg ~~(A & B) we reduce
-                // to ~(~A | ~B), so use worklist to handle this case.
-                while is_outermost_demorgansable(&expr) {
-                    expr = normalize_demorgans(expr);
-                }
-                expr
-            };
+    transform_expr(e, &|expr| {
+        use Expr::*;
 
-            match *operand {
-                AssocBinop { symbol, exprs } => {
-
-                    let demorgans = |new_symbol, exprs: Vec<Expr>| {
-                        normalize_demorgans(AssocBinop {
-                            symbol: new_symbol,
-                            exprs: exprs.into_iter().map(|expr| Unop {
-                                symbol: USymbol::Not,
-                                operand: Box::new(expr)
-                            }).collect()
-                        })
-                    };
-
-                    match symbol {
-                        ASymbol::And => {
-                            demorgans(ASymbol::Or, exprs)
-                        },
-                        ASymbol::Or => {
-                            demorgans(ASymbol::And, exprs)
-                        },
-                        _ => unop_recurse(AssocBinop {symbol, exprs})
-                    }
-                },
-                op @ _ => unop_recurse(op)
-            }
-        },
-        /*
-        This pattern is unreachable until Unop has more symbols than just Not
-        Unop { symbol, operand } => {
-            Unop {
-                symbol,
-                operand: Box::new(normalize_demorgans(*operand)),
-            }
-        },
-        */
-        Binop { symbol, left, right } => {
-            Binop {
-                symbol,
-                left: Box::new(normalize_demorgans(*left)),
-                right: Box::new(normalize_demorgans(*right)),
-            }
-        },
-        AssocBinop { symbol, exprs } => {
+        let demorgans = |new_symbol, exprs: Vec<Expr>| {
             AssocBinop {
-                symbol,
-                exprs: exprs.into_iter().map(normalize_demorgans).collect()
+                symbol: new_symbol,
+                exprs: exprs.into_iter().map(|expr| Unop {
+                    symbol: USymbol::Not,
+                    operand: Box::new(expr)
+                }).collect()
             }
-        },
-        Quantifier { symbol, name, body } => {
-            Quantifier {
-                symbol,
-                name,
-                body: Box::new(normalize_demorgans(*body))
+        };
+
+        match expr {
+            Unop { symbol: USymbol::Not, operand } => {
+                match *operand {
+                    AssocBinop { symbol: ASymbol::And, exprs } => (demorgans(ASymbol::Or, exprs), true),
+                    AssocBinop { symbol: ASymbol::Or, exprs } => (demorgans(ASymbol::And, exprs), true),
+                    _ => (expression_builders::not(*operand), false)
+                }
             }
-        },
-    }
+            _ => (expr, false)
+        }
+    })
 }
 
 /*

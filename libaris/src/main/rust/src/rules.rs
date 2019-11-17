@@ -657,7 +657,11 @@ impl RuleT for Equivalence {
                 if p == q { Ok(()) }
                 else { Err(Other(format!("{} and {} are not equal.", p, q))) }
             },
-            Idempotence => unimplemented!(),
+            Idempotence => {
+                // A ^ A <=> A
+                // A v A <=> A
+                unimplemented!()
+            },
             Distribution => unimplemented!(),
         }
     }
