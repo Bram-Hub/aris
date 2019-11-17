@@ -364,13 +364,7 @@ where Trans: Fn(Expr) -> (Expr, bool) {
         };
         // The key to this function is that it returns true if ANYTHING was transformed. That means
         // if either the whole expression or any of the inner expressions, we should re-run on everything.
-        if status || status2 {
-            let (rr, rs) = transform_expr_inner(result, trans);
-            // We know we already did something, so no need to care about the inner result
-            (rr, true)
-        } else {
-            (result, false)
-        }
+        (result, status || status2)
     }
 
     // Worklist: Keep reducing and transforming as long as something changes. This will loop infinitely
