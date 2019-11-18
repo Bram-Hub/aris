@@ -388,8 +388,6 @@ pub fn normalize_demorgans(e: Expr) -> Expr {
     use Expr::*;
 
     transform_expr(e, &|expr| {
-        use Expr::*;
-
         let demorgans = |new_symbol, exprs: Vec<Expr>| {
             AssocBinop {
                 symbol: new_symbol,
@@ -408,6 +406,41 @@ pub fn normalize_demorgans(e: Expr) -> Expr {
                     _ => (expression_builders::not(*operand), false)
                 }
             }
+            _ => (expr, false)
+        }
+    })
+}
+
+/// Reduce an expression over idempotence, that is:
+/// A & A -> A
+/// A | A -> A
+/// In a manner equivalent to normalize_demorgans
+pub fn normalize_idempotence(e: Expr) -> Expr {
+    use Expr::*;
+
+    transform_expr(e, &|expr| {
+        match expr {
+            AssocBinop { symbol: symbol @ ASymbol::And, exprs } |
+            AssocBinop { symbol: symbol @ ASymbol::Or, exprs } => {
+
+                let mut unifies = true;
+                // (0, 1), (1, 2), ... (n - 2, n - 1)
+                for pair in exprs.windows(2) {
+                    // Just doing a basic AST equality. Could replace this with unify if we want
+                    // to be stronger
+                    if pair[0] != pair[1] {
+                        unifies = false;
+                        break;
+                    }
+                }
+
+                if unifies {
+                    // Just use the first one
+                    (exprs.into_iter().next().unwrap(), true)
+                } else {
+                    (AssocBinop { symbol, exprs }, false)
+                }
+            },
             _ => (expr, false)
         }
     })

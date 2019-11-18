@@ -31,6 +31,7 @@ fn test_rules<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::Subproo
     run_test::<P, _>(test_commutation);
     run_test::<P, _>(test_association);
     run_test::<P, _>(test_demorgan);
+    run_test::<P, _>(test_idempotence);
 }
 
 fn test_rules_with_subproofs<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq, P::Subproof: Debug {
@@ -465,4 +466,36 @@ pub fn test_demorgan<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
     let r30 = prf.add_step(Justification(p("~~~~~~~~~~~~~~~~A | ~~~~~~~~~~~~~~~~B"), RuleM::DeMorgan, vec![r6.clone()], vec![]));
 
     (prf, vec![r7, r11, r15, r18, r19, r20, r21, r22, r23, r24, r25, r26, r29], vec![r8, r9, r10, r12, r13, r14, r16, r17, r27, r28, r30])
+}
+
+pub fn test_idempotence<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let mut prf = P::new();
+
+    let r1 = prf.add_premise(p("A & A"));
+    let r2 = prf.add_premise(p("A | A"));
+    let r3 = prf.add_premise(p("A & A & A & A & A"));
+    let r4 = prf.add_premise(p("(A | A) & (A | A)"));
+    let r5 = prf.add_premise(p("(A | A) & (B | B)"));
+    let r6 = prf.add_premise(p("(A | (A | A)) & ((B & B) | B)"));
+    let r7 = prf.add_premise(p("A & A & B"));
+
+    let r8 = prf.add_step(Justification(p("A"), RuleM::Idempotence, vec![r1.clone()], vec![]));
+    let r9 = prf.add_step(Justification(p("A"), RuleM::Idempotence, vec![r2.clone()], vec![]));
+    let r10 = prf.add_step(Justification(p("A"), RuleM::Idempotence, vec![r3.clone()], vec![]));
+    let r11 = prf.add_step(Justification(p("A"), RuleM::Idempotence, vec![r4.clone()], vec![]));
+    let r12 = prf.add_step(Justification(p("A & B"), RuleM::Idempotence, vec![r5.clone()], vec![]));
+    let r13 = prf.add_step(Justification(p("A"), RuleM::Idempotence, vec![r5.clone()], vec![]));
+    let r14 = prf.add_step(Justification(p("B"), RuleM::Idempotence, vec![r5.clone()], vec![]));
+    let r15 = prf.add_step(Justification(p("A | B"), RuleM::Idempotence, vec![r5.clone()], vec![]));
+    let r16 = prf.add_step(Justification(p("A & B"), RuleM::Idempotence, vec![r6.clone()], vec![]));
+    let r17 = prf.add_step(Justification(p("(A | A) & B"), RuleM::Idempotence, vec![r6.clone()], vec![]));
+    let r18 = prf.add_step(Justification(p("A & (B | B)"), RuleM::Idempotence, vec![r6.clone()], vec![]));
+    let r19 = prf.add_step(Justification(p("A"), RuleM::Idempotence, vec![r6.clone()], vec![]));
+    let r20 = prf.add_step(Justification(p("A"), RuleM::Idempotence, vec![r7.clone()], vec![]));
+    let r21 = prf.add_step(Justification(p("B"), RuleM::Idempotence, vec![r7.clone()], vec![]));
+    //TODO: Should we make this valid? Currently it is invalid as all args must be equal
+    let r22 = prf.add_step(Justification(p("A & B"), RuleM::Idempotence, vec![r7.clone()], vec![]));
+
+    (prf, vec![r8, r9, r10, r11, r12, r16, r17, r18], vec![r13, r14, r15, r19, r20, r21, r22])
 }

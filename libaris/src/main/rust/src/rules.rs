@@ -658,9 +658,11 @@ impl RuleT for Equivalence {
                 else { Err(Other(format!("{} and {} are not equal.", p, q))) }
             },
             Idempotence => {
-                // A ^ A <=> A
-                // A v A <=> A
-                unimplemented!()
+                let premise = p.lookup_expr_or_die(deps[0].clone())?;
+                let p = normalize_idempotence(premise);
+                let q = normalize_idempotence(conclusion);
+                if p == q { Ok(()) }
+                else { Err(Other(format!("{} and {} are not equal.", p, q))) }
             },
             Distribution => unimplemented!(),
         }
