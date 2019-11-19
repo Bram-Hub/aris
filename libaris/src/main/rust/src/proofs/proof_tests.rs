@@ -33,6 +33,7 @@ fn test_rules<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::Subproo
     run_test::<P, _>(test_demorgan);
     run_test::<P, _>(test_idempotence);
     run_test::<P, _>(test_doublenegation);
+    run_test::<P, _>(test_complement);
 }
 
 fn test_rules_with_subproofs<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq, P::Subproof: Debug {
@@ -521,3 +522,30 @@ pub fn test_doublenegation<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Referenc
 
     (prf, vec![r4, r5, r6, r7, r8, r9], vec![r10, r11])
 }
+
+pub fn test_complement<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let mut prf = P::new();
+
+    let r1 = prf.add_premise(p("A & ~A"));
+    let r2 = prf.add_premise(p("~A & A"));
+    let r3 = prf.add_premise(p("A | ~A"));
+    let r4 = prf.add_premise(p("~A | A"));
+    let r5 = prf.add_premise(p("~(forall A, A) | (forall B, B)"));
+    let r6 = prf.add_premise(p("~(forall A, A) & (forall B, B)"));
+    let r7 = prf.add_step(Justification(p("_|_"), RuleM::Complement, vec![r1.clone()], vec![]));
+    let r8 = prf.add_step(Justification(p("^|^"), RuleM::Complement, vec![r1.clone()], vec![]));
+    let r9 = prf.add_step(Justification(p("_|_"), RuleM::Complement, vec![r2.clone()], vec![]));
+    let r10 = prf.add_step(Justification(p("^|^"), RuleM::Complement, vec![r2.clone()], vec![]));
+    let r11 = prf.add_step(Justification(p("_|_"), RuleM::Complement, vec![r3.clone()], vec![]));
+    let r12 = prf.add_step(Justification(p("^|^"), RuleM::Complement, vec![r3.clone()], vec![]));
+    let r13 = prf.add_step(Justification(p("_|_"), RuleM::Complement, vec![r4.clone()], vec![]));
+    let r14 = prf.add_step(Justification(p("^|^"), RuleM::Complement, vec![r4.clone()], vec![]));
+    let r15 = prf.add_step(Justification(p("_|_"), RuleM::Complement, vec![r5.clone()], vec![]));
+    let r16 = prf.add_step(Justification(p("^|^"), RuleM::Complement, vec![r5.clone()], vec![]));
+    let r17 = prf.add_step(Justification(p("_|_"), RuleM::Complement, vec![r6.clone()], vec![]));
+    let r18 = prf.add_step(Justification(p("^|^"), RuleM::Complement, vec![r6.clone()], vec![]));
+
+    (prf, vec![r7, r9, r12, r14, r16, r17], vec![r8, r10, r11, r13, r15, r18])
+}
+

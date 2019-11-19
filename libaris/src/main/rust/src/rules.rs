@@ -25,7 +25,8 @@ pub enum PredicateInference {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Equivalence {
     DeMorgan, Association, Commutation, Idempotence, Distribution, 
-    DoubleNegation
+    DoubleNegation, Complement, Identity, Annihilation, Inverse, Absorption,
+    Reduction, Adjacency
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -73,6 +74,13 @@ pub mod RuleM {
     pub static Idempotence: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Idempotence))));
     pub static Distribution: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Distribution))));
     pub static DoubleNegation: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::DoubleNegation))));
+    pub static Complement: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Complement))));
+    pub static Identity: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Identity))));
+    pub static Annihilation: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Annihilation))));
+    pub static Inverse: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Inverse))));
+    pub static Absorption: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Absorption))));
+    pub static Reduction: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Reduction))));
+    pub static Adjacency: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Adjacency))));
 
     pub static ModusTollens: Rule = SharedChecks(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ModusTollens)))));
     pub static HypotheticalSyllogism: Rule = SharedChecks(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::HypotheticalSyllogism)))));
@@ -113,6 +121,13 @@ pub mod RuleM {
             "DE_MORGAN" => RuleM::DeMorgan,
             "DISTRIBUTION" => RuleM::Distribution,
             "DOUBLENEGATION_EQUIV" => RuleM::DoubleNegation,
+            "COMPLEMENT" => RuleM::Complement,
+            "IDENTITY" => RuleM::Identity,
+            "ANNIHILATION" => RuleM::Annihilation,
+            "INVERSE" => RuleM::Inverse,
+            "ABSORPTION" => RuleM::Absorption,
+            "REDUCTION" => RuleM::Reduction,
+            "ADJACENCY" => RuleM::Adjacency,
             _ => { return None },
         })
     }
@@ -630,6 +645,13 @@ impl RuleT for Equivalence {
             Idempotence => "Idempotence",
             Distribution => "Distribution",
             DoubleNegation => "Double Negation",
+            Complement => "Complement",
+            Identity => "Identity",
+            Annihilation => "Annihilation",
+            Inverse => "Inverse",
+            Absorption => "Absorption",
+            Reduction => "Reduction",
+            Adjacency => "Adjacency",
         }.into()
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
@@ -676,6 +698,19 @@ impl RuleT for Equivalence {
                 else { Err(Other(format!("{} and {} are not equal.", p, q))) }
             },
             Distribution => unimplemented!(),
+            Complement => {
+                let premise = p.lookup_expr_or_die(deps[0].clone())?;
+                let p = normalize_complement(premise);
+                let q = normalize_complement(conclusion);
+                if p == q { Ok(()) }
+                else { Err(Other(format!("{} and {} are not equal.", p, q))) }
+            },
+            Identity => unimplemented!(),
+            Annihilation => unimplemented!(),
+            Inverse => unimplemented!(),
+            Absorption => unimplemented!(),
+            Reduction => unimplemented!(),
+            Adjacency => unimplemented!(),
         }
     }
 }

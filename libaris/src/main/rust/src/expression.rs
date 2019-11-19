@@ -1,5 +1,6 @@
 use super::*;
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
+use std::iter::FromIterator;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[repr(C)]
@@ -460,6 +461,87 @@ pub fn normalize_doublenegation(e: Expr) -> Expr {
             },
             _ => (expr, false)
         }
+    })
+}
+
+pub fn normalize_complement(e: Expr) -> Expr {
+    use Expr::*;
+    use USymbol::Not;
+
+    use expression_builders::*;
+
+    let phi = gensym("phi", &freevars(&e));
+    // phi & ~phi ==> _|_
+    let pattern1 = (assocbinop(ASymbol::And, &[var(&*phi), not(var(&*phi))]), Contradiction);
+    // ~phi & phi ==> _|_
+    let pattern2 = (assocbinop(ASymbol::And, &[not(var(&*phi)), var(&*phi)]), Contradiction);
+    // phi | ~phi ==> T
+    let pattern3 = (assocbinop(ASymbol::Or, &[var(&*phi), not(var(&*phi))]), Tautology);
+    // ~phi | phi ==> T
+    let pattern4 = (assocbinop(ASymbol::Or, &[not(var(&*phi)), var(&*phi)]), Tautology);
+
+    reduce_pattern(e, HashSet::from_iter(vec![phi].into_iter()), vec![pattern1, pattern2, pattern3, pattern4])
+}
+
+/// Reduce an expression by a pattern with a set of variables
+///
+/// Basically this lets you construct pattern-based expression reductions by defining the reduction
+/// as a pattern instead of manually matching expressions.
+///
+/// Patterns are defined as `(match, replace)` where any expression in the tree of `e` that unifies
+/// with `match` on all pattern variables defined in `pattern_vars` will be replaced by `replace` with
+/// the substitutions from the unification.
+///
+/// Limitations: Cannot do variadic versions of assoc binops, you need a constant number of args
+///
+/// # Example
+/// ```
+/// // DeMorgan's for and/or that have only two parameters
+/// use expression_builders::*;
+/// // Create some variables for the inputs
+/// let phi = gensym("phi", &freevars(&e));
+/// let psi = gensym("psi", &freevars(&e));
+///
+/// // ~(phi & psi) ==> ~phi | ~psi
+/// let pattern1 = not(assocbinop(ASymbol::And, &[var(&*phi), var(&*psi)]));
+/// let replace1 = assocbinop(ASymbol::Or, &[not(var(&*phi)), not(var(&*psi))]);
+///
+/// // ~(phi | psi) ==> ~phi & ~psi
+/// let pattern2 = not(assocbinop(ASymbol::Or, &[var(&*phi), var(&*psi)]));
+/// let replace2 = assocbinop(ASymbol::And, &[not(var(&*phi)), not(var(&*psi))]);
+///
+/// let patterns = vec![(pattern1, replace1), (pattern2, replace2)];
+/// normalize_pattern(e, HashSet::from_iter(vec![phi, psi].into_iter()), patterns)
+/// ```
+pub fn reduce_pattern(e: Expr, pattern_vars: HashSet<String>, patterns: Vec<(Expr, Expr)>) -> Expr {
+    transform_expr(e, &|expr| {
+        // Try all our patterns at every level of the tree
+        for (pattern, replace) in &patterns {
+            // Unify3D
+            let ret = unify(vec![Constraint::Equal(pattern.clone(), expr.clone())].into_iter().collect());
+            if let Some(ret) = ret {
+                // Collect all unification results and make sure we actually match exactly
+                let mut subs = HashMap::new();
+                let mut any_bad = false;
+                for subst in ret.0 {
+                    // We only want to unify our pattern variables. This prevents us from going backwards
+                    // and unifying a pattern variable in expr with some expression of our pattern variable
+                    if pattern_vars.contains(&subst.0) {
+                        // Sanity check: Only one unification per variable
+                        assert!(subs.insert(subst.0, subst.1).is_none());
+                    } else {
+                        any_bad = true;
+                    }
+                }
+
+                // Make sure we have a substitution for every variable in the pattern set (and only for them)
+                if !any_bad && subs.len() == pattern_vars.len() {
+                    let subst_replace = subs.into_iter().fold(replace.clone(), |z, (x, y)| subst(&z, &x, y));
+                    return (subst_replace, true);
+                }
+            }
+        }
+        (expr, false)
     })
 }
 
