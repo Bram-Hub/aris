@@ -446,6 +446,23 @@ pub fn normalize_idempotence(e: Expr) -> Expr {
     })
 }
 
+pub fn normalize_doublenegation(e: Expr) -> Expr {
+    use Expr::*;
+    use USymbol::Not;
+
+    transform_expr(e, &|expr| {
+        match expr {
+            Unop { symbol: Not, operand: e1 } => {
+                match *e1 {
+                    Unop { symbol: Not, operand: e2 } => (*e2, true),
+                    _ => (expression_builders::not(*e1), false)
+                }
+            },
+            _ => (expr, false)
+        }
+    })
+}
+
 /*
 pub fn to_prenex(e: &Expr) -> Expr {
     use Expr::*; use QSymbol::*;

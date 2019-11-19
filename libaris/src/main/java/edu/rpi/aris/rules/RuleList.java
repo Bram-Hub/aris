@@ -32,7 +32,8 @@ public enum RuleList {
     COMMUTATION,
     IDEMPOTENCE,
     DE_MORGAN,
-    DISTRIBUTION;
+    DISTRIBUTION,
+    DOUBLENEGATION_EQUIV;
 
     public final String name, simpleName;
     public final Rule rule;

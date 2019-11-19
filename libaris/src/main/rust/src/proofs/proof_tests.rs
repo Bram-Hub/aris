@@ -32,6 +32,7 @@ fn test_rules<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::Subproo
     run_test::<P, _>(test_association);
     run_test::<P, _>(test_demorgan);
     run_test::<P, _>(test_idempotence);
+    run_test::<P, _>(test_doublenegation);
 }
 
 fn test_rules_with_subproofs<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq, P::Subproof: Debug {
@@ -498,4 +499,25 @@ pub fn test_idempotence<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>)
     let r22 = prf.add_step(Justification(p("A & B"), RuleM::Idempotence, vec![r7.clone()], vec![]));
 
     (prf, vec![r8, r9, r10, r11, r12, r16, r17, r18], vec![r13, r14, r15, r19, r20, r21, r22])
+}
+
+pub fn test_doublenegation<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let mut prf = P::new();
+
+    let r1 = prf.add_premise(p("~~A & A"));
+    let r2 = prf.add_premise(p("P & Q & ~~~~(~~R | S)"));
+    let r3 = prf.add_premise(p("~P -> Q"));
+
+    let r4 = prf.add_step(Justification(p("A & A"), RuleM::DoubleNegation, vec![r1.clone()], vec![]));
+    let r5 = prf.add_step(Justification(p("A & ~~~~A"), RuleM::DoubleNegation, vec![r1.clone()], vec![])); 
+    let r6 = prf.add_step(Justification(p("~~P & Q & ~~~~(R | ~~~~S)"), RuleM::DoubleNegation, vec![r2.clone()], vec![]));
+    let r7 = prf.add_step(Justification(p("~~P & Q & (R | ~~~~S)"), RuleM::DoubleNegation, vec![r2.clone()], vec![]));
+    let r8 = prf.add_step(Justification(p("P & Q & (R | S)"), RuleM::DoubleNegation, vec![r2.clone()], vec![]));
+    let r9 = prf.add_step(Justification(p("~~~P -> ~~~~Q"), RuleM::DoubleNegation, vec![r3.clone()], vec![]));
+
+    let r10 = prf.add_step(Justification(p("~A & A"), RuleM::DoubleNegation, vec![r1.clone()], vec![]));
+    let r11 = prf.add_step(Justification(p("~~~~P -> ~~~Q"), RuleM::DoubleNegation, vec![r3.clone()], vec![]));
+
+    (prf, vec![r4, r5, r6, r7, r8, r9], vec![r10, r11])
 }

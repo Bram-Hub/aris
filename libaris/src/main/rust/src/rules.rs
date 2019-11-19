@@ -24,7 +24,8 @@ pub enum PredicateInference {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Equivalence {
-    DeMorgan, Association, Commutation, Idempotence, Distribution
+    DeMorgan, Association, Commutation, Idempotence, Distribution, 
+    DoubleNegation
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -71,6 +72,7 @@ pub mod RuleM {
     pub static Commutation: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Commutation))));
     pub static Idempotence: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Idempotence))));
     pub static Distribution: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Distribution))));
+    pub static DoubleNegation: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::DoubleNegation))));
 
     pub static ModusTollens: Rule = SharedChecks(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ModusTollens)))));
     pub static HypotheticalSyllogism: Rule = SharedChecks(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::HypotheticalSyllogism)))));
@@ -110,6 +112,7 @@ pub mod RuleM {
             "IDEMPOTENCE" => RuleM::Idempotence,
             "DE_MORGAN" => RuleM::DeMorgan,
             "DISTRIBUTION" => RuleM::Distribution,
+            "DOUBLENEGATION_EQUIV" => RuleM::DoubleNegation,
             _ => { return None },
         })
     }
@@ -626,6 +629,7 @@ impl RuleT for Equivalence {
             Commutation => "Commutation",
             Idempotence => "Idempotence",
             Distribution => "Distribution",
+            DoubleNegation => "Double Negation",
         }.into()
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
@@ -661,6 +665,13 @@ impl RuleT for Equivalence {
                 let premise = p.lookup_expr_or_die(deps[0].clone())?;
                 let p = normalize_idempotence(premise);
                 let q = normalize_idempotence(conclusion);
+                if p == q { Ok(()) }
+                else { Err(Other(format!("{} and {} are not equal.", p, q))) }
+            },
+            DoubleNegation => {
+                let premise = p.lookup_expr_or_die(deps[0].clone())?;
+                let p = normalize_doublenegation(premise);
+                let q = normalize_doublenegation(conclusion);
                 if p == q { Ok(()) }
                 else { Err(Other(format!("{} and {} are not equal.", p, q))) }
             },
