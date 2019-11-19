@@ -33,7 +33,14 @@ public enum RuleList {
     IDEMPOTENCE,
     DE_MORGAN,
     DISTRIBUTION,
-    DOUBLENEGATION_EQUIV;
+    DOUBLENEGATION_EQUIV,
+    COMPLEMENT,
+    IDENTITY,
+    ANNIHILATION,
+    INVERSE,
+    ABSORPTION,
+    REDUCTION,
+    ADJACENCY;
 
     public final String name, simpleName;
     public final Rule rule;

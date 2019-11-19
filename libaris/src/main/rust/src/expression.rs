@@ -483,6 +483,25 @@ pub fn normalize_complement(e: Expr) -> Expr {
     reduce_pattern(e, HashSet::from_iter(vec![phi].into_iter()), vec![pattern1, pattern2, pattern3, pattern4])
 }
 
+pub fn normalize_identity(e: Expr) -> Expr {
+    use Expr::*;
+    use USymbol::Not;
+
+    use expression_builders::*;
+
+    let phi = gensym("phi", &freevars(&e));
+    // phi & T ==> phi
+    let pattern1 = (assocbinop(ASymbol::And, &[var(&*phi), Tautology]), var(&*phi));
+    // T & phi ==> phi
+    let pattern2 = (assocbinop(ASymbol::And, &[Tautology, var(&*phi)]), var(&*phi));
+    // phi | _|_ ==> phi
+    let pattern3 = (assocbinop(ASymbol::Or, &[var(&*phi), Contradiction]), var(&*phi));
+    // _|_ | phi ==> phi
+    let pattern4 = (assocbinop(ASymbol::Or, &[Contradiction, var(&*phi)]), var(&*phi));
+
+    reduce_pattern(e, HashSet::from_iter(vec![phi].into_iter()), vec![pattern1, pattern2, pattern3, pattern4])
+}
+
 /// Reduce an expression by a pattern with a set of variables
 ///
 /// Basically this lets you construct pattern-based expression reductions by defining the reduction

@@ -661,51 +661,25 @@ impl RuleT for Equivalence {
     fn num_subdeps(&self) -> Option<usize> { Some(0) }
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
         use ProofCheckError::*; use Equivalence::*;
+
+        fn check_by_normalize_first_expr<F, P: Proof>(p: &P, deps: Vec<P::Reference>, conclusion: Expr, normalize_fn: F) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>>
+        where F: Fn(Expr) -> Expr {
+            let premise = p.lookup_expr_or_die(deps[0].clone())?;
+            let p = normalize_fn(premise);
+            let q = normalize_fn(conclusion);
+            if p == q { Ok(()) }
+            else { Err(Other(format!("{} and {} are not equal.", p, q))) }
+        }
+
         match self {
-            DeMorgan => {
-                let premise = p.lookup_expr_or_die(deps[0].clone())?;
-                let p = normalize_demorgans(premise);
-                let q = normalize_demorgans(conclusion);
-                if p == q { Ok(()) }
-                else { Err(Other(format!("{} and {} are not equal.", p, q))) }
-            },
-            Association => {
-                let premise = p.lookup_expr_or_die(deps[0].clone())?;
-                let p = combine_associative_ops(premise);
-                let q = combine_associative_ops(conclusion);
-                if p == q { Ok(()) }
-                else { Err(Other(format!("{} and {} are not equal.", p, q))) }
-            },
-            Commutation => {
-                let premise = p.lookup_expr_or_die(deps[0].clone())?;
-                let p = sort_commutative_ops(premise);
-                let q = sort_commutative_ops(conclusion);
-                if p == q { Ok(()) }
-                else { Err(Other(format!("{} and {} are not equal.", p, q))) }
-            },
-            Idempotence => {
-                let premise = p.lookup_expr_or_die(deps[0].clone())?;
-                let p = normalize_idempotence(premise);
-                let q = normalize_idempotence(conclusion);
-                if p == q { Ok(()) }
-                else { Err(Other(format!("{} and {} are not equal.", p, q))) }
-            },
-            DoubleNegation => {
-                let premise = p.lookup_expr_or_die(deps[0].clone())?;
-                let p = normalize_doublenegation(premise);
-                let q = normalize_doublenegation(conclusion);
-                if p == q { Ok(()) }
-                else { Err(Other(format!("{} and {} are not equal.", p, q))) }
-            },
+            DeMorgan => check_by_normalize_first_expr(p, deps, conclusion, normalize_demorgans),
+            Association => check_by_normalize_first_expr(p, deps, conclusion, combine_associative_ops),
+            Commutation => check_by_normalize_first_expr(p, deps, conclusion, sort_commutative_ops),
+            Idempotence => check_by_normalize_first_expr(p, deps, conclusion, normalize_idempotence),
+            DoubleNegation => check_by_normalize_first_expr(p, deps, conclusion, normalize_doublenegation),
             Distribution => unimplemented!(),
-            Complement => {
-                let premise = p.lookup_expr_or_die(deps[0].clone())?;
-                let p = normalize_complement(premise);
-                let q = normalize_complement(conclusion);
-                if p == q { Ok(()) }
-                else { Err(Other(format!("{} and {} are not equal.", p, q))) }
-            },
-            Identity => unimplemented!(),
+            Complement => check_by_normalize_first_expr(p, deps, conclusion, normalize_complement),
+            Identity => check_by_normalize_first_expr(p, deps, conclusion, normalize_identity),
             Annihilation => unimplemented!(),
             Inverse => unimplemented!(),
             Absorption => unimplemented!(),
