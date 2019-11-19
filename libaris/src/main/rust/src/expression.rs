@@ -521,6 +521,20 @@ pub fn normalize_annihilation(e: Expr) -> Expr {
     reduce_pattern(e, HashSet::from_iter(vec![phi].into_iter()), vec![pattern1, pattern2, pattern3, pattern4])
 }
 
+pub fn normalize_inverse(e: Expr) -> Expr {
+    use Expr::*;
+    use USymbol::Not;
+
+    use expression_builders::*;
+
+    // not(T) ==> _|_
+    let pattern1 = (not(Tautology), Contradiction);
+    // not(_|_) ==> T
+    let pattern2 = (not(Contradiction), Tautology);
+
+    reduce_pattern(e, HashSet::new(), vec![pattern1, pattern2])
+}
+
 /// Reduce an expression by a pattern with a set of variables
 ///
 /// Basically this lets you construct pattern-based expression reductions by defining the reduction
