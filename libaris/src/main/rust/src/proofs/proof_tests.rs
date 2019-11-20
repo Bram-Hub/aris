@@ -49,6 +49,7 @@ fn test_rules_with_subproofs<P: Proof+Display+Debug>() where P::Reference: Debug
     run_test::<P, _>(test_orelim);
     run_test::<P, _>(test_equivelim);
     run_test::<P, _>(test_equivintro);
+    run_test::<P, _>(test_existselim);
 }
 
 #[test] fn test_rules_on_treeproof() { test_rules::<treeproof::TreeProof<(), ()>>(); }
@@ -409,6 +410,39 @@ pub fn test_forallintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Refer
     }).unwrap();
     let r12 = prf.add_step(Justification(p("forall y, r(y)"), RuleM::ForallIntro, vec![], vec![r10.clone()]));
     (prf, vec![r5, r6, r7, r8, r11], vec![r9, r12])
+}
+
+pub fn test_existselim<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Reference>) where P::Subproof: Debug, P::Reference: Debug, P::SubproofReference: Debug {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let mut prf = P::new();
+    let r1 = prf.add_premise(p("exists x, p(x)"));
+    let r2 = prf.add_premise(p("p(a) -> q(a)"));
+    let r3 = prf.add_premise(p("forall b, (p(b) -> r(b))"));
+    let r4 = prf.add_subproof();
+    let (r6, r7, r8, r9, r10) = prf.with_mut_subproof(&r4, |sub| {
+        let r5 = sub.add_premise(p("p(a)"));
+        let r6 = sub.add_step(Justification(p("q(a)"), RuleM::ImpElim, vec![r2.clone(), r5.clone()], vec![]));
+        let r7 = sub.add_step(Justification(p("p(a) -> r(a)"), RuleM::ForallElim, vec![r3.clone()], vec![]));
+        let r8 = sub.add_step(Justification(p("r(a)"), RuleM::ImpElim, vec![r7.clone(), r5.clone()], vec![]));
+        let r9 = sub.add_step(Justification(p("exists x, q(x)"), RuleM::ExistsIntro, vec![r6.clone()], vec![]));
+        let r10 = sub.add_step(Justification(p("exists x, r(x)"), RuleM::ExistsIntro, vec![r8.clone()], vec![]));
+        (r6, r7, r8, r9, r10)
+    }).unwrap();
+    let r11 = prf.add_step(Justification(p("exists x, q(x)"), RuleM::ExistsElim, vec![r1.clone()], vec![r4.clone()]));
+    let r12 = prf.add_step(Justification(p("exists x, r(x)"), RuleM::ExistsElim, vec![r1.clone()], vec![r4.clone()]));
+
+    let r13 = prf.add_premise(p("forall y, man(y) → mortal(y)"));
+    let r14 = prf.add_premise(p("exists x, man(x)"));
+    let r15 = prf.add_subproof();
+    let (r16, r17, r18, r19) = prf.with_mut_subproof(&r15, |sub| {
+        let r16 = sub.add_premise(p("man(socrates)"));
+        let r17 = sub.add_step(Justification(p("man(socrates) → mortal(socrates)"), RuleM::ForallElim, vec![r13.clone()], vec![]));
+        let r18 = sub.add_step(Justification(p("mortal(socrates)"), RuleM::ImpElim, vec![r16.clone(), r17.clone()], vec![]));
+        let r19 = sub.add_step(Justification(p("exists foo, mortal(foo)"), RuleM::ExistsIntro, vec![r18.clone()], vec![]));
+        (r16, r17, r18, r19)
+    }).unwrap();
+    let r20 = prf.add_step(Justification(p("exists foo, mortal(foo)"), RuleM::ExistsElim, vec![r14.clone()], vec![r15.clone()]));
+    (prf, vec![r6, r7, r8, r9, r10, r17, r18, r19, /*r20*/], vec![r12])
 }
 
 pub fn test_commutation<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
