@@ -42,7 +42,10 @@ import java.util.prefs.Preferences;
 
 public class GuiConfig {
 
-    public static final String[] SYMBOL_BUTTONS = new String[]{"∧", "∨", "¬", "→", "↔", "⊥", "∀", "∃", "×", "≠", "⊆", "∈"};
+    public static final String[] SYMBOL_BUTTONS = new String[]{
+        "∧", "∨", "¬", "→", "↔", "≡",
+        "⊥", "⊤", "∀", "∃", "×", "≠",
+        "⊆", "∈"};
     private static final Logger logger = LogManager.getLogger(GuiConfig.class);
     private static final Preferences preferences = Preferences.userNodeForPackage(GuiConfig.class);
     //Java preferences api storage constants
