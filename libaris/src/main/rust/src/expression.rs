@@ -449,82 +449,64 @@ pub fn normalize_idempotence(e: Expr) -> Expr {
 
 pub fn normalize_doublenegation(e: Expr) -> Expr {
     use Expr::*;
-    use USymbol::Not;
+    use expression_builders::*;
 
-    transform_expr(e, &|expr| {
-        match expr {
-            Unop { symbol: Not, operand: e1 } => {
-                match *e1 {
-                    Unop { symbol: Not, operand: e2 } => (*e2, true),
-                    _ => (expression_builders::not(*e1), false)
-                }
-            },
-            _ => (expr, false)
-        }
-    })
+    // ~(~phi) ==> phi
+    let pattern = (not(not(var("phi"))), var("phi"));
+
+    reduce_pattern(e, vec![pattern])
 }
 
 pub fn normalize_complement(e: Expr) -> Expr {
     use Expr::*;
-    use USymbol::Not;
-
     use expression_builders::*;
 
-    let phi = gensym("phi", &freevars(&e));
     // phi & ~phi ==> _|_
-    let pattern1 = (assocbinop(ASymbol::And, &[var(&*phi), not(var(&*phi))]), Contradiction);
+    let pattern1 = (assocbinop(ASymbol::And, &[var("phi"), not(var("phi"))]), Contradiction);
     // ~phi & phi ==> _|_
-    let pattern2 = (assocbinop(ASymbol::And, &[not(var(&*phi)), var(&*phi)]), Contradiction);
+    let pattern2 = (assocbinop(ASymbol::And, &[not(var("phi")), var("phi")]), Contradiction);
     // phi | ~phi ==> T
-    let pattern3 = (assocbinop(ASymbol::Or, &[var(&*phi), not(var(&*phi))]), Tautology);
+    let pattern3 = (assocbinop(ASymbol::Or, &[var("phi"), not(var("phi"))]), Tautology);
     // ~phi | phi ==> T
-    let pattern4 = (assocbinop(ASymbol::Or, &[not(var(&*phi)), var(&*phi)]), Tautology);
+    let pattern4 = (assocbinop(ASymbol::Or, &[not(var("phi")), var("phi")]), Tautology);
 
-    reduce_pattern(e, HashSet::from_iter(vec![phi].into_iter()), vec![pattern1, pattern2, pattern3, pattern4])
+    reduce_pattern(e, vec![pattern1, pattern2, pattern3, pattern4])
 }
 
 pub fn normalize_identity(e: Expr) -> Expr {
     use Expr::*;
-    use USymbol::Not;
-
     use expression_builders::*;
 
-    let phi = gensym("phi", &freevars(&e));
     // phi & T ==> phi
-    let pattern1 = (assocbinop(ASymbol::And, &[var(&*phi), Tautology]), var(&*phi));
+    let pattern1 = (assocbinop(ASymbol::And, &[var("phi"), Tautology]), var("phi"));
     // T & phi ==> phi
-    let pattern2 = (assocbinop(ASymbol::And, &[Tautology, var(&*phi)]), var(&*phi));
+    let pattern2 = (assocbinop(ASymbol::And, &[Tautology, var("phi")]), var("phi"));
     // phi | _|_ ==> phi
-    let pattern3 = (assocbinop(ASymbol::Or, &[var(&*phi), Contradiction]), var(&*phi));
+    let pattern3 = (assocbinop(ASymbol::Or, &[var("phi"), Contradiction]), var("phi"));
     // _|_ | phi ==> phi
-    let pattern4 = (assocbinop(ASymbol::Or, &[Contradiction, var(&*phi)]), var(&*phi));
+    let pattern4 = (assocbinop(ASymbol::Or, &[Contradiction, var("phi")]), var("phi"));
 
-    reduce_pattern(e, HashSet::from_iter(vec![phi].into_iter()), vec![pattern1, pattern2, pattern3, pattern4])
+    reduce_pattern(e, vec![pattern1, pattern2, pattern3, pattern4])
 }
 
 pub fn normalize_annihilation(e: Expr) -> Expr {
     use Expr::*;
-    use USymbol::Not;
-
     use expression_builders::*;
 
-    let phi = gensym("phi", &freevars(&e));
     // phi & _|_ ==> _|_
-    let pattern1 = (assocbinop(ASymbol::And, &[var(&*phi), Contradiction]), Contradiction);
+    let pattern1 = (assocbinop(ASymbol::And, &[var("phi"), Contradiction]), Contradiction);
     // _|_ & phi ==> _|_
-    let pattern2 = (assocbinop(ASymbol::And, &[Contradiction, var(&*phi)]), Contradiction);
+    let pattern2 = (assocbinop(ASymbol::And, &[Contradiction, var("phi")]), Contradiction);
     // phi | T ==> T
-    let pattern3 = (assocbinop(ASymbol::Or, &[var(&*phi), Tautology]), Tautology);
+    let pattern3 = (assocbinop(ASymbol::Or, &[var("phi"), Tautology]), Tautology);
     // T | phi ==> T
-    let pattern4 = (assocbinop(ASymbol::Or, &[Tautology, var(&*phi)]), Tautology);
+    let pattern4 = (assocbinop(ASymbol::Or, &[Tautology, var("phi")]), Tautology);
 
-    reduce_pattern(e, HashSet::from_iter(vec![phi].into_iter()), vec![pattern1, pattern2, pattern3, pattern4])
+    reduce_pattern(e, vec![pattern1, pattern2, pattern3, pattern4])
 }
 
 pub fn normalize_inverse(e: Expr) -> Expr {
     use Expr::*;
-    use USymbol::Not;
-
     use expression_builders::*;
 
     // not(T) ==> _|_
@@ -532,7 +514,7 @@ pub fn normalize_inverse(e: Expr) -> Expr {
     // not(_|_) ==> T
     let pattern2 = (not(Contradiction), Tautology);
 
-    reduce_pattern(e, HashSet::new(), vec![pattern1, pattern2])
+    reduce_pattern(e, vec![pattern1, pattern2])
 }
 
 /// Reduce an expression by a pattern with a set of variables
@@ -550,25 +532,46 @@ pub fn normalize_inverse(e: Expr) -> Expr {
 /// ```
 /// // DeMorgan's for and/or that have only two parameters
 /// use expression_builders::*;
-/// // Create some variables for the inputs
-/// let phi = gensym("phi", &freevars(&e));
-/// let psi = gensym("psi", &freevars(&e));
 ///
 /// // ~(phi & psi) ==> ~phi | ~psi
-/// let pattern1 = not(assocbinop(ASymbol::And, &[var(&*phi), var(&*psi)]));
-/// let replace1 = assocbinop(ASymbol::Or, &[not(var(&*phi)), not(var(&*psi))]);
+/// let pattern1 = not(assocbinop(ASymbol::And, &[var("phi"), var("psi")]));
+/// let replace1 = assocbinop(ASymbol::Or, &[not(var("phi")), not(var("psi"))]);
 ///
 /// // ~(phi | psi) ==> ~phi & ~psi
-/// let pattern2 = not(assocbinop(ASymbol::Or, &[var(&*phi), var(&*psi)]));
-/// let replace2 = assocbinop(ASymbol::And, &[not(var(&*phi)), not(var(&*psi))]);
+/// let pattern2 = not(assocbinop(ASymbol::Or, &[var("phi"), var("psi")]));
+/// let replace2 = assocbinop(ASymbol::And, &[not(var("phi")), not(var("psi"))]);
 ///
 /// let patterns = vec![(pattern1, replace1), (pattern2, replace2)];
-/// normalize_pattern(e, HashSet::from_iter(vec![phi, psi].into_iter()), patterns)
+/// normalize_pattern(e, patterns)
 /// ```
-pub fn reduce_pattern(e: Expr, pattern_vars: HashSet<String>, patterns: Vec<(Expr, Expr)>) -> Expr {
+pub fn reduce_pattern(e: Expr, patterns: Vec<(Expr, Expr)>) -> Expr {
+    use expression_builders::*;
+
+    let e_free = freevars(&e);
+
+    // Find all free variables in the patterns and map them to generated names free for e
+    let patterns = patterns.into_iter().map(|(mut pattern, mut replace)| {
+        let free_pattern = freevars(&pattern);
+
+        // Make sure our replacement doesn't have any new vars
+        let free_replace = freevars(&replace);
+        assert!(free_replace.is_subset(&free_pattern));
+
+        // Replace all the free vars in the pattern with a known fresh variable in e
+        let mut pattern_vars = HashSet::new();
+        for free_var in free_pattern {
+            let new_sym = gensym(&*free_var, &e_free);
+            pattern = subst(&pattern, &*free_var, var(&*new_sym));
+            replace = subst(&replace, &*free_var, var(&*new_sym));
+            pattern_vars.insert(new_sym);
+        }
+
+        (pattern, replace, pattern_vars)
+    }).collect::<Vec<_>>();
+
     transform_expr(e, &|expr| {
         // Try all our patterns at every level of the tree
-        for (pattern, replace) in &patterns {
+        for (pattern, replace, pattern_vars) in &patterns {
             // Unify3D
             let ret = unify(vec![Constraint::Equal(pattern.clone(), expr.clone())].into_iter().collect());
             if let Some(ret) = ret {
