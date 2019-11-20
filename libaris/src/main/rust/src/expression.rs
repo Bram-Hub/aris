@@ -239,57 +239,56 @@ fn test_unify() {
 
 pub fn sort_commutative_ops(e: Expr) -> Expr {
     use Expr::*;
-    let rec = |x: Box<_>| Box::new(sort_commutative_ops(*x));
-    match e {
-        Contradiction => Contradiction,
-        Tautology => Tautology,
-        Var { name } => Var { name },
-        Apply { func, args } => Apply { func: rec(func), args: args.into_iter().map(sort_commutative_ops).collect() },
-        Unop { symbol, operand } => Unop { symbol, operand: rec(operand) },
-        Binop { symbol, left, right } => {
-            let a = rec(left); let b = rec(right);
-            if symbol.is_commutative() {
-                let (left, right) = if a <= b { (a, b) } else { (b, a) };
-                Binop { symbol, left, right }
-            }
-            else { Binop { symbol, left: a, right: b } }
-        },
-        AssocBinop { symbol, exprs } => {
-            let mut exprs: Vec<_> = exprs.into_iter().map(sort_commutative_ops).collect();
-            if symbol.is_commutative() { exprs.sort() };
-            AssocBinop { symbol, exprs }
-        },
-        Quantifier { symbol, name, body } => Quantifier { symbol, name, body: rec(body) },
-    }
+
+    transform_expr(e, &|e| {
+        match e {
+            Binop { symbol, left, right } => {
+                if symbol.is_commutative() {
+                    let (left, right) = if left <= right { (left, right) } else { (right, left) };
+                    (Binop { symbol, left, right }, true)
+                } else {
+                    (Binop { symbol, left, right }, false)
+                }
+            },
+            AssocBinop { symbol, mut exprs } => {
+                let is_sorted = exprs.windows(2).all(|xy| xy[0] <= xy[1]);
+                if symbol.is_commutative() && !is_sorted {
+                    exprs.sort();
+                    (AssocBinop { symbol, exprs }, true)
+                } else {
+                    (AssocBinop { symbol, exprs }, false)
+                }
+            },
+            _ => (e, false)
+        }
+    })
 }
 
 pub fn combine_associative_ops(e: Expr) -> Expr {
     use Expr::*;
-    let rec = |x: Box<_>| Box::new(combine_associative_ops(*x));
-    match e {
-        Contradiction => Contradiction,
-        Tautology => Tautology,
-        Var { name } => Var { name },
-        Apply { func, args } => Apply { func: rec(func), args: args.into_iter().map(combine_associative_ops).collect() },
-        Unop { symbol, operand } => Unop { symbol, operand: rec(operand) },
-        Binop { symbol, left, right } => Binop { symbol, left: rec(left), right: rec(right) },
-        AssocBinop { symbol: symbol1, exprs: exprs1 } => {
-            let mut result = vec![];
-            for expr in exprs1.into_iter().map(combine_associative_ops) {
-                if let AssocBinop { symbol: symbol2, exprs: exprs2 } = expr {
-                    if symbol1 == symbol2 {
-                        result.extend(exprs2);
+
+    transform_expr(e, &|e| {
+        match e {
+            AssocBinop { symbol: symbol1, exprs: exprs1 } => {
+                let mut result = vec![];
+                let mut combined = false;
+                for expr in exprs1 {
+                    if let AssocBinop { symbol: symbol2, exprs: exprs2 } = expr {
+                        if symbol1 == symbol2 {
+                            result.extend(exprs2);
+                            combined = true;
+                        } else {
+                            result.push(AssocBinop { symbol: symbol2, exprs: exprs2 });
+                        }
                     } else {
-                        result.push(AssocBinop { symbol: symbol2, exprs: exprs2 });
+                        result.push(expr);
                     }
-                } else {
-                    result.push(expr);
                 }
-            }
-            AssocBinop { symbol: symbol1, exprs: result }
-        },
-        Quantifier { symbol, name, body } => Quantifier { symbol, name, body: rec(body) },
-    }
+                (AssocBinop { symbol: symbol1, exprs: result }, combined)
+            },
+            _ => (e, false)
+        }
+    })
 }
 
 #[test]
