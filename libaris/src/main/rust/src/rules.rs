@@ -682,7 +682,7 @@ impl RuleT for Equivalence {
             Identity => check_by_normalize_first_expr(p, deps, conclusion, normalize_identity),
             Annihilation => check_by_normalize_first_expr(p, deps, conclusion, normalize_annihilation),
             Inverse => check_by_normalize_first_expr(p, deps, conclusion, normalize_inverse),
-            Absorption => unimplemented!(),
+            Absorption => check_by_normalize_first_expr(p, deps, conclusion, normalize_absorption),
             Reduction => unimplemented!(),
             Adjacency => unimplemented!(),
         }

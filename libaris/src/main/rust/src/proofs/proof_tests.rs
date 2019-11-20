@@ -611,3 +611,35 @@ pub fn test_inverse<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
 
     (prf, vec![r6, r8, r9, r11], vec![r5, r7, r10, r12])
 }
+
+pub fn test_absorption<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
+    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    let mut prf = P::new();
+
+    let r1 = prf.add_premise(p("A & (A | B)"));
+    let r2 = prf.add_premise(p("A & (B | A)"));
+
+    let r3 = prf.add_premise(p("A | (A & B)"));
+    let r4 = prf.add_premise(p("A | (B & A)"));
+
+    let r5 = prf.add_premise(p("(A & B) | A"));
+    let r6 = prf.add_premise(p("(B & A) | A"));
+
+    let r7 = prf.add_premise(p("(A | B) & A"));
+    let r8 = prf.add_premise(p("(B | A) & A"));
+
+    let r9 = prf.add_premise(p("((A | B) & A) & (((A | B) & A) | C)"));
+
+
+    let r10 = prf.add_step(Justification(p("A"), RuleM::Absorption, vec![r1.clone()], vec![]));
+    let r11 = prf.add_step(Justification(p("A"), RuleM::Absorption, vec![r2.clone()], vec![]));
+    let r12 = prf.add_step(Justification(p("A"), RuleM::Absorption, vec![r3.clone()], vec![]));
+    let r13 = prf.add_step(Justification(p("A"), RuleM::Absorption, vec![r4.clone()], vec![]));
+    let r14 = prf.add_step(Justification(p("A"), RuleM::Absorption, vec![r5.clone()], vec![]));
+    let r15 = prf.add_step(Justification(p("A"), RuleM::Absorption, vec![r6.clone()], vec![]));
+    let r16 = prf.add_step(Justification(p("A"), RuleM::Absorption, vec![r7.clone()], vec![]));
+    let r17 = prf.add_step(Justification(p("A"), RuleM::Absorption, vec![r8.clone()], vec![]));
+    let r18 = prf.add_step(Justification(p("A"), RuleM::Absorption, vec![r9.clone()], vec![]));
+
+    (prf, vec![r10, r11, r12, r13, r14, r15, r16, r17, r18], vec![])
+}

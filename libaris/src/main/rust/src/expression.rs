@@ -517,6 +517,21 @@ pub fn normalize_inverse(e: Expr) -> Expr {
     reduce_pattern(e, vec![pattern1, pattern2])
 }
 
+pub fn normalize_absorption(e: Expr) -> Expr {
+    use Expr::*;
+    use expression_builders::*;
+    let pattern1 = (assocbinop(ASymbol::And, &[var("A"), assocbinop(ASymbol::Or, &[var("A"), var("B")])]), var("A"));
+    let pattern2 = (assocbinop(ASymbol::And, &[var("A"), assocbinop(ASymbol::Or, &[var("B"), var("A")])]), var("A"));
+    let pattern3 = (assocbinop(ASymbol::And, &[assocbinop(ASymbol::Or, &[var("A"), var("B")]), var("A")]), var("A"));
+    let pattern4 = (assocbinop(ASymbol::And, &[assocbinop(ASymbol::Or, &[var("B"), var("A")]), var("A")]), var("A"));
+
+    let pattern5 = (assocbinop(ASymbol::Or, &[var("A"), assocbinop(ASymbol::And, &[var("A"), var("B")])]), var("A"));
+    let pattern6 = (assocbinop(ASymbol::Or, &[var("A"), assocbinop(ASymbol::And, &[var("B"), var("A")])]), var("A"));
+    let pattern7 = (assocbinop(ASymbol::Or, &[assocbinop(ASymbol::And, &[var("A"), var("B")]), var("A")]), var("A"));
+    let pattern8 = (assocbinop(ASymbol::Or, &[assocbinop(ASymbol::And, &[var("B"), var("A")]), var("A")]), var("A"));
+    reduce_pattern(e, vec![pattern1, pattern2, pattern3, pattern4, pattern5, pattern6, pattern7, pattern8])
+}
+
 /// Reduce an expression by a pattern with a set of variables
 ///
 /// Basically this lets you construct pattern-based expression reductions by defining the reduction
