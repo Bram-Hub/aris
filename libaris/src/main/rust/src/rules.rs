@@ -708,18 +708,44 @@ impl RuleT for Equivalence {
             else { Err(Other(format!("{} and {} are not equal.", p, q))) }
         }
 
+        fn check_by_reductions<P: Proof>(p: &P, deps: Vec<P::Reference>, conclusion: Expr, reductions: Vec<(&str, &str)>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
+            // TODO: Move this (and corresponding reductions) to static lifetime somewhere
+            use parser::parse;
+            let patterns = permute_patterns(reductions.into_iter().map(|(premise, conclusion)| {
+                (parse(premise), parse(conclusion))
+            }).collect::<Vec<_>>());
+            check_by_normalize_first_expr(p, deps, conclusion, |e| reduce_pattern(e, &patterns))
+        }
+
         match self {
             DeMorgan => check_by_normalize_first_expr(p, deps, conclusion, normalize_demorgans),
             Association => check_by_normalize_first_expr(p, deps, conclusion, combine_associative_ops),
             Commutation => check_by_normalize_first_expr(p, deps, conclusion, sort_commutative_ops),
             Idempotence => check_by_normalize_first_expr(p, deps, conclusion, normalize_idempotence),
-            DoubleNegation => check_by_normalize_first_expr(p, deps, conclusion, normalize_doublenegation),
+            DoubleNegation => check_by_reductions(p, deps, conclusion, vec![
+                ("~~phi", "phi")
+            ]),
             Distribution => unimplemented!(),
-            Complement => check_by_normalize_first_expr(p, deps, conclusion, normalize_complement),
-            Identity => check_by_normalize_first_expr(p, deps, conclusion, normalize_identity),
-            Annihilation => check_by_normalize_first_expr(p, deps, conclusion, normalize_annihilation),
-            Inverse => check_by_normalize_first_expr(p, deps, conclusion, normalize_inverse),
-            Absorption => check_by_normalize_first_expr(p, deps, conclusion, normalize_absorption),
+            Complement => check_by_reductions(p, deps, conclusion, vec![
+                ("phi & ~phi", "_|_"),
+                ("phi | ~phi", "^|^")
+            ]),
+            Identity => check_by_reductions(p, deps, conclusion, vec![
+                ("phi & ^|^", "phi"),
+                ("phi | _|_", "phi")
+            ]),
+            Annihilation => check_by_reductions(p, deps, conclusion, vec![
+                ("phi & _|_", "_|_"),
+                ("phi | ^|^", "^|^")
+            ]),
+            Inverse => check_by_reductions(p, deps, conclusion, vec![
+                ("~^|^", "_|_"),
+                ("~_|_", "^|^")
+            ]),
+            Absorption => check_by_reductions(p, deps, conclusion, vec![
+                ("phi & (phi | psi)", "phi"),
+                ("phi | (phi & psi)", "phi")
+            ]),
             Reduction => unimplemented!(),
             Adjacency => unimplemented!(),
         }

@@ -158,7 +158,7 @@ pub fn subst(e: &Expr, to_replace: &str, with: Expr) -> Expr {
 
 #[test]
 fn test_subst() {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     assert_eq!(subst(&p("x & forall x, x"), "x", p("y")), p("y & forall x, x")); // hit (true, _) case in Quantifier
     assert_eq!(subst(&p("forall x, x & y"), "y", p("x")), p("forall x0, x0 & x")); // hit (false, true) case in Quantifier
     assert_eq!(subst(&p("forall x, x & y"), "y", p("z")), p("forall x, x & z")); // hit (false, false) case in Quantifier
@@ -212,7 +212,7 @@ pub fn unify(mut c: HashSet<Constraint<Expr>>) -> Option<Substitution<String, Ex
 
 #[test]
 fn test_unify() {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let u = |s, t| {
         let l = p(s);
         let r = p(t);
@@ -293,7 +293,7 @@ pub fn combine_associative_ops(e: Expr) -> Expr {
 
 #[test]
 pub fn test_combine_associative_ops() {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let f = |s: &str| {
         let e = p(s);
         println!("association of {} is {}", e, combine_associative_ops(e.clone()));
@@ -567,7 +567,7 @@ pub fn permute_ops(e: Expr) -> Vec<Expr> {
 
 #[test]
 fn test_permute_ops() {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
 
     // A & B
     // B & A
@@ -589,7 +589,7 @@ fn test_permute_ops() {
 
 /// Permute the search expression of every pattern, all mapping to the same replacement
 /// E.g. [(A & B) -> C, (A | B) -> C] ==> [(A & B) -> C, (B & A) -> C, (A | B) -> C, (B | A) -> C]
-fn permute_patterns(patterns: Vec<(Expr, Expr)>) -> Vec<(Expr, Expr)> {
+pub fn permute_patterns(patterns: Vec<(Expr, Expr)>) -> Vec<(Expr, Expr)> {
     // Permute_ops of all input patterns
     patterns.into_iter().flat_map(|(find, replace)| {
         permute_ops(find).into_iter().map(move |find| (find, replace.clone()))
@@ -623,13 +623,15 @@ fn permute_patterns(patterns: Vec<(Expr, Expr)>) -> Vec<(Expr, Expr)> {
 /// let patterns = vec![(pattern1, replace1), (pattern2, replace2)];
 /// normalize_pattern(e, patterns)
 /// ```
-pub fn reduce_pattern(e: Expr, patterns: Vec<(Expr, Expr)>) -> Expr {
+pub fn reduce_pattern(e: Expr, patterns: &Vec<(Expr, Expr)>) -> Expr {
     use expression_builders::*;
 
     let e_free = freevars(&e);
 
     // Find all free variables in the patterns and map them to generated names free for e
-    let patterns = patterns.into_iter().map(|(mut pattern, mut replace)| {
+    let patterns = patterns.iter().map(|(pattern, replace)| {
+        let mut pattern = pattern.clone();
+        let mut replace = replace.clone();
         let free_pattern = freevars(&pattern);
 
         // Make sure our replacement doesn't have any new vars
@@ -748,61 +750,6 @@ pub fn normalize_idempotence(e: Expr) -> Expr {
             _ => (expr, false)
         }
     })
-}
-
-pub fn normalize_doublenegation(e: Expr) -> Expr {
-    use Expr::*;
-    use expression_builders::*;
-
-    let pattern = (parser::parse("~~phi"), var("phi"));
-    reduce_pattern(e, vec![pattern])
-}
-
-pub fn normalize_complement(e: Expr) -> Expr {
-    use Expr::*;
-    use expression_builders::*;
-
-    let pattern1 = (parser::parse("phi & ~phi"), Contradiction);
-    let pattern2 = (parser::parse("phi | ~phi"), Tautology);
-    reduce_pattern(e, permute_patterns(vec![pattern1, pattern2]))
-}
-
-pub fn normalize_identity(e: Expr) -> Expr {
-    use Expr::*;
-    use expression_builders::*;
-
-    let pattern1 = (parser::parse("phi & ^|^"), var("phi"));
-    let pattern2 = (parser::parse("phi | _|_"), var("phi"));
-    reduce_pattern(e, permute_patterns(vec![pattern1, pattern2]))
-}
-
-pub fn normalize_annihilation(e: Expr) -> Expr {
-    use Expr::*;
-    use expression_builders::*;
-
-    let pattern1 = (parser::parse("phi & _|_"), Contradiction);
-    let pattern2 = (parser::parse("phi | ^|^"), Tautology);
-    reduce_pattern(e, permute_patterns(vec![pattern1, pattern2]))
-}
-
-pub fn normalize_inverse(e: Expr) -> Expr {
-    use Expr::*;
-    use expression_builders::*;
-
-    // not(T) ==> _|_
-    let pattern1 = (not(Tautology), Contradiction);
-    // not(_|_) ==> T
-    let pattern2 = (not(Contradiction), Tautology);
-
-    reduce_pattern(e, vec![pattern1, pattern2])
-}
-
-pub fn normalize_absorption(e: Expr) -> Expr {
-    use Expr::*;
-    use expression_builders::*;
-    let pattern1 = (parser::parse("A & (A | B)"), var("A"));
-    let pattern2 = (parser::parse("A | (A & B)"), var("A"));
-    reduce_pattern(e, permute_patterns(vec![pattern1, pattern2]))
 }
 
 /*
