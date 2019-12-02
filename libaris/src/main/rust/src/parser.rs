@@ -1,5 +1,10 @@
 use super::{Expr, USymbol, BSymbol, ASymbol, QSymbol};
 
+pub fn parse(input: &str) -> Expr {
+    let newlined = format!("{}\n", input);
+    main(&newlined).unwrap().1
+}
+
 fn custom_error<A, B>(a: A, x: u32) -> nom::IResult<A, B> {
     return Err(nom::Err::Error(nom::Context::Code(a, nom::ErrorKind::Custom(x))));
 }
