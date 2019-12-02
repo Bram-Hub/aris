@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use frunk::Coproduct::{self, Inl, Inr};
 use petgraph::algo::tarjan_scc;
 use petgraph::graphmap::DiGraphMap;
+use std::iter::FromIterator;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PrepositionalInference {
@@ -139,10 +140,15 @@ pub enum RuleClassification {
 }
 
 pub trait RuleT {
+    /// get_name gets the name of the rule for display in the GUI
     fn get_name(&self) -> String;
+    /// get_classifications is used to tell the GUI which panes/right click menus to put the rule under
     fn get_classifications(&self) -> HashSet<RuleClassification>;
+    /// num_deps is used by SharedChecks to ensure that the right number of dependencies are provided, None indicates that no checking is done (e.g. for variadic rules)
     fn num_deps(&self) -> Option<usize>;
+    /// num_subdeps is used by SharedChecks to ensure that the right number of subproof dependencies are provided, None indicates that no checking is done (e.g. for variadic rules)
     fn num_subdeps(&self) -> Option<usize>;
+    /// check that expr is a valid conclusion of the rule given the corresponding lists of dependencies and subproof dependencies, returning Ok(()) on success, and an error to display in the GUI on failure
     fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<P::Reference>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>>;
 }
 
@@ -593,7 +599,8 @@ impl RuleT for PredicateInference {
             }
         }
         fn generalizable_variable_counterexample<P: Proof>(sproof: &P, line: P::Reference, var: &str) -> Option<Expr> {
-            let contained = sproof.contained_justifications();
+            let mut contained = sproof.contained_justifications();
+            contained.union(&HashSet::from_iter(sproof.premises().into_iter()));
             let reachable = sproof.transitive_dependencies(line);
             let outside = reachable.difference(&contained);
             outside.filter_map(|x| sproof.lookup_expr(x.clone())).find(|e| freevars(e).contains(var))
@@ -629,8 +636,38 @@ impl RuleT for PredicateInference {
                     Err(DepOfWrongForm(prem, expression_builders::quantifierplaceholder(QSymbol::Forall)))
                 }
             },
-            ExistsIntro => unimplemented!(),
-            ExistsElim => unimplemented!(),
+            ExistsIntro => {
+                if let Expr::Quantifier { symbol: QSymbol::Exists, ref name, ref body } = conclusion {
+                    let prem = p.lookup_expr_or_die(deps[0].clone())?;
+                    let result = unifies_wrt_var::<P>(body, &prem, name)?;
+                    //unimplemented!();
+                    Ok(())
+                } else {
+                    Err(ConclusionOfWrongForm(expression_builders::quantifierplaceholder(QSymbol::Exists)))
+                }
+            },
+            ExistsElim => {
+                let prem = p.lookup_expr_or_die(deps[0].clone())?;
+                let sproof = p.lookup_subproof_or_die(sdeps[0].clone())?;
+                if let Expr::Quantifier { symbol: QSymbol::Exists, ref name, ref body } = prem {
+                    for (r, expr) in sproof.exprs().into_iter().map(|r| sproof.lookup_expr_or_die(r.clone()).map(|e| (r, e))).collect::<Result<Vec<_>, _>>()? {
+                        if let Ok(Expr::Var { name: constant }) = unifies_wrt_var::<P>(body, &expr, name) {
+                            if let Some(dangling) = generalizable_variable_counterexample(&sproof, r, &constant) {
+                                return Err(Other(format!("The constant {} occurs in dependency {} that's outside the subproof.", constant, dangling)));
+                            } else {
+                                let expected = subst(body, &constant, expression_builders::var(name));
+                                if &expected != &**body {
+                                    return Err(Other(format!("Not all free occurrences of {} are replaced with {} in {}.", constant, name, body)));
+                                }
+                                return Ok(());
+                            }
+                        }
+                    }
+                    return Err(Other(format!("Couldn't find a subproof line that unifies with the conclusion ({}).", conclusion)));
+                } else {
+                    Err(DepOfWrongForm(prem, expression_builders::quantifierplaceholder(QSymbol::Exists)))
+                }
+            },
         }
     }
 }
