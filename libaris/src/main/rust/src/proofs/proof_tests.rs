@@ -59,7 +59,7 @@ fn test_rules_with_subproofs<P: Proof+Display+Debug>() where P::Reference: Debug
 }
 
 pub fn demo_proof_1<P: Proof>() -> P where P: PartialEq+std::fmt::Debug, P::Reference: PartialEq+std::fmt::Debug, P::SubproofReference: PartialEq+std::fmt::Debug {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A"));
     let r2 = prf.add_premise(p("B"));
@@ -79,7 +79,7 @@ pub fn demo_proof_1<P: Proof>() -> P where P: PartialEq+std::fmt::Debug, P::Refe
 }
 
 pub fn test_andelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A & B & C & D"));
     let r2 = prf.add_premise(p("E | F"));
@@ -91,7 +91,7 @@ pub fn test_andelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
 }
 
 pub fn test_contelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("_|_"));
     let r2 = prf.add_premise(p("A & B"));
@@ -101,7 +101,7 @@ pub fn test_contelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
 }
 
 pub fn test_orintro<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A"));
     let r2 = prf.add_step(Justification(p("A | B | C"), RuleM::OrIntro, vec![r1.clone()], vec![]));
@@ -111,7 +111,7 @@ pub fn test_orintro<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
 }
 
 pub fn test_reit<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A"));
     let r2 = prf.add_step(Justification(p("A"), RuleM::Reit, vec![r1.clone()], vec![]));
@@ -120,7 +120,7 @@ pub fn test_reit<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
 }
 
 pub fn test_andintro<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A"));
     let r2 = prf.add_premise(p("B"));
@@ -133,7 +133,7 @@ pub fn test_andintro<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
 }
 
 pub fn test_contradictionintro<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A"));
     let r2 = prf.add_premise(p("~A"));
@@ -149,7 +149,7 @@ pub fn test_contradictionintro<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Refe
 }
 
 pub fn test_notelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("~~A"));
     let r2 = prf.add_premise(p("~~(A & B)"));
@@ -164,7 +164,7 @@ pub fn test_notelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
 }
 
 pub fn test_impelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("P"));
     let r2 = prf.add_premise(p("P -> Q"));
@@ -185,7 +185,7 @@ pub fn test_impelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
 
 
 pub fn test_biconelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A <-> B <-> C"));
     let r2 = prf.add_premise(p("A"));
@@ -214,7 +214,7 @@ pub fn test_biconelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
 }
 
 pub fn test_impintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Reference>) where P::Subproof: Debug {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A"));
     let r2 = prf.add_premise(p("B"));
@@ -239,7 +239,7 @@ pub fn test_impintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Referenc
 }
 
 pub fn test_notintro<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A -> _|_"));
     let r4 = prf.add_subproof();
@@ -253,7 +253,7 @@ pub fn test_notintro<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
 }
 
 pub fn test_orelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A | B"));
     let r4 = prf.add_subproof();
@@ -278,7 +278,7 @@ pub fn test_orelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
 }
 
 pub fn test_biconintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Reference>) where P::Subproof: Debug {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("P -> Q"));
     let r2 = prf.add_premise(p("Q -> R"));
@@ -320,7 +320,7 @@ pub fn test_biconintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Refere
 }
 
 pub fn test_equivintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Reference>) where P::Subproof: Debug {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("P -> Q"));
     let r2 = prf.add_premise(p("Q -> R"));
@@ -362,7 +362,7 @@ pub fn test_equivintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Refere
 }
 
 pub fn test_equivelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A === B === C"));
     let r2 = prf.add_premise(p("A"));
@@ -376,7 +376,7 @@ pub fn test_equivelim<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
 }
 
 pub fn test_forallelim<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Reference>) where P::Subproof: Debug {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("forall x, p(x)"));
     let r2 = prf.add_step(Justification(p("p(a)"), RuleM::ForallElim, vec![r1.clone()], vec![]));
@@ -386,7 +386,7 @@ pub fn test_forallelim<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Refere
 }
 
 pub fn test_forallintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Reference>) where P::Subproof: Debug, P::Reference: Debug, P::SubproofReference: Debug {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("forall x, p(x)"));
     let r2 = prf.add_premise(p("forall x, q(x)"));
@@ -413,7 +413,7 @@ pub fn test_forallintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Refer
 }
 
 pub fn test_existselim<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Reference>) where P::Subproof: Debug, P::Reference: Debug, P::SubproofReference: Debug {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("exists x, p(x)"));
     let r2 = prf.add_premise(p("p(a) -> q(a)"));
@@ -446,7 +446,7 @@ pub fn test_existselim<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Refere
 }
 
 pub fn test_commutation<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("(A & B & C) | (P & Q & R & S)"));
     let r2 = prf.add_premise(p("(a <-> b <-> c <-> d) === (bar -> quux)"));
@@ -461,7 +461,7 @@ pub fn test_commutation<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>)
 }
 
 pub fn test_association<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("(A & B & C) | (P & Q & R & S) | (U <-> V <-> W)"));
     let r2 = prf.add_step(Justification(p("(A & (B & C)) | ((((P & Q) & (R & S)) | ((U <-> V) <-> W)))"), RuleM::Association, vec![r1.clone()], vec![]));
@@ -470,7 +470,7 @@ pub fn test_association<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>)
 }
 
 pub fn test_demorgan<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
 
     let r1 = prf.add_premise(p("~(A & B)"));
@@ -508,7 +508,7 @@ pub fn test_demorgan<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
 }
 
 pub fn test_idempotence<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
 
     let r1 = prf.add_premise(p("A & A"));
@@ -540,7 +540,7 @@ pub fn test_idempotence<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>)
 }
 
 pub fn test_doublenegation<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
 
     let r1 = prf.add_premise(p("~~A & A"));
@@ -561,7 +561,7 @@ pub fn test_doublenegation<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Referenc
 }
 
 pub fn test_complement<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
 
     let r1 = prf.add_premise(p("A & ~A"));
@@ -587,7 +587,7 @@ pub fn test_complement<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) 
 }
 
 pub fn test_identity<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
 
     let r1 = prf.add_premise(p("A & ^|^"));
@@ -607,7 +607,7 @@ pub fn test_identity<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
 }
 
 pub fn test_annihilation<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
 
     let r1 = prf.add_premise(p("A & _|_"));
@@ -627,7 +627,7 @@ pub fn test_annihilation<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>
 }
 
 pub fn test_inverse<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
 
     let r1 = prf.add_premise(p("~_|_"));
@@ -647,7 +647,7 @@ pub fn test_inverse<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
 }
 
 pub fn test_absorption<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let mut prf = P::new();
 
     let r1 = prf.add_premise(p("A & (A | B)"));

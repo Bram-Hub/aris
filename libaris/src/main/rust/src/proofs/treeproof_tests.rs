@@ -3,7 +3,7 @@ use super::treeproof::*;
 
 #[test]
 fn demo_prettyprinting() {
-    let p = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
+    use parser::parse as p;
     let proof1 = TreeProof(TreeSubproof {
         premises: vec![((),p("A")), ((),p("B"))],
         lines: vec![
