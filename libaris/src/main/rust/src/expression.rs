@@ -394,12 +394,8 @@ fn combinations<T>(list: Vec<T>) -> Vec<Vec<T>>
     for cur in 0..list.len() {
         // List of all items that are not the current one
         let mut sublist: Vec<T> = vec![];
-        // There is probably a better way to do this but [T] is not Sized
-        for i in 0..list.len() {
-            if cur != i {
-                sublist.push(list[i]);
-            }
-        }
+        sublist.extend_from_slice(&list[..cur]);
+        sublist.extend_from_slice(&list[cur+1..]);
 
         let sub_combinations = combinations(sublist);
         for sub_combination in sub_combinations {

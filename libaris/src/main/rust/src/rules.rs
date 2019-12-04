@@ -746,8 +746,14 @@ impl RuleT for Equivalence {
                 ("phi & (phi | psi)", "phi"),
                 ("phi | (phi & psi)", "phi")
             ]),
-            Reduction => unimplemented!(),
-            Adjacency => unimplemented!(),
+            Reduction => check_by_reductions(p, deps, conclusion, vec![
+                ("phi & (~phi | psi)", "phi & psi"),
+                ("phi | (~phi & psi)", "phi & psi")
+            ]),
+            Adjacency => check_by_reductions(p, deps, conclusion, vec![
+                ("(phi | psi) & (phi | ~psi)", "phi"),
+                ("(phi & psi) | (phi & ~psi)", "phi")
+            ]),
         }
     }
 }
