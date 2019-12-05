@@ -33,6 +33,7 @@ fn test_rules<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::Subproo
     run_test::<P, _>(test_demorgan);
     run_test::<P, _>(test_idempotence);
     run_test::<P, _>(test_doublenegation);
+    run_test::<P, _>(test_distribution);
     run_test::<P, _>(test_complement);
     run_test::<P, _>(test_identity);
     run_test::<P, _>(test_annihilation);
@@ -561,6 +562,22 @@ pub fn test_doublenegation<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Referenc
     let r11 = prf.add_step(Justification(p("~~~~P -> ~~~Q"), RuleM::DoubleNegation, vec![r3.clone()], vec![]));
 
     (prf, vec![r4, r5, r6, r7, r8, r9], vec![r10, r11])
+}
+
+pub fn test_distribution<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
+    use parser::parse as p;
+    let mut prf = P::new();
+
+    let p1 = prf.add_premise(p("A & (B | C)"));
+    let p2 = prf.add_premise(p("(B & A) | (C & A)"));
+
+    let r1 = prf.add_step(Justification(p("(A & B) | (A & C)"), RuleM::Distribution, vec![p1.clone()], vec![]));
+    let r2 = prf.add_step(Justification(p("A & (B | C)"), RuleM::Distribution, vec![p2.clone()], vec![]));
+    let r3 = prf.add_step(Justification(p("(B | C) & A"), RuleM::Distribution, vec![p2.clone()], vec![]));
+
+    let r4 = prf.add_step(Justification(p("A | (B & C)"), RuleM::Distribution, vec![p2.clone()], vec![]));
+
+    (prf, vec![r1, r2, r3], vec![r4])
 }
 
 pub fn test_complement<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
