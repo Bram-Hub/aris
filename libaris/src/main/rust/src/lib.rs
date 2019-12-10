@@ -1,6 +1,6 @@
 #[macro_use] extern crate frunk;
 #[macro_use] extern crate nom;
-#[macro_use] extern crate lazy_static;
+// #[macro_use] extern crate lazy_static;
 extern crate jni;
 extern crate petgraph;
 extern crate xml;
