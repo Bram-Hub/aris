@@ -14,7 +14,7 @@ fn run_test<P: Proof+Display+Debug, F: FnOnce() -> (P, Vec<P::Reference>, Vec<P:
         if let Err(e) = prf.verify_line(&err) {
             println!("Error message for {} was {:?}", i, e);
         } else {
-            panic!("{} ({:?}) should have failed, but didn't", i, err);
+            panic!("{} ({:?}, {:?}) should have failed, but didn't", i, err, prf.lookup(err.clone()));
         }
     } 
 }
@@ -438,15 +438,24 @@ pub fn test_existselim<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Refere
     let r13 = prf.add_premise(p("forall y, man(y) → mortal(y)"));
     let r14 = prf.add_premise(p("exists x, man(x)"));
     let r15 = prf.add_subproof();
-    let (r16, r17, r18, r19) = prf.with_mut_subproof(&r15, |sub| {
+    let (r17, r18, r19) = prf.with_mut_subproof(&r15, |sub| {
         let r16 = sub.add_premise(p("man(socrates)"));
         let r17 = sub.add_step(Justification(p("man(socrates) → mortal(socrates)"), RuleM::ForallElim, vec![r13.clone()], vec![]));
         let r18 = sub.add_step(Justification(p("mortal(socrates)"), RuleM::ImpElim, vec![r16.clone(), r17.clone()], vec![]));
         let r19 = sub.add_step(Justification(p("exists foo, mortal(foo)"), RuleM::ExistsIntro, vec![r18.clone()], vec![]));
-        (r16, r17, r18, r19)
+        (r17, r18, r19)
     }).unwrap();
     let r20 = prf.add_step(Justification(p("exists foo, mortal(foo)"), RuleM::ExistsElim, vec![r14.clone()], vec![r15.clone()]));
-    (prf, vec![r6, r7, r8, r9, r10, r17, r18, r19, /*r20*/], vec![r12])
+
+    let r21 = prf.add_subproof();
+    let () = prf.with_mut_subproof(&r21, |sub| {
+        let _r22 = sub.add_premise(p("p(a)"));
+        let _r23 = sub.add_step(Justification(p("p(b) & p(b)"), RuleM::Reit, vec![], vec![]));
+    }).unwrap();
+    let r24 = prf.add_step(Justification(p("exists x, p(x)"), RuleM::ExistsElim, vec![r1.clone()], vec![r21.clone()]));
+    let r25 = prf.add_step(Justification(p("exists x, p(a)"), RuleM::ExistsElim, vec![r1.clone()], vec![r21.clone()]));
+    let r26 = prf.add_step(Justification(p("exists x, p(x) & p(x)"), RuleM::ExistsElim, vec![r1.clone()], vec![r21.clone()]));
+    (prf, vec![r6, r7, r8, r9, r10, r12, r17, r18, r19, r20], vec![r11, r25, r26])
 }
 
 pub fn test_commutation<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {

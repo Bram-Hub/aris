@@ -600,9 +600,12 @@ impl RuleT for PredicateInference {
         }
         fn generalizable_variable_counterexample<P: Proof>(sproof: &P, line: P::Reference, var: &str) -> Option<Expr> {
             let mut contained = sproof.contained_justifications();
-            contained.union(&HashSet::from_iter(sproof.premises().into_iter()));
+            contained.extend(sproof.premises().into_iter());
+            //println!("gvc contained {:?}", contained.iter().map(|x| sproof.lookup_expr(x.clone())).collect::<Vec<_>>());
             let reachable = sproof.transitive_dependencies(line);
+            //println!("gvc reachable {:?}", reachable.iter().map(|x| sproof.lookup_expr(x.clone())).collect::<Vec<_>>());
             let outside = reachable.difference(&contained);
+            //println!("gvc outside {:?}", outside.clone().map(|x| sproof.lookup_expr(x.clone())).collect::<Vec<_>>());
             outside.filter_map(|x| sproof.lookup_expr(x.clone())).find(|e| freevars(e).contains(var))
         }
         match self {
@@ -611,6 +614,7 @@ impl RuleT for PredicateInference {
                 if let Expr::Quantifier { symbol: QSymbol::Forall, ref name, ref body } = conclusion {
                     for (r, expr) in sproof.exprs().into_iter().map(|r| sproof.lookup_expr_or_die(r.clone()).map(|e| (r, e))).collect::<Result<Vec<_>, _>>()? {
                         if let Ok(Expr::Var { name: constant }) = unifies_wrt_var::<P>(body, &expr, name) {
+                            println!("ForallIntro constant {:?}", constant);
                             if let Some(dangling) = generalizable_variable_counterexample(&sproof, r, &constant) {
                                 return Err(Other(format!("The constant {} occurs in dependency {} that's outside the subproof.", constant, dangling)));
                             } else {
@@ -647,20 +651,55 @@ impl RuleT for PredicateInference {
                 }
             },
             ExistsElim => {
+/*
+1 | exists x, phi(x)
+  | ---
+2 | | phi(a)
+  | | ---
+3 | | psi(a), SomeRule, 2
+4 | exists y, psi(y), ExistElim, 2-3
+
+- the body of the existential in dep 1 must unify with the premise of the subproof at 2
+- the body of the existential in conclusion 4 must unify with some line of the subproof at 2-3 (in this, 3)
+- the uvars of the past two steps must be the same (this is the inferred skolem constant)
+- the skolem constant must not escape the transitive dependencies of the conclusion
+- the skolem constant must be properly substituted with the var of the conclusion
+*/
                 let prem = p.lookup_expr_or_die(deps[0].clone())?;
                 let sproof = p.lookup_subproof_or_die(sdeps[0].clone())?;
-                if let Expr::Quantifier { symbol: QSymbol::Exists, ref name, ref body } = prem {
+                let skolemname = {
+                    if let Expr::Quantifier { symbol: QSymbol::Exists, ref name, ref body } = prem {
+                        let subprems = sproof.premises();
+                        if subprems.len() != 1 {
+                            // TODO: can/should this be generalized?
+                            return Err(Other(format!("Subproof has {} premises, expected 1.", subprems.len())));
+                        }
+                        let subprem = p.lookup_expr_or_die(subprems[0].clone())?;
+                        if let Ok(Expr::Var { name: skolemname }) = unifies_wrt_var::<P>(body, &subprem, name) {
+                            skolemname
+                        } else {
+                            return Err(Other(format!("Premise {} doesn't unify with the body of dependency {}", subprem, prem)));
+                        }
+                    } else {
+                        return Err(DepOfWrongForm(prem, expression_builders::quantifierplaceholder(QSymbol::Exists)));
+                    }
+                };
+                if let Expr::Quantifier { symbol: QSymbol::Exists, ref name, ref body } = conclusion {
                     for (r, expr) in sproof.exprs().into_iter().map(|r| sproof.lookup_expr_or_die(r.clone()).map(|e| (r, e))).collect::<Result<Vec<_>, _>>()? {
                         if let Ok(Expr::Var { name: constant }) = unifies_wrt_var::<P>(body, &expr, name) {
+                            println!("ExistsElim constant {:?} body {:?} skolemname {:?}", constant, body, skolemname);
                             if let Some(dangling) = generalizable_variable_counterexample(&sproof, r, &constant) {
                                 return Err(Other(format!("The constant {} occurs in dependency {} that's outside the subproof.", constant, dangling)));
-                            } else {
-                                let expected = subst(body, &constant, expression_builders::var(name));
-                                if &expected != &**body {
-                                    return Err(Other(format!("Not all free occurrences of {} are replaced with {} in {}.", constant, name, body)));
-                                }
-                                return Ok(());
                             }
+                            if skolemname != constant {
+                                return Err(Other(format!("The premise uses the skolem constant {}, but the conclusion uses skolem constant {}", skolemname, constant)));
+                            }
+                            let expected = subst(body, &skolemname, expression_builders::var(&name));
+                            println!("EE subst {} {}", body, expected);
+                            if &expected != &**body {
+                                return Err(Other(format!("Not all free occurrences of {} are replaced with {} in {}.", skolemname, name, body)));
+                            }
+                            return Ok(());
                         }
                     }
                     return Err(Other(format!("Couldn't find a subproof line that unifies with the conclusion ({}).", conclusion)));
