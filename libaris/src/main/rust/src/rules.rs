@@ -657,10 +657,10 @@ impl RuleT for PredicateInference {
 2 | | phi(a)
   | | ---
 3 | | psi(a), SomeRule, 2
-4 | exists y, psi(y), ExistElim, 2-3
+4 | psi(y), ExistElim, 2-3
 
 - the body of the existential in dep 1 must unify with the premise of the subproof at 2
-- the body of the existential in conclusion 4 must unify with some line of the subproof at 2-3 (in this, 3)
+- the conclusion 4 must unify with some line of the subproof at 2-3 (in this, 3)
 - the uvars of the past two steps must be the same (this is the inferred skolem constant)
 - the skolem constant must not escape the transitive dependencies of the conclusion
 - the skolem constant must be properly substituted with the var of the conclusion
@@ -684,28 +684,19 @@ impl RuleT for PredicateInference {
                         return Err(DepOfWrongForm(prem, expression_builders::quantifierplaceholder(QSymbol::Exists)));
                     }
                 };
-                if let Expr::Quantifier { symbol: QSymbol::Exists, ref name, ref body } = conclusion {
-                    for (r, expr) in sproof.exprs().into_iter().map(|r| sproof.lookup_expr_or_die(r.clone()).map(|e| (r, e))).collect::<Result<Vec<_>, _>>()? {
-                        if let Ok(Expr::Var { name: constant }) = unifies_wrt_var::<P>(body, &expr, name) {
-                            println!("ExistsElim constant {:?} body {:?} skolemname {:?}", constant, body, skolemname);
-                            if let Some(dangling) = generalizable_variable_counterexample(&sproof, r, &constant) {
-                                return Err(Other(format!("The constant {} occurs in dependency {} that's outside the subproof.", constant, dangling)));
-                            }
-                            if skolemname != constant {
-                                return Err(Other(format!("The premise uses the skolem constant {}, but the conclusion uses skolem constant {}", skolemname, constant)));
-                            }
-                            let expected = subst(body, &skolemname, expression_builders::var(&name));
-                            println!("EE subst {} {}", body, expected);
-                            if &expected != &**body {
-                                return Err(Other(format!("Not all free occurrences of {} are replaced with {} in {}.", skolemname, name, body)));
-                            }
-                            return Ok(());
+                for (r, expr) in sproof.exprs().into_iter().map(|r| sproof.lookup_expr_or_die(r.clone()).map(|e| (r, e))).collect::<Result<Vec<_>, _>>()? {
+                    if let Ok(Expr::Var { name: constant }) = unifies_wrt_var::<P>(&conclusion, &expr, &skolemname) {
+                        println!("ExistsElim constant {:?} body {:?} skolemname {:?}", constant, conclusion, skolemname);
+                        if let Some(dangling) = generalizable_variable_counterexample(&sproof, r, &constant) {
+                            return Err(Other(format!("The constant {} occurs in dependency {} that's outside the subproof.", constant, dangling)));
                         }
+                        if skolemname != constant {
+                            return Err(Other(format!("The premise uses the skolem constant {}, but the conclusion uses skolem constant {}", skolemname, constant)));
+                        }
+                        return Ok(());
                     }
-                    return Err(Other(format!("Couldn't find a subproof line that unifies with the conclusion ({}).", conclusion)));
-                } else {
-                    Err(DepOfWrongForm(prem, expression_builders::quantifierplaceholder(QSymbol::Exists)))
                 }
+                return Err(Other(format!("Couldn't find a subproof line that unifies with the conclusion ({}).", conclusion)));
             },
         }
     }
