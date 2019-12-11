@@ -775,10 +775,14 @@ impl RuleT for Equivalence {
                 ("phi | _|_", "phi"),
                 ("phi -> _|_", "~phi"),
                 ("^|^ -> phi", "phi"),
+                ("phi <-> _|_", "~phi"),
+                ("phi <-> ^|^", "phi"),
             ]),
             Annihilation => check_by_reductions(p, deps, conclusion, false, vec![
                 ("phi & _|_", "_|_"),
-                ("phi | ^|^", "^|^")
+                ("phi | ^|^", "^|^"),
+                ("phi -> ^|^", "^|^"),
+                ("_|_ -> phi", "^|^"),
             ]),
             Inverse => check_by_reductions(p, deps, conclusion, false, vec![
                 ("~^|^", "_|_"),

@@ -656,6 +656,7 @@ pub fn test_identity<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
     let r3 = prf.add_premise(p("A | _|_"));
     let r4 = prf.add_premise(p("_|_ | A"));
     let r13 = prf.add_premise(p("(A -> _|_) & (^|^ -> B)"));
+    let r17 = prf.add_premise(p("(A <-> _|_) & (^|^ <-> B)"));
 
     let r5 = prf.add_step(Justification(p("A"), RuleM::Identity, vec![r1.clone()], vec![]));
     let r6 = prf.add_step(Justification(p("^|^"), RuleM::Identity, vec![r1.clone()], vec![]));
@@ -669,7 +670,11 @@ pub fn test_identity<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
     let r15 = prf.add_step(Justification(p("A & B"), RuleM::Identity, vec![r13.clone()], vec![]));
     let r16 = prf.add_step(Justification(p("~A & ~B"), RuleM::Identity, vec![r13.clone()], vec![]));
 
-    (prf, vec![r5, r7, r9, r11, r14], vec![r6, r8, r10, r12, r15, r16])
+
+    let r18 = prf.add_step(Justification(p("~A & B"), RuleM::Identity, vec![r17.clone()], vec![]));
+    let r19 = prf.add_step(Justification(p("A & B"), RuleM::Identity, vec![r17.clone()], vec![]));
+
+    (prf, vec![r5, r7, r9, r11, r14, r18], vec![r6, r8, r10, r12, r15, r16, r19])
 }
 
 pub fn test_annihilation<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
@@ -680,6 +685,8 @@ pub fn test_annihilation<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>
     let r2 = prf.add_premise(p("_|_ & A"));
     let r3 = prf.add_premise(p("A | ^|^"));
     let r4 = prf.add_premise(p("^|^ | A"));
+    let r13 = prf.add_premise(p("(A -> ^|^) & (_|_ -> B)"));
+    let r15 = prf.add_premise(p("(A -> _|_)"));
     let r5 = prf.add_step(Justification(p("_|_"), RuleM::Annihilation, vec![r1.clone()], vec![]));
     let r6 = prf.add_step(Justification(p("A"), RuleM::Annihilation, vec![r1.clone()], vec![]));
     let r7 = prf.add_step(Justification(p("_|_"), RuleM::Annihilation, vec![r2.clone()], vec![]));
@@ -689,7 +696,10 @@ pub fn test_annihilation<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>
     let r11 = prf.add_step(Justification(p("^|^"), RuleM::Annihilation, vec![r4.clone()], vec![]));
     let r12 = prf.add_step(Justification(p("A"), RuleM::Annihilation, vec![r4.clone()], vec![]));
 
-    (prf, vec![r5, r7, r9, r11], vec![r6, r8, r10, r12])
+    let r14 = prf.add_step(Justification(p("^|^ & ^|^"), RuleM::Annihilation, vec![r13.clone()], vec![]));
+    let r16 = prf.add_step(Justification(p("^|^"), RuleM::Annihilation, vec![r15.clone()], vec![]));
+
+    (prf, vec![r5, r7, r9, r11, r14], vec![r6, r8, r10, r12, r16])
 }
 
 pub fn test_inverse<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {

@@ -523,7 +523,9 @@ pub fn permute_ops(e: Expr) -> Vec<Expr> {
             for left in &permute_left {
                 for right in &permute_right {
                     results.push(binop(symbol, left.clone(), right.clone()));
-                    results.push(binop(symbol, right.clone(), left.clone()));
+                    if symbol.is_commutative() {
+                        results.push(binop(symbol, right.clone(), left.clone()));
+                    }
                 }
             }
             results
@@ -532,7 +534,11 @@ pub fn permute_ops(e: Expr) -> Vec<Expr> {
             // For every combination of the args, add the cartesian product of the permutations of their parameters
 
             // All orderings of arguments
-            let arg_combinations = combinations(exprs.iter().collect::<Vec<_>>());
+            let arg_combinations = if symbol.is_commutative()  {
+                combinations(exprs.iter().collect::<Vec<_>>())
+            } else {
+                vec![exprs.iter().collect::<Vec<_>>()]
+            };
             arg_combinations.into_iter().flat_map(|args| {
                 // Permuting every expression in the current list of args
                 let permutations = args.into_iter().map(|arg| permute_ops(arg.clone())).collect::<Vec<_>>();
