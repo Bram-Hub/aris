@@ -641,12 +641,12 @@ pub fn test_complement<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) 
     let r17 = prf.add_step(Justification(p("_|_"), RuleM::Complement, vec![r6.clone()], vec![]));
     let r18 = prf.add_step(Justification(p("^|^"), RuleM::Complement, vec![r6.clone()], vec![]));
 
-    let r20 = prf.add_step(Justification(p("^|^ & ^|^ & _|_ & _|_"), RuleM::Complement, vec![r19.clone()], vec![]));
-    let r21 = prf.add_step(Justification(p("^|^ & (B <-> B) & (C <-> ~C) & (~D <-> D)"), RuleM::Complement, vec![r19.clone()], vec![]));
-    let r22 = prf.add_step(Justification(p("(A -> A) & ^|^ & (C <-> ~C) & (~D <-> D)"), RuleM::Complement, vec![r19.clone()], vec![]));
-    let r23 = prf.add_step(Justification(p("(A -> A) & (B <-> B) & _|_ & (~D <-> D)"), RuleM::Complement, vec![r19.clone()], vec![]));
-    let r24 = prf.add_step(Justification(p("(A -> A) & (B <-> B) & (C <-> ~C) & _|_"), RuleM::Complement, vec![r19.clone()], vec![]));
-    let r25 = prf.add_step(Justification(p("_|_ & _|_ & ^|^ & ^|^"), RuleM::Complement, vec![r19.clone()], vec![]));
+    let r20 = prf.add_step(Justification(p("^|^ & ^|^ & _|_ & _|_"), RuleM::CondComplement, vec![r19.clone()], vec![]));
+    let r21 = prf.add_step(Justification(p("^|^ & (B <-> B) & (C <-> ~C) & (~D <-> D)"), RuleM::CondComplement, vec![r19.clone()], vec![]));
+    let r22 = prf.add_step(Justification(p("(A -> A) & ^|^ & (C <-> ~C) & (~D <-> D)"), RuleM::CondComplement, vec![r19.clone()], vec![]));
+    let r23 = prf.add_step(Justification(p("(A -> A) & (B <-> B) & _|_ & (~D <-> D)"), RuleM::CondComplement, vec![r19.clone()], vec![]));
+    let r24 = prf.add_step(Justification(p("(A -> A) & (B <-> B) & (C <-> ~C) & _|_"), RuleM::CondComplement, vec![r19.clone()], vec![]));
+    let r25 = prf.add_step(Justification(p("_|_ & _|_ & ^|^ & ^|^"), RuleM::CondComplement, vec![r19.clone()], vec![]));
 
     (prf, vec![r7, r9, r12, r14, r16, r17, r20, r21, r22, r23, r24], vec![r8, r10, r11, r13, r15, r18, r25])
 }
@@ -670,13 +670,12 @@ pub fn test_identity<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
     let r10 = prf.add_step(Justification(p("_|_"), RuleM::Identity, vec![r3.clone()], vec![]));
     let r11 = prf.add_step(Justification(p("A"), RuleM::Identity, vec![r4.clone()], vec![]));
     let r12 = prf.add_step(Justification(p("_|_"), RuleM::Identity, vec![r4.clone()], vec![]));
-    let r14 = prf.add_step(Justification(p("~A & B"), RuleM::Identity, vec![r13.clone()], vec![]));
-    let r15 = prf.add_step(Justification(p("A & B"), RuleM::Identity, vec![r13.clone()], vec![]));
-    let r16 = prf.add_step(Justification(p("~A & ~B"), RuleM::Identity, vec![r13.clone()], vec![]));
 
-
-    let r18 = prf.add_step(Justification(p("~A & B"), RuleM::Identity, vec![r17.clone()], vec![]));
-    let r19 = prf.add_step(Justification(p("A & B"), RuleM::Identity, vec![r17.clone()], vec![]));
+    let r14 = prf.add_step(Justification(p("~A & B"), RuleM::CondIdentity, vec![r13.clone()], vec![]));
+    let r15 = prf.add_step(Justification(p("A & B"), RuleM::CondIdentity, vec![r13.clone()], vec![]));
+    let r16 = prf.add_step(Justification(p("~A & ~B"), RuleM::CondIdentity, vec![r13.clone()], vec![]));
+    let r18 = prf.add_step(Justification(p("~A & B"), RuleM::CondIdentity, vec![r17.clone()], vec![]));
+    let r19 = prf.add_step(Justification(p("A & B"), RuleM::CondIdentity, vec![r17.clone()], vec![]));
 
     (prf, vec![r5, r7, r9, r11, r14, r18], vec![r6, r8, r10, r12, r15, r16, r19])
 }
@@ -700,8 +699,8 @@ pub fn test_annihilation<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>
     let r11 = prf.add_step(Justification(p("^|^"), RuleM::Annihilation, vec![r4.clone()], vec![]));
     let r12 = prf.add_step(Justification(p("A"), RuleM::Annihilation, vec![r4.clone()], vec![]));
 
-    let r14 = prf.add_step(Justification(p("^|^ & ^|^"), RuleM::Annihilation, vec![r13.clone()], vec![]));
-    let r16 = prf.add_step(Justification(p("^|^"), RuleM::Annihilation, vec![r15.clone()], vec![]));
+    let r14 = prf.add_step(Justification(p("^|^ & ^|^"), RuleM::CondAnnihilation, vec![r13.clone()], vec![]));
+    let r16 = prf.add_step(Justification(p("^|^"), RuleM::CondAnnihilation, vec![r15.clone()], vec![]));
 
     (prf, vec![r5, r7, r9, r11, r14], vec![r6, r8, r10, r12, r16])
 }
