@@ -765,7 +765,10 @@ impl RuleT for Equivalence {
             ]),
             Complement => check_by_reductions(p, deps, conclusion, false, vec![
                 ("phi & ~phi", "_|_"),
-                ("phi | ~phi", "^|^")
+                ("phi | ~phi", "^|^"),
+                ("phi -> phi", "^|^"),
+                ("phi <-> phi", "^|^"),
+                ("phi <-> ~phi", "_|_"),
             ]),
             Identity => check_by_reductions(p, deps, conclusion, false, vec![
                 ("phi & ^|^", "phi"),
