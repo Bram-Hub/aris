@@ -1,4 +1,4 @@
-#![deny(unused_variables)]
+#![deny(unused_variables, dead_code)]
 use super::*;
 use std::fmt::Debug;
 
@@ -20,49 +20,53 @@ fn run_test<P: Proof+Display+Debug, F: FnOnce() -> (P, Vec<P::Reference>, Vec<P:
     } 
 }
 
-fn test_rules<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq, P::Subproof: Debug {
-    run_test::<P, _>(test_andelim);
-    run_test::<P, _>(test_contelim);
-    run_test::<P, _>(test_orintro);
-    run_test::<P, _>(test_reit);
-    run_test::<P, _>(test_andintro);
-    run_test::<P, _>(test_contradictionintro);
-    run_test::<P, _>(test_notelim);
-    run_test::<P, _>(test_impelim);
-    run_test::<P, _>(test_commutation);
-    run_test::<P, _>(test_association);
-    run_test::<P, _>(test_demorgan);
-    run_test::<P, _>(test_idempotence);
-    run_test::<P, _>(test_doublenegation);
-    run_test::<P, _>(test_distribution);
-    run_test::<P, _>(test_complement);
-    run_test::<P, _>(test_identity);
-    run_test::<P, _>(test_annihilation);
-    run_test::<P, _>(test_inverse);
-    run_test::<P, _>(test_absorption);
-    run_test::<P, _>(test_reduction);
-    run_test::<P, _>(test_adjacency);
+macro_rules! generate_tests {
+    ($proofrepr:ty, $modprefix:ident; $( $generic_test:ident ),+,) => {
+        #[cfg(test)]
+        mod $modprefix {
+        $(
+            #[test]
+            fn $generic_test() {
+                super::run_test::<$proofrepr, _>(super::$generic_test);
+            }
+        )+
+        }
+    }
 }
 
-fn test_rules_with_subproofs<P: Proof+Display+Debug>() where P::Reference: Debug+Eq, P::SubproofReference: Debug+Eq, P::Subproof: Debug {
-    run_test::<P, _>(test_forallintro);
-    run_test::<P, _>(test_forallelim);
-    run_test::<P, _>(test_biconelim);
-    run_test::<P, _>(test_biconintro);
-    run_test::<P, _>(test_impintro);
-    run_test::<P, _>(test_notintro);
-    run_test::<P, _>(test_orelim);
-    run_test::<P, _>(test_equivelim);
-    run_test::<P, _>(test_equivintro);
-    run_test::<P, _>(test_existsintro);
-    run_test::<P, _>(test_existselim);
+macro_rules! enumerate_subproofless_tests {
+    ($x:ty, $y:ident) => {
+        generate_tests! { $x, $y;
+            test_andelim, test_contelim, test_orintro, test_reit, test_andintro, 
+            test_contradictionintro, test_notelim, test_impelim, test_commutation, 
+            test_association, test_demorgan, test_idempotence, test_doublenegation, 
+            test_distribution, test_complement, test_identity, test_annihilation, 
+            test_inverse, test_absorption, test_reduction, test_adjacency,
+        }
+    }
 }
 
-#[test] fn test_rules_on_treeproof() { test_rules::<treeproof::TreeProof<(), ()>>(); }
-#[test] fn test_rules_on_pooledproof() { 
-    test_rules::<pooledproof::PooledProof<Hlist![Expr]>>();
-    test_rules_with_subproofs::<pooledproof::PooledProof<Hlist![Expr]>>();
+macro_rules! enumerate_subproofful_tests {
+    ($x:ty, $y:ident) => {
+        generate_tests! { $x, $y;
+            test_forallintro,
+            test_forallelim,
+            test_biconelim,
+            test_biconintro,
+            test_impintro,
+            test_notintro,
+            test_orelim,
+            test_equivelim,
+            test_equivintro,
+            test_existsintro,
+            test_existselim,
+        }
+    }
 }
+
+enumerate_subproofless_tests! { super::treeproof::TreeProof<(), ()>, test_rules_on_treeproof }
+enumerate_subproofless_tests! { super::pooledproof::PooledProof<Hlist![super::Expr]>, test_subproofless_rules_on_pooledproof }
+enumerate_subproofful_tests! { super::pooledproof::PooledProof<Hlist![super::Expr]>, test_subproofful_rules_on_pooledproof }
 
 pub fn demo_proof_1<P: Proof>() -> P where P: PartialEq+std::fmt::Debug, P::Reference: PartialEq+std::fmt::Debug, P::SubproofReference: PartialEq+std::fmt::Debug {
     use parser::parse as p;
