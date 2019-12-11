@@ -853,10 +853,20 @@ impl RuleT for ConditionalEquivalence {
                 ("phi -> ^|^", "^|^"),
                 ("_|_ -> phi", "^|^"),
             ]),
-            Implication => unimplemented!(),
-            BiImplication => unimplemented!(),
-            Contraposition => unimplemented!(),
-            Currying => unimplemented!(),
+            Implication => check_by_reductions(p, deps, conclusion, false, vec![
+                ("phi -> psi", "~phi | psi"),
+                ("~(phi -> psi)", "phi & ~psi"),
+            ]),
+            BiImplication => check_by_reductions(p, deps, conclusion, false, vec![
+                ("phi <-> psi", "(phi -> psi) & (psi -> phi)"),
+                ("phi <-> psi", "(phi & psi) | (~phi & ~psi)"),
+            ]),
+            Contraposition => check_by_reductions(p, deps, conclusion, false, vec![
+                ("~phi -> ~psi", "phi -> psi")
+            ]),
+            Currying => check_by_reductions(p, deps, conclusion, false, vec![
+                ("phi -> (psi -> lambda)", "(phi & psi) -> lambda")
+            ])
         }
     }
 }
