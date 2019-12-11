@@ -3,7 +3,6 @@ use std::collections::{HashMap, HashSet};
 use frunk::Coproduct::{self, Inl, Inr};
 use petgraph::algo::tarjan_scc;
 use petgraph::graphmap::DiGraphMap;
-use std::iter::FromIterator;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PrepositionalInference {
@@ -459,7 +458,7 @@ impl RuleT for PrepositionalInference {
                     let sproofs = sdeps.into_iter().map(|r| p.lookup_subproof_or_die(r)).collect::<Result<Vec<_>, _>>()?;
                     let mut slab = HashMap::new();
                     let mut counter = 0;
-                    let mut next: &mut FnMut() -> _ = &mut || {
+                    let next: &mut dyn FnMut() -> _ = &mut || {
                         counter += 1;
                         counter
                     };
@@ -643,8 +642,7 @@ impl RuleT for PredicateInference {
             ExistsIntro => {
                 if let Expr::Quantifier { symbol: QSymbol::Exists, ref name, ref body } = conclusion {
                     let prem = p.lookup_expr_or_die(deps[0].clone())?;
-                    let result = unifies_wrt_var::<P>(body, &prem, name)?;
-                    //unimplemented!();
+                    unifies_wrt_var::<P>(body, &prem, name)?;
                     Ok(())
                 } else {
                     Err(ConclusionOfWrongForm(expression_builders::quantifierplaceholder(QSymbol::Exists)))

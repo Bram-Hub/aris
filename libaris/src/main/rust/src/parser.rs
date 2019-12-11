@@ -33,9 +33,9 @@ named!(predicate<&str, Expr>, alt!(
     do_parse!(space >> name: variable >> space >> (Expr::Var { name }))
     ));
 
-named!(forallQuantifier<&str, QSymbol>, do_parse!(alt!(tag!("forall ") | tag!("∀")) >> (QSymbol::Forall)));
-named!(existsQuantifier<&str, QSymbol>, do_parse!(alt!(tag!("exists ") | tag!("∃")) >> (QSymbol::Exists)));
-named!(quantifier<&str, QSymbol>, alt!(forallQuantifier | existsQuantifier));
+named!(forall_quantifier<&str, QSymbol>, do_parse!(alt!(tag!("forall ") | tag!("∀")) >> (QSymbol::Forall)));
+named!(exists_quantifier<&str, QSymbol>, do_parse!(alt!(tag!("exists ") | tag!("∃")) >> (QSymbol::Exists)));
+named!(quantifier<&str, QSymbol>, alt!(forall_quantifier | exists_quantifier));
 named!(binder<&str, Expr>, do_parse!(space >> symbol: quantifier >> space >> name: variable >> space >> tag!(",") >> space >> body: expr >> (Expr::Quantifier { symbol, name, body: Box::new(body) })));
 
 named!(binop<&str, BSymbol>, alt!(do_parse!(alt!(tag!("->") | tag!("→")) >> (BSymbol::Implies)) | do_parse!(tag!("+") >> (BSymbol::Plus)) | do_parse!(tag!("*") >> (BSymbol::Mult))));

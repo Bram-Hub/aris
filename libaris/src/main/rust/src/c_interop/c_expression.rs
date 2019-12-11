@@ -1,5 +1,5 @@
 use super::*;
-use std::ffi::{CStr, CString};
+use std::ffi::{CStr/*, CString*/};
 
 #[no_mangle] pub extern "C" fn aris_vec_expr_index(x: &Vec<Expr>, i: usize) -> Expr { x[i].clone() }
 #[no_mangle] pub extern "C" fn aris_vec_string_index(x: &Vec<String>, i: usize) -> String { x[i].clone() }

@@ -1,6 +1,5 @@
 use super::*;
 use std::collections::{HashSet, HashMap};
-use std::iter::FromIterator;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[repr(C)]
