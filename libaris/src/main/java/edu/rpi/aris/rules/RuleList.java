@@ -40,8 +40,14 @@ public enum RuleList {
     INVERSE,
     ABSORPTION,
     REDUCTION,
-    ADJACENCY;
-
+    ADJACENCY,
+    CONDITIONAL_COMPLEMENT,
+    CONDITIONAL_IDENTITY,
+    CONDITIONAL_ANNIHILATION,
+    IMPLICATION,
+    BI_IMPLICATION,
+    CONTRAPOSITION,
+    CURRYING;
     public final String name, simpleName;
     public final Rule rule;
 

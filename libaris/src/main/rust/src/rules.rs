@@ -30,6 +30,12 @@ pub enum Equivalence {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ConditionalEquivalence {
+    Complement, Identity, Annihilation, Implication, BiImplication, Contraposition,
+    Currying
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RedundantPrepositionalInference {
     ModusTollens, HypotheticalSyllogism, ExcludedMiddle, ConstructiveDilemma
 }
@@ -39,7 +45,8 @@ pub enum RedundantPrepositionalInference {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SharedChecks<T>(T);
 
-pub type Rule = SharedChecks<Coprod!(PrepositionalInference, PredicateInference, Equivalence, RedundantPrepositionalInference)>;
+pub type Rule = SharedChecks<Coprod!(PrepositionalInference, PredicateInference,
+    Equivalence, ConditionalEquivalence, RedundantPrepositionalInference)>;
 
 /// Conveniences for constructing rules of the appropriate type, primarily for testing.
 /// The non-standard naming conventions here are because a module is being used to pretend to be an enum.
@@ -82,10 +89,18 @@ pub mod RuleM {
     pub static Reduction: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Reduction))));
     pub static Adjacency: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Adjacency))));
 
-    pub static ModusTollens: Rule = SharedChecks(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ModusTollens)))));
-    pub static HypotheticalSyllogism: Rule = SharedChecks(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::HypotheticalSyllogism)))));
-    pub static ExcludedMiddle: Rule = SharedChecks(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ExcludedMiddle)))));
-    pub static ConstructiveDilemma: Rule = SharedChecks(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ConstructiveDilemma)))));
+    pub static CondComplement: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Complement)))));
+    pub static CondIdentity: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Identity)))));
+    pub static CondAnnihilation: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Annihilation)))));
+    pub static Implication: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Implication)))));
+    pub static BiImplication: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiImplication)))));
+    pub static Contraposition: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Contraposition)))));
+    pub static Currying: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Currying)))));
+    
+    pub static ModusTollens: Rule = SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ModusTollens))))));
+    pub static HypotheticalSyllogism: Rule = SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::HypotheticalSyllogism))))));
+    pub static ExcludedMiddle: Rule = SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ExcludedMiddle))))));
+    pub static ConstructiveDilemma: Rule = SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ConstructiveDilemma))))));
 
     pub fn from_serialized_name(name: &str) -> Option<Rule> {
         Some(match name {
@@ -128,6 +143,14 @@ pub mod RuleM {
             "ABSORPTION" => RuleM::Absorption,
             "REDUCTION" => RuleM::Reduction,
             "ADJACENCY" => RuleM::Adjacency,
+            
+            "CONDITIONAL_COMPLEMENT" => RuleM::CondComplement,
+            "CONDITIONAL_IDENTITY" => RuleM::CondIdentity,
+            "CONDITIONAL_ANNIHILATION" => RuleM::CondAnnihilation,
+            "IMPLICATION" => RuleM::Implication,
+            "BI_IMPLICATION" => RuleM::BiImplication,
+            "CONTRAPOSITION" => RuleM::Contraposition,
+            "CURRYING" => RuleM::Currying,
             _ => { return None },
         })
     }
@@ -798,6 +821,38 @@ impl RuleT for Equivalence {
                 ("(phi | psi) & (phi | ~psi)", "phi"),
                 ("(phi & psi) | (phi & ~psi)", "phi")
             ]),
+        }
+    }
+}
+
+impl RuleT for ConditionalEquivalence {
+    fn get_name(&self) -> String {
+        use ConditionalEquivalence::*;
+        match self {
+            Complement => "Conditional Complement",
+            Identity => "Conditional Identity",
+            Annihilation => "Conditional Annihilation",
+            Implication => "Implication",
+            BiImplication => "BiImplication",
+            Contraposition => "Contraposition",
+            Currying => "Currying",
+        }.into()
+    }
+    fn get_classifications(&self) -> HashSet<RuleClassification> {
+        [RuleClassification::Equivalence].iter().cloned().collect()
+    }
+    fn num_deps(&self) -> Option<usize> { Some(1) } // all equivalence rules rewrite a single statement
+    fn num_subdeps(&self) -> Option<usize> { Some(0) }
+    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
+        use ProofCheckError::*; use ConditionalEquivalence::*;
+        match self {
+            Complement => unimplemented!(),
+            Identity => unimplemented!(),
+            Annihilation => unimplemented!(),
+            Implication => unimplemented!(),
+            BiImplication => unimplemented!(),
+            Contraposition => unimplemented!(),
+            Currying => unimplemented!(),
         }
     }
 }
