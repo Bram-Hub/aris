@@ -677,14 +677,13 @@ impl RuleT for PredicateInference {
   | ---
 2 | | phi(a)
   | | ---
-3 | | psi(a), SomeRule, 2
-4 | psi(y), ExistElim, 2-3
+3 | | psi, SomeRule, 2
+4 | psi, ExistElim, 2-3
 
-- the body of the existential in dep 1 must unify with the premise of the subproof at 2
-- the conclusion 4 must unify with some line of the subproof at 2-3 (in this, 3)
-- the uvars of the past two steps must be the same (this is the inferred skolem constant)
-- the skolem constant must not escape the transitive dependencies of the conclusion
-- the skolem constant must be properly substituted with the var of the conclusion
+- the body of the existential in dep 1 must unify with the premise of the subproof at 2, this infers the skolem constant
+- the conclusion 4 must occur in some line of the subproof at 2-3 (in this, 3)
+- the skolem constant must not occur in the transitive dependencies of the conclusion (generalizable variable conterexample check)
+- the skolem constant must not escape to the conclusion (freevars check)
 */
                 let prem = p.lookup_expr_or_die(deps[0].clone())?;
                 let sproof = p.lookup_subproof_or_die(sdeps[0].clone())?;
@@ -706,13 +705,13 @@ impl RuleT for PredicateInference {
                     }
                 };
                 for (r, expr) in sproof.exprs().into_iter().map(|r| sproof.lookup_expr_or_die(r.clone()).map(|e| (r, e))).collect::<Result<Vec<_>, _>>()? {
-                    if let Ok(Expr::Var { name: constant }) = unifies_wrt_var::<P>(&conclusion, &expr, &skolemname) {
-                        println!("ExistsElim constant {:?} body {:?} skolemname {:?}", constant, conclusion, skolemname);
-                        if let Some(dangling) = generalizable_variable_counterexample(&sproof, r, &constant) {
-                            return Err(Other(format!("The constant {} occurs in dependency {} that's outside the subproof.", constant, dangling)));
+                    if expr == conclusion {
+                        println!("ExistsElim conclusion {:?} skolemname {:?}", conclusion, skolemname);
+                        if let Some(dangling) = generalizable_variable_counterexample(&sproof, r, &skolemname) {
+                            return Err(Other(format!("The skolem constant {} occurs in dependency {} that's outside the subproof.", skolemname, dangling)));
                         }
-                        if skolemname != constant {
-                            return Err(Other(format!("The premise uses the skolem constant {}, but the conclusion uses skolem constant {}", skolemname, constant)));
+                        if freevars(&conclusion).contains(&skolemname) {
+                            return Err(Other(format!("The skolem constant {} escapes to the conclusion {}.", skolemname, conclusion)));
                         }
                         return Ok(());
                     }
@@ -862,7 +861,7 @@ impl RuleT for ConditionalEquivalence {
                 ("phi <-> psi", "(phi & psi) | (~phi & ~psi)"),
             ]),
             Contraposition => check_by_reductions(p, deps, conclusion, false, vec![
-                ("~phi -> ~psi", "phi -> psi")
+                ("~phi -> ~psi", "psi -> phi")
             ]),
             Currying => check_by_reductions(p, deps, conclusion, false, vec![
                 ("phi -> (psi -> lambda)", "(phi & psi) -> lambda")
