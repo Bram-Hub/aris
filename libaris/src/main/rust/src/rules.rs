@@ -773,6 +773,9 @@ impl RuleT for Equivalence {
             Commutation => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.sort_commutative_ops()),
             Idempotence => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.normalize_idempotence()),
             DoubleNegation => check_by_rewrite_rule(p, deps, conclusion, false, &DOUBLE_NEGATION_RULES),
+            // Distribution and Reduction have outputs containing binops that need commutative sorting
+            // because we can't expect people to know the specific order of outputs that our definition
+            // of the rules uses
             Distribution => check_by_rewrite_rule(p, deps, conclusion, true, &DISTRIBUTION_RULES),
             Complement => check_by_rewrite_rule(p, deps, conclusion, false, &COMPLEMENT_RULES),
             Identity => check_by_rewrite_rule(p, deps, conclusion, false, &IDENTITY_RULES),
