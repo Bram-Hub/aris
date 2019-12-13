@@ -63,7 +63,27 @@ pub extern "system" fn Java_edu_rpi_aris_proof_RustProof_fromXml(env: JNIEnv, _:
         println!("{:?}", xml);
         if let Some((prf, _, _)) = xml_interop::proof_from_xml::<PooledProof<Hlist![Expr]>, _>(xml.as_bytes()) {
             println!("{}", prf);
+            let prf = Box::into_raw(Box::new(LinedProof::<PooledProof<Hlist![Expr]>>::from_proof(prf)));
+            let jprf = env.new_object("edu/rpi/aris/proof/RustProof", "(J)V", &[JValue::from(prf as jni::sys::jlong)])?;
+            Ok(jprf.into_inner())
+        } else {
+            Ok(std::ptr::null_mut())
         }
-        Ok(std::ptr::null_mut())
+    })
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern "system" fn Java_edu_rpi_aris_proof_RustProof_checkRuleAtLine(env: JNIEnv, this: JObject, linenum: jni::sys::jlong) -> jstring {
+    with_thrown_errors(&env, |env| {
+        let ptr: jni::sys::jlong = env.get_field(this, "pointerToRustHeap", "J")?.j()?;
+        let self_: &mut LinedProof<PooledProof<Hlist![Expr]>> = unsafe { &mut*(ptr as *mut _) };
+        println!("RustProof::checkRuleAtLine {:?}", self_);
+        let line = self_.lines.get(linenum as _).expect(&format!("Failed to dereference line {} in {:?}", linenum, self_));
+        if let Err(e) = self_.proof.verify_line(&line.reference) {
+            Ok(env.new_string(&format!("{}", e))?.into_inner())
+        } else {
+            Ok(std::ptr::null_mut())
+        }
     })
 }

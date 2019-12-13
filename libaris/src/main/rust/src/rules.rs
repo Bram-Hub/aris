@@ -716,7 +716,7 @@ impl RuleT for PredicateInference {
                         return Ok(());
                     }
                 }
-                return Err(Other(format!("Couldn't find a subproof line that unifies with the conclusion ({}).", conclusion)));
+                return Err(Other(format!("Couldn't find a subproof line equal to the conclusion ({}).", conclusion)));
             },
         }
     }

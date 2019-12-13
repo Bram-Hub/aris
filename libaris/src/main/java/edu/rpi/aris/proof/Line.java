@@ -212,6 +212,17 @@ public class Line {
         return verifyClaim(true);
     }
 
+    private boolean haveClaimResult(String result) {
+        if (result == null) {
+            setStatusString("Line is Correct!");
+            setStatus(Proof.Status.CORRECT);
+        } else {
+            setStatusString(result);
+            setStatus(Proof.Status.INVALID_CLAIM);
+        }
+        return result == null;
+    }
+
     private synchronized boolean verifyClaim(boolean stopTimer) {
         try {
             ByteArrayOutputStream boas = new ByteArrayOutputStream();
@@ -222,6 +233,17 @@ public class Line {
             String xml = boas.toString("utf8");
             if(proof.getNumLines() > 0) {
                 RustProof rp = RustProof.fromXml(xml);
+                if(rp != null) {
+                    if (stopTimer)
+                        stopTimer();
+                    buildClaim();
+                    if(claim != null) {
+                        String result = rp.checkRuleAtLine(this.lineNumber);
+                        return haveClaimResult(result);
+                    }
+                } else {
+                    System.err.printf("Warning: RustProof.fromXml returned null\n");
+                }
             }
         } catch(Exception e) {
             e.printStackTrace();
@@ -231,14 +253,7 @@ public class Line {
         buildClaim();
         if (claim != null) {
             String result = claim.isValidClaim();
-            if (result == null) {
-                setStatusString("Line is Correct!");
-                setStatus(Proof.Status.CORRECT);
-            } else {
-                setStatusString(result);
-                setStatus(Proof.Status.INVALID_CLAIM);
-            }
-            return result == null;
+            haveClaimResult(result);
         }
         return false;
     }
