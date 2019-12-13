@@ -10,6 +10,7 @@ jni = "0.10.2"
 nom = "4.1.1"
 petgraph = "0.4.13"
 xml-rs = "0.8.0"
+lazy_static = "1.4.0"
 
 [build-dependencies]
 cbindgen = "*"

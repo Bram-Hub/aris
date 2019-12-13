@@ -728,20 +728,15 @@ where F: Fn(Expr) -> Expr {
     let mut p = normalize_fn(premise);
     let mut q = normalize_fn(conclusion);
     if commutative {
-        p = sort_commutative_ops(p);
-        q = sort_commutative_ops(q);
+        p = p.sort_commutative_ops();
+        q = q.sort_commutative_ops();
     }
     if p == q { Ok(()) }
     else { Err(ProofCheckError::Other(format!("{} and {} are not equal.", p, q))) }
 }
 
-fn check_by_reductions<P: Proof>(p: &P, deps: Vec<P::Reference>, conclusion: Expr, commutative: bool, reductions: Vec<(&str, &str)>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
-    // TODO: Move this (and corresponding reductions) to static lifetime somewhere
-    use parser::parse;
-    let patterns = permute_patterns(reductions.into_iter().map(|(premise, conclusion)| {
-        (parse(premise), parse(conclusion))
-    }).collect::<Vec<_>>());
-    check_by_normalize_first_expr(p, deps, conclusion, commutative, |e| reduce_pattern(e, &patterns))
+fn check_by_rewrite_rule<P: Proof>(p: &P, deps: Vec<P::Reference>, conclusion: Expr, commutative: bool, rule: &RewriteRule) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
+    check_by_normalize_first_expr(p, deps, conclusion, commutative, |e| rule.reduce(e))
 }
 
 impl RuleT for Equivalence {
@@ -773,45 +768,19 @@ impl RuleT for Equivalence {
 
 
         match self {
-            DeMorgan => check_by_normalize_first_expr(p, deps, conclusion, false, normalize_demorgans),
-            Association => check_by_normalize_first_expr(p, deps, conclusion, false, combine_associative_ops),
-            Commutation => check_by_normalize_first_expr(p, deps, conclusion, false, sort_commutative_ops),
-            Idempotence => check_by_normalize_first_expr(p, deps, conclusion, false, normalize_idempotence),
-            DoubleNegation => check_by_reductions(p, deps, conclusion, false, vec![
-                ("~~phi", "phi")
-            ]),
-            Distribution => check_by_reductions(p, deps, conclusion, true, vec![
-                ("(phi & psi) | (phi & lambda)", "phi & (psi | lambda)"),
-                ("(phi | psi) & (phi | lambda)", "phi | (psi & lambda)")
-            ]),
-            Complement => check_by_reductions(p, deps, conclusion, false, vec![
-                ("phi & ~phi", "_|_"),
-                ("phi | ~phi", "^|^"),
-            ]),
-            Identity => check_by_reductions(p, deps, conclusion, false, vec![
-                ("phi & ^|^", "phi"),
-                ("phi | _|_", "phi"),
-            ]),
-            Annihilation => check_by_reductions(p, deps, conclusion, false, vec![
-                ("phi & _|_", "_|_"),
-                ("phi | ^|^", "^|^"),
-            ]),
-            Inverse => check_by_reductions(p, deps, conclusion, false, vec![
-                ("~^|^", "_|_"),
-                ("~_|_", "^|^")
-            ]),
-            Absorption => check_by_reductions(p, deps, conclusion, false, vec![
-                ("phi & (phi | psi)", "phi"),
-                ("phi | (phi & psi)", "phi")
-            ]),
-            Reduction => check_by_reductions(p, deps, conclusion, true, vec![
-                ("phi & (~phi | psi)", "phi & psi"),
-                ("phi | (~phi & psi)", "phi & psi")
-            ]),
-            Adjacency => check_by_reductions(p, deps, conclusion, false, vec![
-                ("(phi | psi) & (phi | ~psi)", "phi"),
-                ("(phi & psi) | (phi & ~psi)", "phi")
-            ]),
+            DeMorgan => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.normalize_demorgans()),
+            Association => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.combine_associative_ops()),
+            Commutation => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.sort_commutative_ops()),
+            Idempotence => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.normalize_idempotence()),
+            DoubleNegation => check_by_rewrite_rule(p, deps, conclusion, false, &DOUBLE_NEGATION_RULES),
+            Distribution => check_by_rewrite_rule(p, deps, conclusion, true, &DISTRIBUTION_RULES),
+            Complement => check_by_rewrite_rule(p, deps, conclusion, false, &COMPLEMENT_RULES),
+            Identity => check_by_rewrite_rule(p, deps, conclusion, false, &IDENTITY_RULES),
+            Annihilation => check_by_rewrite_rule(p, deps, conclusion, false, &ANNIHILATION_RULES),
+            Inverse => check_by_rewrite_rule(p, deps, conclusion, false, &INVERSE_RULES),
+            Absorption => check_by_rewrite_rule(p, deps, conclusion, false, &ABSORPTION_RULES),
+            Reduction => check_by_rewrite_rule(p, deps, conclusion, true, &REDUCTION_RULES),
+            Adjacency => check_by_rewrite_rule(p, deps, conclusion, false, &ADJACENCY_RULES),
         }
     }
 }
@@ -837,35 +806,13 @@ impl RuleT for ConditionalEquivalence {
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
         use ProofCheckError::*; use ConditionalEquivalence::*;
         match self {
-            Complement => check_by_reductions(p, deps, conclusion, false, vec![
-                ("phi -> phi", "^|^"),
-                ("phi <-> phi", "^|^"),
-                ("phi <-> ~phi", "_|_"),
-            ]),
-            Identity => check_by_reductions(p, deps, conclusion, false, vec![
-                ("phi -> _|_", "~phi"),
-                ("^|^ -> phi", "phi"),
-                ("phi <-> _|_", "~phi"),
-                ("phi <-> ^|^", "phi"),
-            ]),
-            Annihilation => check_by_reductions(p, deps, conclusion, false, vec![
-                ("phi -> ^|^", "^|^"),
-                ("_|_ -> phi", "^|^"),
-            ]),
-            Implication => check_by_reductions(p, deps, conclusion, false, vec![
-                ("phi -> psi", "~phi | psi"),
-                ("~(phi -> psi)", "phi & ~psi"),
-            ]),
-            BiImplication => check_by_reductions(p, deps, conclusion, false, vec![
-                ("phi <-> psi", "(phi -> psi) & (psi -> phi)"),
-                ("phi <-> psi", "(phi & psi) | (~phi & ~psi)"),
-            ]),
-            Contraposition => check_by_reductions(p, deps, conclusion, false, vec![
-                ("~phi -> ~psi", "psi -> phi")
-            ]),
-            Currying => check_by_reductions(p, deps, conclusion, false, vec![
-                ("phi -> (psi -> lambda)", "(phi & psi) -> lambda")
-            ])
+            Complement => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_COMPLEMENT_RULES),
+            Identity => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_IDENTITY_RULES),
+            Annihilation => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_ANNIHILATION_RULES),
+            Implication => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_IMPLICATION_RULES),
+            BiImplication => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_BIIMPLICATION_RULES),
+            Contraposition => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_CONTRAPOSITION_RULES),
+            Currying => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_CURRYING_RULES)
         }
     }
 }

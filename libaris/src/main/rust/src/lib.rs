@@ -1,6 +1,6 @@
 #[macro_use] extern crate frunk;
 #[macro_use] extern crate nom;
-// #[macro_use] extern crate lazy_static;
+#[macro_use] extern crate lazy_static;
 extern crate jni;
 extern crate petgraph;
 extern crate xml;
@@ -14,6 +14,10 @@ pub mod proofs;
 use proofs::*;
 pub mod rules;
 use rules::*;
+pub mod rewrite_rules;
+use rewrite_rules::*;
+pub mod equivalences;
+use equivalences::*;
 
 pub mod java_interop {
     use super::*;
