@@ -1,9 +1,11 @@
+plugins {
+    id 'com.github.johnrengelman.shadow' version '5.2.0'
+}
 apply plugin: 'application'
 
 mainClassName = 'edu.rpi.aris.gui.Aris'
 
 dependencies {
-
     compile project(':libaris')
     compile project(':service')
 
