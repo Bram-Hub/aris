@@ -79,11 +79,14 @@ pub extern "system" fn Java_edu_rpi_aris_proof_RustProof_checkRuleAtLine(env: JN
         let ptr: jni::sys::jlong = env.get_field(this, "pointerToRustHeap", "J")?.j()?;
         let self_: &mut LinedProof<PooledProof<Hlist![Expr]>> = unsafe { &mut*(ptr as *mut _) };
         println!("RustProof::checkRuleAtLine {:?}", self_);
-        let line = self_.lines.get(linenum as _).expect(&format!("Failed to dereference line {} in {:?}", linenum, self_));
-        if let Err(e) = self_.proof.verify_line(&line.reference) {
-            Ok(env.new_string(&format!("{}", e))?.into_inner())
+        if let Some(line) = self_.lines.get(linenum as _) {
+            if let Err(e) = self_.proof.verify_line(&line.reference) {
+                Ok(env.new_string(&format!("{}", e))?.into_inner())
+            } else {
+                Ok(std::ptr::null_mut())
+            }
         } else {
-            Ok(std::ptr::null_mut())
+            Ok(env.new_string(&format!("Failed to dereference line {} in {:?}", linenum, self_))?.into_inner())
         }
     })
 }
