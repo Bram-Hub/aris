@@ -174,7 +174,7 @@ pub struct Substitution<A, B>(pub Vec<(A, B)>);
 pub fn unify(mut c: HashSet<Constraint<Expr>>) -> Option<Substitution<String, Expr>> {
     // inspired by TAPL 22.4
     //println!("\t{:?}", c);
-    let mut c_ = c.clone(); ;
+    let mut c_ = c.clone();
     let Constraint::Equal(s,t) = if let Some(x) = c_.drain().next() { c.remove(&x); x } else { return Some(Substitution(vec![])) };
     use Expr::*;
     let subst_set = |x, e1: Expr, set: HashSet<_>| { set.into_iter().map(|Constraint::Equal(e2, e3)| Constraint::Equal(subst(&e2, x, e1.clone()), subst(&e3, x, e1.clone()))).collect::<_>() };
@@ -237,6 +237,44 @@ fn test_unify() {
 }
 
 impl Expr {
+    /// Evaluate a quantifier-free boolean expression, given values for all the free variables
+    /// panics on unbound variables or expressions with quantifiers or arithmetic
+    pub fn eval(&self, env: &HashMap<String, bool>) -> bool {
+        use Expr::*;
+        match self {
+            Contradiction => false,
+            Tautology => true,
+            Var { name } => env[name],
+            Apply { func, args } => unimplemented!(), // TODO: do we want to pass a predicate environment too?
+            Unop { symbol, operand } => {
+                use USymbol::*;
+                match symbol {
+                    Not => !operand.eval(env),
+                }
+            }
+            Binop { symbol, left, right } => {
+                use BSymbol::*;
+                let (x, y) = (left.eval(env), right.eval(env));
+                match symbol {
+                    Implies => !x || y,
+                    Plus | Mult => panic!("Expr::eval does not support arithmetic"),
+                }
+            }
+            AssocBinop { symbol, exprs } => {
+                use ASymbol::*;
+                let (mut ret, f): (bool, &dyn Fn(bool, bool) -> bool) = match symbol {
+                    And => (true, &|x, y| x && y),
+                    Or => (false, &|x, y| x || y),
+                    Bicon | Equiv => unimplemented!(),
+                };
+                for b in exprs.into_iter().map(|e| e.eval(env)) {
+                    ret = f(ret, b);
+                }
+                ret
+            },
+            Quantifier { .. } => panic!("Expr::eval does not support quantifiers"),
+        }
+    }
     /// Sort all commutative associative operators to normalize expressions in the case of arbitrary ordering
     /// Eg (B & A) ==> (A & B)
     pub fn sort_commutative_ops(self) -> Expr {
