@@ -796,7 +796,7 @@ impl RuleT for ConditionalEquivalence {
             Identity => "Conditional Identity",
             Annihilation => "Conditional Annihilation",
             Implication => "Implication",
-            BiImplication => "BiImplication",
+            BiImplication => "Biconditional Equivalence",
             Contraposition => "Contraposition",
             Currying => "Currying",
         }.into()

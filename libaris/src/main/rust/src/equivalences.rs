@@ -32,7 +32,7 @@ lazy_static! {
     ]);
     pub static ref REDUCTION_RULES: RewriteRule = RewriteRule::from_patterns(&[
         ("phi & (~phi | psi)", "phi & psi"),
-        ("phi | (~phi & psi)", "phi & psi")
+        ("phi | (~phi & psi)", "phi | psi")
     ]);
     pub static ref ADJACENCY_RULES: RewriteRule = RewriteRule::from_patterns(&[
         ("(phi | psi) & (phi | ~psi)", "phi"),

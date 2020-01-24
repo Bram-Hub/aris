@@ -777,19 +777,23 @@ pub fn test_reduction<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
     let p3 = prf.add_premise(p("(B & ~A) | A"));
     let p4 = prf.add_premise(p("~B | (A & ~~B)"));
     let p5 = prf.add_premise(p("(forall A, (A & (~A | B))) | (~(forall A, (A & (~A | B))) & C)"));
+    let p6 = prf.add_premise(p("B & (C | (~C & ~A))"));
 
     let r1 = prf.add_step(Justification(p("A & B"), RuleM::Reduction, vec![p1.clone()], vec![]));
     let r2 = prf.add_step(Justification(p("~A & B"), RuleM::Reduction, vec![p2.clone()], vec![]));
-    let r3 = prf.add_step(Justification(p("A & B"), RuleM::Reduction, vec![p3.clone()], vec![]));
-    let r4 = prf.add_step(Justification(p("~B & A"), RuleM::Reduction, vec![p4.clone()], vec![]));
-    let r5 = prf.add_step(Justification(p("(forall A, (A & B)) & C"), RuleM::Reduction, vec![p5.clone()], vec![]));
+    let r3 = prf.add_step(Justification(p("A | B"), RuleM::Reduction, vec![p3.clone()], vec![]));
+    let r4 = prf.add_step(Justification(p("~B | A"), RuleM::Reduction, vec![p4.clone()], vec![]));
+    let r5 = prf.add_step(Justification(p("(forall A, (A & B)) | C"), RuleM::Reduction, vec![p5.clone()], vec![]));
 
     let r6 = prf.add_step(Justification(p("A"), RuleM::Reduction, vec![p1.clone()], vec![]));
-    let r7 = prf.add_step(Justification(p("A & B"), RuleM::Reduction, vec![p2.clone()], vec![]));
+    let r7 = prf.add_step(Justification(p("A | B"), RuleM::Reduction, vec![p2.clone()], vec![]));
     let r8 = prf.add_step(Justification(p("B"), RuleM::Reduction, vec![p3.clone()], vec![]));
     let r9 = prf.add_step(Justification(p("B & A"), RuleM::Reduction, vec![p4.clone()], vec![]));
 
-    (prf, vec![r1, r2, r3, r4, r5], vec![r6, r7, r8, r9])
+    let r10 = prf.add_step(Justification(p("B & (C | ~A)"), RuleM::Reduction, vec![p6.clone()], vec![]));
+    let r11 = prf.add_step(Justification(p("B & (C & ~A)"), RuleM::Reduction, vec![p6.clone()], vec![]));
+
+    (prf, vec![r1, r2, r3, r4, r5, r10], vec![r6, r7, r8, r9, r11])
 }
 
 pub fn test_adjacency<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
