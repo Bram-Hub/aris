@@ -81,6 +81,10 @@ public class Aris extends Application implements ArisClientModule<LibAris>, Save
     @Override
     public void start(Stage stage) throws IOException {
         instance = this;
+        LibAssign libAssign = LibAssign.getInstance();
+        JavaFXDialogArisExceptionHandler exceptionHandler = new JavaFXDialogArisExceptionHandler();
+        libAssign.setArisExceptionHandler(exceptionHandler);
+        Thread.setDefaultUncaughtExceptionHandler(libAssign);
         /*mainWindow = */
         showProofWindow(stage, null);
     }

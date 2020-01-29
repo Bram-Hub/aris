@@ -7,6 +7,7 @@ mainClassName = 'edu.rpi.aris.gui.Aris'
 
 dependencies {
     compile project(':libaris')
+    compile project(':libassign')
     compile project(':service')
 
     compile 'org.apache.commons:commons-collections4:4.1'

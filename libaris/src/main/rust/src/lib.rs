@@ -32,6 +32,8 @@ pub mod java_interop {
     use jni::objects::{JClass, JString, JValue, JObject};
     use jni::sys::{jobject, jstring, jarray};
 
+    use std::panic::{catch_unwind, UnwindSafe};
+
     fn jobject_to_string(env: &JNIEnv, obj: JObject) -> jni::errors::Result<String> {
         Ok(String::from(env.get_string(JString::from(obj))?))
     }
@@ -45,8 +47,33 @@ pub mod java_interop {
         Ok(())
     }
 
-    pub fn with_thrown_errors<A, F: FnOnce(&JNIEnv) -> jni::errors::Result<A>>(env: &JNIEnv, f: F) -> A {
-        f(env).unwrap_or_else(|e| { let _ = env.throw(&*format!("{:?}", e)); unsafe { std::mem::zeroed() } })
+    pub fn with_thrown_errors<A, F: FnOnce(&JNIEnv) -> jni::errors::Result<A> + UnwindSafe>(env: &JNIEnv, f: F) -> A {
+        use std::panic::{take_hook, set_hook, PanicInfo, Location};
+        let old_hook = take_hook();
+        let (tx, rx) = std::sync::mpsc::channel::<String>();
+        let mtx = std::sync::Mutex::new(tx);
+        set_hook(Box::new(move |info: &PanicInfo| {
+            let mut msg = format!("Panic at {:?}", info.location());
+            if let Some(e) = info.payload().downcast_ref::<&str>() {
+                msg += &*format!(": {:?}", e);
+            }
+            if let Some(e) = info.payload().downcast_ref::<String>() {
+                msg += &*format!(": {:?}", e);
+            }
+            if let Ok(tx) = mtx.lock() {
+                let _ = tx.send(msg);
+            }
+        }));
+        let ret = catch_unwind(|| {
+            f(env).unwrap_or_else(|e| { let _ = env.throw_new("java/lang/RuntimeException", &*format!("{:?}", e)); unsafe { std::mem::zeroed() } }) // handle Result::Err
+        }).unwrap_or_else(|_| {
+            // handle panic
+            let msg = rx.recv().unwrap_or(format!("with_thrown_errors: recv failed"));
+            let _ = env.throw_new("java/lang/RuntimeException", &*msg);
+            unsafe { std::mem::zeroed() }
+        });
+        set_hook(old_hook);
+        ret
     }
 }
 use java_interop::*;
