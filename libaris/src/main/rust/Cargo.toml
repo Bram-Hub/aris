@@ -16,7 +16,8 @@ lazy_static = "1.4.0"
 cbindgen = "*"
 
 [lib]
-crate_type = ["cdylib"]
+name = "libaris"
+crate_type = ["cdylib", "rlib"]
 
 [profile.release]
 debug = true # enable debugging symbols in release mode (primarily for line numbers for RUST_BACKTRACE=1)

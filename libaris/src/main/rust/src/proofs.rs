@@ -80,8 +80,11 @@ pub trait Proof: Sized {
     fn lookup_subproof_or_die(&self, r: Self::SubproofReference) -> Result<Self::Subproof, ProofCheckError<Self::Reference, Self::SubproofReference>> {
         self.lookup_subproof(r.clone()).ok_or(ProofCheckError::SubproofDoesNotExist(r))
     }
+    fn direct_lines(&self) -> Vec<<Self as Proof>::Reference> {
+        self.lines().iter().filter_map(|x| Coproduct::uninject::<<Self as Proof>::Reference, _>(x.clone()).ok()).collect()
+    }
     fn exprs(&self) -> Vec<<Self as Proof>::Reference> {
-        self.premises().iter().cloned().chain(self.lines().iter().filter_map(|x| Coproduct::uninject::<<Self as Proof>::Reference, _>(x.clone()).ok())).collect()
+        self.premises().iter().cloned().chain(self.direct_lines()).collect()
     }
     fn contained_justifications(&self) -> HashSet<Self::Reference> {
         self.lines().into_iter().filter_map(|x| x.fold(hlist![
