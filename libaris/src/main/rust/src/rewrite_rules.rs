@@ -261,7 +261,8 @@ fn permute_patterns(patterns: Vec<(Expr, Expr)>) -> Vec<(Expr, Expr)> {
 /// # Example
 /// ```
 /// // DeMorgan's for and/or that have only two parameters
-/// use expression_builders::*;
+/// use libaris::expression::{ASymbol, expression_builders::*};
+/// use libaris::rewrite_rules::reduce_pattern;
 ///
 /// // ~(phi & psi) ==> ~phi | ~psi
 /// let pattern1 = not(assocbinop(ASymbol::And, &[var("phi"), var("psi")]));
@@ -272,9 +273,9 @@ fn permute_patterns(patterns: Vec<(Expr, Expr)>) -> Vec<(Expr, Expr)> {
 /// let replace2 = assocbinop(ASymbol::And, &[not(var("phi")), not(var("psi"))]);
 ///
 /// let patterns = vec![(pattern1, replace1), (pattern2, replace2)];
-/// normalize_pattern(e, patterns)
+/// reduce_pattern(var("some_expr"), &patterns);
 /// ```
-fn reduce_pattern(e: Expr, patterns: &Vec<(Expr, Expr)>) -> Expr {
+pub fn reduce_pattern(e: Expr, patterns: &Vec<(Expr, Expr)>) -> Expr {
     use expression_builders::*;
 
     let e_free = freevars(&e);

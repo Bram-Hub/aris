@@ -70,8 +70,8 @@ fn main() -> Result<(), String> {
     let student_file = File::open(&student_path).expect("Could not open student file");
 
     type P = libaris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
-    let (i_prf, i_author, i_hash, i_goals) = proof_from_xml::<P, _>(&instructor_file).unwrap();
-    let (s_prf, s_author, s_hash, s_goals) = proof_from_xml::<P, _>(&student_file).unwrap();
+    let (i_prf, i_meta) = proof_from_xml::<P, _>(&instructor_file).unwrap();
+    let (s_prf, s_meta) = proof_from_xml::<P, _>(&student_file).unwrap();
 
     let instructor_premises = i_prf.premises();
     let student_premises = s_prf.premises();
@@ -89,7 +89,7 @@ fn main() -> Result<(), String> {
     let student_lines = s_prf.direct_lines();
 
     // TODO: Verify that the goals are in the student lines and that the instructor's conclusion line matches some student's conclusion, and that the student's conclusion checks out using DFS.
-    for i_goal in i_goals {
+    for i_goal in i_meta.goals {
         if let Some(i) = student_lines.iter().find(|i| s_prf.lookup_expr(*i.clone()).as_ref() == Some(&i_goal)) {
             validate_recursive(&s_prf, *i).unwrap();
         }

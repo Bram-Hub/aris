@@ -3,13 +3,20 @@ use std::collections::HashMap;
 use std::io::Read;
 use xml::reader::EventReader;
 
+pub struct ProofMetaData {
+    pub author: Option<String>,
+    pub hash: Option<String>,
+    pub goals: Vec<Expr>,
+}
 
-pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Result<(P, Option<String>, Option<String>, Vec<Expr>), String> {
+pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Result<(P, ProofMetaData), String> {
     let mut er = EventReader::new(r);
 
-    let mut author = None;
-    let mut hash = None;
-    let mut goals = vec![];
+    let mut metadata = ProofMetaData {
+        author: None,
+        hash: None,
+        goals: vec![],
+    };
 
     let mut element_stack = vec![];
     let mut attribute_stack = vec![];
@@ -73,8 +80,8 @@ pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Result<(P, Option<String>, Opt
                     }
                 }
                 match &*element {
-                    "author" => { author = Some(contents.clone()) },
-                    "hash" => { hash = Some(contents.clone()) },
+                    "author" => { metadata.author = Some(contents.clone()) },
+                    "hash" => { metadata.hash = Some(contents.clone()) },
                     "raw" => { last_raw = contents.clone(); },
                     "assumption" => {
                         on_current_proof! { proof, { let p = proof.add_premise(parse!(&last_raw)); line_refs.insert(last_linenum.clone(), p).ok_or(format!("Multiple assumptions with line number {}", last_linenum)) } }
@@ -102,7 +109,7 @@ pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Result<(P, Option<String>, Opt
                         }
                     },
                     "goal" => {
-                        goals.push(parse!(&last_raw));
+                        metadata.goals.push(parse!(&last_raw));
                     }
                     _ => (),
                 }
@@ -113,15 +120,15 @@ pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Result<(P, Option<String>, Opt
             Err(e) => { return Err(format!("Error parsing xml document: {:?}", e)); },
         }
     }
-    Ok((proof, author, hash, goals))
+    Ok((proof, metadata))
 }
 
 #[test]
 fn test_xml() {
     let data = &include_bytes!("../../propositional_logic_arguments_for_proofs_ii_problem_10.bram")[..];
     type P = super::proofs::pooledproof::PooledProof<Hlist![Expr]>;
-    let (prf, author, hash) = proof_from_xml::<P, _>(data).unwrap();
-    println!("{:?} {:?}\n{}", author, hash, prf);
+    let (prf, metadata) = proof_from_xml::<P, _>(data).unwrap();
+    println!("{:?} {:?}\n{}", metadata.author, metadata.hash, prf);
 }
 
 #[test]
@@ -158,8 +165,8 @@ fn test_xml2() {
     </bram>
     "#;
     type P = super::proofs::pooledproof::PooledProof<Hlist![Expr]>;
-    let (prf, author, hash) = proof_from_xml::<P, _>(&xml[..]).unwrap();
-    println!("{:?} {:?}\n{}", author, hash, prf);
+    let (prf, metadata) = proof_from_xml::<P, _>(&xml[..]).unwrap();
+    println!("{:?} {:?}\n{}", metadata.author, metadata.hash, prf);
     let lines = prf.lines();
     let sub = prf.lookup_subproof(lines[0].get::<<P as Proof>::SubproofReference, _>().unwrap().clone()).unwrap();
     use expression_builders::{var, binop};
