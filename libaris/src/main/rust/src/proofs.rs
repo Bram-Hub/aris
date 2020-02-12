@@ -128,7 +128,7 @@ pub trait Proof: Sized {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Justification<T, R, S>(T, Rule, Vec<R>, Vec<S>);
+pub struct Justification<T, R, S>(pub T, pub Rule, pub Vec<R>, pub Vec<S>);
 
 impl<T, R, S> Justification<T, R, S> {
     fn map0<U, F: FnOnce(T) -> U>(self, f: F) -> Justification<U, R, S> {

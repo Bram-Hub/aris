@@ -7,10 +7,45 @@ use std::env;
 use std::path::Path;
 use std::fs::File;
 use std::collections::HashSet;
+use std::fmt::Debug;
 
-use libaris::proofs::Proof;
+use libaris::rules::ProofCheckError;
+use libaris::proofs::{Proof, Justification};
 use libaris::expression::Expr;
 use libaris::proofs::xml_interop::proof_from_xml;
+
+fn validate_recursive<P: Proof>(proof: &P, line: P::Reference) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>>
+where P::Reference:Debug, P::SubproofReference:Debug {
+    use ProofCheckError::*;
+    use frunk::Coproduct::{self, Inl, Inr};
+    let mut q = vec![line];
+
+    // lookup returns either expr or Justification. if it returns the expr, it's done.
+    // otherwise, 
+    while let Some(r) = q.pop() {
+        println!("q: {:?} {:?}", r, q);
+        proof.verify_line(&r)?;
+
+        let line = proof.lookup(r.clone());
+        println!("line: {:?}", line);
+
+        match line {
+            None => { return Err(LineDoesNotExist(r.clone())); },
+            Some(Inl(_)) => {},
+            Some(Inr(Inl(Justification(conclusion, rule, deps, sdeps)))) => {
+                q.extend(deps);
+
+                for sdep in sdeps.iter() {
+                    let sub = proof.lookup_subproof_or_die(sdep.clone())?;
+                    q.extend(sub.direct_lines());
+                }
+            },
+            Some(Inr(Inr(void))) => match void {},
+        }
+    }
+
+    Ok(())
+}
 
 // Takes 2 files as args:
 // First one is instructor assignment
@@ -35,8 +70,8 @@ fn main() -> Result<(), String> {
     let student_file = File::open(&student_path).expect("Could not open student file");
 
     type P = libaris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
-    let (i_prf, i_author, i_hash) = proof_from_xml::<P, _>(&instructor_file).unwrap();
-    let (s_prf, s_author, s_hash) = proof_from_xml::<P, _>(&student_file).unwrap();
+    let (i_prf, i_author, i_hash, i_goals) = proof_from_xml::<P, _>(&instructor_file).unwrap();
+    let (s_prf, s_author, s_hash, s_goals) = proof_from_xml::<P, _>(&student_file).unwrap();
 
     let instructor_premises = i_prf.premises();
     let student_premises = s_prf.premises();
@@ -49,16 +84,21 @@ fn main() -> Result<(), String> {
         return Err("Premises do not match!".into());
     }
 
-    // Gets the top level lines (goals)
+    // Gets the top level lines
     let instructor_lines = i_prf.direct_lines();
     let student_lines = s_prf.direct_lines();
 
-    // TODO: Verify that the goals are in the student lines and that the instructor's conclusion line matches some student's conclusion, and that the student's conclusion checks out using BFS.
-    // Check that each line is in the student lines
-    //for line in instructor_lines {
-    //    
-    //}
+    // TODO: Verify that the goals are in the student lines and that the instructor's conclusion line matches some student's conclusion, and that the student's conclusion checks out using DFS.
+    for i_goal in i_goals {
+        if let Some(i) = student_lines.iter().find(|i| s_prf.lookup_expr(*i.clone()).as_ref() == Some(&i_goal)) {
+            validate_recursive(&s_prf, *i).unwrap();
+        }
 
-    return Ok(());
+        else {
+            return Err(format!("Goal {} are in student proof.", i_goal.clone()));
+        }
+    }
+
+    Ok(())
 }
 

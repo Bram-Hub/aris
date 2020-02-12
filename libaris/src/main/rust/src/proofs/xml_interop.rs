@@ -4,18 +4,19 @@ use std::io::Read;
 use xml::reader::EventReader;
 
 
-pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Option<(P, Option<String>, Option<String>)> {
+pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Result<(P, Option<String>, Option<String>, Vec<Expr>), String> {
     let mut er = EventReader::new(r);
 
     let mut author = None;
     let mut hash = None;
+    let mut goals = vec![];
 
     let mut element_stack = vec![];
     let mut attribute_stack = vec![];
     let mut contents = String::new();
 
     macro_rules! parse {
-        ($x:expr) => { { let s: &str = $x; let t = format!("{}\n", s); if let Ok((_, u)) = parser::main(&t) { u } else { return None } } }
+        ($x:expr) => { { let s: &str = $x; let t = format!("{}\n", s); if let Ok((_, u)) = parser::main(&t) { u } else { return Err(format!("Failed to parse {:?}", s)) } } }
     }
     //let parse = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
     let mut subproofs: HashMap<_, <P as Proof>::SubproofReference> = HashMap::new();
@@ -66,7 +67,7 @@ pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Option<(P, Option<String>, Opt
                 macro_rules! on_current_proof {
                     ($n:ident, $x:expr) => {
                         match &*current_proof_id {
-                            "0" => { let $n = &mut proof; $x; },
+                            "0" => { let $n = &mut proof; let _ = $x; },
                             r => { let key = subproofs[r].clone(); proof.with_mut_subproof(&key, |sub| { let $n = sub; $x }); },
                         }
                     }
@@ -76,16 +77,17 @@ pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Option<(P, Option<String>, Opt
                     "hash" => { hash = Some(contents.clone()) },
                     "raw" => { last_raw = contents.clone(); },
                     "assumption" => {
-                        on_current_proof! { proof, { let p = proof.add_premise(parse!(&last_raw)); line_refs.insert(last_linenum.clone(), p) } }
+                        on_current_proof! { proof, { let p = proof.add_premise(parse!(&last_raw)); line_refs.insert(last_linenum.clone(), p).ok_or(format!("Multiple assumptions with line number {}", last_linenum)) } }
                     },
                     "rule" => { last_rule = contents.clone(); },
                     "premise" => { seen_premises.push(contents.clone()); },
                     "step" => {
                         //println!("step {:?} {:?}", last_rule, seen_premises);
                         match &*last_rule {
+                            "" => {},
                             "SUBPROOF" => {
                                 on_current_proof! { proof, { let p = proof.add_subproof(); subproofs.insert(seen_premises[0].clone(), p.clone()); lines_to_subs.insert(last_linenum.clone(), p) } }
-                            }
+                            },
                             rulename => {
                                 let rule = RuleM::from_serialized_name(rulename).unwrap_or(RuleM::Reit); // TODO: explicit RuleM::NoSelectionMade?
                                 //println!("{:?}", rule);
@@ -99,16 +101,19 @@ pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Option<(P, Option<String>, Opt
                             },
                         }
                     },
+                    "goal" => {
+                        goals.push(parse!(&last_raw));
+                    }
                     _ => (),
                 }
             },
             Ok(Whitespace(_)) => (),
             Ok(EndDocument) => break,
             Ok(_) => (),
-            Err(e) => { println!("Error parsing xml document: {:?}", e); return None; },
+            Err(e) => { return Err(format!("Error parsing xml document: {:?}", e)); },
         }
     }
-    Some((proof, author, hash))
+    Ok((proof, author, hash, goals))
 }
 
 #[test]
