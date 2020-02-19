@@ -1,5 +1,8 @@
 use super::{Expr, USymbol, BSymbol, ASymbol, QSymbol};
+/// This module parses infix logical expressions into abstract syntax trees (ASTs) defined in libaris::expression::Expr
 
+/// parser::parse is a convenience function used in the tests, and panics if the expression doesn't parse
+/// for handling user input, call parser::main instead and handle the Err case
 pub fn parse(input: &str) -> Expr {
     let newlined = format!("{}\n", input);
     main(&newlined).unwrap().1
@@ -9,6 +12,8 @@ fn custom_error<A, B>(a: A, x: u32) -> nom::IResult<A, B> {
     return Err(nom::Err::Error(nom::Context::Code(a, nom::ErrorKind::Custom(x))));
 }
 
+/// variable is implemented as a function instead of via nom's macros in order to more conveniently reject keywords as variables
+/// in nom5, the "verify" combinator does this properly, in nom4, the "verify" macro's predicate requires ownership of the return value
 fn variable(s: &str) -> nom::IResult<&str, String> {
     let r = variable_(s);
     if let Ok((ref rest, ref var)) = r {
@@ -18,6 +23,11 @@ fn variable(s: &str) -> nom::IResult<&str, String> {
     }
     r
 }
+
+// All the `named!` things below can be thought of as grammar productions interleaved with code that constructs the AST value associated with each production.
+// `alt!` corresponds to alternation/choice in an EBNF grammar
+// `do_parse!` corresponds to sequencing, and optionally provides names for the parts of the sequence that build up the AST value
+// `tag!` is used for literal string values, and supports unicode
 
 named!(space<&str, ()>, do_parse!(many0!(one_of!(" \t")) >> (())));
 named!(variable_<&str, String>, do_parse!(x: many1!(one_of!("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")) >> ({let mut y = String::new(); for c in x { y.push(c); }; y})));
@@ -51,6 +61,9 @@ named!(assoctermaux<&str, (Vec<Expr>, Vec<ASymbol>)>, alt!(
     do_parse!(e: paren_expr >> (vec![e], vec![]))
     ));
 
+/// assocterm is implemented as a function instead of using nom's macros because
+/// enforcing that all the symbols are the same is more easily done with iterators.
+/// This check is what rules out `(a /\ b \/ c)` without further parenthesization.
 fn assocterm(s: &str) -> nom::IResult<&str, Expr> {
     let (rest, (mut exprs, syms)) = assoctermaux(s)?;
     assert_eq!(exprs.len(), syms.len()+1);
@@ -65,6 +78,7 @@ fn assocterm(s: &str) -> nom::IResult<&str, Expr> {
     Ok((rest, Expr::AssocBinop { symbol, exprs }))
 }
 
+// paren_expr is a factoring of expr that eliminates left-recursion, which parser combinators have trouble with
 named!(paren_expr<&str, Expr>, alt!(contradiction | tautology | predicate | notterm | binder | do_parse!(space >> tag!("(") >> space >> e: expr >> space >> tag!(")") >> space >> (e))));
 named!(pub expr<&str, Expr>, alt!(assocterm | binopterm | paren_expr));
 named!(pub main<&str, Expr>, do_parse!(e: expr >> tag!("\n") >> (e)));
