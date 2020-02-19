@@ -13,8 +13,9 @@ use libaris::rules::ProofCheckError;
 use libaris::proofs::{Proof, Justification};
 use libaris::expression::Expr;
 use libaris::proofs::xml_interop::proof_from_xml;
+use libaris::proofs::lined_proof::LinedProof;
 
-fn validate_recursive<P: Proof>(proof: &P, line: P::Reference) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>>
+fn validate_recursive<P: Proof>(proof: &P, line: P::Reference) -> Result<(), (P::Reference, ProofCheckError<P::Reference, P::SubproofReference>)>
 where P::Reference:Debug, P::SubproofReference:Debug {
     use ProofCheckError::*;
     use frunk::Coproduct::{self, Inl, Inr};
@@ -23,20 +24,20 @@ where P::Reference:Debug, P::SubproofReference:Debug {
     // lookup returns either expr or Justification. if it returns the expr, it's done.
     // otherwise, 
     while let Some(r) = q.pop() {
-        println!("q: {:?} {:?}", r, q);
-        proof.verify_line(&r)?;
+        //println!("q: {:?} {:?}", r, q);
+        proof.verify_line(&r).map_err(|e| (r.clone(), e))?;
 
         let line = proof.lookup(r.clone());
-        println!("line: {:?}", line);
+        //println!("line: {:?}", line);
 
         match line {
-            None => { return Err(LineDoesNotExist(r.clone())); },
+            None => { return Err((r.clone(), LineDoesNotExist(r.clone()))); },
             Some(Inl(_)) => {},
             Some(Inr(Inl(Justification(conclusion, rule, deps, sdeps)))) => {
                 q.extend(deps);
 
                 for sdep in sdeps.iter() {
-                    let sub = proof.lookup_subproof_or_die(sdep.clone())?;
+                    let sub = proof.lookup_subproof_or_die(sdep.clone()).map_err(|e| (r.clone(), e))?;
                     q.extend(sub.direct_lines());
                 }
             },
@@ -50,7 +51,6 @@ where P::Reference:Debug, P::SubproofReference:Debug {
 // Takes 2 files as args:
 // First one is instructor assignment
 //   Should have 1 top level proof w/ an arbitrary number of assumptions, only 1 step
-//
 // Second one is student assignment
 //
 // Assert that the assumptions are the same, that the step(goal) appears at the top level of the
@@ -70,6 +70,7 @@ fn main() -> Result<(), String> {
     let student_file = File::open(&student_path).expect("Could not open student file");
 
     type P = libaris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
+
     let (i_prf, i_meta) = proof_from_xml::<P, _>(&instructor_file).unwrap();
     let (s_prf, s_meta) = proof_from_xml::<P, _>(&student_file).unwrap();
 
@@ -88,14 +89,24 @@ fn main() -> Result<(), String> {
     let instructor_lines = i_prf.direct_lines();
     let student_lines = s_prf.direct_lines();
 
-    // TODO: Verify that the goals are in the student lines and that the instructor's conclusion line matches some student's conclusion, and that the student's conclusion checks out using DFS.
+    // Verify that the goals are in the student lines and that the instructor's conclusion line matches some student's conclusion, and that the student's conclusion checks out using DFS.
     for i_goal in i_meta.goals {
         if let Some(i) = student_lines.iter().find(|i| s_prf.lookup_expr(*i.clone()).as_ref() == Some(&i_goal)) {
-            validate_recursive(&s_prf, *i).unwrap();
+            match validate_recursive(&s_prf, *i) {
+                Ok(()) => {},
+                Err((r, e)) => return {
+                    // Create a lined proof to get line numbers from line reference via linear search
+                    let s_prf_with_lines = LinedProof::from_proof(s_prf.clone());
+                    let (index, _) = s_prf_with_lines.lines.iter().enumerate().find(|(i, rl)| rl.reference == r)
+                        .expect("Failed to find line number for building error message (BAD!!)");
+                    println!("{}", s_prf);
+                    Err(format!("validate_recursive failed for line {}: {}", index + 1, e))
+                },
+            }
         }
 
         else {
-            return Err(format!("Goal {} are in student proof.", i_goal.clone()));
+            return Err(format!("Goal {} is not in student proof.", i_goal.clone()));
         }
     }
 
