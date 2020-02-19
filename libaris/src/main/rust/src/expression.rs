@@ -1,19 +1,25 @@
 use super::*;
 use std::collections::{HashSet, HashMap};
 
+/// Symbol for unary operations
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[repr(C)]
 pub enum USymbol { Not }
+/// Symbol for binary operations
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[repr(C)]
 pub enum BSymbol { Implies, Plus, Mult }
+/// Symbol for associative binary operations
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[repr(C)]
 pub enum ASymbol { And, Or, Bicon, Equiv }
+/// Symbol for quantifiers
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[repr(C)]
 pub enum QSymbol { Forall, Exists }
 
+/// libaris::expression::Expr is the core AST (Abstract Syntax Tree) type for representing logical expressions.
+/// For most of the recursive cases, it uses symbols so that code can work on the shape of e.g. a binary operation without worrying about which binary operation it is.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[repr(C)]
 pub enum Expr {
@@ -103,6 +109,7 @@ impl PossiblyCommutative for ASymbol {
     }
 }
 
+/// Calculates the set of variables that occur free in some logical expression
 pub fn freevars(e: &Expr) -> HashSet<String> {
     let mut r = HashSet::new();
     match e {
@@ -118,6 +125,7 @@ pub fn freevars(e: &Expr) -> HashSet<String> {
     r
 }
 
+/// Generate a fresh symbol/variable name, using "orig" as a prefix, and avoiding collisions with the specified set
 pub fn gensym(orig: &str, avoid: &HashSet<String>) -> String {
     for i in 0u64.. {
         let ret = format!("{}{}", orig, i);
@@ -128,6 +136,7 @@ pub fn gensym(orig: &str, avoid: &HashSet<String>) -> String {
     panic!("Somehow gensym used more than 2^{64} ids without finding anything?")
 }
 
+/// `subst(e, to_replace, with)` performs capture-avoiding substitution of free variables named `to_replace` with `with` in `e`
 pub fn subst(e: &Expr, to_replace: &str, with: Expr) -> Expr {
     match e {
         Expr::Contradiction => Expr::Contradiction,
@@ -170,7 +179,8 @@ fn test_subst() {
 pub enum Constraint<A> { Equal(A, A) }
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Substitution<A, B>(pub Vec<(A, B)>);
-/// a == b -> try_unify(&a, &b) == Some(vec![])
+/// Unifies a set of equality constraints on expressions, giving a list of substitutions that make constrained expressions equal.
+/// a == b -> unify(HashSet::from_iter(vec![Constraint::Equal(a, b)])) == Some(vec![])
 pub fn unify(mut c: HashSet<Constraint<Expr>>) -> Option<Substitution<String, Expr>> {
     // inspired by TAPL 22.4
     //println!("\t{:?}", c);

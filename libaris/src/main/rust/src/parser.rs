@@ -1,6 +1,4 @@
 use super::{Expr, USymbol, BSymbol, ASymbol, QSymbol};
-/// This module parses infix logical expressions into abstract syntax trees (ASTs) defined in libaris::expression::Expr
-
 /// parser::parse is a convenience function used in the tests, and panics if the expression doesn't parse
 /// for handling user input, call parser::main instead and handle the Err case
 pub fn parse(input: &str) -> Expr {

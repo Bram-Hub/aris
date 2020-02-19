@@ -3,6 +3,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+/**
+ * Symbol for associative binary operations
+ */
 typedef enum {
   And,
   Or,
@@ -10,17 +13,26 @@ typedef enum {
   Equiv,
 } ASymbol;
 
+/**
+ * Symbol for binary operations
+ */
 typedef enum {
   Implies,
   Plus,
   Mult,
 } BSymbol;
 
+/**
+ * Symbol for quantifiers
+ */
 typedef enum {
   Forall,
   Exists,
 } QSymbol;
 
+/**
+ * Symbol for unary operations
+ */
 typedef enum {
   Not,
 } USymbol;
@@ -33,6 +45,10 @@ typedef struct Vec_Expr Vec_Expr;
 
 typedef struct Vec_String Vec_String;
 
+/**
+ * libaris::expression::Expr is the core AST (Abstract Syntax Tree) type for representing logical expressions.
+ * For most of the recursive cases, it uses symbols so that code can work on the shape of e.g. a binary operation without worrying about which binary operation it is.
+ */
 typedef enum {
   Contradiction,
   Tautology,

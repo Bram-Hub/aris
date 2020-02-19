@@ -49,6 +49,7 @@ pub trait DisplayIndented {
     fn display_indented(&self, fmt: &mut Formatter, indent: usize, linecount: &mut usize) -> Result<(), std::fmt::Error>;
 }
 
+/// libaris::proofs::Proof is the core trait for working with proofs. Most functions that work with proofs should be generic over `P: Proof` instead of working with a concrete proof representation.
 pub trait Proof: Sized {
     type Reference: Clone + Eq + Hash;
     type SubproofReference: Clone + Eq + Hash;
@@ -127,6 +128,8 @@ pub trait Proof: Sized {
     }
 }
 
+/// A Justification struct represents a step in the proof.
+/// It contains an expression, a rule indicating why that expression is justified, and references to previous lines/subproofs for validating the rule.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Justification<T, R, S>(pub T, pub Rule, pub Vec<R>, pub Vec<S>);
 
