@@ -1,78 +1,87 @@
 use super::*;
 
-lazy_static! {
-    // Boolean Equivalences
-
-    pub static ref DOUBLE_NEGATION_RULES: RewriteRule = RewriteRule::from_patterns(&[
-        ("~~phi", "phi")
-    ]);
-    pub static ref DISTRIBUTION_RULES: RewriteRule = RewriteRule::from_patterns(&[
-        ("(phi & psi) | (phi & lambda)", "phi & (psi | lambda)"),
-        ("(phi | psi) & (phi | lambda)", "phi | (psi & lambda)")
-    ]);
-    pub static ref COMPLEMENT_RULES: RewriteRule = RewriteRule::from_patterns(&[
-        ("phi & ~phi", "_|_"),
-        ("phi | ~phi", "^|^"),
-    ]);
-    pub static ref IDENTITY_RULES: RewriteRule = RewriteRule::from_patterns(&[
-        ("phi & ^|^", "phi"),
-        ("phi | _|_", "phi"),
-    ]);
-    pub static ref ANNIHILATION_RULES: RewriteRule = RewriteRule::from_patterns(&[
-        ("phi & _|_", "_|_"),
-        ("phi | ^|^", "^|^"),
-    ]);
-    pub static ref INVERSE_RULES: RewriteRule = RewriteRule::from_patterns(&[
-        ("~^|^", "_|_"),
-        ("~_|_", "^|^")
-    ]);
-    pub static ref ABSORPTION_RULES: RewriteRule = RewriteRule::from_patterns(&[
-        ("phi & (phi | psi)", "phi"),
-        ("phi | (phi & psi)", "phi")
-    ]);
-    pub static ref REDUCTION_RULES: RewriteRule = RewriteRule::from_patterns(&[
-        ("phi & (~phi | psi)", "phi & psi"),
-        ("phi | (~phi & psi)", "phi | psi")
-    ]);
-    pub static ref ADJACENCY_RULES: RewriteRule = RewriteRule::from_patterns(&[
-        ("(phi | psi) & (phi | ~psi)", "phi"),
-        ("(phi & psi) | (phi & ~psi)", "phi")
-    ]);
-
-    // Conditional Equivalences
-
-    pub static ref CONDITIONAL_COMPLEMENT_RULES: RewriteRule = RewriteRule::from_patterns(&[
-        ("phi -> phi", "^|^"),
-        ("phi <-> phi", "^|^"),
-        ("phi <-> ~phi", "_|_"),
-    ]);
-    pub static ref CONDITIONAL_IDENTITY_RULES: RewriteRule = RewriteRule::from_patterns(&[
-        ("phi -> _|_", "~phi"),
-        ("^|^ -> phi", "phi"),
-        ("phi <-> _|_", "~phi"),
-        ("phi <-> ^|^", "phi"),
-    ]);
-    pub static ref CONDITIONAL_ANNIHILATION_RULES: RewriteRule = RewriteRule::from_patterns(&[
-        ("phi -> ^|^", "^|^"),
-        ("_|_ -> phi", "^|^"),
-    ]);
-    pub static ref CONDITIONAL_IMPLICATION_RULES: RewriteRule = RewriteRule::from_patterns(&[
-        ("phi -> psi", "~phi | psi"),
-        ("~(phi -> psi)", "phi & ~psi"),
-    ]);
-    pub static ref CONDITIONAL_BIIMPLICATION_RULES: RewriteRule = RewriteRule::from_patterns(&[
-        ("phi <-> psi", "(phi -> psi) & (psi -> phi)"),
-        ("phi <-> psi", "(phi & psi) | (~phi & ~psi)"),
-    ]);
-    pub static ref CONDITIONAL_CONTRAPOSITION_RULES: RewriteRule = RewriteRule::from_patterns(&[
-        ("~phi -> ~psi", "psi -> phi")
-    ]);
-    pub static ref CONDITIONAL_CURRYING_RULES: RewriteRule = RewriteRule::from_patterns(&[
-        ("phi -> (psi -> lambda)", "(phi & psi) -> lambda")
-    ]);
+/// Defines literal data used for a rewrite rule.
+/// Example usage: `define_rewrite_rule! { NAME_OF_RULE; ["pattern" -> "replacement"] }`
+#[macro_export]
+macro_rules! define_rewrite_rule {
+    ($name:ident; [$($lhs:literal -> $rhs:literal),+]) => {
+        define_rewrite_rule!{DEFINE_REWRITE_RULE_INTERNAL_CALL, $name, concat!("`", stringify!{$($lhs -> $rhs),+}, "`"), &[$(($lhs, $rhs)),+]}
+    };
+    (DEFINE_REWRITE_RULE_INTERNAL_CALL, $name:ident, $docstring:expr, $patterns:expr) => {
+        lazy_static! {
+            #[doc=$docstring]
+            pub static ref $name: RewriteRule = RewriteRule::from_patterns($patterns);
+        }
+    };
 }
 
-fn for_each_truthtable<F>(n: usize, mut f: F) where F: FnMut(&[bool]) {
+// Boolean Equivalences
+define_rewrite_rule! { DOUBLE_NEGATION_RULES; ["~~phi" -> "phi"] }
+define_rewrite_rule! { DISTRIBUTION_RULES; [
+    "(phi & psi) | (phi & lambda)" -> "phi & (psi | lambda)",
+    "(phi | psi) & (phi | lambda)" -> "phi | (psi & lambda)"
+]}
+define_rewrite_rule! { COMPLEMENT_RULES; [
+    "phi & ~phi" -> "_|_",
+    "phi | ~phi" -> "^|^"
+]}
+define_rewrite_rule! { IDENTITY_RULES; [
+    "phi & ^|^" -> "phi",
+    "phi | _|_" -> "phi"
+]}
+define_rewrite_rule! { ANNIHILATION_RULES; [
+    "phi & _|_" -> "_|_",
+    "phi | ^|^" -> "^|^"
+]}
+define_rewrite_rule! { INVERSE_RULES; [
+    "~^|^" -> "_|_",
+    "~_|_" -> "^|^"
+]}
+define_rewrite_rule! { ABSORPTION_RULES; [
+    "phi & phi | psi" -> "phi",
+    "phi | phi & psi" -> "phi"
+]}
+define_rewrite_rule! { REDUCTION_RULES; [
+    "phi & ~phi | psi" -> "phi & psi",
+    "phi | ~phi & psi" -> "phi | psi"
+]}
+define_rewrite_rule! { ADJACENCY_RULES; [
+    "phi | psi & phi | ~psi" -> "phi",
+    "phi & psi | phi & ~psi" -> "phi"
+]}
+
+// Conditional Equivalences
+define_rewrite_rule! { CONDITIONAL_COMPLEMENT_RULES; [
+    "phi -> phi" -> "^|^",
+    "phi <-> phi" -> "^|^",
+    "phi <-> ~phi" -> "_|_"
+]}
+define_rewrite_rule! { CONDITIONAL_IDENTITY_RULES; [
+    "phi -> _|_" -> "~phi",
+    "^|^ -> phi" -> "phi",
+    "phi <-> _|_" -> "~phi",
+    "phi <-> ^|^" -> "phi"
+]}
+define_rewrite_rule! { CONDITIONAL_ANNIHILATION_RULES; [
+    "phi -> ^|^" -> "^|^",
+    "_|_ -> phi" -> "^|^"
+]}
+define_rewrite_rule! { CONDITIONAL_IMPLICATION_RULES; [
+    "phi -> psi" -> "~phi | psi",
+    "~phi -> psi" -> "phi & ~psi"
+]}
+define_rewrite_rule! { CONDITIONAL_BIIMPLICATION_RULES; [
+    "phi <-> psi" -> "phi -> psi & psi -> phi",
+    "phi <-> psi" -> "phi & psi | ~phi & ~psi"
+]}
+define_rewrite_rule! { CONDITIONAL_CONTRAPOSITION_RULES; [
+    "~phi -> ~psi" -> "psi -> phi"
+]}
+define_rewrite_rule! { CONDITIONAL_CURRYING_RULES; [
+    "phi -> psi -> lambda" -> "phi & psi -> lambda"
+]}
+
+pub fn for_each_truthtable<F>(n: usize, mut f: F) where F: FnMut(&[bool]) {
     let mut table = vec![false; n];
     for x in 0..(2usize.pow(n as _)) {
         for i in 0..n {
