@@ -38,16 +38,16 @@ define_rewrite_rule! { INVERSE_RULES; [
     "~_|_" -> "^|^"
 ]}
 define_rewrite_rule! { ABSORPTION_RULES; [
-    "phi & phi | psi" -> "phi",
-    "phi | phi & psi" -> "phi"
+    "phi & (phi | psi)" -> "phi",
+    "phi | (phi & psi)" -> "phi"
 ]}
 define_rewrite_rule! { REDUCTION_RULES; [
-    "phi & ~phi | psi" -> "phi & psi",
-    "phi | ~phi & psi" -> "phi | psi"
+    "phi & (~phi | psi)" -> "phi & psi",
+    "phi | (~phi & psi)" -> "phi | psi"
 ]}
 define_rewrite_rule! { ADJACENCY_RULES; [
-    "phi | psi & phi | ~psi" -> "phi",
-    "phi & psi | phi & ~psi" -> "phi"
+    "(phi | psi) & (phi | ~psi)" -> "phi",
+    "(phi & psi) | (phi & ~psi)" -> "phi"
 ]}
 
 // Conditional Equivalences
@@ -68,17 +68,17 @@ define_rewrite_rule! { CONDITIONAL_ANNIHILATION_RULES; [
 ]}
 define_rewrite_rule! { CONDITIONAL_IMPLICATION_RULES; [
     "phi -> psi" -> "~phi | psi",
-    "~phi -> psi" -> "phi & ~psi"
+    "~(phi -> psi)" -> "phi & ~psi"
 ]}
 define_rewrite_rule! { CONDITIONAL_BIIMPLICATION_RULES; [
-    "phi <-> psi" -> "phi -> psi & psi -> phi",
-    "phi <-> psi" -> "phi & psi | ~phi & ~psi"
+    "phi <-> psi" -> "(phi -> psi) & (psi -> phi)",
+    "phi <-> psi" -> "(phi & psi) | (~phi & ~psi)"
 ]}
 define_rewrite_rule! { CONDITIONAL_CONTRAPOSITION_RULES; [
     "~phi -> ~psi" -> "psi -> phi"
 ]}
 define_rewrite_rule! { CONDITIONAL_CURRYING_RULES; [
-    "phi -> psi -> lambda" -> "phi & psi -> lambda"
+    "phi -> (psi -> lambda)" -> "(phi & psi) -> lambda"
 ]}
 
 pub fn for_each_truthtable<F>(n: usize, mut f: F) where F: FnMut(&[bool]) {
