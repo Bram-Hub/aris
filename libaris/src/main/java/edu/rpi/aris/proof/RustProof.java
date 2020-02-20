@@ -3,7 +3,7 @@ package edu.rpi.aris.proof;
 import edu.rpi.aris.ast.Expression;
 
 public class RustProof {
-    static { edu.rpi.aris.util.SharedObjectLoader.loadLib("libaris_rs"); }
+    static { edu.rpi.aris.util.SharedObjectLoader.loadLib("libaris"); }
 
     protected long pointerToRustHeap;
     protected RustProof(long p) { pointerToRustHeap = p; }

@@ -39,15 +39,15 @@ task "rust-build" {
         }
         copy {
             into './src/main/resources'
-            from './src/main/rust/target/release/liblibaris_rs.so'
+            from './src/main/rust/target/release/liblibaris.so'
         }
         copy {
             into './src/main/resources'
-            from './src/main/rust/target/release/libaris_rs.dll'
+            from './src/main/rust/target/release/libaris.dll'
         }
         copy {
             into './src/main/resources'
-            from './src/main/rust/target/release/liblibaris_rs.dylib'
+            from './src/main/rust/target/release/liblibaris.dylib'
         }
     }
 }
