@@ -621,8 +621,7 @@ impl RuleT for PredicateInference {
             }
         }
         fn generalizable_variable_counterexample<P: Proof>(sproof: &P, line: P::Reference, var: &str) -> Option<Expr> {
-            let mut contained = sproof.contained_justifications();
-            contained.extend(sproof.premises().into_iter());
+            let contained = sproof.contained_justifications(true);
             //println!("gvc contained {:?}", contained.iter().map(|x| sproof.lookup_expr(x.clone())).collect::<Vec<_>>());
             let reachable = sproof.transitive_dependencies(line);
             //println!("gvc reachable {:?}", reachable.iter().map(|x| sproof.lookup_expr(x.clone())).collect::<Vec<_>>());

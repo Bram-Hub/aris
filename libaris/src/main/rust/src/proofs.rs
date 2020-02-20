@@ -87,11 +87,15 @@ pub trait Proof: Sized {
     fn exprs(&self) -> Vec<<Self as Proof>::Reference> {
         self.premises().iter().cloned().chain(self.direct_lines()).collect()
     }
-    fn contained_justifications(&self) -> HashSet<Self::Reference> {
-        self.lines().into_iter().filter_map(|x| x.fold(hlist![
+    fn contained_justifications(&self, include_premises: bool) -> HashSet<Self::Reference> {
+        let mut ret = self.lines().into_iter().filter_map(|x| x.fold(hlist![
             |r: Self::Reference| Some(vec![r].into_iter().collect()),
-            |r: Self::SubproofReference| self.lookup_subproof(r).map(|sub| sub.contained_justifications()),
-        ])).fold(HashSet::new(), |mut x, y| { x.extend(y.into_iter()); x })
+            |r: Self::SubproofReference| self.lookup_subproof(r).map(|sub| sub.contained_justifications(include_premises)),
+        ])).fold(HashSet::new(), |mut x, y| { x.extend(y.into_iter()); x });
+        if include_premises {
+            ret.extend(self.premises());
+        }
+        ret
     }
     fn transitive_dependencies(&self, line: Self::Reference) -> HashSet<Self::Reference> {
         // TODO: cycle detection

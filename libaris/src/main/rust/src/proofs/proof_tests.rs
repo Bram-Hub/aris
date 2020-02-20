@@ -413,9 +413,9 @@ pub fn test_forallintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Refer
     let r10 = prf.add_subproof();
     let r11 = prf.with_mut_subproof(&r10, |sub| {
         let r11 = sub.add_step(Justification(p("r(c)"), RuleM::Reit, vec![r3.clone()], vec![]));
-        println!("contained {:?}", sub.contained_justifications());
+        println!("contained {:?}", sub.contained_justifications(true));
         println!("reachable {:?}", sub.transitive_dependencies(r11.clone()));
-        println!("reachable-contained {:?}", sub.transitive_dependencies(r11.clone()).difference(&sub.contained_justifications()).collect::<HashSet<_>>());
+        println!("reachable-contained {:?}", sub.transitive_dependencies(r11.clone()).difference(&sub.contained_justifications(true)).collect::<HashSet<_>>());
         r11
     }).unwrap();
     let r12 = prf.add_step(Justification(p("forall y, r(y)"), RuleM::ForallIntro, vec![], vec![r10.clone()]));
