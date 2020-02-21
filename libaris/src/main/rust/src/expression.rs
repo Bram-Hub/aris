@@ -1,3 +1,64 @@
+/*!
+# Usage
+
+Parsing an expression that's statically known to be valid:
+
+```
+use libaris::parser::parse as p;
+
+let expr1 = p("forall x, p(x) -> (Q & R)");
+```
+
+Parsing a potentially malformed expression (e.g. user input):
+```
+use libaris::parser;
+
+fn handle_user_input(input: &str) -> String {
+    match parser::main(&format!("{}\n", input)) {
+        Ok((_, expr)) => format!("successful parse: {:?}", expr),
+        Err(err) => format!("unsuccessful parse: {:?}", err),
+    }
+}
+assert_eq!(&handle_user_input("good(predicate, expr)"), "successful parse: Apply { func: Var { name: \"good\" }, args: [Var { name: \"predicate\" }, Var { name: \"expr\" }] }");
+assert!(handle_user_input("bad(missing, paren").starts_with("unsuccessful parse"));
+```
+
+`Expr` is an enum, and can be inspected with rust's `match` construct:
+
+```
+use libaris::parser::parse as p;
+use libaris::expression::*;
+
+fn is_it_an_and(e: &Expr) -> bool {
+    match e {
+        Expr::AssocBinop { symbol: ASymbol::And, .. } => true,
+        _ => false,
+    }
+}
+
+let expr1 = p("a & b");
+let expr2 = p("a | (b & c)");
+
+assert_eq!(is_it_an_and(&expr1), true);
+assert_eq!(is_it_an_and(&expr2), false);
+
+fn does_it_have_any_ands(e: &Expr) -> bool {
+    use libaris::expression::Expr::*;
+    match e {
+        Contradiction | Tautology | Var { .. } => false,
+        Apply { func, args } => does_it_have_any_ands(&func) || args.iter().any(|arg| does_it_have_any_ands(arg)),
+        Unop { symbol: _, operand } => does_it_have_any_ands(&operand),
+        Binop { symbol: _, left, right } => does_it_have_any_ands(&left) || does_it_have_any_ands(&right),
+        AssocBinop { symbol: ASymbol::And, .. } => true,
+        AssocBinop { symbol: _, exprs } => exprs.iter().any(|expr| does_it_have_any_ands(expr)),
+        Quantifier { symbol: _, name: _, body } => does_it_have_any_ands(&body),
+    }
+}
+
+assert_eq!(does_it_have_any_ands(&expr1), true);
+assert_eq!(does_it_have_any_ands(&expr2), true);
+```
+*/
 use super::*;
 use std::collections::{HashSet, HashMap};
 

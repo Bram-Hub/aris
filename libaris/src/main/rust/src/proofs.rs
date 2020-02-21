@@ -1,3 +1,28 @@
+/*!
+# Description
+This module houses different proof representations with different performance/simplicity tradeoffs.
+
+# Concrete proof types
+You probably want `type P1 = libaris::proofs::pooledproof::PooledProof<Hlist![Expr]>;` if you want to interactively mutate a proof, and
+`type P2 = libaris::proofs::lined_proof::LinedProof<P1>;` if you want to display line numbers for a finalized proof.
+
+The rest of the types are either experiments that didn't pan out or are internal shims
+
+# Abstract proof types
+Most functions that work with proofs should be generic over `P: Proof` instead of working with a concrete proof representation.
+
+If you want to debug-print line references, you may need to additionally bound `<P as Proof>::Reference: Debug` and `<P as Proof>::SubproofReference: Debug`.
+
+In a main method when you're parsing a proof from xml, or constructing a proof from user input, use a concrete proof type.
+
+# Tests
+When implementing rules, add tests to the `proof_tests` submodule of this module.
+
+Construct proofs that exhibit correct usages of the rule, as well as common mistakes that you expect.
+
+The test running apparatus expects you to return the proof, a list of line references that should pass, and a list of line references that should fail.
+*/
+
 use super::*;
 use frunk::coproduct::*;
 use std::collections::HashSet;
@@ -7,32 +32,40 @@ use std::ops::Range;
 
 #[cfg(test)]
 mod proof_tests;
-/// This module houses different proof representations with different performance/simplicity tradeoffs
-/// The intent is that once experimentation is done data-structure-wise, these can be packaged up as java objects
 
 /// treeproof represents a proof as a vec of premises and a vec of non-premise lines with either rule applications (with explicit line numbers for dependencies) or nested subproofs, with hooks for annotations
-/// Pros:
+/// # Tradeoffs
+/// ## Pros
 /// - rules out invalid nesting
 /// - close to the presentation of the system in the textbook
-/// Cons:
+/// ## Cons
 /// - many operations of interest {adding and deleting lines, recomputing line numbers for dependencies} are O(n)
+/// - abandoned, subproofs are not yet implemented
 pub mod treeproof;
 #[cfg(test)] mod treeproof_tests;
 
 /// pooledproof represents proofs as ZipperVec's of indices into three seperate pools of {premises, justifications, subproofs}
-/// Pros:
+/// # Tradeoffs
+/// ## Pros
+/// - it's the de-facto standard, and supports all the operations on the Proof trait well
 /// - allows approximate O(1) inserts/removals of nearby lines (gracefully degrading to O(n) if edits are made at opposite ends of the proof)
 /// - references to pool entries are never invalidated, which means that moving lines around can be efficiently supported
 /// - looking up steps by line number should be O(1), which enables efficiently checking individual rules, elimintating the need for a check-cache
 ///     (if I understand correctly, the current java version caches rule checks, which might lead to soundness bugs if the cache isn't invalidated correctly)
-/// Cons:
+/// ## Cons
 /// - potentially more implementation effort than treeproof
 /// - nontrivial mapping between references and line numbers might require some additional design
-/// Mixed:
+/// ## Mixed
 /// - splicing in a subproof is O(|subproof|), while in treeproof that's O(1), but forces an O(|wholeproof|) line recalculation
 pub mod pooledproof;
 
 /// java_shallow_proof only represents things from edu.rpi.aris.rules.Premise, for the purpose of shimming into RuleT::check
+/// # Tradeoffs
+/// ## Pros
+/// - Trivial to construct from Claim objects
+/// ## Cons
+/// - Doesn't support most operations
+/// - Doesn't handle binding structure, so can't be used for first order logic, only prepositional logic
 pub mod java_shallow_proof;
 
 /// A LinedProof is a wrapper around another proof type that adds lines and strings, for interfacing with the GUI
@@ -49,7 +82,7 @@ pub trait DisplayIndented {
     fn display_indented(&self, fmt: &mut Formatter, indent: usize, linecount: &mut usize) -> Result<(), std::fmt::Error>;
 }
 
-/// libaris::proofs::Proof is the core trait for working with proofs. Most functions that work with proofs should be generic over `P: Proof` instead of working with a concrete proof representation.
+/// libaris::proofs::Proof is the core trait for working with proofs.
 pub trait Proof: Sized {
     type Reference: Clone + Eq + Hash;
     type SubproofReference: Clone + Eq + Hash;

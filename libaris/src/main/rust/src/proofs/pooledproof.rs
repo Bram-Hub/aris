@@ -1,3 +1,111 @@
+/*!
+# Structure examples
+## Flat proof (excerpted from `test_impelim`)
+### ASCII art version
+```text
+1 | P
+2 | P -> Q
+  | ---
+3 | Q ; "-> Elim", [1, 2]
+```
+### Pseudo-JSON PooledProof
+
+```text
+// all the expression trees are owned by pools, so copying line references for dependencies are cheap
+pools = Pools {
+    prem_map: {
+        PremKey(0): AST("P"),
+        PremKey(1): AST("P -> Q")
+    },
+    just_map; {
+        JustKey(0): Justification(AST("Q"), RuleM::ImpElim, [PremKey(0), PremKey(1)], [])
+    },
+    sub_map: {}
+    containing_subproof: {}
+}
+
+proof_obj = PooledProof {
+    pools: Box(pools),
+    proof: root_node,
+}
+
+root_node = PooledSubproof {
+    pools: &mut pools as *mut Pools<_>,
+    premise_list: [PremKey(0), PremKey(1)],
+    line_list: [JustKey(0)],
+}
+```
+### Efficient insertion between lines
+Note that if another premise "R" is inserted between lines 1 and 2, `PremKey(2): AST("R")` would be added to `pools.prem_map` and `root_node.premise_list` would change to `[PremKey(0), PremKey(2), PremKey(1)]`.
+This does not require any renumbering of other lines, and is essential to PooledProof's efficiency.
+
+This is also why premise_list and line_list are `ZipperVec`s instead of `Vec`s (reduces the case of bulk insertion at the beginning/middle of a subproof from quadratic to linear).
+
+## Nested proof (excerpted from `test_forallintro`)
+### ASCII art version
+```text
+1 | forall x, p(x)
+2 | forall x, q(x)
+  | ----------
+  | | ----------
+3 | | p(a); ForallElim, [1]
+4 | | q(a); ForallElim, [2]
+5 | | p(a) & q(a); AndIntro, [3, 4]
+6 | forall y, p(y) & q(y); ForallIntro, [3..5]
+```
+### Pseudo-JSON PooledProof
+```text
+pools = Pools {
+    prem_map: {
+        PremKey(0): AST("forall x, p(x)"),
+        PremKey(1): AST("forall x, q(x)"),
+    },
+    just_map; {
+        JustKey(0): Justification(AST("p(a)"), RuleM::ForallElim, [PremKey(0)], []),
+        JustKey(1): Justification(AST("q(a)"), RuleM::ForallElim, [PremKey(1)], []),
+        JustKey(2): Justification(AST("p(a) & q(a)"), RuleM::AndIntro, [JustKey(0), JustKey(1)], []),
+        // note that subproof dependencies are in the 4th field of Justification, not the 3rd; this is less ambiguous than the xml representation, and is more type-safe
+        JustKey(3): Justification(AST("forall y, p(y) & q(y)"), RuleM::ForallIntro, [], [SubKey(0)]),
+    },
+    sub_map: {
+        SubKey(0): subproof_one,
+    }
+    containing_subproof: {
+        JustKey(0): SubKey(0),
+        JustKey(1): SubKey(0),
+        JustKey(2): SubKey(0),
+        // note that JustKey(3) is absent from containing_subproof, since it's in the root proof node, which has no SubKey
+    }
+}
+
+proof_obj = PooledProof {
+    pools: Box(pools),
+    proof: root_node,
+}
+
+root_node = PooledSubproof {
+    pools: &mut pools as *mut Pools<_>,
+    premise_list: [PremKey(0), PremKey(1)],
+    line_list: [SubKey(0), JustKey(3)],
+}
+
+subproof_one = PooledSubproof {
+    pools: &mut pools as *mut Pools<_>,
+    premise_list: [],
+    line_list: [JustKey(0), JustKey(1), JustKey(2)],
+}
+```
+
+## Simplifications made in the above illustrations
+These illustrations are less verbose than the `Debug` rendering of an actual `PooledProof` for several reasons
+### Parse trees
+`AST("forall x, p(x)")` will be rendered as the actual AST `Quantifier { symbol: Forall, name: "x", body: Apply { func: Var { name: "p" }, args: [Var { name: "x" }] } }`.
+### Coproducts
+Various parts of `PooledProof` use `frunk::Coproduct` to create subtypes of the union of `{PremKey, JustKey, SubKey}` to get more precise typing guarantees. This manifests as occurrences of `{Inl,Inr}`.
+### Vec vs ZipperVec
+While the `[]`s in the `Justification`s are actually `Vec`s and will be that simple in the `Debug` rendering, `premise_list` and `line_list` are `ZipperVec`s for performance, and so the `Debug` rendering reveals where the cursor (roughly, last insertion point) is.
+*/
+
 use super::*;
 use frunk::hlist::HCons;
 use std::collections::BTreeMap;
