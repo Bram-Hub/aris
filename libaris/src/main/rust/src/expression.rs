@@ -38,9 +38,11 @@ fn is_it_an_and(e: &Expr) -> bool {
 
 let expr1 = p("a & b");
 let expr2 = p("a | (b & c)");
+let expr3 = p("forall a, exists b, forall c, exists d, a -> (b | c | ~d)");
 
 assert_eq!(is_it_an_and(&expr1), true);
 assert_eq!(is_it_an_and(&expr2), false);
+assert_eq!(is_it_an_and(&expr3), false);
 
 fn does_it_have_any_ands(e: &Expr) -> bool {
     use libaris::expression::Expr::*;
@@ -57,6 +59,7 @@ fn does_it_have_any_ands(e: &Expr) -> bool {
 
 assert_eq!(does_it_have_any_ands(&expr1), true);
 assert_eq!(does_it_have_any_ands(&expr2), true);
+assert_eq!(does_it_have_any_ands(&expr3), false);
 ```
 */
 use super::*;
