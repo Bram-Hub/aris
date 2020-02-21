@@ -4,7 +4,7 @@
 Parsing an expression that's statically known to be valid:
 
 ```
-use libaris::parser::parse as p;
+use libaris::parser::parse_unwrap as p;
 
 let expr1 = p("forall x, p(x) -> (Q & R)");
 ```
@@ -14,19 +14,19 @@ Parsing a potentially malformed expression (e.g. user input):
 use libaris::parser;
 
 fn handle_user_input(input: &str) -> String {
-    match parser::main(&format!("{}\n", input)) {
-        Ok((_, expr)) => format!("successful parse: {:?}", expr),
-        Err(err) => format!("unsuccessful parse: {:?}", err),
+    match parser::parse(input) {
+        Some(expr) => format!("successful parse: {:?}", expr),
+        None => format!("unsuccessful parse"),
     }
 }
 assert_eq!(&handle_user_input("good(predicate, expr)"), "successful parse: Apply { func: Var { name: \"good\" }, args: [Var { name: \"predicate\" }, Var { name: \"expr\" }] }");
-assert!(handle_user_input("bad(missing, paren").starts_with("unsuccessful parse"));
+assert_eq!(&handle_user_input("bad(missing, paren"), "unsuccessful parse");
 ```
 
 `Expr` is an enum, and can be inspected with rust's `match` construct:
 
 ```
-use libaris::parser::parse as p;
+use libaris::parser::parse_unwrap as p;
 use libaris::expression::*;
 
 fn is_it_an_and(e: &Expr) -> bool {
@@ -230,7 +230,7 @@ pub fn subst(e: &Expr, to_replace: &str, with: Expr) -> Expr {
 
 #[test]
 fn test_subst() {
-    use parser::parse as p;
+    use parser::parse_unwrap as p;
     assert_eq!(subst(&p("x & forall x, x"), "x", p("y")), p("y & forall x, x")); // hit (true, _) case in Quantifier
     assert_eq!(subst(&p("forall x, x & y"), "y", p("x")), p("forall x0, x0 & x")); // hit (false, true) case in Quantifier
     assert_eq!(subst(&p("forall x, x & y"), "y", p("z")), p("forall x, x & z")); // hit (false, false) case in Quantifier
@@ -285,7 +285,7 @@ pub fn unify(mut c: HashSet<Constraint<Expr>>) -> Option<Substitution<String, Ex
 
 #[test]
 fn test_unify() {
-    use parser::parse as p;
+    use parser::parse_unwrap as p;
     let u = |s, t| {
         let l = p(s);
         let r = p(t);
@@ -575,7 +575,7 @@ impl Expr {
 
 #[test]
 pub fn test_combine_associative_ops() {
-    use parser::parse as p;
+    use parser::parse_unwrap as p;
     let f = |s: &str| {
         let e = p(s);
         println!("association of {} is {}", e, e.clone().combine_associative_ops());

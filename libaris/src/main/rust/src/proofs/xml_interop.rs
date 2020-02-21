@@ -23,7 +23,7 @@ pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Result<(P, ProofMetaData), Str
     let mut contents = String::new();
 
     macro_rules! parse {
-        ($x:expr) => { { let s: &str = $x; let t = format!("{}\n", s); if let Ok((_, u)) = parser::main(&t) { u } else { return Err(format!("Failed to parse {:?}", s)) } } }
+        ($x:expr) => { { let s: &str = $x; if let Some(e) = parser::parse(&s) { e } else { return Err(format!("Failed to parse {:?}", s)) } } }
     }
     //let parse = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
     let mut subproofs: HashMap<_, <P as Proof>::SubproofReference> = HashMap::new();

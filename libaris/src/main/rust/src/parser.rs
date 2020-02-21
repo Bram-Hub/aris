@@ -1,9 +1,15 @@
 use super::{Expr, USymbol, BSymbol, ASymbol, QSymbol};
-/// parser::parse is a convenience function used in the tests, and panics if the expression doesn't parse
-/// for handling user input, call parser::main instead and handle the Err case
-pub fn parse(input: &str) -> Expr {
+
+/// parser::parse parses a string slice into an Expr AST, returning None if there's an error
+pub fn parse(input: &str) -> Option<Expr> {
     let newlined = format!("{}\n", input);
-    main(&newlined).unwrap().1
+    main(&newlined).map(|(_, expr)| expr).ok()
+}
+
+/// parser::parse_unwrap is a convenience function used in the tests, and panics if the input doesn't parse
+/// for handling user input, call parser::parse instead and handle the None case
+pub fn parse_unwrap(input: &str) -> Expr {
+    parse(input).unwrap()
 }
 
 fn custom_error<A, B>(a: A, x: u32) -> nom::IResult<A, B> {
@@ -78,8 +84,8 @@ fn assocterm(s: &str) -> nom::IResult<&str, Expr> {
 
 // paren_expr is a factoring of expr that eliminates left-recursion, which parser combinators have trouble with
 named!(paren_expr<&str, Expr>, alt!(contradiction | tautology | predicate | notterm | binder | do_parse!(space >> tag!("(") >> space >> e: expr >> space >> tag!(")") >> space >> (e))));
-named!(pub expr<&str, Expr>, alt!(assocterm | binopterm | paren_expr));
-named!(pub main<&str, Expr>, do_parse!(e: expr >> tag!("\n") >> (e)));
+named!(expr<&str, Expr>, alt!(assocterm | binopterm | paren_expr));
+named!(main<&str, Expr>, do_parse!(e: expr >> tag!("\n") >> (e)));
 
 #[test]
 fn test_parser() {

@@ -83,10 +83,9 @@ pub extern "system" fn Java_edu_rpi_aris_ast_Expression_parseViaRust(env: JNIEnv
     with_thrown_errors(&env, |env| {
         if let Ok(e) = JavaStr::from_env(&env, e)?.to_str() {
             //println!("received {:?}", e);
-            let e = format!("{}\n", e);
-            let parsed = parser::main(&e);
+            let parsed = parser::parse(&e);
             //println!("parse: {:?}", parsed);
-            if let Ok(("", expr)) = parsed {
+            if let Some(expr) = parsed {
                 let r = expr_to_jobject(&env, expr)?;
                 Ok(r.into_inner())
             } else {

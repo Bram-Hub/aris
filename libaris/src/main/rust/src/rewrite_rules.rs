@@ -11,9 +11,9 @@ impl RewriteRule {
     /// [("pattern", "replacement"), ...]
     /// Will parse strings into `Expr`s and permute all commutative binops
     pub fn from_patterns(patterns: &[(&str, &str)]) -> Self {
-        use parser::parse;
+        use parser::parse_unwrap as p;
         let reductions = permute_patterns(patterns.into_iter().map(|(premise, conclusion)| {
-            (parse(premise), parse(conclusion))
+            (p(premise), p(conclusion))
         }).collect::<Vec<_>>());
 
         RewriteRule {
@@ -218,7 +218,7 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
 
 #[test]
 fn test_permute_ops() {
-    use parser::parse as p;
+    use parser::parse_unwrap as p;
 
     // A & B
     // B & A

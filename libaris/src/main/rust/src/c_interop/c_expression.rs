@@ -8,12 +8,7 @@ use std::ffi::{CStr/*, CString*/};
 #[no_mangle]
 pub extern "C" fn aris_expr_parse(e: *const i8) -> *mut Expr {
     with_null_options(|| {
-        let mut s = unsafe { CStr::from_ptr(e) }.to_string_lossy().into_owned();
-        s.push('\n');
-        if let Ok((_, expr)) = parser::main(&s) {
-            Some(expr)
-        } else {
-            None
-        }
+        let s = unsafe { CStr::from_ptr(e) }.to_string_lossy().into_owned();
+        parser::parse(&s)
     })
 }
