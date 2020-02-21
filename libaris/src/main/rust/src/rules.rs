@@ -1,3 +1,55 @@
+/*!
+# Organization
+`RuleT` is the main trait to implement for rule metadata and implementations.
+
+## Different enums for different types of rule
+Rules are split into different enums both for based on what type of rule they are.
+
+This allows metadata to be defined only once for certain classes of rules (e.g. `Equivalence`s always take 1 plain dep and 0 subdeps).
+
+The `SharedChecks` wrapper and `frunk::Coproduct` tie the different enums together into `Rule`.
+
+`SharedChecks`'s `RuleT` instance enforces common requirements based on the inner type's metadata (mostly number of dependencies.
+
+## Name metadata
+
+`RuleT::get_name` is a human-readable name, often with unicode, for displaying in the UIs.
+
+`RuleM::from_serialized_name` is used for constructing Java values of type `edu.rpi.aris.rules.RuleList`, and for deserializing rules from XML.
+
+## `RuleT::check` implementations
+
+Each `check` implementation usually starts off with bringing the rules of the relevant enum into scope, and then matching on which rule it is.
+
+`check` should not recursively check the correctness of its dependencies:
+- This has the wrong semantics, a green check mark or a red x will should only occur next to a line based on the local validity of that rule
+- This is also inefficient, the driver that *does* recursively check the entire proof would be quadratic instead of linear in the size of the proof if each rule checked dependencies recursively.
+
+# Checklists
+## Checklist for adding a new rule
+(e.g. for adding `AndIntro` if it wasn't already there)
+- Add it to the appropriate rule type enum (if it needs a new type, see the next checklist)
+- Add it to the end of `edu.rpi.aris.rules.RuleList` (order may matter for the Java code)
+- Add an entry for it to `RuleM`, with the `Coproduct::{Inl,Inr}` wrapping for the type of rule it's in
+- Add it to `RuleM::from_serialized_name`, under the same name used in the Java (deserializing the UI's usage of it will fail if the name isn't the same)
+- In the `impl RuleT for WhicheverEnum` block:
+    - Add the metadata, if applicable 
+    - Add the new rule to the `check` method's main match block, with an `unimplemented!()` body
+- Verify that all the structural changes compile, possibly commit the structural changes so far
+- Replace the `unimplemented!()` with an actual implementation
+- Add tests (both should-pass and should-fail) for the new rule to `libaris::proofs::proof_tests`
+
+Adding the tests and implementing the rule can be interleaved; it's convenient to debug the implementation by iterating on `cargo test -- test_your_rule_name`, possibly with `--nocapture` if you're println-debugging.
+
+## Checklist for adding a new rule type
+(e.g. for adding `PrepositionalInference` if it wasn't already there)
+- Create the new enum, preferably right after all the existing ones
+- Add the new enum to the `Rule` type alias, inside the `SharedChecks` and `Coprod!` wrappers
+- Add a `RuleT` impl block for the new enum
+    - if default metadata applies to all rules of the type, add those (e.g. `Equivalence`)
+    - if default metadata doesn't apply to all rules of the type, add an empty match block (e.g. `PrepositionalInference`)
+
+*/
 use super::*;
 use std::collections::{HashMap, HashSet};
 use frunk::Coproduct::{self, Inl, Inr};
@@ -161,6 +213,7 @@ pub enum RuleClassification {
     Introduction, Elimination, Equivalence, Inference, Predicate
 }
 
+/// libaris::rules::RuleT contains metadata and implementations of the rules
 pub trait RuleT {
     /// get_name gets the name of the rule for display in the GUI
     fn get_name(&self) -> String;
