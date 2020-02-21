@@ -36,6 +36,7 @@ Each `check` implementation usually starts off with bringing the rules of the re
     - Add the metadata, if applicable 
     - Add the new rule to the `check` method's main match block, with an `unimplemented!()` body
 - Verify that all the structural changes compile, possibly commit the structural changes so far
+    - Commit `b86de7fbe6bea3947ef864b8f253be34ec0c1306` is a good example of what the structure should look like at this point
 - Replace the `unimplemented!()` with an actual implementation
 - Add tests (both should-pass and should-fail) for the new rule to `libaris::proofs::proof_tests`
 
