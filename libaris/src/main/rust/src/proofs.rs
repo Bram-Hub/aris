@@ -21,6 +21,65 @@ When implementing rules, add tests to the `proof_tests` submodule of this module
 Construct proofs that exhibit correct usages of the rule, as well as common mistakes that you expect.
 
 The test running apparatus expects you to return the proof, a list of line references that should pass, and a list of line references that should fail.
+
+# Examples
+
+## Parsing XML into a PooledProof
+
+```
+#[macro_use] extern crate frunk;
+use libaris::expression::Expr;
+use libaris::proofs::xml_interop::proof_from_xml;
+let data = &include_bytes!("../propositional_logic_arguments_for_proofs_ii_problem_10.bram")[..];
+type P = libaris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
+let (prf, metadata) = proof_from_xml::<P, _>(data).unwrap();
+```
+
+## Creating a proof programatically
+
+ASCII art proof:
+
+```text
+1 | P -> Q
+  | ---
+2 | | ~Q
+  | | ---
+3 | | | P
+  | | | ---
+4 | | | Q ; ImpElim, [1, 3]
+5 | | | _|_ ; ContradictionIntro, [2, 4]
+6 | | ~P ; NotIntro, [3..5]
+7 | ~Q -> ~P ; ImpIntro [2..6]
+```
+
+Code that builds the proof generically and then instantiates it:
+```
+#[macro_use] extern crate frunk;
+use libaris::expression::Expr;
+use libaris::proofs::{Proof, Justification, pooledproof::PooledProof};
+use libaris::rules::RuleM;
+fn contraposition_demo<P: Proof>() -> P {
+    use libaris::parser::parse_unwrap as p;
+    let mut prf = P::new();
+    let line1 = prf.add_premise(p("P -> Q"));
+    let sub2to6 = prf.add_subproof();
+    prf.with_mut_subproof(&sub2to6, |sub1| {
+        let line2 = sub1.add_premise(p("~Q"));
+        let sub3to5 = sub1.add_subproof();
+        sub1.with_mut_subproof(&sub3to5, |sub2| {
+            let line3 = sub2.add_premise(p("P"));
+            let line4 = sub2.add_step(Justification(p("Q"), RuleM::ImpElim, vec![line1.clone(), line3.clone()], vec![]));
+            let line5 = sub2.add_step(Justification(p("_|_"), RuleM::ContradictionIntro, vec![line2.clone(), line4.clone()], vec![]));
+        }).unwrap();
+        let line6 = sub1.add_step(Justification(p("~P"), RuleM::NotIntro, vec![], vec![sub3to5]));
+    }).unwrap();
+    let line7 = prf.add_step(Justification(p("~Q -> ~P"), RuleM::ImpIntro, vec![], vec![sub2to6]));
+    prf
+}
+
+type P = libaris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
+let concrete_proof = contraposition_demo::<P>();
+```
 */
 
 use super::*;
