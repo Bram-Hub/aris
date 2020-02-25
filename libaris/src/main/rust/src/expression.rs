@@ -339,7 +339,8 @@ impl Expr {
                 let (mut ret, f): (bool, &dyn Fn(bool, bool) -> bool) = match symbol {
                     And => (true, &|x, y| x && y),
                     Or => (false, &|x, y| x || y),
-                    Bicon | Equiv => unimplemented!(),
+                    Bicon => (true, &|x, y| x == y),
+                    Equiv => unimplemented!(),
                 };
                 for b in exprs.into_iter().map(|e| e.eval(env)) {
                     ret = f(ret, b);
