@@ -18,7 +18,7 @@ use libaris::proofs::lined_proof::LinedProof;
 fn validate_recursive<P: Proof>(proof: &P, line: P::Reference) -> Result<(), (P::Reference, ProofCheckError<P::Reference, P::SubproofReference>)>
 where P::Reference:Debug, P::SubproofReference:Debug {
     use ProofCheckError::*;
-    use frunk::Coproduct::{self, Inl, Inr};
+    use frunk::Coproduct::{Inl, Inr};
     let mut q = vec![line];
 
     // lookup returns either expr or Justification. if it returns the expr, it's done.
@@ -33,7 +33,7 @@ where P::Reference:Debug, P::SubproofReference:Debug {
         match line {
             None => { return Err((r.clone(), LineDoesNotExist(r.clone()))); },
             Some(Inl(_)) => {},
-            Some(Inr(Inl(Justification(conclusion, rule, deps, sdeps)))) => {
+            Some(Inr(Inl(Justification(_, _, deps, sdeps)))) => {
                 q.extend(deps);
 
                 for sdep in sdeps.iter() {

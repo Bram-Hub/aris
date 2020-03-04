@@ -817,7 +817,7 @@ impl RuleT for Equivalence {
     fn num_deps(&self) -> Option<usize> { Some(1) } // all equivalence rules rewrite a single statement
     fn num_subdeps(&self) -> Option<usize> { Some(0) }
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
-        use ProofCheckError::*; use Equivalence::*;
+        use Equivalence::*;
 
 
         match self {
@@ -860,7 +860,7 @@ impl RuleT for ConditionalEquivalence {
     fn num_deps(&self) -> Option<usize> { Some(1) } // all equivalence rules rewrite a single statement
     fn num_subdeps(&self) -> Option<usize> { Some(0) }
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
-        use ProofCheckError::*; use ConditionalEquivalence::*;
+        use ConditionalEquivalence::*;
         match self {
             Complement => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_COMPLEMENT_RULES),
             Identity => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_IDENTITY_RULES),
