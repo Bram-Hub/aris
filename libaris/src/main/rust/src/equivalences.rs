@@ -96,8 +96,8 @@ define_rewrite_rule! { CONDITIONAL_REDUCTION_RULES; [
     "~phi & (phi <-> psi)" -> "~phi & ~psi"
 ]}
 define_rewrite_rule! { KNIGHTS_AND_KNAVES_RULE; [
-    "phi -> (phi & psi)" -> "phi -> psi",
-    "phi -> (phi | psi)" -> "psi -> phi"
+    "phi <-> (phi & psi)" -> "phi -> psi",
+    "phi <-> (phi | psi)" -> "psi -> phi"
 ]}
 define_rewrite_rule! { CONDITIONAL_IDEMPOTENCE_RULES; [
     "phi -> ~phi" -> "~phi",
@@ -135,7 +135,7 @@ fn bruteforce_equivalence_truthtables() {
         &*REDUCTION_RULES, &*ADJACENCY_RULES, &*CONDITIONAL_ANNIHILATION_RULES, &*CONDITIONAL_IMPLICATION_RULES, &*CONDITIONAL_CONTRAPOSITION_RULES,
         &*CONDITIONAL_CURRYING_RULES, &*CONDITIONAL_COMPLEMENT_RULES, &*CONDITIONAL_IDENTITY_RULES, &*CONDITIONAL_BIIMPLICATION_RULES, &*CONDITIONAL_DISTRIBUTION_RULES,
         &*CONDITIONAL_REDUCTION_RULES, &*KNIGHTS_AND_KNAVES_RULE, &*CONDITIONAL_IDEMPOTENCE_RULES, &*BICONDITIONAL_NEGATION, &*BICONDITIONAL_COMMUTATION,
-        &*BICONDITIONAL_ASSOCIATION, &*BICONDITIONAL_SUBSTITUTION,
+        &*BICONDITIONAL_ASSOCIATION, //&*BICONDITIONAL_SUBSTITUTION,
     ];
     for rule in rules {
         for (lhs, rhs) in rule.reductions.iter() {
