@@ -104,8 +104,8 @@ define_rewrite_rule! { CONDITIONAL_IDEMPOTENCE_RULES; [
     "~phi -> phi" -> "phi"
 ]}
 define_rewrite_rule! { BICONDITIONAL_NEGATION_RULES; [
-    "~(phi <-> psi)" -> "~phi <-> psi",
-    "~(phi <-> psi)" -> "phi <-> ~psi"
+    "~phi <-> psi" -> "~(phi <-> psi)",
+    "phi <-> ~psi" -> "~(phi <-> psi)"
 ]}
 define_rewrite_rule! { BICONDITIONAL_COMMUTATION_RULES; [
     "phi <-> psi" -> "psi <-> phi"
