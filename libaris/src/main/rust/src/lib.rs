@@ -1,7 +1,14 @@
 #[macro_use] extern crate frunk;
 #[macro_use] extern crate nom;
 #[macro_use] extern crate lazy_static;
+
+#[cfg(feature="java")]
 extern crate jni;
+#[cfg(feature="js")]
+extern crate yew;
+#[cfg(feature="js")]
+extern crate wasm_bindgen;
+
 extern crate petgraph;
 extern crate xml;
 
@@ -32,6 +39,7 @@ pub mod equivalences;
 use equivalences::*;
 
 /// libaris::java_interop contains native methods for various objects in the Java version of Aris, as well as convenience methods for dealing with Java objects.
+#[cfg(feature="java")]
 pub mod java_interop {
     use super::*;
 
@@ -92,6 +100,7 @@ pub mod java_interop {
         ret
     }
 }
+#[cfg(feature="java")]
 use java_interop::*;
 
 pub mod c_interop {
@@ -100,5 +109,18 @@ pub mod c_interop {
 
     pub fn with_null_options<A, F: FnOnce() -> Option<A>>(f: F) -> *mut A {
         f().map(|e| Box::into_raw(Box::new(e))).unwrap_or(std::ptr::null_mut())
+    }
+}
+
+#[cfg(feature="js")]
+pub mod js_interop {
+    use super::*;
+    pub mod js_ui;
+    use wasm_bindgen::prelude::*;
+
+    #[wasm_bindgen]
+    pub fn run_app() -> Result<(), JsValue> {
+        yew::start_app::<js_ui::App>();
+        Ok(())
     }
 }

@@ -6,17 +6,18 @@ authors = ["Avi Weinstock <aweinstock314@gmail.com>"]
 [dependencies]
 #either = "1.5.0"
 frunk = "0.2.2"
-jni = "0.10.2"
 nom = "4.1.1"
 petgraph = "0.4.13"
 xml-rs = "0.8.0"
 lazy_static = "1.4.0"
 
-stdweb = { version = "0.4.20", optional = true }
-yew = { version = "0.11.0", optional = true }
+jni = { version = "0.10.2", optional = true }
+yew = { version = "0.13", optional = true }
+wasm-bindgen = { version = "^0.2", optional = true }
 
 [features]
-web-main = ["stdweb", "yew"]
+java = ["jni"]
+js = ["yew/web_sys", "wasm-bindgen"]
 workaround_rls_vscode_bug_586 = []
 
 [build-dependencies]
@@ -30,11 +31,6 @@ crate_type = ["cdylib", "rlib"]
 [[bin]]
 name = "auto_grader"
 path = "src/bin/auto_grader.rs"
-
-[[bin]]
-name = "aris-wasm-ui"
-path = "src/bin/aris_wasm_ui.rs"
-required-features = ["web-main"]
 
 [profile.release]
 debug = true # enable debugging symbols in release mode (primarily for line numbers for RUST_BACKTRACE=1)
