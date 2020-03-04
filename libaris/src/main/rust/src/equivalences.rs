@@ -5,7 +5,10 @@ use super::*;
 #[macro_export]
 macro_rules! define_rewrite_rule {
     ($name:ident; [$($lhs:literal -> $rhs:literal),+]) => {
+        #[cfg(generate_docstrings_from_macros)]
         define_rewrite_rule!{DEFINE_REWRITE_RULE_INTERNAL_CALL, $name, concat!("`", stringify!{$($lhs -> $rhs),+}, "`"), &[$(($lhs, $rhs)),+]}
+        #[cfg(not(generate_docstrings_from_macros))]
+        define_rewrite_rule!{DEFINE_REWRITE_RULE_INTERNAL_CALL, $name, "", &[$(($lhs, $rhs)),+]}
     };
     (DEFINE_REWRITE_RULE_INTERNAL_CALL, $name:ident, $docstring:expr, $patterns:expr) => {
         lazy_static! {
