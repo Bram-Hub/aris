@@ -85,7 +85,7 @@ pub enum Equivalence {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ConditionalEquivalence {
     Complement, Identity, Annihilation, Implication, BiImplication, Contraposition,
-    Currying
+    Currying, ConditionalDistribution
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -149,6 +149,7 @@ pub mod RuleM {
     pub static BiImplication: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiImplication)))));
     pub static Contraposition: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Contraposition)))));
     pub static Currying: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Currying)))));
+    pub static ConditionalDistribution: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalDistribution)))));
     
     pub static ModusTollens: Rule = SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ModusTollens))))));
     pub static HypotheticalSyllogism: Rule = SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::HypotheticalSyllogism))))));
@@ -204,6 +205,7 @@ pub mod RuleM {
             "BI_IMPLICATION" => RuleM::BiImplication,
             "CONTRAPOSITION" => RuleM::Contraposition,
             "CURRYING" => RuleM::Currying,
+            "CONDITIONAL_DISTRIBUTION" => RuleM::ConditionalDistribution,
             _ => { return None },
         })
     }
@@ -851,7 +853,8 @@ impl RuleT for ConditionalEquivalence {
             Implication => "Implication",
             BiImplication => "Biconditional Equivalence",
             Contraposition => "Contraposition",
-            Currying => "Currying",
+            Currying => "Exportation",
+            ConditionalDistribution => "Conditional Distribution"
         }.into()
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
@@ -868,7 +871,8 @@ impl RuleT for ConditionalEquivalence {
             Implication => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_IMPLICATION_RULES),
             BiImplication => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_BIIMPLICATION_RULES),
             Contraposition => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_CONTRAPOSITION_RULES),
-            Currying => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_CURRYING_RULES)
+            Currying => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_CURRYING_RULES),
+            ConditionalDistribution => check_by_rewrite_rule(p, deps, conclusion, true, &CONDITIONAL_DISTRIBUTION_RULES)
         }
     }
 }
