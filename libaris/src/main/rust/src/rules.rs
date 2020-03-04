@@ -900,8 +900,10 @@ impl RuleT for ConditionalEquivalence {
             KnightsAndKnaves => check_by_rewrite_rule(p, deps, conclusion, true, &KNIGHTS_AND_KNAVES_RULES),
             ConditionalIdempotence => check_by_rewrite_rule(p, deps, conclusion, true, &CONDITIONAL_IDEMPOTENCE_RULES),
             BiconditionalNegation => check_by_rewrite_rule(p, deps, conclusion, true, &BICONDITIONAL_NEGATION_RULES),
-            BiconditionalCommutation => check_by_rewrite_rule(p, deps, conclusion, true, &BICONDITIONAL_COMMUTATION_RULES),
-            BiconditionalAssociation => check_by_rewrite_rule(p, deps, conclusion, true, &BICONDITIONAL_ASSOCIATION_RULES),
+
+            // TODO: Either remove bicond commutation/association or make them more restrictive
+            BiconditionalCommutation => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.sort_commutative_ops()),
+            BiconditionalAssociation => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.combine_associative_ops()),
             BiconditionalSubstitution => check_by_rewrite_rule(p, deps, conclusion, true, &BICONDITIONAL_SUBSTITUTION_RULES)
         }
     }
