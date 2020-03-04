@@ -111,7 +111,7 @@ define_rewrite_rule! { BICONDITIONAL_COMMUTATION_RULES; [
     "phi <-> psi" -> "psi <-> phi"
 ]}
 define_rewrite_rule! { BICONDITIONAL_ASSOCIATION_RULES; [
-    "phi <-> (psi <-> lambda)" -> "(phi <-> psi) -> lambda"
+    "phi <-> (psi <-> lambda)" -> "(phi <-> psi) <-> lambda"
 ]}
 define_rewrite_rule! { BICONDITIONAL_SUBSTITUTION_RULES; [
     "(phi <-> psi) & S(phi)" -> "(phi <-> psi) & S(psi)"
