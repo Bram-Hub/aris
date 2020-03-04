@@ -310,16 +310,64 @@ fn test_unify() {
     assert_eq!(u("x & y", "x | y"), None);
 }
 
+/*
+Note apply_non_literal
+
+In order to make substitution not special case predicate/function application, Expr::Apply's func field is a general Box<Expr> instead of a String.
+This also makes sense for eventually supporting lambda expressions using Quantifier nodes.
+Currently, the parser will never produce Expr::Apply nodes that have a func that is not an Expr::Var, and some code depends on this to avoid handling a more difficult general case.
+*/
+
 impl Expr {
-    /// Evaluate a quantifier-free boolean expression, given values for all the free variables
+    pub fn infer_arities(&self, arities: &mut HashMap<String, usize>) {
+        use Expr::*;
+        match self {
+            Contradiction | Tautology => {},
+            Var { name } => { arities.entry(name.clone()).or_insert(0); },
+            Apply { func, args } => match &**func {
+                Var { name } => {
+                    let arity = arities.entry(name.clone()).or_insert(args.len());
+                    *arity = args.len().max(*arity);
+                    for arg in args {
+                        arg.infer_arities(arities);
+                    }
+                },
+                _ => panic!("See note apply_non_literal"),
+            },
+            Unop { symbol: _, operand } => { operand.infer_arities(arities); },
+            Binop { symbol: _, left, right } => { left.infer_arities(arities); right.infer_arities(arities) },
+            AssocBinop { symbol: _, exprs } => { for e in exprs { e.infer_arities(arities); } },
+            Quantifier { symbol: _, name, body } => {
+                let mut body_arities = HashMap::new();
+                body.infer_arities(&mut body_arities);
+                for (k, v) in body_arities.into_iter() {
+                    if &*k != name {
+                        let arity = arities.entry(k).or_insert(v);
+                        *arity = v.max(*arity);
+                    }
+                }
+            }
+        }
+    }
+    /// Evaluate a quantifier-free boolean expression, given values for all the free variables as truth tables of their arities
     /// panics on unbound variables or expressions with quantifiers or arithmetic
-    pub fn eval(&self, env: &HashMap<String, bool>) -> bool {
+    pub fn eval(&self, env: &HashMap<String, Vec<bool>>) -> bool {
         use Expr::*;
         match self {
             Contradiction => false,
             Tautology => true,
-            Var { name } => env[name],
-            Apply { func, args } => unimplemented!(), // TODO: do we want to pass a predicate environment too?
+            Var { name } => env[name][0], // variables are 0-arity functions
+            Apply { func, args } => match &**func {
+                Var { name } => {
+                    let evaled_args: Vec<bool> = args.iter().map(|arg| arg.eval(env)).collect();
+                    let mut index: usize = 0;
+                    for (i, x) in evaled_args.into_iter().enumerate() {
+                        index |= (x as usize) << i;
+                    }
+                    env[&*name][index]
+                },
+                _ => panic!("See note apply_non_literal"),
+            },
             Unop { symbol, operand } => {
                 use USymbol::*;
                 match symbol {

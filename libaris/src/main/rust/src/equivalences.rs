@@ -134,16 +134,27 @@ fn bruteforce_equivalence_truthtables() {
         &*DOUBLE_NEGATION_RULES, &*DISTRIBUTION_RULES, &*COMPLEMENT_RULES, &*IDENTITY_RULES, &*ANNIHILATION_RULES, &*INVERSE_RULES, &*ABSORPTION_RULES,
         &*REDUCTION_RULES, &*ADJACENCY_RULES, &*CONDITIONAL_ANNIHILATION_RULES, &*CONDITIONAL_IMPLICATION_RULES, &*CONDITIONAL_CONTRAPOSITION_RULES,
         &*CONDITIONAL_CURRYING_RULES, &*CONDITIONAL_COMPLEMENT_RULES, &*CONDITIONAL_IDENTITY_RULES, &*CONDITIONAL_BIIMPLICATION_RULES, &*CONDITIONAL_DISTRIBUTION_RULES,
-        &*CONDITIONAL_REDUCTION_RULES, &*KNIGHTS_AND_KNAVES_RULE, &*CONDITIONAL_IDEMPOTENCE_RULES, &*BICONDITIONAL_NEGATION, &*BICONDITIONAL_COMMUTATION,
-        &*BICONDITIONAL_ASSOCIATION, //&*BICONDITIONAL_SUBSTITUTION,
+        &*CONDITIONAL_REDUCTION_RULES, &*KNIGHTS_AND_KNAVES_RULES, &*CONDITIONAL_IDEMPOTENCE_RULES, &*BICONDITIONAL_NEGATION_RULES, &*BICONDITIONAL_COMMUTATION_RULES,
+        &*BICONDITIONAL_ASSOCIATION_RULES, &*BICONDITIONAL_SUBSTITUTION_RULES,
     ];
     for rule in rules {
         for (lhs, rhs) in rule.reductions.iter() {
             println!("Testing {} -> {}", lhs, rhs);
-            let mut fv: Vec<String> = freevars(&lhs).union(&freevars(&rhs)).cloned().collect();
-            fv.sort();
-            for_each_truthtable(fv.len(), |table| {
-                let env = fv.iter().cloned().zip(table.iter().cloned()).collect::<HashMap<String, bool>>();
+            let mut fvs: Vec<String> = freevars(&lhs).union(&freevars(&rhs)).cloned().collect();
+            fvs.sort();
+            let mut arities = HashMap::new();
+            lhs.infer_arities(&mut arities);
+            rhs.infer_arities(&mut arities);
+            println!("Inferred arities: {:?}", arities);
+            let total_arity = arities.values().map(|v| 2usize.pow(*v as _)).sum();
+            for_each_truthtable(total_arity, |table| {
+                let mut env = HashMap::new();
+                let mut i = 0;
+                for fv in fvs.iter().cloned() {
+                    let n = 2usize.pow(arities[&fv] as _);
+                    env.insert(fv, table[i..i+n].to_vec());
+                    i += n;
+                }
                 println!("{:?} {:?}", table, env);
                 assert_eq!(lhs.eval(&env), rhs.eval(&env));
             });

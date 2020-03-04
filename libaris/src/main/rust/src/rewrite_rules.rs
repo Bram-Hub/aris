@@ -85,9 +85,9 @@ fn test_combinate() {
 /// E.g. [1, 2] x [3, 4] ==> [[1, 3], [1, 4], [2, 3], [2, 4]]
 /// Guaranteed ordered by position in the list
 fn cartesian_product_pair<T1, T2>(list1: Vec<T1>, list2: Vec<T2>) -> Vec<(T1, T2)>
-    where T1: Copy+Sized, T2: Copy+Sized {
+    where T1: Clone+Sized, T2: Clone+Sized {
     list1.into_iter().flat_map(|left| {
-        list2.iter().map(move |&right| (left, right))
+        list2.iter().map(move |right| (left.clone(), right.clone()))
     }).collect::<Vec<_>>()
 }
 
@@ -95,7 +95,7 @@ fn cartesian_product_pair<T1, T2>(list1: Vec<T1>, list2: Vec<T2>) -> Vec<(T1, T2
 /// E.g. [1, 2] x [3, 4] x [5, 6] ==> [[1, 3, 5], [1, 3, 6], [1, 4, 5], [1, 4, 6], [2, 3, 5], [2, 3, 6], [2, 4, 5], [2, 4, 6]]
 /// Guaranteed ordered by position in the list
 fn cartesian_product<T>(mut lists: Vec<Vec<T>>) -> Vec<Vec<T>>
-    where T: Copy+Sized {
+    where T: Clone+Sized {
     // Base case
     if lists.len() <= 1 {
         return lists;
@@ -112,8 +112,8 @@ fn cartesian_product<T>(mut lists: Vec<Vec<T>>) -> Vec<Vec<T>>
 
     firsts.into_iter().flat_map(|first| {
         prod_rests.iter().map(move |prod| {
-            let mut result = vec![first];
-            result.extend(prod);
+            let mut result = vec![first.clone()];
+            result.extend(prod.clone());
             result
         })
     }).collect::<Vec<_>>()
@@ -152,7 +152,10 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
         e @ Tautology => vec![e],
         e @ Var { .. } => vec![e],
         Apply { func, args } => {
-            unimplemented!()
+            let mut to_permute: Vec<Vec<Expr>> = vec![permute_ops(*func)];
+            to_permute.extend(args.into_iter().map(|e: Expr| permute_ops(e)));
+            let permuted = cartesian_product(to_permute);
+            permuted.into_iter().map(|mut args| { let func = Box::new(args.remove(0)); Apply { func, args } }).collect()
         },
         Unop { symbol, operand } => {
             // Just permute the operands and return them
