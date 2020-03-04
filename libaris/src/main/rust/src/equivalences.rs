@@ -95,7 +95,7 @@ define_rewrite_rule! { CONDITIONAL_REDUCTION_RULES; [
     "phi & (phi <-> psi)" -> "phi & psi",
     "~phi & (phi <-> psi)" -> "~phi & ~psi"
 ]}
-define_rewrite_rule! { KNIGHTS_AND_KNAVES_RULE; [
+define_rewrite_rule! { KNIGHTS_AND_KNAVES_RULES; [
     "phi -> (phi & psi)" -> "phi -> psi",
     "phi -> (phi | psi)" -> "psi -> phi"
 ]}
@@ -103,17 +103,17 @@ define_rewrite_rule! { CONDITIONAL_IDEMPOTENCE_RULES; [
     "phi -> ~phi" -> "~phi",
     "~phi -> phi" -> "phi"
 ]}
-define_rewrite_rule! { BICONDITIONAL_NEGATION; [
+define_rewrite_rule! { BICONDITIONAL_NEGATION_RULES; [
     "~(phi <-> psi)" -> "~phi <-> psi",
     "~(phi <-> psi)" -> "phi <-> ~psi"
 ]}
-define_rewrite_rule! { BICONDITIONAL_COMMUTATION; [
+define_rewrite_rule! { BICONDITIONAL_COMMUTATION_RULES; [
     "phi <-> psi" -> "psi <-> phi"
 ]}
-define_rewrite_rule! { BICONDITIONAL_ASSOCIATION; [
+define_rewrite_rule! { BICONDITIONAL_ASSOCIATION_RULES; [
     "phi <-> (psi <-> lambda)" -> "(phi <-> psi) -> lambda"
 ]}
-define_rewrite_rule! { BICONDITIONAL_SUBSTITUTION; [
+define_rewrite_rule! { BICONDITIONAL_SUBSTITUTION_RULES; [
     "(phi <-> psi) & S(phi)" -> "(phi <-> psi) & S(psi)"
 ]}
 

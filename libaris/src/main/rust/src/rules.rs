@@ -85,7 +85,9 @@ pub enum Equivalence {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ConditionalEquivalence {
     Complement, Identity, Annihilation, Implication, BiImplication, Contraposition,
-    Currying, ConditionalDistribution
+    Currying, ConditionalDistribution, ConditionalReduction, KnightsAndKnaves, ConditionalIdempotence,
+    BiconditionalNegation, BiconditionalCommutation, BiconditionalAssociation,
+    BiconditionalSubstitution
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -150,6 +152,13 @@ pub mod RuleM {
     pub static Contraposition: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Contraposition)))));
     pub static Currying: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Currying)))));
     pub static ConditionalDistribution: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalDistribution)))));
+    pub static ConditionalReduction: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalReduction)))));
+    pub static KnightsAndKnaves: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::KnightsAndKnaves)))));
+    pub static ConditionalIdempotence: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalIdempotence)))));
+    pub static BiconditionalNegation: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiconditionalNegation)))));
+    pub static BiconditionalCommutation: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiconditionalCommutation)))));
+    pub static BiconditionalAssociation: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiconditionalAssociation)))));
+    pub static BiconditionalSubstitution: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiconditionalSubstitution)))));
     
     pub static ModusTollens: Rule = SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ModusTollens))))));
     pub static HypotheticalSyllogism: Rule = SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::HypotheticalSyllogism))))));
@@ -206,6 +215,13 @@ pub mod RuleM {
             "CONTRAPOSITION" => RuleM::Contraposition,
             "CURRYING" => RuleM::Currying,
             "CONDITIONAL_DISTRIBUTION" => RuleM::ConditionalDistribution,
+            "CONDITIONAL_REDUCTION" => RuleM::ConditionalReduction,
+            "KNIGHTS_AND_KNAVES" => RuleM::KnightsAndKnaves,
+            "CONDITIONAL_IDEMPOTENCE" => RuleM::ConditionalIdempotence,
+            "BICONDITIONAL_NEGATION" => RuleM::BiconditionalNegation,
+            "BICONDITIONAL_COMMUTATION" => RuleM::BiconditionalCommutation,
+            "BICONDITIONAL_ASSOCIATION" => RuleM::BiconditionalAssociation,
+            "BICONDITIONAL_SUBSTITUTION" => RuleM::BiconditionalSubstitution,
             _ => { return None },
         })
     }
@@ -854,7 +870,14 @@ impl RuleT for ConditionalEquivalence {
             BiImplication => "Biconditional Equivalence",
             Contraposition => "Contraposition",
             Currying => "Exportation",
-            ConditionalDistribution => "Conditional Distribution"
+            ConditionalDistribution => "Conditional Distribution",
+            ConditionalReduction => "Conditional Reduction",
+            KnightsAndKnaves => "Knights and Knaves",
+            ConditionalIdempotence => "Conditional Idempotence",
+            BiconditionalNegation => "Biconditional Negation",
+            BiconditionalCommutation => "Biconditional Commutation",
+            BiconditionalAssociation => "Biconditional Association",
+            BiconditionalSubstitution => "Biconditional Substitution"
         }.into()
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
@@ -872,7 +895,14 @@ impl RuleT for ConditionalEquivalence {
             BiImplication => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_BIIMPLICATION_RULES),
             Contraposition => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_CONTRAPOSITION_RULES),
             Currying => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_CURRYING_RULES),
-            ConditionalDistribution => check_by_rewrite_rule(p, deps, conclusion, true, &CONDITIONAL_DISTRIBUTION_RULES)
+            ConditionalDistribution => check_by_rewrite_rule(p, deps, conclusion, true, &CONDITIONAL_DISTRIBUTION_RULES),
+            ConditionalReduction => check_by_rewrite_rule(p, deps, conclusion, true, &CONDITIONAL_REDUCTION_RULES),
+            KnightsAndKnaves => check_by_rewrite_rule(p, deps, conclusion, true, &KNIGHTS_AND_KNAVES_RULES),
+            ConditionalIdempotence => check_by_rewrite_rule(p, deps, conclusion, true, &CONDITIONAL_IDEMPOTENCE_RULES),
+            BiconditionalNegation => check_by_rewrite_rule(p, deps, conclusion, true, &BICONDITIONAL_NEGATION_RULES),
+            BiconditionalCommutation => check_by_rewrite_rule(p, deps, conclusion, true, &BICONDITIONAL_COMMUTATION_RULES),
+            BiconditionalAssociation => check_by_rewrite_rule(p, deps, conclusion, true, &BICONDITIONAL_ASSOCIATION_RULES),
+            BiconditionalSubstitution => check_by_rewrite_rule(p, deps, conclusion, true, &BICONDITIONAL_SUBSTITUTION_RULES)
         }
     }
 }
