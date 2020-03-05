@@ -27,10 +27,8 @@ impl<T> ZipperVec<T> {
     pub fn dec_cursor(&mut self) { if let Some(x) = self.prefix.pop() { self.suffix_r.push(x); } }
     pub fn inc_cursor(&mut self) { if let Some(x) = self.suffix_r.pop() { self.prefix.push(x); } }
     pub fn move_cursor(&mut self, to: usize) {
-        if to < self.len() {
-            while to > self.cursor_pos() { self.inc_cursor(); }
-            while to < self.cursor_pos() { self.dec_cursor(); }
-        }
+        while to > self.cursor_pos() { self.inc_cursor(); }
+        while to < self.cursor_pos() { self.dec_cursor(); }
     }
     pub fn push(&mut self, x: T) {
         let len = self.len();
