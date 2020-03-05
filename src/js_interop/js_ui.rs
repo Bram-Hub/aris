@@ -17,10 +17,11 @@ impl Component for App {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
+        use parser::parse;
         Self {
             link,
-            string_expr: "".into(),
-            test_expr: None
+            string_expr: "forall A, exists B, ((A -> B) & C) <-> Q".into(),
+            test_expr: parse("forall A, exists B, ((A -> B) & C) <-> Q")
         }
     }
 
@@ -43,7 +44,9 @@ impl Component for App {
                 <div>
                     { &self.string_expr }
                     <br/>
-                    { self.test_expr.as_ref().map(|e| format!("{:?}", e)).unwrap_or("Error".into()) }
+                    <pre>
+                        { self.test_expr.as_ref().map(|e| format!("{:#?}", e)).unwrap_or("Error".into()) }
+                    </pre>
                 </div>
             </div>
         }
