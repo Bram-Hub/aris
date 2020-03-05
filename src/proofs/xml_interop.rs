@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::io::Read;
 use xml::reader::EventReader;
 
+#[derive(Debug)]
 pub struct ProofMetaData {
     pub author: Option<String>,
     pub hash: Option<String>,
@@ -23,7 +24,14 @@ pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Result<(P, ProofMetaData), Str
     let mut contents = String::new();
 
     macro_rules! parse {
-        ($x:expr) => { { let s: &str = $x; if let Some(e) = parser::parse(&s) { e } else { return Err(format!("Failed to parse {:?}", s)) } } }
+        ($x:expr) => { {
+            let s: &str = $x;
+            match parser::parse(&s) {
+                Some(e) => { e },
+                None if s == "" => { Expr::Var { name: "__xml_interop_blank_line".into() } },
+                None => return Err(format!("Failed to parse {:?}, element stack {:?}", s, element_stack)),
+            }
+        } }
     }
     //let parse = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
     let mut subproofs: HashMap<_, <P as Proof>::SubproofReference> = HashMap::new();
@@ -109,7 +117,9 @@ pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Result<(P, ProofMetaData), Str
                         }
                     },
                     "goal" => {
-                        metadata.goals.push(parse!(&last_raw));
+                        if last_raw.len() > 0 {
+                            metadata.goals.push(parse!(&last_raw));
+                        }
                     }
                     _ => (),
                 }
@@ -176,4 +186,13 @@ fn test_xml2() {
     assert_eq!(e1, var("A")); assert_eq!(r1, RuleM::Reit); assert_eq!(d1.len(), 1); assert_eq!(s1.len(), 0);
     let Justification(e2, r2, d2, s2) = prf.lookup(lines[1].get::<<P as Proof>::Reference, _>().unwrap().clone()).unwrap().get::<Justification<_, _, _>, _>().unwrap().clone();
     assert_eq!(e2, binop(BSymbol::Implies, var("A"), var("A"))); assert_eq!(r2, RuleM::ImpIntro); assert_eq!(d2.len(), 0); assert_eq!(s2.len(), 1);
+}
+
+#[test]
+fn test_xml3() {
+    let xml = b"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<bram>\n  <program>Aris</program>\n  <version>0.0.187</version>\n  <metadata>\n    <author>UNKNOWN</author>\n    <hash>aCDnd1IQS0y8QoTmgj7xeVpBG9o1A3m6tZWd0HXkwjg=</hash>\n  </metadata>\n  <proof id=\"0\">\n    <assumption linenum=\"0\">\n      <sen>p</sen>\n      <raw>p</raw>\n    </assumption>\n    <step linenum=\"1\">\n      <sen>p</sen>\n      <raw>p</raw>\n      <rule>REITERATION</rule>\n      <premise>0</premise>\n    </step>\n    <goal>\n      <sen/>\n      <raw/>\n    </goal>\n  </proof>\n</bram>\n";
+    type P = super::proofs::pooledproof::PooledProof<Hlist![Expr]>;
+    let (prf, metadata) = proof_from_xml::<P, _>(&xml[..]).unwrap();
+    println!("{}", prf);
+    println!("{:?}", metadata);
 }
