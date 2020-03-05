@@ -7,8 +7,8 @@ use proofs::pooledproof::PooledProof;
 pub extern "system" fn Java_edu_rpi_aris_proof_RustProof_toString(env: JNIEnv, obj: JObject) -> jstring {
     with_thrown_errors(&env, |env| {
         let ptr: jni::sys::jlong = env.get_field(obj, "pointerToRustHeap", "J")?.j()?;
-        let rule: &Rule = unsafe { &*(ptr as *mut Rule) };
-        Ok(env.new_string(format!("{:?}", rule))?.into_inner())
+        let prf: &LinedProof<PooledProof<Hlist![Expr]>> = unsafe { &*(ptr as *mut LinedProof<PooledProof<Hlist![Expr]>>) };
+        Ok(env.new_string(format!("{:?}", prf))?.into_inner())
     })
 }
 
