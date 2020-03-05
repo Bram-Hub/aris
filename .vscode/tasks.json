@@ -3,7 +3,7 @@
   "tasks": [
     {
       "label": "Rust: wasm-pack build",
-      "args": ["build", "--target", "web", "--", "--features=js"],
+      "args": ["build", "--debug", "--target", "web", "--", "--features=js"],
       "command": "wasm-pack",
       "group": "build",
       "problemMatcher": [
