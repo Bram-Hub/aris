@@ -86,13 +86,17 @@ pub enum Equivalence {
 pub enum ConditionalEquivalence {
     Complement, Identity, Annihilation, Implication, BiImplication, Contraposition,
     Currying, ConditionalDistribution, ConditionalReduction, KnightsAndKnaves, ConditionalIdempotence,
-    BiconditionalNegation, BiconditionalCommutation, BiconditionalAssociation,
-    BiconditionalSubstitution
+    BiconditionalNegation, BiconditionalSubstitution
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RedundantPrepositionalInference {
     ModusTollens, HypotheticalSyllogism, ExcludedMiddle, ConstructiveDilemma
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AutomationRelatedRules {
+    AsymmetricTautology,
 }
 
 /// The RuleT instance for SharedChecks does checking that is common to all the rules;
@@ -101,7 +105,8 @@ pub enum RedundantPrepositionalInference {
 pub struct SharedChecks<T>(T);
 
 pub type Rule = SharedChecks<Coprod!(PrepositionalInference, PredicateInference,
-    Equivalence, ConditionalEquivalence, RedundantPrepositionalInference)>;
+    Equivalence, ConditionalEquivalence, RedundantPrepositionalInference,
+    AutomationRelatedRules)>;
 
 /// Conveniences for constructing rules of the appropriate type, primarily for testing.
 /// The non-standard naming conventions here are because a module is being used to pretend to be an enum.
@@ -156,14 +161,14 @@ pub mod RuleM {
     pub static KnightsAndKnaves: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::KnightsAndKnaves)))));
     pub static ConditionalIdempotence: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalIdempotence)))));
     pub static BiconditionalNegation: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiconditionalNegation)))));
-    pub static BiconditionalCommutation: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiconditionalCommutation)))));
-    pub static BiconditionalAssociation: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiconditionalAssociation)))));
     pub static BiconditionalSubstitution: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiconditionalSubstitution)))));
     
     pub static ModusTollens: Rule = SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ModusTollens))))));
     pub static HypotheticalSyllogism: Rule = SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::HypotheticalSyllogism))))));
     pub static ExcludedMiddle: Rule = SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ExcludedMiddle))))));
     pub static ConstructiveDilemma: Rule = SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ConstructiveDilemma))))));
+
+    pub static AsymmetricTautology: Rule = SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::AsymmetricTautology)))))));
 
     pub fn from_serialized_name(name: &str) -> Option<Rule> {
         Some(match name {
@@ -219,9 +224,9 @@ pub mod RuleM {
             "KNIGHTS_AND_KNAVES" => RuleM::KnightsAndKnaves,
             "CONDITIONAL_IDEMPOTENCE" => RuleM::ConditionalIdempotence,
             "BICONDITIONAL_NEGATION" => RuleM::BiconditionalNegation,
-            "BICONDITIONAL_COMMUTATION" => RuleM::BiconditionalCommutation,
-            "BICONDITIONAL_ASSOCIATION" => RuleM::BiconditionalAssociation,
             "BICONDITIONAL_SUBSTITUTION" => RuleM::BiconditionalSubstitution,
+
+            "ASYMMETRIC_TAUTOLOGY" => RuleM::AsymmetricTautology,
             _ => { return None },
         })
     }
@@ -875,8 +880,6 @@ impl RuleT for ConditionalEquivalence {
             KnightsAndKnaves => "Knights and Knaves",
             ConditionalIdempotence => "Conditional Idempotence",
             BiconditionalNegation => "Biconditional Negation",
-            BiconditionalCommutation => "Biconditional Commutation",
-            BiconditionalAssociation => "Biconditional Association",
             BiconditionalSubstitution => "Biconditional Substitution"
         }.into()
     }
@@ -900,10 +903,6 @@ impl RuleT for ConditionalEquivalence {
             KnightsAndKnaves => check_by_rewrite_rule(p, deps, conclusion, true, &KNIGHTS_AND_KNAVES_RULES),
             ConditionalIdempotence => check_by_rewrite_rule(p, deps, conclusion, true, &CONDITIONAL_IDEMPOTENCE_RULES),
             BiconditionalNegation => check_by_rewrite_rule(p, deps, conclusion, true, &BICONDITIONAL_NEGATION_RULES),
-
-            // TODO: Either remove bicond commutation/association or make them more restrictive
-            BiconditionalCommutation => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.sort_commutative_ops()),
-            BiconditionalAssociation => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.combine_associative_ops()),
             BiconditionalSubstitution => check_by_rewrite_rule(p, deps, conclusion, true, &BICONDITIONAL_SUBSTITUTION_RULES)
         }
     }
@@ -925,6 +924,32 @@ impl RuleT for RedundantPrepositionalInference {
     fn num_deps(&self) -> Option<usize> { unimplemented!() }
     fn num_subdeps(&self) -> Option<usize> { unimplemented!() }
     fn check<P: Proof>(self, _p: &P, _expr: Expr, _deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> { unimplemented!() }
+}
+
+impl RuleT for AutomationRelatedRules {
+    fn get_name(&self) -> String {
+        match self {
+            AutomationRelatedRules::AsymmetricTautology => "AsymmetricTautology",
+        }.into()
+    }
+    fn get_classifications(&self) -> HashSet<RuleClassification> {
+        [RuleClassification::Inference].iter().cloned().collect()
+    }
+    fn num_deps(&self) -> Option<usize> {
+        match self {
+            AutomationRelatedRules::AsymmetricTautology => None,
+        }
+    }
+    fn num_subdeps(&self) -> Option<usize> {
+        match self {
+            AutomationRelatedRules::AsymmetricTautology => Some(0),
+        }
+    }
+    fn check<P: Proof>(self, _p: &P, _expr: Expr, _deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
+        match self {
+            AutomationRelatedRules::AsymmetricTautology => unimplemented!(),
+        }
+    }
 }
 
 fn either_order<A, T, R: Eq, S: Eq, F: FnMut(&A, &A)->Result<Option<T>, ProofCheckError<R, S>>, G: FnOnce()->Result<T, ProofCheckError<R, S>>>(a1: &A, a2: &A, mut f: F, g: G) -> Result<T, ProofCheckError<R, S>> {

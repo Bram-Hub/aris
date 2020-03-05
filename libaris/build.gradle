@@ -35,7 +35,7 @@ task "rust-build" {
     doFirst {
         exec {
             workingDir './src/main/rust'
-            commandLine 'cargo', 'build', '--release'
+            commandLine 'cargo', 'build', '--release', '--features=java'
         }
         copy {
             into './src/main/resources'
