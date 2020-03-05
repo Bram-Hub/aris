@@ -8,6 +8,8 @@ extern crate jni;
 extern crate yew;
 #[cfg(feature="js")]
 extern crate wasm_bindgen;
+#[cfg(feature="js")]
+extern crate wee_alloc;
 
 extern crate petgraph;
 extern crate xml;
@@ -122,6 +124,9 @@ pub mod js_interop {
 
     #[wasm_bindgen]
     pub fn run_app() -> Result<(), JsValue> {
+        #[global_allocator]
+        static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+
         yew::start_app::<js_ui::App>();
         Ok(())
     }
