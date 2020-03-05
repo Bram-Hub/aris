@@ -50,7 +50,11 @@ pub extern "system" fn Java_edu_rpi_aris_proof_RustProof_moveCursor(env: JNIEnv,
     with_thrown_errors(&env, |env| {
         let ptr: jni::sys::jlong = env.get_field(this, "pointerToRustHeap", "J")?.j()?;
         let self_: &mut LinedProof<PooledProof<Hlist![Expr]>> = unsafe { &mut*(ptr as *mut _) };
-        self_.move_cursor(index as _);
+        // Java ends up passing -1 here on startup for some reason, so ignore that.
+        // Other invalid values should still trigger an assert in ZipperVec::move_cursor.
+        if index != -1 {
+            self_.move_cursor(index as _);
+        }
         Ok(())
     })
 }
