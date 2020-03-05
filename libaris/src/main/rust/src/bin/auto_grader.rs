@@ -22,7 +22,7 @@ where P::Reference:Debug, P::SubproofReference:Debug {
     let mut q = vec![line];
 
     // lookup returns either expr or Justification. if it returns the expr, it's done.
-    // otherwise, 
+    // otherwise,
     while let Some(r) = q.pop() {
         //println!("q: {:?} {:?}", r, q);
         proof.verify_line(&r).map_err(|e| (r.clone(), e))?;
@@ -99,7 +99,7 @@ fn main() -> Result<(), String> {
                     let s_prf_with_lines = LinedProof::from_proof(s_prf.clone());
                     let (index, _) = s_prf_with_lines.lines.iter().enumerate().find(|(i, rl)| rl.reference == r)
                         .expect("Failed to find line number for building error message (BAD!!)");
-                    println!("{}", s_prf);
+                    eprintln!("{}", s_prf);
                     Err(format!("validate_recursive failed for line {}: {}", index + 1, e))
                 },
             }
@@ -112,4 +112,3 @@ fn main() -> Result<(), String> {
 
     Ok(())
 }
-
