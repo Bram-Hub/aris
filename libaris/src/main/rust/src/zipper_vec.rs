@@ -91,7 +91,23 @@ impl<T: PartialEq> ZipperVec<T> {
             while self.suffix_r.len() > 0 && &self.suffix_r[self.suffix_r.len()-1] != rel {
                 self.inc_cursor();
             }
+            if after { self.inc_cursor(); }
             (if after { &mut self.suffix_r } else { &mut self.prefix }).push(val);
         }
     }
+}
+
+#[test]
+fn test_zippervec_insert_relative() {
+    let mut z = ZipperVec::from_vec(vec![0,10,20,30,40]);
+    println!("{:?}", z);
+    z.insert_relative(25, &20, true);
+    println!("{:?}", z);
+    assert_eq!(z.iter().cloned().collect::<Vec<usize>>(), vec![0,10,20,25,30,40]);
+    z.insert_relative(26, &30, false);
+    println!("{:?}", z);
+    assert_eq!(z.iter().cloned().collect::<Vec<usize>>(), vec![0,10,20,25,26,30,40]);
+    z.insert_relative(15, &10, true);
+    println!("{:?}", z);
+    assert_eq!(z.iter().cloned().collect::<Vec<usize>>(), vec![0,10,15,20,25,26,30,40]);
 }

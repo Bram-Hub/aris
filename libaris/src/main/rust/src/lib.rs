@@ -11,6 +11,8 @@ extern crate wasm_bindgen;
 
 extern crate petgraph;
 extern crate xml;
+extern crate varisat;
+extern crate failure;
 
 pub mod zipper_vec;
 use zipper_vec::*;
@@ -123,4 +125,8 @@ pub mod js_interop {
         yew::start_app::<js_ui::App>();
         Ok(())
     }
+}
+
+pub mod solver_integration {
+    pub mod solver;
 }

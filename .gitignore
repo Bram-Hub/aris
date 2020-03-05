@@ -74,3 +74,4 @@ include/
 # ignore rust build artifacts
 libaris/src/main/rust/target/
 libaris/src/main/rust/.vscode/launch.json
+.DS_Store
