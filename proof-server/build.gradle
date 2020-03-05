@@ -1,7 +1,0 @@
-dependencies {
-
-    compile project(':libaris')
-    compile project(':service')
-
-    testCompile group: 'junit', name: 'junit', version: '4.12'
-}

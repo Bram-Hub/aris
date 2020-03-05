@@ -1,9 +1,0 @@
-Package: aris-server
-Version: __version__
-Section: unknown
-Priority: optional
-Architecture: all
-Homepage: https://github.com/cicchr/ARIS-Java
-Maintainer: Ryan Cicchiello <cicchr@rpi.edu>
-Depends: default-jre-headless (>= 1.8), postgresql
-Description: The Aris logical proof system grading server

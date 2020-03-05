@@ -1,4 +1,0 @@
-#!/bin/bash
-
-git checkout HEAD libaris/src/main/resources/edu/rpi/aris/VERSION
-git checkout HEAD libassign/src/main/resources/edu/rpi/aris/assign/VERSION
