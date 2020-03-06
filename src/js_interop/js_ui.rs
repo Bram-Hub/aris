@@ -5,6 +5,7 @@ use expression::Expr;
 pub struct App {
     link: ComponentLink<Self>,
     string_expr: String,
+    last_good_parse: String,
     test_expr: Option<Expr>
 }
 
@@ -18,10 +19,14 @@ impl Component for App {
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         use parser::parse;
+        let initial_expr = "forall A, ((exists B, A -> B) & C & f(x, y | z)) <-> Q <-> R";
+        let test_expr = parse(initial_expr);
+        let last_good_parse = format!("{}", test_expr.as_ref().unwrap());
         Self {
             link,
-            string_expr: "forall A, exists B, ((A -> B) & C) <-> Q".into(),
-            test_expr: parse("forall A, exists B, ((A -> B) & C) <-> Q")
+            string_expr: initial_expr.into(),
+            test_expr,
+            last_good_parse,
         }
     }
 
@@ -30,9 +35,11 @@ impl Component for App {
             Msg::TestExpression(data) => {
                 use parser::parse;
                 self.test_expr = parse(&*data);
+                if let Some(expr) = &self.test_expr {
+                    self.last_good_parse = format!("{}", expr);
+                }
                 true
             },
-            _ => false
         }
     }
 
@@ -40,9 +47,9 @@ impl Component for App {
         html! {
             <div>
                 <p>{ "Enter Expression:" }</p>
-                <textarea value=&self.string_expr oninput=self.link.callback(|e: InputData| Msg::TestExpression(e.value))></textarea>
+                <input type="text" oninput=self.link.callback(|e: InputData| Msg::TestExpression(e.value)) style="width:400px" value={ &self.string_expr } />
                 <div>
-                    { &self.string_expr }
+                    { &self.last_good_parse }
                     <br/>
                     <pre>
                         { self.test_expr.as_ref().map(|e| format!("{:#?}", e)).unwrap_or("Error".into()) }
