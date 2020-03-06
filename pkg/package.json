@@ -1,0 +1,15 @@
+{
+  "name": "libaris-rs",
+  "collaborators": [
+    "Avi Weinstock <aweinstock314@gmail.com>"
+  ],
+  "version": "0.1.0",
+  "files": [
+    "libaris_bg.wasm",
+    "libaris.js",
+    "libaris.d.ts"
+  ],
+  "module": "libaris.js",
+  "types": "libaris.d.ts",
+  "sideEffects": false
+}
