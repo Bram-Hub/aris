@@ -71,6 +71,12 @@ impl<T: Clone+Default, U: Clone+Default> Proof for TreeProof<T, U> {
     /*unsafe fn lookup_subproof_mut(&mut self, _: Self::SubproofReference) -> Option<&mut Self::Subproof> {
         None // TODO: implement
     }*/
+    fn with_mut_premise<A, F: FnOnce(&mut Expr) -> A>(&mut self, _: &Self::Reference, _: F) -> Option<A> {
+        unimplemented!()
+    }
+    fn with_mut_step<A, F: FnOnce(&mut Justification<Expr, Self::Reference, Self::SubproofReference>) -> A>(&mut self, _: &Self::Reference, _: F) -> Option<A> {
+        unimplemented!()
+    }
     fn with_mut_subproof<A, F: FnOnce(&mut Self::Subproof) -> A>(&mut self, _: &Self::SubproofReference, _: F) -> Option<A> {
         unimplemented!();
     }

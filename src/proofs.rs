@@ -80,6 +80,50 @@ fn contraposition_demo<P: Proof>() -> P {
 type P = libaris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
 let concrete_proof = contraposition_demo::<P>();
 ```
+
+# Mutating existing lines of a proof
+
+```
+#[macro_use] extern crate frunk;
+use libaris::expression::Expr;
+use libaris::parser::parse_unwrap as p;
+use libaris::proofs::{Proof, Justification, pooledproof::PooledProof};
+use libaris::rules::RuleM;
+
+let mut prf = PooledProof::<Hlist![Expr]>::new();
+let r1 = prf.add_premise(p("A"));
+let r2 = prf.add_step(Justification(p("A & A"), RuleM::AndIntro, vec![r1.clone()], vec![]));
+assert_eq!(format!("{}", prf),
+"1:\t| A
+\t| ----------
+2:\t| (A ∧ A); SharedChecks(Inl(AndIntro)); Inl(PremKey(0))
+");
+prf.with_mut_premise(&r1, |e| { *e = p("B"); }).unwrap();
+prf.with_mut_step(&r2, |j| { j.0 = p("A | B"); j.1 = RuleM::OrIntro; }).unwrap();
+assert_eq!(format!("{}", prf),
+"1:\t| B
+\t| ----------
+2:\t| (A ∨ B); SharedChecks(Inl(OrIntro)); Inl(PremKey(0))
+");
+
+```
+
+# The `with_mut_{premise,step,subproof}` methods and soundness
+The subproof pointer in `with_mut_subproof`, if returned directly, could be invalidated by calls to add_subproof on the same proof object, leading to UAF.
+This is prevented by the fact that the lifetime parameter of the subproof reference cannot occur in A:
+
+```compile_fail,E0495
+#[macro_use] extern crate frunk;
+use libaris::proofs::{Proof, pooledproof::PooledProof};
+use libaris::expression::Expr;
+fn should_fail_with_lifetime_error() {
+    let mut p = PooledProof::<Hlist![Expr]>::new();
+    let r = p.add_subproof();
+    let s = p.with_mut_subproof(&r, |x| x);
+}
+```
+
+This is a similar trick to the rank-2 type of `runST` in Haskell used to prevent the phantom state from escaping.
 */
 
 use super::*;
@@ -150,6 +194,8 @@ pub trait Proof: Sized {
     fn top_level_proof(&self) -> &Self::Subproof;
     fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference, Self::SubproofReference>)>;
     fn lookup_subproof(&self, r: Self::SubproofReference) -> Option<Self::Subproof>;
+    fn with_mut_premise<A, F: FnOnce(&mut Expr) -> A>(&mut self, r: &Self::Reference, f: F) -> Option<A>;
+    fn with_mut_step<A, F: FnOnce(&mut Justification<Expr, Self::Reference, Self::SubproofReference>) -> A>(&mut self, r: &Self::Reference, f: F) -> Option<A>;
     fn with_mut_subproof<A, F: FnOnce(&mut Self::Subproof) -> A>(&mut self, r: &Self::SubproofReference, f: F) -> Option<A>;
     fn add_premise(&mut self, e: Expr) -> Self::Reference;
     fn add_subproof(&mut self) -> Self::SubproofReference;

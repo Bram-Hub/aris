@@ -20,6 +20,12 @@ impl Proof for JavaShallowProof {
     fn lookup_subproof(&self, r: Self::SubproofReference) -> Option<Self> {
         Some(r)
     }
+    fn with_mut_premise<A, F: FnOnce(&mut Expr) -> A>(&mut self, _: &Self::Reference, _: F) -> Option<A> {
+        unimplemented!()
+    }
+    fn with_mut_step<A, F: FnOnce(&mut Justification<Expr, Self::Reference, Self::SubproofReference>) -> A>(&mut self, _: &Self::Reference, _: F) -> Option<A> {
+        unimplemented!()
+    }
     fn with_mut_subproof<A, F: FnOnce(&mut Self::Subproof) -> A>(&mut self, _: &Self::SubproofReference, _: F) -> Option<A> {
         unimplemented!()
     }

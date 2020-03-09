@@ -247,15 +247,36 @@ impl<Tail: Default+Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
     fn lookup_subproof(&self, r: Self::SubproofReference) -> Option<Self::Subproof> {
         unsafe { &mut *self.pools }.sub_map.get(&r).map(|x| x.clone() )
     }
+    fn with_mut_premise<A, F: FnOnce(&mut Expr) -> A>(&mut self, r: &Self::Reference, f: F) -> Option<A> {
+        use self::Coproduct::{Inl, Inr};
+        let pools = unsafe { &mut *self.pools };
+        match r {
+            Inl(pr) => pools.prem_map.get_mut(pr).map(|p: &mut HCons<Expr, Tail>| {
+                f(p.get_mut())
+            }),
+            Inr(Inl(_)) => panic!("called with_mut_premise on a justification reference"), // TODO: eliminiate this case with more precise types
+            Inr(Inr(void)) => match *void {},
+        }
+    }
+    fn with_mut_step<A, F: FnOnce(&mut Justification<Expr, Self::Reference, Self::SubproofReference>) -> A>(&mut self, r: &Self::Reference, f: F) -> Option<A> {
+        use self::Coproduct::{Inl, Inr};
+        let pools = unsafe { &mut *self.pools };
+        match r {
+            Inl(_) => panic!("called with_mut_step on a premise reference"), // TODO: eliminiate this case with more precise types
+            Inr(Inl(jr)) => pools.just_map.get_mut(jr).map(|j_hcons: &mut Justification<HCons<Expr, Tail>, _, _>| {
+                let mut j_expr: Justification<Expr, _, _> = Justification(j_hcons.0.get().clone(), j_hcons.1.clone(), j_hcons.2.clone(), j_hcons.3.clone());
+                let ret = f(&mut j_expr);
+                *j_hcons.0.get_mut() = j_expr.0;
+                j_hcons.1 = j_expr.1;
+                j_hcons.2 = j_expr.2;
+                j_hcons.3 = j_expr.3;
+                ret
+            }),
+            Inr(Inr(void)) => match *void {},
+        }
+    
+    }
     fn with_mut_subproof<A, F: FnOnce(&mut Self::Subproof) -> A>(&mut self, r: &Self::SubproofReference, f: F) -> Option<A> {
-        // The subproof pointer, if returned directly, could be invalidated by calls to add_subproof on the same proof object.
-        // This is prevented by the fact that the lifetime parameter of the subproof reference cannot occur in A:
-        // #[test]
-        // fn doesnt_compile() {
-        //     let mut p = PooledProof::<Expr>::new();
-        //     let r = p.add_subproof();
-        //     let s = p.with_mut_subproof(&r, |x| x);
-        // }
         unsafe { &mut *self.pools }.sub_map.get_mut(r).map(f)
     }
     fn add_premise(&mut self, e: Expr) -> Self::Reference {
@@ -410,6 +431,8 @@ impl<Tail: Default+Clone> Proof for PooledProof<HCons<Expr, Tail>> {
     fn top_level_proof(&self) -> &Self::Subproof { &self.proof }
     fn lookup(&self, r: Self::Reference) -> Option<Coprod!(Expr, Justification<Expr, Self::Reference, Self::SubproofReference>)> { self.proof.lookup(r) }
     fn lookup_subproof(&self, r: Self::SubproofReference) -> Option<Self::Subproof> { self.proof.lookup_subproof(r) }
+    fn with_mut_premise<A, F: FnOnce(&mut Expr) -> A>(&mut self, r: &Self::Reference, f: F) -> Option<A> { self.proof.with_mut_premise(r, f) }
+    fn with_mut_step<A, F: FnOnce(&mut Justification<Expr, Self::Reference, Self::SubproofReference>) -> A>(&mut self, r: &Self::Reference, f: F) -> Option<A> { self.proof.with_mut_step(r, f) }
     fn with_mut_subproof<A, F: FnOnce(&mut Self::Subproof) -> A>(&mut self, r: &Self::SubproofReference, f: F) -> Option<A> { self.proof.with_mut_subproof(r, f) }
     fn add_premise(&mut self, e: Expr) -> Self::Reference { self.proof.add_premise(e) }
     fn add_subproof(&mut self) -> Self::SubproofReference { self.proof.add_subproof() }
@@ -470,4 +493,16 @@ impl<Tail> DisplayIndented for PooledProof<HCons<Expr, Tail>> {
 
 impl<Tail> Display for PooledProof<HCons<Expr, Tail>> {
     fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> { self.display_indented(fmt, 1, &mut 1) }
+}
+
+#[test]
+fn test_pooledproof_mutating_lines() {
+    use parser::parse_unwrap as p;
+    let mut prf = PooledProof::<Hlist![Expr]>::new();
+    let r1 = prf.add_premise(p("A"));
+    let r2 = prf.add_step(Justification(p("A & A"), RuleM::AndIntro, vec![r1.clone()], vec![]));
+    println!("{}", prf);
+    prf.with_mut_premise(&r1, |e| { *e = p("B"); }).unwrap();
+    prf.with_mut_step(&r2, |j| { j.0 = p("A | B"); j.1 = RuleM::OrIntro; }).unwrap();
+    println!("{}", prf);
 }
