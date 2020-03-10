@@ -53,64 +53,40 @@ impl Component for ExprEntry {
 // yew doesn't seem to allow Components to be generic over <P: Proof>, so fix a proof type P at the module level
 pub type P = PooledProof<Hlist![Expr]>;
 
-pub struct ProofWidgetLine {
-    link: ComponentLink<Self>,
-    props: ProofWidgetLineProps,
-}
-
-#[derive(Clone, Properties)]
-pub struct ProofWidgetLineProps {
-    proofref: <P as Proof>::Reference,
-    parent: ComponentLink<ProofWidget>,
-    depth: usize,
-    line: usize,
-}
-
-impl Component for ProofWidgetLine {
-    type Message = ();
-    type Properties = ProofWidgetLineProps;
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self {
-            link,
-            props,
-        }
+fn view_widget_line(line: usize, depth: usize, proofref: <P as Proof>::Reference, parent: ComponentLink<ProofWidget>) -> Html {
+    let mut prefix = format!("{} ({:?}): ", line, proofref);
+    for _ in 0..(depth+1) {
+        prefix += "|";
     }
-    fn update(&mut self, _: Self::Message) -> ShouldRender {
-        false
-    }
-    fn view(&self) -> Html {
-        let mut prefix = format!("{} ({:?}): ", self.props.line, self.props.proofref);
-        for _ in 0..(self.props.depth+1) {
-            prefix += "|";
-        }
-        let r1 = self.props.proofref.clone();
-        let r2 = self.props.proofref.clone();
-        let handle_action = self.props.parent.callback(move |e: ChangeData| {
-            if let ChangeData::Select(s) = e {
-                let i = s.selected_index();
-                s.set_selected_index(0);
-                match i {
-                    1 => ProofWidgetMsg::LineAction(LineActionKind::InsertBefore, r1.clone()),
-                    2 => ProofWidgetMsg::LineAction(LineActionKind::InsertAfter, r1.clone()),
-                    _ => ProofWidgetMsg::Nop,
-                }
-            } else {
-                ProofWidgetMsg::Nop
+    let r1 = proofref.clone();
+    let r2 = proofref.clone();
+    let prefix_clone = prefix.clone();
+    let handle_action = parent.callback(move |e: ChangeData| {
+        if let ChangeData::Select(s) = e {
+            let i = s.selected_index();
+            s.set_selected_index(0);
+            match i {
+                1 => ProofWidgetMsg::LineAction(prefix_clone.clone(), LineActionKind::InsertBefore, r1.clone()),
+                2 => ProofWidgetMsg::LineAction(prefix_clone.clone(), LineActionKind::InsertAfter, r1.clone()),
+                _ => ProofWidgetMsg::Nop,
             }
-        });
-        html! {
-            <div>
-                { prefix }
-                <select onchange=handle_action>
-                    <option value="Action">{ "Action" }</option>
-                    <hr />
-                    <option value="insert_before">{ "insert_before" }</option>
-                    <option value="insert_after">{ "insert_after" }</option>
-                </select>
-<ExprEntry initial_contents="" onchange=self.props.parent.callback(move |e| ProofWidgetMsg::LineChanged(r2.clone(), e)) />
-                <br />
-            </div>
+        } else {
+            ProofWidgetMsg::Nop
         }
+    });
+    let handle_input = parent.callback(move |e: InputData| ProofWidgetMsg::LineChanged(r2.clone(), (e.value.clone(), crate::parser::parse(&e.value))));
+    html! {
+        <div>
+            { prefix }
+            <select onchange=handle_action>
+                <option value="Action">{ "Action" }</option>
+                <hr />
+                <option value="insert_before">{ "insert_before" }</option>
+                <option value="insert_after">{ "insert_after" }</option>
+            </select>
+            <input type="text" oninput=handle_input style="width:400px" value="" />
+            <br />
+        </div>
     }
 }
 
@@ -131,7 +107,7 @@ pub enum LineActionKind {
 pub enum ProofWidgetMsg {
     Nop,
     LineChanged(<P as Proof>::Reference, (String, Option<Expr>)),
-    LineAction(LineActionKind, <P as Proof>::Reference),
+    LineAction(String, LineActionKind, <P as Proof>::Reference),
 }
 
 #[derive(Clone, Properties)]
@@ -143,23 +119,19 @@ impl ProofWidget {
     pub fn render_proof(&self, prf: &<P as Proof>::Subproof, line: &mut usize, depth: &mut usize) -> Html {
         let mut output = yew::virtual_dom::VList::new();
         for prem in prf.premises() {
-            output.add_child(html! { <ProofWidgetLine parent=self.link.clone() proofref=prem.clone() depth=*depth line=*line/> });
+            output.add_child(view_widget_line(*line, *depth, prem.clone(), self.link.clone()));
             *line += 1;
         }
         output.add_child(html! { <pre>{ "-----" }</pre> });
         for lineref in prf.lines() {
             use frunk::Coproduct::{Inl, Inr};
             match lineref {
-                Inl(r) => { output.add_child(html! { <ProofWidgetLine parent=self.link.clone() proofref=r.clone() depth=*depth line=*line /> }); *line += 1; },
+                Inl(r) => { output.add_child(view_widget_line(*line, *depth, r.clone(), self.link.clone())); *line += 1; },
                 Inr(Inl(sr)) => { *depth += 1; output.add_child(self.render_proof(&prf.lookup_subproof(sr).unwrap(), line, depth)); *depth -= 1; },
                 Inr(Inr(void)) => { match void {} },
             }
         }
-        html! {
-            <div>
-            { output }
-            </div>
-        }
+        html! { <div>{ output }</div> }
     }
 }
 
@@ -196,7 +168,7 @@ impl Component for ProofWidget {
                 ret = true;
             },
             ProofWidgetMsg::LineChanged(_, (_, None)) => {},
-            ProofWidgetMsg::LineAction(action, r) => {
+            ProofWidgetMsg::LineAction(_, action, r) => {
                 use expression_builders::var;
                 let after = match action { LineActionKind::InsertBefore => false, LineActionKind::InsertAfter => true };
                 match r {
