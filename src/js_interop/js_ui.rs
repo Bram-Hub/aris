@@ -3,8 +3,7 @@ use yew::prelude::*;
 use expression::Expr;
 use rules::RuleM;
 use proofs::{Proof, Justification, pooledproof::PooledProof};
-use std::collections::HashSet;
-use std::iter::FromIterator;
+use std::collections::HashMap;
 
 pub struct ExprEntry {
     link: ComponentLink<Self>,
@@ -53,7 +52,7 @@ impl Component for ExprEntry {
 // yew doesn't seem to allow Components to be generic over <P: Proof>, so fix a proof type P at the module level
 pub type P = PooledProof<Hlist![Expr]>;
 
-fn view_widget_line(line: usize, depth: usize, proofref: <P as Proof>::Reference, parent: ComponentLink<ProofWidget>) -> Html {
+fn view_widget_line(line: usize, depth: usize, proofref: <P as Proof>::Reference, parent: ComponentLink<ProofWidget>, ref_to_input: &HashMap<<P as Proof>::Reference, String>) -> Html {
     let mut prefix = format!("{} ({:?}): ", line, proofref);
     for _ in 0..(depth+1) {
         prefix += "|";
@@ -74,7 +73,7 @@ fn view_widget_line(line: usize, depth: usize, proofref: <P as Proof>::Reference
             ProofWidgetMsg::Nop
         }
     });
-    let handle_input = parent.callback(move |e: InputData| ProofWidgetMsg::LineChanged(r2.clone(), (e.value.clone(), crate::parser::parse(&e.value))));
+    let handle_input = parent.callback(move |e: InputData| ProofWidgetMsg::LineChanged(r2.clone(), e.value.clone()));
     html! {
         <div>
             { prefix }
@@ -84,7 +83,7 @@ fn view_widget_line(line: usize, depth: usize, proofref: <P as Proof>::Reference
                 <option value="insert_before">{ "insert_before" }</option>
                 <option value="insert_after">{ "insert_after" }</option>
             </select>
-            <input type="text" oninput=handle_input style="width:400px" value="" />
+            <input type="text" oninput=handle_input style="width:400px" value=ref_to_input.get(&proofref).unwrap_or(&String::new()) />
             <br />
         </div>
     }
@@ -93,6 +92,7 @@ fn view_widget_line(line: usize, depth: usize, proofref: <P as Proof>::Reference
 pub struct ProofWidget {
     link: ComponentLink<Self>,
     prf: P,
+    ref_to_input: HashMap<<P as Proof>::Reference, String>,
     preblob: String,
     props: ProofWidgetProps,
 }
@@ -106,7 +106,7 @@ pub enum LineActionKind {
 #[derive(Debug)]
 pub enum ProofWidgetMsg {
     Nop,
-    LineChanged(<P as Proof>::Reference, (String, Option<Expr>)),
+    LineChanged(<P as Proof>::Reference, String),
     LineAction(String, LineActionKind, <P as Proof>::Reference),
 }
 
@@ -119,14 +119,14 @@ impl ProofWidget {
     pub fn render_proof(&self, prf: &<P as Proof>::Subproof, line: &mut usize, depth: &mut usize) -> Html {
         let mut output = yew::virtual_dom::VList::new();
         for prem in prf.premises() {
-            output.add_child(view_widget_line(*line, *depth, prem.clone(), self.link.clone()));
+            output.add_child(view_widget_line(*line, *depth, prem.clone(), self.link.clone(), &self.ref_to_input));
             *line += 1;
         }
         output.add_child(html! { <pre>{ "-----" }</pre> });
         for lineref in prf.lines() {
             use frunk::Coproduct::{Inl, Inr};
             match lineref {
-                Inl(r) => { output.add_child(view_widget_line(*line, *depth, r.clone(), self.link.clone())); *line += 1; },
+                Inl(r) => { output.add_child(view_widget_line(*line, *depth, r.clone(), self.link.clone(), &self.ref_to_input)); *line += 1; },
                 Inr(Inl(sr)) => { *depth += 1; output.add_child(self.render_proof(&prf.lookup_subproof(sr).unwrap(), line, depth)); *depth -= 1; },
                 Inr(Inr(void)) => { match void {} },
             }
@@ -145,6 +145,7 @@ impl Component for ProofWidget {
         prf.add_step(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]));
         Self {
             link,
+            ref_to_input: HashMap::new(),
             prf,
             preblob: "".into(),
             props,
@@ -159,15 +160,17 @@ impl Component for ProofWidget {
         use frunk::Coproduct::{Inl, Inr};
         match msg {
             ProofWidgetMsg::Nop => {},
-            ProofWidgetMsg::LineChanged(r, (_, Some(e))) => {
-                match r {
-                    Inl(_) => self.prf.with_mut_premise(&r, |x| { *x = e }),
-                    Inr(Inl(_)) => self.prf.with_mut_step(&r, |x| { x.0 = e }),
-                    Inr(Inr(void)) => match void {},
-                };
+            ProofWidgetMsg::LineChanged(r, input) => {
+                self.ref_to_input.insert(r.clone(), input.clone());
+                if let Some(e) = crate::parser::parse(&input) {
+                    match r {
+                        Inl(_) => { self.prf.with_mut_premise(&r, |x| { *x = e }); },
+                        Inr(Inl(_)) => { self.prf.with_mut_step(&r, |x| { x.0 = e }); },
+                        Inr(Inr(void)) => match void {},
+                    }
+                }
                 ret = true;
             },
-            ProofWidgetMsg::LineChanged(_, (_, None)) => {},
             ProofWidgetMsg::LineAction(_, action, r) => {
                 use expression_builders::var;
                 let after = match action { LineActionKind::InsertBefore => false, LineActionKind::InsertAfter => true };
