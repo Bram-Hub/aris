@@ -54,7 +54,6 @@ impl Component for ExprEntry {
 pub type P = PooledProof<Hlist![Expr]>;
 
 pub struct ProofWidgetLine {
-    depth: usize,
     link: ComponentLink<Self>,
     props: ProofWidgetLineProps,
 }
@@ -63,6 +62,8 @@ pub struct ProofWidgetLine {
 pub struct ProofWidgetLineProps {
     proofref: <P as Proof>::Reference,
     parent: ComponentLink<ProofWidget>,
+    depth: usize,
+    line: usize,
 }
 
 impl Component for ProofWidgetLine {
@@ -70,7 +71,6 @@ impl Component for ProofWidgetLine {
     type Properties = ProofWidgetLineProps;
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         Self {
-            depth: 0,
             link,
             props,
         }
@@ -79,14 +79,35 @@ impl Component for ProofWidgetLine {
         false
     }
     fn view(&self) -> Html {
-        let mut prefix = String::new();
-        for _ in 0..(self.depth+1) {
+        let mut prefix = format!("{} ({:?}): ", self.props.line, self.props.proofref);
+        for _ in 0..(self.props.depth+1) {
             prefix += "|";
         }
-        let r = self.props.proofref.clone();
+        let r1 = self.props.proofref.clone();
+        let r2 = self.props.proofref.clone();
+        let handle_action = self.props.parent.callback(move |e: ChangeData| {
+            if let ChangeData::Select(s) = e {
+                let i = s.selected_index();
+                s.set_selected_index(0);
+                match i {
+                    1 => ProofWidgetMsg::LineAction(LineActionKind::InsertBefore, r1.clone()),
+                    2 => ProofWidgetMsg::LineAction(LineActionKind::InsertAfter, r1.clone()),
+                    _ => ProofWidgetMsg::Nop,
+                }
+            } else {
+                ProofWidgetMsg::Nop
+            }
+        });
         html! {
             <div>
-                { prefix } <ExprEntry initial_contents="" onchange=self.props.parent.callback(move |e| ProofWidgetMsg::LineChanged(r.clone(), e)) />
+                { prefix }
+                <select onchange=handle_action>
+                    <option value="Action">{ "Action" }</option>
+                    <hr />
+                    <option value="insert_before">{ "insert_before" }</option>
+                    <option value="insert_after">{ "insert_after" }</option>
+                </select>
+<ExprEntry initial_contents="" onchange=self.props.parent.callback(move |e| ProofWidgetMsg::LineChanged(r2.clone(), e)) />
                 <br />
             </div>
         }
@@ -96,60 +117,108 @@ impl Component for ProofWidgetLine {
 pub struct ProofWidget {
     link: ComponentLink<Self>,
     prf: P,
-    lines: Vec<<P as Proof>::Reference>,
-    separator_indices: HashSet<usize>,
+    preblob: String,
+    props: ProofWidgetProps,
 }
 
+#[derive(Debug)]
+pub enum LineActionKind {
+    InsertBefore,
+    InsertAfter,
+}
+
+#[derive(Debug)]
 pub enum ProofWidgetMsg {
+    Nop,
     LineChanged(<P as Proof>::Reference, (String, Option<Expr>)),
+    LineAction(LineActionKind, <P as Proof>::Reference),
+}
+
+#[derive(Clone, Properties)]
+pub struct ProofWidgetProps {
+    verbose: bool,
+}
+
+impl ProofWidget {
+    pub fn render_proof(&self, prf: &<P as Proof>::Subproof, line: &mut usize, depth: &mut usize) -> Html {
+        let mut output = yew::virtual_dom::VList::new();
+        for prem in prf.premises() {
+            output.add_child(html! { <ProofWidgetLine parent=self.link.clone() proofref=prem.clone() depth=*depth line=*line/> });
+            *line += 1;
+        }
+        output.add_child(html! { <pre>{ "-----" }</pre> });
+        for lineref in prf.lines() {
+            use frunk::Coproduct::{Inl, Inr};
+            match lineref {
+                Inl(r) => { output.add_child(html! { <ProofWidgetLine parent=self.link.clone() proofref=r.clone() depth=*depth line=*line /> }); *line += 1; },
+                Inr(Inl(sr)) => { *depth += 1; output.add_child(self.render_proof(&prf.lookup_subproof(sr).unwrap(), line, depth)); *depth -= 1; },
+                Inr(Inr(void)) => { match void {} },
+            }
+        }
+        html! {
+            <div>
+            { output }
+            </div>
+        }
+    }
 }
 
 impl Component for ProofWidget {
     type Message = ProofWidgetMsg;
-    type Properties = ();
-    fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
+    type Properties = ProofWidgetProps;
+    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         use expression_builders::var;
         let mut prf = P::new();
-        let r1 = prf.add_premise(var("__js_ui_blank_premise"));
-        let r2 = prf.add_step(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]));
+        prf.add_premise(var("__js_ui_blank_premise"));
+        prf.add_step(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]));
         Self {
             link,
             prf,
-            lines: vec![r1, r2],
-            separator_indices: HashSet::from_iter(vec![1]),
+            preblob: "".into(),
+            props,
         }
     }
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
+        let mut ret = false;
+        if self.props.verbose {
+            self.preblob += &format!("{:?}\n", msg);
+            ret = true;
+        }
+        use frunk::Coproduct::{Inl, Inr};
         match msg {
+            ProofWidgetMsg::Nop => {},
             ProofWidgetMsg::LineChanged(r, (_, Some(e))) => {
-                use frunk::Coproduct::{Inl, Inr};
                 match r {
                     Inl(_) => self.prf.with_mut_premise(&r, |x| { *x = e }),
                     Inr(Inl(_)) => self.prf.with_mut_step(&r, |x| { x.0 = e }),
                     Inr(Inr(void)) => match void {},
                 };
-                return true;
+                ret = true;
             },
-            ProofWidgetMsg::LineChanged(_, (_, None)) => {
-            }
+            ProofWidgetMsg::LineChanged(_, (_, None)) => {},
+            ProofWidgetMsg::LineAction(action, r) => {
+                use expression_builders::var;
+                let after = match action { LineActionKind::InsertBefore => false, LineActionKind::InsertAfter => true };
+                match r {
+                    Inl(_) => { self.prf.add_premise_relative(var("__js_ui_blank_premise"), r, after); },
+                    Inr(Inl(_)) => { self.prf.add_step_relative(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]), r, after); },
+                    Inr(Inr(void)) => match void {},
+                }
+                self.preblob += &format!("{:?}\n", self.prf.premises());
+                ret = true;
+            },
         }
-        false
+        ret
     }
     fn view(&self) -> Html {
-        let mut children = yew::virtual_dom::VList::new();
-        for (i, line) in self.lines.iter().enumerate() {
-            if self.separator_indices.contains(&i) {
-                children.add_child(html! { <pre>{ "-----" }</pre> });
-            }
-            children.add_child(html! {
-                <ProofWidgetLine parent=self.link.clone() proofref=line.clone() />
-            });
-        }
+        let interactive_proof = self.render_proof(self.prf.top_level_proof(), &mut 1, &mut 0);
         html! {
             <div>
-                { children }
+                { interactive_proof }
                 <hr />
-                <pre> { format!("{:#?}", self.prf) } </pre>
+                <pre> { format!("{}\n{:#?}", self.prf, self.prf) } </pre>
+                <hr />
+                <pre> { self.preblob.clone() } </pre>
             </div>
         }
     }
@@ -196,7 +265,7 @@ impl Component for App {
                     </pre>
                 </div>
                 <hr />
-                <ProofWidget />
+                <ProofWidget verbose=true />
             </div>
         }
     }
