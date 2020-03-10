@@ -462,12 +462,15 @@ async function init(input) {
         var ret = getObject(arg0) instanceof HTMLSelectElement;
         return ret;
     };
-    imports.wbg.__wbg_selectedIndex_daca10fddb9f9af7 = function(arg0) {
-        var ret = getObject(arg0).selectedIndex;
-        return ret;
-    };
     imports.wbg.__wbg_selectedIndex_d294deb2a31eb984 = function(arg0, arg1) {
         getObject(arg0).selectedIndex = arg1;
+    };
+    imports.wbg.__wbg_value_f6a8dc3f534b2c84 = function(arg0, arg1) {
+        var ret = getObject(arg1).value;
+        var ptr0 = passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        getInt32Memory0()[arg0 / 4 + 1] = len0;
+        getInt32Memory0()[arg0 / 4 + 0] = ptr0;
     };
     imports.wbg.__wbg_instanceof_HtmlTextAreaElement_ac8342fd3f12e7df = function(arg0) {
         var ret = getObject(arg0) instanceof HTMLTextAreaElement;
@@ -549,8 +552,8 @@ async function init(input) {
     imports.wbg.__wbindgen_throw = function(arg0, arg1) {
         throw new Error(getStringFromWasm0(arg0, arg1));
     };
-    imports.wbg.__wbindgen_closure_wrapper382 = function(arg0, arg1, arg2) {
-        var ret = makeMutClosure(arg0, arg1, 156, __wbg_adapter_16);
+    imports.wbg.__wbindgen_closure_wrapper386 = function(arg0, arg1, arg2) {
+        var ret = makeMutClosure(arg0, arg1, 158, __wbg_adapter_16);
         return addHeapObject(ret);
     };
 
