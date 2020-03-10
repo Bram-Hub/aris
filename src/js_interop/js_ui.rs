@@ -53,20 +53,27 @@ impl Component for ExprEntry {
 pub type P = PooledProof<Hlist![Expr]>;
 
 fn view_widget_line(line: usize, depth: usize, proofref: <P as Proof>::Reference, parent: ComponentLink<ProofWidget>, ref_to_input: &HashMap<<P as Proof>::Reference, String>) -> Html {
-    let mut prefix = format!("{} ({:?}): ", line, proofref);
+    let lineinfo = format!("{} ({:?})", line, proofref);
+    let mut indentation = yew::virtual_dom::VList::new();
     for _ in 0..(depth+1) {
-        prefix += "|";
+        indentation.add_child(html! { <span style="background-color:black">{"-"}</span>});
+        indentation.add_child(html! { <span style="color:white">{"-"}</span>});
     }
     let r1 = proofref.clone();
     let r2 = proofref.clone();
-    let prefix_clone = prefix.clone();
     let handle_action = parent.callback(move |e: ChangeData| {
         if let ChangeData::Select(s) = e {
-            let i = s.selected_index();
+            let value = s.value();
             s.set_selected_index(0);
-            match i {
-                1 => ProofWidgetMsg::LineAction(prefix_clone.clone(), LineActionKind::InsertBefore, r1.clone()),
-                2 => ProofWidgetMsg::LineAction(prefix_clone.clone(), LineActionKind::InsertAfter, r1.clone()),
+            match &*value {
+                "insert_line_before_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: false, relative_to: LAKItem::Line }, r1.clone()),
+                "insert_line_after_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: true, relative_to: LAKItem::Line }, r1.clone()),
+                "insert_line_before_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: false, relative_to: LAKItem::Subproof }, r1.clone()),
+                "insert_line_after_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: true, relative_to: LAKItem::Subproof }, r1.clone()),
+                "insert_subproof_before_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: false, relative_to: LAKItem::Line }, r1.clone()),
+                "insert_subproof_after_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: true, relative_to: LAKItem::Line }, r1.clone()),
+                "insert_subproof_before_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: false, relative_to: LAKItem::Subproof }, r1.clone()),
+                "insert_subproof_after_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: true, relative_to: LAKItem::Subproof }, r1.clone()),
                 _ => ProofWidgetMsg::Nop,
             }
         } else {
@@ -74,18 +81,29 @@ fn view_widget_line(line: usize, depth: usize, proofref: <P as Proof>::Reference
         }
     });
     let handle_input = parent.callback(move |e: InputData| ProofWidgetMsg::LineChanged(r2.clone(), e.value.clone()));
+    let action_selector = html! {
+        <select onchange=handle_action>
+            <option value="Action">{ "Action" }</option>
+            <hr />
+            <option value="insert_line_before_line">{ "insert_line_before_line" }</option>
+            <option value="insert_line_after_line">{ "insert_line_after_line" }</option>
+            //<option value="insert_line_before_subproof">{ "insert_line_before_subproof" }</option>
+            //<option value="insert_line_after_subproof">{ "insert_line_after_subproof" }</option>
+            <option value="insert_subproof_before_line">{ "insert_subproof_before_line" }</option>
+            <option value="insert_subproof_after_line">{ "insert_subproof_after_line" }</option>
+            //<option value="insert_subproof_before_subproof">{ "insert_subproof_before_subproof" }</option>
+            //<option value="insert_subproof_after_subproof">{ "insert_subproof_after_subproof" }</option>
+        </select>
+    };
     html! {
-        <div>
-            { prefix }
-            <select onchange=handle_action>
-                <option value="Action">{ "Action" }</option>
-                <hr />
-                <option value="insert_before">{ "insert_before" }</option>
-                <option value="insert_after">{ "insert_after" }</option>
-            </select>
+        <tr>
+            <td> { lineinfo } </td>
+            <td>
+            { indentation }
+            { action_selector }
             <input type="text" oninput=handle_input style="width:400px" value=ref_to_input.get(&proofref).unwrap_or(&String::new()) />
-            <br />
-        </div>
+            </td>
+        </tr>
     }
 }
 
@@ -98,16 +116,20 @@ pub struct ProofWidget {
 }
 
 #[derive(Debug)]
+pub enum LAKItem {
+    Line, Subproof
+}
+
+#[derive(Debug)]
 pub enum LineActionKind {
-    InsertBefore,
-    InsertAfter,
+    Insert { what: LAKItem, after: bool, relative_to: LAKItem, }
 }
 
 #[derive(Debug)]
 pub enum ProofWidgetMsg {
     Nop,
     LineChanged(<P as Proof>::Reference, String),
-    LineAction(String, LineActionKind, <P as Proof>::Reference),
+    LineAction(LineActionKind, <P as Proof>::Reference),
 }
 
 #[derive(Clone, Properties)]
@@ -122,7 +144,10 @@ impl ProofWidget {
             output.add_child(view_widget_line(*line, *depth, prem.clone(), self.link.clone(), &self.ref_to_input));
             *line += 1;
         }
-        output.add_child(html! { <pre>{ "-----" }</pre> });
+        let mut spacer = yew::virtual_dom::VList::new();
+        spacer.add_child(html! { <td></td> });
+        spacer.add_child(html! { <td style="background-color:black"></td> });
+        output.add_child(yew::virtual_dom::VNode::from(spacer));
         for lineref in prf.lines() {
             use frunk::Coproduct::{Inl, Inr};
             match lineref {
@@ -131,7 +156,11 @@ impl ProofWidget {
                 Inr(Inr(void)) => { match void {} },
             }
         }
-        html! { <div>{ output }</div> }
+        if *depth == 0 {
+            html! { <table>{ output }</table> }
+        } else {
+            yew::virtual_dom::VNode::from(output)
+        }
     }
 }
 
@@ -171,13 +200,28 @@ impl Component for ProofWidget {
                 }
                 ret = true;
             },
-            ProofWidgetMsg::LineAction(_, action, r) => {
+            ProofWidgetMsg::LineAction(LineActionKind::Insert { what, after, relative_to }, orig_ref) => {
                 use expression_builders::var;
-                let after = match action { LineActionKind::InsertBefore => false, LineActionKind::InsertAfter => true };
-                match r {
-                    Inl(_) => { self.prf.add_premise_relative(var("__js_ui_blank_premise"), r, after); },
-                    Inr(Inl(_)) => { self.prf.add_step_relative(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]), r, after); },
-                    Inr(Inr(void)) => match void {},
+                let insertion_point = match relative_to {
+                    LAKItem::Line => orig_ref,
+                    LAKItem::Subproof => {
+                        // TODO: need to refactor Proof::add_*_relative to take Coprod!(Reference, SubproofReference)
+                        return ret;
+                    },
+                };
+                match what {
+                    LAKItem::Line => match insertion_point {
+                        Inl(_) => { self.prf.add_premise_relative(var("__js_ui_blank_premise"), insertion_point, after); },
+                        Inr(Inl(_)) => { self.prf.add_step_relative(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]), insertion_point, after); },
+                        Inr(Inr(void)) => match void {},
+                    },
+                    LAKItem::Subproof => {
+                        let sr = self.prf.add_subproof_relative(insertion_point, after);
+                        self.prf.with_mut_subproof(&sr, |sub| {
+                            sub.add_premise(var("__js_ui_blank_premise"));
+                            sub.add_step(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]));
+                        });
+                    },
                 }
                 self.preblob += &format!("{:?}\n", self.prf.premises());
                 ret = true;
