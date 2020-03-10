@@ -1,6 +1,10 @@
 extern crate yew;
 use yew::prelude::*;
 use expression::Expr;
+use rules::RuleM;
+use proofs::{Proof, Justification, pooledproof::PooledProof};
+use std::collections::HashSet;
+use std::iter::FromIterator;
 
 pub struct ExprEntry {
     link: ComponentLink<Self>,
@@ -46,6 +50,111 @@ impl Component for ExprEntry {
     }
 }
 
+// yew doesn't seem to allow Components to be generic over <P: Proof>, so fix a proof type P at the module level
+pub type P = PooledProof<Hlist![Expr]>;
+
+pub struct ProofWidgetLine {
+    depth: usize,
+    link: ComponentLink<Self>,
+    props: ProofWidgetLineProps,
+}
+
+#[derive(Clone, Properties)]
+pub struct ProofWidgetLineProps {
+    proofref: <P as Proof>::Reference,
+    parent: ComponentLink<ProofWidget>,
+}
+
+impl Component for ProofWidgetLine {
+    type Message = ();
+    type Properties = ProofWidgetLineProps;
+    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+        Self {
+            depth: 0,
+            link,
+            props,
+        }
+    }
+    fn update(&mut self, _: Self::Message) -> ShouldRender {
+        false
+    }
+    fn view(&self) -> Html {
+        let mut prefix = String::new();
+        for _ in 0..(self.depth+1) {
+            prefix += "|";
+        }
+        let r = self.props.proofref.clone();
+        html! {
+            <div>
+                { prefix } <ExprEntry initial_contents="" onchange=self.props.parent.callback(move |e| ProofWidgetMsg::LineChanged(r.clone(), e)) />
+                <br />
+            </div>
+        }
+    }
+}
+
+pub struct ProofWidget {
+    link: ComponentLink<Self>,
+    prf: P,
+    lines: Vec<<P as Proof>::Reference>,
+    separator_indices: HashSet<usize>,
+}
+
+pub enum ProofWidgetMsg {
+    LineChanged(<P as Proof>::Reference, (String, Option<Expr>)),
+}
+
+impl Component for ProofWidget {
+    type Message = ProofWidgetMsg;
+    type Properties = ();
+    fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
+        use expression_builders::var;
+        let mut prf = P::new();
+        let r1 = prf.add_premise(var("__js_ui_blank_premise"));
+        let r2 = prf.add_step(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]));
+        Self {
+            link,
+            prf,
+            lines: vec![r1, r2],
+            separator_indices: HashSet::from_iter(vec![1]),
+        }
+    }
+    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+        match msg {
+            ProofWidgetMsg::LineChanged(r, (_, Some(e))) => {
+                use frunk::Coproduct::{Inl, Inr};
+                match r {
+                    Inl(_) => self.prf.with_mut_premise(&r, |x| { *x = e }),
+                    Inr(Inl(_)) => self.prf.with_mut_step(&r, |x| { x.0 = e }),
+                    Inr(Inr(void)) => match void {},
+                };
+                return true;
+            },
+            ProofWidgetMsg::LineChanged(_, (_, None)) => {
+            }
+        }
+        false
+    }
+    fn view(&self) -> Html {
+        let mut children = yew::virtual_dom::VList::new();
+        for (i, line) in self.lines.iter().enumerate() {
+            if self.separator_indices.contains(&i) {
+                children.add_child(html! { <pre>{ "-----" }</pre> });
+            }
+            children.add_child(html! {
+                <ProofWidgetLine parent=self.link.clone() proofref=line.clone() />
+            });
+        }
+        html! {
+            <div>
+                { children }
+                <hr />
+                <pre> { format!("{:#?}", self.prf) } </pre>
+            </div>
+        }
+    }
+}
+
 pub struct App {
     link: ComponentLink<Self>,
     last_good_parse: String,
@@ -86,6 +195,8 @@ impl Component for App {
                         { self.current_expr.as_ref().map(|e| format!("{:#?}", e)).unwrap_or("Error".into()) }
                     </pre>
                 </div>
+                <hr />
+                <ProofWidget />
             </div>
         }
     }
