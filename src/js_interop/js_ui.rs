@@ -52,61 +52,6 @@ impl Component for ExprEntry {
 // yew doesn't seem to allow Components to be generic over <P: Proof>, so fix a proof type P at the module level
 pub type P = PooledProof<Hlist![Expr]>;
 
-fn view_widget_line(line: usize, depth: usize, proofref: <P as Proof>::Reference, parent: ComponentLink<ProofWidget>, ref_to_input: &HashMap<<P as Proof>::Reference, String>) -> Html {
-    let lineinfo = format!("{} ({:?})", line, proofref);
-    let mut indentation = yew::virtual_dom::VList::new();
-    for _ in 0..(depth+1) {
-        indentation.add_child(html! { <span style="background-color:black">{"-"}</span>});
-        indentation.add_child(html! { <span style="color:white">{"-"}</span>});
-    }
-    let r1 = proofref.clone();
-    let r2 = proofref.clone();
-    let handle_action = parent.callback(move |e: ChangeData| {
-        if let ChangeData::Select(s) = e {
-            let value = s.value();
-            s.set_selected_index(0);
-            match &*value {
-                "insert_line_before_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: false, relative_to: LAKItem::Line }, r1.clone()),
-                "insert_line_after_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: true, relative_to: LAKItem::Line }, r1.clone()),
-                "insert_line_before_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: false, relative_to: LAKItem::Subproof }, r1.clone()),
-                "insert_line_after_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: true, relative_to: LAKItem::Subproof }, r1.clone()),
-                "insert_subproof_before_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: false, relative_to: LAKItem::Line }, r1.clone()),
-                "insert_subproof_after_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: true, relative_to: LAKItem::Line }, r1.clone()),
-                "insert_subproof_before_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: false, relative_to: LAKItem::Subproof }, r1.clone()),
-                "insert_subproof_after_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: true, relative_to: LAKItem::Subproof }, r1.clone()),
-                _ => ProofWidgetMsg::Nop,
-            }
-        } else {
-            ProofWidgetMsg::Nop
-        }
-    });
-    let handle_input = parent.callback(move |e: InputData| ProofWidgetMsg::LineChanged(r2.clone(), e.value.clone()));
-    let action_selector = html! {
-        <select onchange=handle_action>
-            <option value="Action">{ "Action" }</option>
-            <hr />
-            <option value="insert_line_before_line">{ "insert_line_before_line" }</option>
-            <option value="insert_line_after_line">{ "insert_line_after_line" }</option>
-            //<option value="insert_line_before_subproof">{ "insert_line_before_subproof" }</option>
-            //<option value="insert_line_after_subproof">{ "insert_line_after_subproof" }</option>
-            <option value="insert_subproof_before_line">{ "insert_subproof_before_line" }</option>
-            <option value="insert_subproof_after_line">{ "insert_subproof_after_line" }</option>
-            //<option value="insert_subproof_before_subproof">{ "insert_subproof_before_subproof" }</option>
-            //<option value="insert_subproof_after_subproof">{ "insert_subproof_after_subproof" }</option>
-        </select>
-    };
-    html! {
-        <tr>
-            <td> { lineinfo } </td>
-            <td>
-            { indentation }
-            { action_selector }
-            <input type="text" oninput=handle_input style="width:400px" value=ref_to_input.get(&proofref).unwrap_or(&String::new()) />
-            </td>
-        </tr>
-    }
-}
-
 pub struct ProofWidget {
     link: ComponentLink<Self>,
     prf: P,
@@ -138,10 +83,65 @@ pub struct ProofWidgetProps {
 }
 
 impl ProofWidget {
+    pub fn view_widget_line(&self, line: usize, depth: usize, proofref: <P as Proof>::Reference) -> Html {
+        let lineinfo = format!("{} ({:?})", line, proofref);
+        let mut indentation = yew::virtual_dom::VList::new();
+        for _ in 0..(depth+1) {
+            indentation.add_child(html! { <span style="background-color:black">{"-"}</span>});
+            indentation.add_child(html! { <span style="color:white">{"-"}</span>});
+        }
+        let r1 = proofref.clone();
+        let r2 = proofref.clone();
+        let handle_action = self.link.callback(move |e: ChangeData| {
+            if let ChangeData::Select(s) = e {
+                let value = s.value();
+                s.set_selected_index(0);
+                match &*value {
+                    "insert_line_before_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: false, relative_to: LAKItem::Line }, r1.clone()),
+                    "insert_line_after_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: true, relative_to: LAKItem::Line }, r1.clone()),
+                    "insert_line_before_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: false, relative_to: LAKItem::Subproof }, r1.clone()),
+                    "insert_line_after_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: true, relative_to: LAKItem::Subproof }, r1.clone()),
+                    "insert_subproof_before_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: false, relative_to: LAKItem::Line }, r1.clone()),
+                    "insert_subproof_after_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: true, relative_to: LAKItem::Line }, r1.clone()),
+                    "insert_subproof_before_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: false, relative_to: LAKItem::Subproof }, r1.clone()),
+                    "insert_subproof_after_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: true, relative_to: LAKItem::Subproof }, r1.clone()),
+                    _ => ProofWidgetMsg::Nop,
+                }
+            } else {
+                ProofWidgetMsg::Nop
+            }
+        });
+        let handle_input = self.link.callback(move |e: InputData| ProofWidgetMsg::LineChanged(r2.clone(), e.value.clone()));
+        let action_selector = html! {
+            <select onchange=handle_action>
+                <option value="Action">{ "Action" }</option>
+                <hr />
+                <option value="insert_line_before_line">{ "insert_line_before_line" }</option>
+                <option value="insert_line_after_line">{ "insert_line_after_line" }</option>
+                //<option value="insert_line_before_subproof">{ "insert_line_before_subproof" }</option>
+                //<option value="insert_line_after_subproof">{ "insert_line_after_subproof" }</option>
+                <option value="insert_subproof_before_line">{ "insert_subproof_before_line" }</option>
+                <option value="insert_subproof_after_line">{ "insert_subproof_after_line" }</option>
+                //<option value="insert_subproof_before_subproof">{ "insert_subproof_before_subproof" }</option>
+                //<option value="insert_subproof_after_subproof">{ "insert_subproof_after_subproof" }</option>
+            </select>
+        };
+        html! {
+            <tr>
+                <td> { lineinfo } </td>
+                <td>
+                { indentation }
+                { action_selector }
+                <input type="text" oninput=handle_input style="width:400px" value=self.ref_to_input.get(&proofref).unwrap_or(&String::new()) />
+                </td>
+            </tr>
+        }
+    }
+
     pub fn render_proof(&self, prf: &<P as Proof>::Subproof, line: &mut usize, depth: &mut usize) -> Html {
         let mut output = yew::virtual_dom::VList::new();
         for prem in prf.premises() {
-            output.add_child(view_widget_line(*line, *depth, prem.clone(), self.link.clone(), &self.ref_to_input));
+            output.add_child(self.view_widget_line(*line, *depth, prem.clone()));
             *line += 1;
         }
         let mut spacer = yew::virtual_dom::VList::new();
@@ -151,7 +151,7 @@ impl ProofWidget {
         for lineref in prf.lines() {
             use frunk::Coproduct::{Inl, Inr};
             match lineref {
-                Inl(r) => { output.add_child(view_widget_line(*line, *depth, r.clone(), self.link.clone(), &self.ref_to_input)); *line += 1; },
+                Inl(r) => { output.add_child(self.view_widget_line(*line, *depth, r.clone())); *line += 1; },
                 Inr(Inl(sr)) => { *depth += 1; output.add_child(self.render_proof(&prf.lookup_subproof(sr).unwrap(), line, depth)); *depth -= 1; },
                 Inr(Inr(void)) => { match void {} },
             }
