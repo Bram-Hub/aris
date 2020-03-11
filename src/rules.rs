@@ -30,8 +30,9 @@ Each `check` implementation usually starts off with bringing the rules of the re
 (e.g. for adding `AndIntro` if it wasn't already there)
 - Add it to the appropriate rule type enum (if it needs a new type, see the next checklist)
 - Add it to the end of `edu.rpi.aris.rules.RuleList` (order may matter for the Java code)
-- Add an entry for it to `RuleM`, with the `Coproduct::{Inl,Inr}` wrapping for the type of rule it's in
-- Add it to `RuleM::from_serialized_name`, under the same name used in the Java (deserializing the UI's usage of it will fail if the name isn't the same)
+- Add an entry for it to the declare_rules! entry in `RuleM`
+    - The `Coproduct::{Inl,Inr}` wrapping depends on type of rule that the rule is in
+    - For the string, use same name as in the Java (deserializing the UI's usage of it will fail if the name isn't the same)
 - In the `impl RuleT for WhicheverEnum` block:
     - Add the metadata, if applicable 
     - Add the new rule to the `check` method's main match block, with an `unimplemented!()` body
@@ -114,121 +115,95 @@ pub type Rule = SharedChecks<Coprod!(PrepositionalInference, PredicateInference,
 pub mod RuleM {
     #![allow(non_upper_case_globals)]
     use super::*;
-    pub static Reit: Rule = SharedChecks(Inl(PrepositionalInference::Reit));
-    pub static AndIntro: Rule = SharedChecks(Inl(PrepositionalInference::AndIntro));
-    pub static AndElim: Rule = SharedChecks(Inl(PrepositionalInference::AndElim));
-    pub static OrIntro: Rule = SharedChecks(Inl(PrepositionalInference::OrIntro));
-    pub static OrElim: Rule = SharedChecks(Inl(PrepositionalInference::OrElim));
-    pub static ImpIntro: Rule = SharedChecks(Inl(PrepositionalInference::ImpIntro));
-    pub static ImpElim: Rule = SharedChecks(Inl(PrepositionalInference::ImpElim));
-    pub static NotIntro: Rule = SharedChecks(Inl(PrepositionalInference::NotIntro));
-    pub static NotElim: Rule = SharedChecks(Inl(PrepositionalInference::NotElim));
-    pub static ContradictionIntro: Rule = SharedChecks(Inl(PrepositionalInference::ContradictionIntro));
-    pub static ContradictionElim: Rule = SharedChecks(Inl(PrepositionalInference::ContradictionElim));
-    pub static BiconditionalIntro: Rule = SharedChecks(Inl(PrepositionalInference::BiconditionalIntro));
-    pub static BiconditionalElim: Rule = SharedChecks(Inl(PrepositionalInference::BiconditionalElim));
-    pub static EquivalenceIntro: Rule = SharedChecks(Inl(PrepositionalInference::EquivalenceIntro));
-    pub static EquivalenceElim: Rule = SharedChecks(Inl(PrepositionalInference::EquivalenceElim));
+    macro_rules! declare_rules {
+        ($([$id:ident, $name:literal, $value:tt]),+) => {
+            declare_rules!{ DECLARE_STATICS; $([$id, $value]),+ }
 
-    pub static ForallIntro: Rule = SharedChecks(Inr(Inl(PredicateInference::ForallIntro)));
-    pub static ForallElim: Rule = SharedChecks(Inr(Inl(PredicateInference::ForallElim)));
-    pub static ExistsIntro: Rule = SharedChecks(Inr(Inl(PredicateInference::ExistsIntro)));
-    pub static ExistsElim: Rule = SharedChecks(Inr(Inl(PredicateInference::ExistsElim)));
+            pub static ALL_SERIALIZED_NAMES: &[&'static str] = &[ $($name),+ ];
 
-    pub static DeMorgan: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::DeMorgan))));
-    pub static Association: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Association))));
-    pub static Commutation: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Commutation))));
-    pub static Idempotence: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Idempotence))));
-    pub static Distribution: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Distribution))));
-    pub static DoubleNegation: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::DoubleNegation))));
-    pub static Complement: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Complement))));
-    pub static Identity: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Identity))));
-    pub static Annihilation: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Annihilation))));
-    pub static Inverse: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Inverse))));
-    pub static Absorption: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Absorption))));
-    pub static Reduction: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Reduction))));
-    pub static Adjacency: Rule = SharedChecks(Inr(Inr(Inl(Equivalence::Adjacency))));
+            #[allow(unused_parens)]
+            pub fn to_serialized_name(rule: Rule) -> &'static str {
+                declare_rules! { DECLARE_MATCH; on: rule; default: unreachable!(); $([$value, $name]),+ }
+            }
+            pub fn from_serialized_name(name: &str) -> Option<Rule> {
+                Some(declare_rules! { DECLARE_MATCH; on: name; default: { return None; }; $([$name, $id]),+ })
+            }
+        };
+        (DECLARE_STATICS; [$id: ident, $value:expr]) => {
+            pub static $id: Rule = $value;
+        };
+        (DECLARE_STATICS; [$id: ident, $value:expr], $([$id_rec:ident, $value_rec:expr]),+) => {
+            declare_rules!{ DECLARE_STATICS; [$id, $value] }
+            declare_rules!{ DECLARE_STATICS; $([$id_rec, $value_rec]),+ }
+        };
+        (DECLARE_MATCH; on: $match_arg:expr; default: $default_rhs:expr; $([$lhs:pat, $rhs:expr]),+) => {
+            match $match_arg {
+                $($lhs => $rhs),+,
+                _ => $default_rhs
+            }
+        }
+    }
+    // The unused_parens are actually needed in order to capture the entire SharedChecks(...) as a tokentree.
+    // If the outer macro captures $value:expr, to_serialized_name breaks (because it needs $value:pat).
+    // If the outer macro captures $value:pat, from_serialized_name and DECLARE_STATICS break (because they need $value:expr).
+    // If the parens are omitted, $value:tt only captures SharedChecks, without the (...)
+    // I haven't yet found a way to use macro_rules! to convert between expr and pat.
+    declare_rules! {
+        [Reit, "REITERATION", (SharedChecks(Inl(PrepositionalInference::Reit)))],
+        [AndIntro, "CONJUNCTION", (SharedChecks(Inl(PrepositionalInference::AndIntro)))],
+        [AndElim, "SIMPLIFICATION", (SharedChecks(Inl(PrepositionalInference::AndElim)))],
+        [OrIntro, "ADDITION", (SharedChecks(Inl(PrepositionalInference::OrIntro)))],
+        [OrElim, "DISJUNCTIVE_SYLLOGISM", (SharedChecks(Inl(PrepositionalInference::OrElim)))],
+        [ImpIntro, "CONDITIONAL_PROOF", (SharedChecks(Inl(PrepositionalInference::ImpIntro)))],
+        [ImpElim, "MODUS_PONENS", (SharedChecks(Inl(PrepositionalInference::ImpElim)))],
+        [NotIntro, "PROOF_BY_CONTRADICTION", (SharedChecks(Inl(PrepositionalInference::NotIntro)))],
+        [NotElim, "DOUBLENEGATION", (SharedChecks(Inl(PrepositionalInference::NotElim)))],
+        [ContradictionIntro, "CONTRADICTION", (SharedChecks(Inl(PrepositionalInference::ContradictionIntro)))],
+        [ContradictionElim, "PRINCIPLE_OF_EXPLOSION", (SharedChecks(Inl(PrepositionalInference::ContradictionElim)))],
+        [BiconditionalIntro, "BICONDITIONAL_INTRO", (SharedChecks(Inl(PrepositionalInference::BiconditionalIntro)))],
+        [BiconditionalElim, "BICONDITIONAL_ELIM", (SharedChecks(Inl(PrepositionalInference::BiconditionalElim)))],
+        [EquivalenceIntro, "EQUIVALENCE_INTRO", (SharedChecks(Inl(PrepositionalInference::EquivalenceIntro)))],
+        [EquivalenceElim, "EQUIVALENCE_ELIM", (SharedChecks(Inl(PrepositionalInference::EquivalenceElim)))],
 
-    pub static CondComplement: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Complement)))));
-    pub static CondIdentity: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Identity)))));
-    pub static CondAnnihilation: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Annihilation)))));
-    pub static Implication: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Implication)))));
-    pub static BiImplication: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiImplication)))));
-    pub static Contraposition: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Contraposition)))));
-    pub static Currying: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Currying)))));
-    pub static ConditionalDistribution: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalDistribution)))));
-    pub static ConditionalReduction: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalReduction)))));
-    pub static KnightsAndKnaves: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::KnightsAndKnaves)))));
-    pub static ConditionalIdempotence: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalIdempotence)))));
-    pub static BiconditionalNegation: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiconditionalNegation)))));
-    pub static BiconditionalSubstitution: Rule = SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiconditionalSubstitution)))));
+        [ForallIntro, "UNIVERSAL_GENERALIZATION", (SharedChecks(Inr(Inl(PredicateInference::ForallIntro))))],
+        [ForallElim, "UNIVERSAL_INSTANTIATION", (SharedChecks(Inr(Inl(PredicateInference::ForallElim))))],
+        [ExistsIntro, "EXISTENTIAL_GENERALIZATION", (SharedChecks(Inr(Inl(PredicateInference::ExistsIntro))))],
+        [ExistsElim, "EXISTENTIAL_INSTANTIATION", (SharedChecks(Inr(Inl(PredicateInference::ExistsElim))))],
+
+        [ModusTollens, "MODUS_TOLLENS", (SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ModusTollens)))))))],
+        [HypotheticalSyllogism, "HYPOTHETICAL_SYLLOGISM", (SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::HypotheticalSyllogism)))))))],
+        [ExcludedMiddle, "EXCLUDED_MIDDLE", (SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ExcludedMiddle)))))))],
+        [ConstructiveDilemma, "CONSTRUCTIVE_DILEMMA", (SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ConstructiveDilemma)))))))],
     
-    pub static ModusTollens: Rule = SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ModusTollens))))));
-    pub static HypotheticalSyllogism: Rule = SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::HypotheticalSyllogism))))));
-    pub static ExcludedMiddle: Rule = SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ExcludedMiddle))))));
-    pub static ConstructiveDilemma: Rule = SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ConstructiveDilemma))))));
+        [Association, "ASSOCIATION", (SharedChecks(Inr(Inr(Inl(Equivalence::Association)))))],
+        [Commutation, "COMMUTATION", (SharedChecks(Inr(Inr(Inl(Equivalence::Commutation)))))],
+        [Idempotence, "IDEMPOTENCE", (SharedChecks(Inr(Inr(Inl(Equivalence::Idempotence)))))],
+        [DeMorgan, "DE_MORGAN", (SharedChecks(Inr(Inr(Inl(Equivalence::DeMorgan)))))],
+        [Distribution, "DISTRIBUTION", (SharedChecks(Inr(Inr(Inl(Equivalence::Distribution)))))],
+        [DoubleNegation, "DOUBLENEGATION_EQUIV", (SharedChecks(Inr(Inr(Inl(Equivalence::DoubleNegation)))))],
+        [Complement, "COMPLEMENT", (SharedChecks(Inr(Inr(Inl(Equivalence::Complement)))))],
+        [Identity, "IDENTITY", (SharedChecks(Inr(Inr(Inl(Equivalence::Identity)))))],
+        [Annihilation, "ANNIHILATION", (SharedChecks(Inr(Inr(Inl(Equivalence::Annihilation)))))],
+        [Inverse, "INVERSE", (SharedChecks(Inr(Inr(Inl(Equivalence::Inverse)))))],
+        [Absorption, "ABSORPTION", (SharedChecks(Inr(Inr(Inl(Equivalence::Absorption)))))],
+        [Reduction, "REDUCTION", (SharedChecks(Inr(Inr(Inl(Equivalence::Reduction)))))],
+        [Adjacency, "ADJACENCY", (SharedChecks(Inr(Inr(Inl(Equivalence::Adjacency)))))],
 
-    pub static AsymmetricTautology: Rule = SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::AsymmetricTautology)))))));
+        [CondComplement, "CONDITIONAL_COMPLEMENT", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Complement))))))],
+        [CondIdentity, "CONDITIONAL_IDENTITY", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Identity))))))],
+        [CondAnnihilation, "CONDITIONAL_ANNIHILATION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Annihilation))))))],
+        [Implication, "IMPLICATION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Implication))))))],
+        [BiImplication, "BI_IMPLICATION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiImplication))))))],
+        [Contraposition, "CONTRAPOSITION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Contraposition))))))],
+        [Currying, "CURRYING", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Currying))))))],
+        [ConditionalDistribution, "CONDITIONAL_DISTRIBUTION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalDistribution))))))],
+        [ConditionalReduction, "CONDITIONAL_REDUCTION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalReduction))))))],
+        [KnightsAndKnaves, "KNIGHTS_AND_KNAVES", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::KnightsAndKnaves))))))],
+        [ConditionalIdempotence, "CONDITIONAL_IDEMPOTENCE", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalIdempotence))))))],
+        [BiconditionalNegation, "BICONDITIONAL_NEGATION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiconditionalNegation))))))],
+        [BiconditionalSubstitution, "BICONDITIONAL_SUBSTITUTION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiconditionalSubstitution))))))],
 
-    pub fn from_serialized_name(name: &str) -> Option<Rule> {
-        Some(match name {
-            "REITERATION" => RuleM::Reit,
-            "CONJUNCTION" => RuleM::AndIntro,
-            "SIMPLIFICATION" => RuleM::AndElim,
-            "ADDITION" => RuleM::OrIntro,
-            "DISJUNCTIVE_SYLLOGISM" => RuleM::OrElim,
-            "CONDITIONAL_PROOF" => RuleM::ImpIntro,
-            "MODUS_PONENS" => RuleM::ImpElim,
-            "PROOF_BY_CONTRADICTION" => RuleM::NotIntro,
-            "DOUBLENEGATION" => RuleM::NotElim,
-            "CONTRADICTION" => RuleM::ContradictionIntro,
-            "PRINCIPLE_OF_EXPLOSION" => RuleM::ContradictionElim,
-            "BICONDITIONAL_INTRO" => RuleM::BiconditionalIntro,
-            "BICONDITIONAL_ELIM" => RuleM::BiconditionalElim,
-            "EQUIVALENCE_INTRO" => RuleM::EquivalenceIntro,
-            "EQUIVALENCE_ELIM" => RuleM::EquivalenceElim,
-
-            "UNIVERSAL_GENERALIZATION" => RuleM::ForallIntro,
-            "UNIVERSAL_INSTANTIATION" => RuleM::ForallElim,
-            "EXISTENTIAL_GENERALIZATION" => RuleM::ExistsIntro,
-            "EXISTENTIAL_INSTANTIATION" => RuleM::ExistsElim,
-
-            "MODUS_TOLLENS" => RuleM::ModusTollens,
-            "HYPOTHETICAL_SYLLOGISM" => RuleM::HypotheticalSyllogism,
-            "EXCLUDED_MIDDLE" => RuleM::ExcludedMiddle,
-            "CONSTRUCTIVE_DILEMMA" => RuleM::ConstructiveDilemma,
-
-            "ASSOCIATION" => RuleM::Association,
-            "COMMUTATION" => RuleM::Commutation,
-            "IDEMPOTENCE" => RuleM::Idempotence,
-            "DE_MORGAN" => RuleM::DeMorgan,
-            "DISTRIBUTION" => RuleM::Distribution,
-            "DOUBLENEGATION_EQUIV" => RuleM::DoubleNegation,
-            "COMPLEMENT" => RuleM::Complement,
-            "IDENTITY" => RuleM::Identity,
-            "ANNIHILATION" => RuleM::Annihilation,
-            "INVERSE" => RuleM::Inverse,
-            "ABSORPTION" => RuleM::Absorption,
-            "REDUCTION" => RuleM::Reduction,
-            "ADJACENCY" => RuleM::Adjacency,
-            
-            "CONDITIONAL_COMPLEMENT" => RuleM::CondComplement,
-            "CONDITIONAL_IDENTITY" => RuleM::CondIdentity,
-            "CONDITIONAL_ANNIHILATION" => RuleM::CondAnnihilation,
-            "IMPLICATION" => RuleM::Implication,
-            "BI_IMPLICATION" => RuleM::BiImplication,
-            "CONTRAPOSITION" => RuleM::Contraposition,
-            "CURRYING" => RuleM::Currying,
-            "CONDITIONAL_DISTRIBUTION" => RuleM::ConditionalDistribution,
-            "CONDITIONAL_REDUCTION" => RuleM::ConditionalReduction,
-            "KNIGHTS_AND_KNAVES" => RuleM::KnightsAndKnaves,
-            "CONDITIONAL_IDEMPOTENCE" => RuleM::ConditionalIdempotence,
-            "BICONDITIONAL_NEGATION" => RuleM::BiconditionalNegation,
-            "BICONDITIONAL_SUBSTITUTION" => RuleM::BiconditionalSubstitution,
-
-            "ASYMMETRIC_TAUTOLOGY" => RuleM::AsymmetricTautology,
-            _ => { return None },
-        })
+        [AsymmetricTautology, "ASYMMETRIC_TAUTOLOGY", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::AsymmetricTautology))))))))]
     }
 }
 
