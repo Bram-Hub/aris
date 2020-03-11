@@ -55,7 +55,9 @@ pub type P = PooledProof<Hlist![Expr]>;
 pub struct ProofWidget {
     link: ComponentLink<Self>,
     prf: P,
+    ref_to_line_depth: HashMap<<P as Proof>::Reference, (usize, usize)>,
     ref_to_input: HashMap<<P as Proof>::Reference, String>,
+    selected_line: Option<<P as Proof>::Reference>,
     preblob: String,
     props: ProofWidgetProps,
 }
@@ -69,6 +71,7 @@ pub enum LAKItem {
 pub enum LineActionKind {
     Insert { what: LAKItem, after: bool, relative_to: LAKItem, },
     SetRule { rule: Rule },
+    Select,
 }
 
 #[derive(Debug)]
@@ -120,6 +123,24 @@ impl ProofWidget {
         }
     }
     pub fn render_proof_line(&self, line: usize, depth: usize, proofref: <P as Proof>::Reference) -> Html {
+        let selection_indicator =
+            if self.selected_line == Some(proofref.clone()) {
+                html! { <span style="background-color: cyan; color: blue"> { ">" } </span> }
+            } else {
+                yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new())
+            };
+        let dep_checkbox = (|| {
+            if let Some(selected_line) = self.selected_line{
+                use frunk::Coproduct::{Inl, Inr};
+                if let Inr(Inl(_)) = selected_line {
+                    let (s_line, s_depth) = self.ref_to_line_depth[&selected_line];
+                    if line < s_line && depth <= s_depth {
+                        return html! { <input type="checkbox"></input> };
+                    }
+                }
+            }
+            yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new())
+        })();
         let lineinfo = format!("{} ({:?})", line, proofref);
         let mut indentation = yew::virtual_dom::VList::new();
         for _ in 0..(depth+1) {
@@ -127,7 +148,6 @@ impl ProofWidget {
             indentation.add_child(html! { <span style="color:white">{"-"}</span>});
         }
         let r1 = proofref.clone();
-        let r2 = proofref.clone();
         let handle_action = self.link.callback(move |e: ChangeData| {
             if let ChangeData::Select(s) = e {
                 let value = s.value();
@@ -147,7 +167,10 @@ impl ProofWidget {
                 ProofWidgetMsg::Nop
             }
         });
+        let r2 = proofref.clone();
         let handle_input = self.link.callback(move |e: InputData| ProofWidgetMsg::LineChanged(r2.clone(), e.value.clone()));
+        let r3 = proofref.clone();
+        let select_line = self.link.callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::Select, r3.clone()));
         let action_selector = html! {
             <select onchange=handle_action>
                 <option value="Action">{ "Action" }</option>
@@ -165,11 +188,13 @@ impl ProofWidget {
         let justification_widget = self.render_justification_widget(line, depth, proofref.clone());
         html! {
             <tr>
+                <td> { selection_indicator } </td>
                 <td> { lineinfo } </td>
+                <td> { dep_checkbox } </td>
                 <td>
                 { indentation }
                 { action_selector }
-                <input type="text" oninput=handle_input style="width:400px" value=self.ref_to_input.get(&proofref).unwrap_or(&String::new()) />
+                <input type="text" oninput=handle_input onfocus=select_line style="width:400px" value=self.ref_to_input.get(&proofref).unwrap_or(&String::new()) />
                 </td>
                 { justification_widget }
             </tr>
@@ -200,6 +225,21 @@ impl ProofWidget {
             yew::virtual_dom::VNode::from(output)
         }
     }
+
+}
+pub fn calculate_lineinfo(output: &mut HashMap<<P as Proof>::Reference, (usize, usize)>, prf: &<P as Proof>::Subproof, line: &mut usize, depth: &mut usize) {
+    for prem in prf.premises() {
+        output.insert(prem.clone(), (*line, *depth));
+        *line += 1;
+    }
+    for lineref in prf.lines() {
+        use frunk::Coproduct::{Inl, Inr};
+        match lineref {
+            Inl(r) => { output.insert(r, (*line, *depth)); *line += 1; },
+            Inr(Inl(sr)) => { *depth += 1; calculate_lineinfo(output, &prf.lookup_subproof(sr).unwrap(), line, depth); *depth -= 1; },
+            Inr(Inr(void)) => { match void {} },
+        }
+    }
 }
 
 impl Component for ProofWidget {
@@ -212,8 +252,10 @@ impl Component for ProofWidget {
         prf.add_step(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]));
         Self {
             link,
+            ref_to_line_depth: HashMap::new(),
             ref_to_input: HashMap::new(),
             prf,
+            selected_line: None,
             preblob: "".into(),
             props,
         }
@@ -240,6 +282,7 @@ impl Component for ProofWidget {
             },
             ProofWidgetMsg::LineAction(LineActionKind::Insert { what, after, relative_to }, orig_ref) => {
                 use expression_builders::var;
+                let to_select;
                 let insertion_point = match relative_to {
                     LAKItem::Line => orig_ref,
                     LAKItem::Subproof => {
@@ -249,24 +292,35 @@ impl Component for ProofWidget {
                 };
                 match what {
                     LAKItem::Line => match insertion_point {
-                        Inl(_) => { self.prf.add_premise_relative(var("__js_ui_blank_premise"), insertion_point, after); },
-                        Inr(Inl(_)) => { self.prf.add_step_relative(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]), insertion_point, after); },
+                        Inl(_) => { to_select = self.prf.add_premise_relative(var("__js_ui_blank_premise"), insertion_point, after); },
+                        Inr(Inl(_)) => { to_select = self.prf.add_step_relative(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]), insertion_point, after); },
                         Inr(Inr(void)) => match void {},
                     },
                     LAKItem::Subproof => {
                         let sr = self.prf.add_subproof_relative(insertion_point, after);
-                        self.prf.with_mut_subproof(&sr, |sub| {
-                            sub.add_premise(var("__js_ui_blank_premise"));
+                        to_select = self.prf.with_mut_subproof(&sr, |sub| {
+                            let to_select = sub.add_premise(var("__js_ui_blank_premise"));
                             sub.add_step(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]));
-                        });
+                            to_select
+                        }).unwrap();
                     },
                 }
+                self.selected_line = Some(to_select);
                 self.preblob += &format!("{:?}\n", self.prf.premises());
                 ret = true;
             },
             ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule }, proofref) => {
                 self.prf.with_mut_step(&proofref, |j| { j.1 = rule });
+                self.selected_line = Some(proofref);
+                ret = true;
             },
+            ProofWidgetMsg::LineAction(LineActionKind::Select, proofref) => {
+                self.selected_line = Some(proofref);
+                ret = true;
+            },
+        }
+        if ret {
+            calculate_lineinfo(&mut self.ref_to_line_depth, self.prf.top_level_proof(), &mut 1, &mut 0);
         }
         ret
     }
