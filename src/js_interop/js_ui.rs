@@ -1,7 +1,7 @@
 extern crate yew;
 use yew::prelude::*;
 use expression::Expr;
-use rules::RuleM;
+use rules::{Rule, RuleM, RuleT};
 use proofs::{Proof, Justification, pooledproof::PooledProof};
 use std::collections::HashMap;
 
@@ -67,7 +67,8 @@ pub enum LAKItem {
 
 #[derive(Debug)]
 pub enum LineActionKind {
-    Insert { what: LAKItem, after: bool, relative_to: LAKItem, }
+    Insert { what: LAKItem, after: bool, relative_to: LAKItem, },
+    SetRule { rule: Rule },
 }
 
 #[derive(Debug)]
@@ -83,7 +84,42 @@ pub struct ProofWidgetProps {
 }
 
 impl ProofWidget {
-    pub fn view_widget_line(&self, line: usize, depth: usize, proofref: <P as Proof>::Reference) -> Html {
+    pub fn render_justification_widget(&self, line: usize, depth: usize, proofref: <P as Proof>::Reference) -> Html {
+        /* TODO: does HTML/do browsers have a way to do nested menus?
+        https://developer.mozilla.org/en-US/docs/Web/HTML/Element/menu is 
+        "experimental", and currently firefox only, and a bunch of tutorials for the 
+        DDG query "javascript nested context menus" build their own menus out of 
+        {div,nav,ul,li} with CSS for displaying the submenus on hover */ 
+        use frunk::Coproduct::{Inl, Inr};
+        if let Inr(Inl(_)) = proofref {
+            let r1 = proofref.clone();
+            let handle_rule_select = self.link.callback(move |e: ChangeData| {
+                if let ChangeData::Select(s) = e {
+                    if let Some(rule) = RuleM::from_serialized_name(&s.value()) {
+                        return ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule }, r1);
+                    }
+                }
+                ProofWidgetMsg::Nop
+            });
+            let mut rules = yew::virtual_dom::VList::new();
+            for rule in RuleM::ALL_RULES {
+                // TODO: seperators and submenus by RuleClassification
+                rules.add_child(html!{ <option value=RuleM::to_serialized_name(*rule)> { rule.get_name() } </option> });
+            }
+            html! {
+                <td>
+                <select onchange=handle_rule_select>
+                    <option value="no_rule_selected">{"Rule"}</option>
+                    <hr />
+                    { rules }
+                </select>
+                </td>
+            }
+        } else {
+            yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new())
+        }
+    }
+    pub fn render_proof_line(&self, line: usize, depth: usize, proofref: <P as Proof>::Reference) -> Html {
         let lineinfo = format!("{} ({:?})", line, proofref);
         let mut indentation = yew::virtual_dom::VList::new();
         for _ in 0..(depth+1) {
@@ -126,6 +162,7 @@ impl ProofWidget {
                 //<option value="insert_subproof_after_subproof">{ "insert_subproof_after_subproof" }</option>
             </select>
         };
+        let justification_widget = self.render_justification_widget(line, depth, proofref.clone());
         html! {
             <tr>
                 <td> { lineinfo } </td>
@@ -134,6 +171,7 @@ impl ProofWidget {
                 { action_selector }
                 <input type="text" oninput=handle_input style="width:400px" value=self.ref_to_input.get(&proofref).unwrap_or(&String::new()) />
                 </td>
+                { justification_widget }
             </tr>
         }
     }
@@ -141,7 +179,7 @@ impl ProofWidget {
     pub fn render_proof(&self, prf: &<P as Proof>::Subproof, line: &mut usize, depth: &mut usize) -> Html {
         let mut output = yew::virtual_dom::VList::new();
         for prem in prf.premises() {
-            output.add_child(self.view_widget_line(*line, *depth, prem.clone()));
+            output.add_child(self.render_proof_line(*line, *depth, prem.clone()));
             *line += 1;
         }
         let mut spacer = yew::virtual_dom::VList::new();
@@ -151,7 +189,7 @@ impl ProofWidget {
         for lineref in prf.lines() {
             use frunk::Coproduct::{Inl, Inr};
             match lineref {
-                Inl(r) => { output.add_child(self.view_widget_line(*line, *depth, r.clone())); *line += 1; },
+                Inl(r) => { output.add_child(self.render_proof_line(*line, *depth, r.clone())); *line += 1; },
                 Inr(Inl(sr)) => { *depth += 1; output.add_child(self.render_proof(&prf.lookup_subproof(sr).unwrap(), line, depth)); *depth -= 1; },
                 Inr(Inr(void)) => { match void {} },
             }
@@ -225,6 +263,9 @@ impl Component for ProofWidget {
                 }
                 self.preblob += &format!("{:?}\n", self.prf.premises());
                 ret = true;
+            },
+            ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule }, proofref) => {
+                self.prf.with_mut_step(&proofref, |j| { j.1 = rule });
             },
         }
         ret

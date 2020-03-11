@@ -120,6 +120,7 @@ pub mod RuleM {
             declare_rules!{ DECLARE_STATICS; $([$id, $value]),+ }
 
             pub static ALL_SERIALIZED_NAMES: &[&'static str] = &[ $($name),+ ];
+            pub static ALL_RULES: &[Rule] = &[$($id),+];
 
             #[allow(unused_parens)]
             pub fn to_serialized_name(rule: Rule) -> &'static str {
