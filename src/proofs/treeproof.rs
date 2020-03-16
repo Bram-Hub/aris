@@ -244,13 +244,13 @@ fn check_rule(prf: &TreeProof<LineAndIndent, ()>, li: LineAndIndent, Justificati
     use ProofCheckError::*;
     for &LineDep(i) in deps.iter() {
         if i >= li.line {
-            return Err(ReferencesLaterLine(li, i))
+            return Err(ReferencesLaterLine(LineDep(li.line), Coproduct::inject(LineDep(i))))
         }
     }
     for &SubproofDep(Range { start, end }) in sdeps.iter() {
         assert!(start <= end); // this should be enforced by the GUI, and hence not a user-facing error message
         if end >= li.line {
-            return Err(ReferencesLaterLine(li, end))
+            return Err(ReferencesLaterLine(LineDep(li.line), Coproduct::inject(SubproofDep(Range { start, end }))))
         }
     }
     rule.check(&prf.clone().bimap(&mut |_| (), &mut |_| ()), expr, deps, sdeps)

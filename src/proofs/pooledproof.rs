@@ -128,12 +128,17 @@ impl<T> Pools<T> {
     fn new() -> Self {
         Pools { prem_map: BTreeMap::new(), just_map: BTreeMap::new(), sub_map: BTreeMap::new(), containing_subproof: BTreeMap::new() }
     }
-    fn set_parent(&mut self, idx: Coprod!(PremKey, JustKey, SubKey), sub: &PooledSubproof<T>) {
+    fn subproof_to_subkey(&self, sub: &PooledSubproof<T>) -> Option<SubKey> {
         for (k, v) in self.sub_map.iter() {
             if v as *const _ as usize == sub as *const _ as usize {
-                self.containing_subproof.insert(idx, *k);
-                break
+                return Some(k.clone());
             }
+        }
+        None
+    }
+    fn set_parent(&mut self, idx: Coprod!(PremKey, JustKey, SubKey), sub: &PooledSubproof<T>) {
+        if let Some(sk) = self.subproof_to_subkey(sub) {
+            self.containing_subproof.insert(idx, sk);
         }
     }
     fn parent_of(&self, idx: &Coprod!(PremKey, JustKey, SubKey)) -> Option<SubKey> {
@@ -416,12 +421,31 @@ impl<Tail: Default+Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
         }
     }
     fn verify_line(&self, r: &Self::Reference) -> Result<(), ProofCheckError<Self::Reference, Self::SubproofReference>> {
-        // TODO: ReferencesLaterLine check (or should that go in SharedChecks?)
         use self::Coproduct::{Inl, Inr};
         match self.lookup(r.clone()) {
             None => Err(ProofCheckError::LineDoesNotExist(r.clone())),
             Some(Inl(_)) => Ok(()), // premises are always valid
-            Some(Inr(Inl(Justification(conclusion, rule, deps, sdeps)))) => rule.check(self, conclusion, deps, sdeps),
+            Some(Inr(Inl(Justification(conclusion, rule, deps, sdeps)))) => {
+                // TODO: efficient caching for ReferencesLaterLine check, so this isn't potentially O(n)
+                let mut valid_deps = HashSet::new();
+                let mut valid_sdeps = HashSet::new();
+                self.possible_deps_for_line(r, &mut valid_deps, &mut valid_sdeps);
+                println!("possible_deps_for_line: {:?} {:?} {:?}", r, valid_deps, valid_sdeps);
+
+                for dep in deps.iter() {
+                    let dep_co = Coproduct::inject(dep.clone());
+                    if !self.can_reference_dep(r, &dep_co) {
+                        return Err(ProofCheckError::ReferencesLaterLine(r.clone(), dep_co));
+                    }
+                }
+                for sdep in sdeps.iter() {
+                    let sdep_co = Coproduct::inject(sdep.clone());
+                    if !self.can_reference_dep(r, &sdep_co) {
+                        return Err(ProofCheckError::ReferencesLaterLine(r.clone(), sdep_co));
+                    }
+                }
+                rule.check(self, conclusion, deps, sdeps)
+            },
             Some(Inr(Inr(void))) => match void {},
         }
     }

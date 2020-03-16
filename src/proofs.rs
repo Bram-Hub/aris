@@ -268,6 +268,59 @@ pub trait Proof: Sized {
         }
         result
     }
+
+    fn possible_deps_for_line(&self, r: &Self::Reference, deps: &mut HashSet<Self::Reference>, sdeps: &mut HashSet<Self::SubproofReference>) {
+        // r1 can reference r2 if all of the following hold:
+        // 1) r2 occurs before r1
+        // 2) if r2 is a line, r2 cannot be deeper in a subproof (e.g. r2 must occur before r1 in the same subproof, or in one of the parent subproofs)
+        // 3) if r2 is a subproof reference, r1 must be outside r2's subproof
+        // we compute the set of lines satisfying these properties by walking backwards starting from the subproof that r1 is in, adding lines that respect these rules
+        use self::Coproduct::{Inl, Inr};
+        fn aux<P: Proof>(top: &P, sr: Option<P::SubproofReference>, r: Coprod!(P::Reference, P::SubproofReference), deps: &mut HashSet<P::Reference>, sdeps: &mut HashSet<P::SubproofReference>) {
+            let prf = sr.and_then(|sr| Some((sr.clone(), top.lookup_subproof(sr)?)));
+            match prf {
+                Some((sr, sub)) => {
+                    for line in sub.premises().into_iter().map(Coproduct::inject).chain(sub.lines().into_iter()) {
+                        if line == r.clone() {
+                            break; // don't traverse lines in the current subproof after the line we're considering, or any subproof transitively containing it
+                        }
+                        match line {
+                            Inl(lr) => { deps.insert(lr); }, // premise or justification in a subproof before the considered line
+                            Inr(Inl(sr)) => { sdeps.insert(sr); }, // subproof before the current line, respects scope since we're not recursing into it
+                            Inr(Inr(void)) => match void {},
+                        }
+                    }
+                    aux(top, top.parent_of_line(&Coproduct::inject(sr.clone())), Coproduct::inject(sr), deps, sdeps)
+                },
+                None => {
+                    // we've reached the top level
+                    for line in top.premises().into_iter().map(Coproduct::inject).chain(top.lines().into_iter()) {
+                        if line == r.clone() {
+                            break;
+                        }
+                        match line {
+                            Inl(lr) => { deps.insert(lr); },
+                            Inr(Inl(sr)) => { sdeps.insert(sr); },
+                            Inr(Inr(void)) => match void {},
+                        }
+                    }
+                }
+            }
+        }
+
+        aux(self, self.parent_of_line(&Coproduct::inject(r.clone())), Coproduct::inject(r.clone()), deps, sdeps);
+    }
+    fn can_reference_dep(&self, r1: &Self::Reference, r2: &Coprod!(Self::Reference, Self::SubproofReference)) -> bool {
+        use self::Coproduct::{Inl, Inr};
+        let mut valid_deps = HashSet::new();
+        let mut valid_sdeps = HashSet::new();
+        self.possible_deps_for_line(r1, &mut valid_deps, &mut valid_sdeps);
+        match r2 {
+            Inl(lr) => valid_deps.contains(lr),
+            Inr(Inl(sr)) => valid_sdeps.contains(sr),
+            Inr(Inr(void)) => match *void {},
+        }
+    }
 }
 
 /// A Justification struct represents a step in the proof.

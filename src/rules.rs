@@ -950,7 +950,7 @@ fn either_order<A, T, R: Eq, S: Eq, F: FnMut(&A, &A)->Result<Option<T>, ProofChe
 pub enum ProofCheckError<R, S> {
     LineDoesNotExist(R),
     SubproofDoesNotExist(S),
-    ReferencesLaterLine(LineAndIndent, usize),
+    ReferencesLaterLine(R, Coproduct<R, Coproduct<S, frunk::coproduct::CNil>>),
     IncorrectDepCount(Vec<R>, usize),
     IncorrectSubDepCount(Vec<S>, usize),
     DepOfWrongForm(Expr, Expr),
@@ -967,7 +967,7 @@ impl<R: std::fmt::Debug, S: std::fmt::Debug> std::fmt::Display for ProofCheckErr
         match self {
             LineDoesNotExist(r) => write!(f, "The referenced line {:?} does not exist.", r),
             SubproofDoesNotExist(s) => write!(f, "The referenced subproof {:?} does not exist.", s),
-            ReferencesLaterLine(li, i) => write!(f, "The dependency on line {} is after the line it occurs on ({}).", li.line, i),
+            ReferencesLaterLine(line, dep) => write!(f, "The dependency {:?} is after the step that uses it ({:?}).", dep, line),
             IncorrectDepCount(deps, n) => write!(f, "Too {} dependencies (expected: {}, provided: {}).", if deps.len() > *n { "many" } else { "few" }, n, deps.len()),
             IncorrectSubDepCount(sdeps, n) => write!(f, "Too {} subproof dependencies (expected: {}, provided: {}).", if sdeps.len() > *n { "many" } else { "few" }, n, sdeps.len()),
             DepOfWrongForm(x, y) => write!(f, "A dependency ({}) is of the wrong form, expected {}.", x, y),

@@ -159,8 +159,7 @@ impl ProofWidget {
                         }
                         ProofWidgetMsg::Nop
                     });
-                    let (s_line, s_depth) = self.ref_to_line_depth[&selected_line];
-                    if line < s_line && depth <= s_depth {
+                    if self.prf.can_reference_dep(&selected_line, &frunk::Coproduct::inject(proofref)) {
                         return html! { <input type="checkbox" onclick=handle_dep_changed checked=checked></input> };
                     }
                 }
@@ -243,21 +242,33 @@ impl ProofWidget {
         }
     }
 
-    pub fn render_proof(&self, prf: &<P as Proof>::Subproof, line: &mut usize, depth: &mut usize) -> Html {
+    pub fn render_proof(&self, prf: &<P as Proof>::Subproof, sref: Option<<P as Proof>::SubproofReference>, line: &mut usize, depth: &mut usize) -> Html {
         let mut output = yew::virtual_dom::VList::new();
         for prem in prf.premises() {
             output.add_child(self.render_proof_line(*line, *depth, prem.clone()));
             *line += 1;
         }
+        let sdep_checkbox = (|| {
+            match (self.selected_line, sref) {
+                (Some(selected), Some(sr)) if self.prf.can_reference_dep(&selected, &frunk::Coproduct::inject(sr)) => {
+                    html! {
+                        <input type="checkbox"></input>
+                    }
+                },
+                _ => yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new()),
+            }
+        })();
         let mut spacer = yew::virtual_dom::VList::new();
         spacer.add_child(html! { <td></td> });
+        spacer.add_child(html! { <td></td> });
+        spacer.add_child(html! { <td>{ sdep_checkbox }</td> });
         spacer.add_child(html! { <td style="background-color:black"></td> });
         output.add_child(yew::virtual_dom::VNode::from(spacer));
         for lineref in prf.lines() {
             use frunk::Coproduct::{Inl, Inr};
             match lineref {
                 Inl(r) => { output.add_child(self.render_proof_line(*line, *depth, r.clone())); *line += 1; },
-                Inr(Inl(sr)) => { *depth += 1; output.add_child(self.render_proof(&prf.lookup_subproof(sr).unwrap(), line, depth)); *depth -= 1; },
+                Inr(Inl(sr)) => { *depth += 1; output.add_child(self.render_proof(&prf.lookup_subproof(sr.clone()).unwrap(), Some(sr), line, depth)); *depth -= 1; },
                 Inr(Inr(void)) => { match void {} },
             }
         }
@@ -379,7 +390,7 @@ impl Component for ProofWidget {
         ret
     }
     fn view(&self) -> Html {
-        let interactive_proof = self.render_proof(self.prf.top_level_proof(), &mut 1, &mut 0);
+        let interactive_proof = self.render_proof(self.prf.top_level_proof(), None, &mut 1, &mut 0);
         html! {
             <div>
                 { interactive_proof }
