@@ -3,7 +3,9 @@ use yew::prelude::*;
 use expression::Expr;
 use rules::{Rule, RuleM, RuleT};
 use proofs::{Proof, Justification, pooledproof::PooledProof};
-use std::collections::HashMap;
+use std::collections::{BTreeSet,HashMap};
+use std::mem;
+use wasm_bindgen::JsCast;
 
 pub struct ExprEntry {
     link: ComponentLink<Self>,
@@ -72,6 +74,7 @@ pub enum LineActionKind {
     Insert { what: LAKItem, after: bool, relative_to: LAKItem, },
     SetRule { rule: Rule },
     Select,
+    SetDependency { to: bool, dep: <P as Proof>::Reference },
 }
 
 #[derive(Debug)]
@@ -95,11 +98,11 @@ impl ProofWidget {
         {div,nav,ul,li} with CSS for displaying the submenus on hover */ 
         use frunk::Coproduct::{Inl, Inr};
         if let Inr(Inl(_)) = proofref {
-            let r1 = proofref.clone();
+            let proofref_ = proofref.clone();
             let handle_rule_select = self.link.callback(move |e: ChangeData| {
                 if let ChangeData::Select(s) = e {
                     if let Some(rule) = RuleM::from_serialized_name(&s.value()) {
-                        return ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule }, r1);
+                        return ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule }, proofref_);
                     }
                 }
                 ProofWidgetMsg::Nop
@@ -130,12 +133,25 @@ impl ProofWidget {
                 yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new())
             };
         let dep_checkbox = (|| {
-            if let Some(selected_line) = self.selected_line{
+            if let Some(selected_line) = self.selected_line {
                 use frunk::Coproduct::{Inl, Inr};
                 if let Inr(Inl(_)) = selected_line {
+                    let lookup_result = self.prf.lookup(selected_line.clone()).expect("selected_line should exist in self.prf");
+                    let just: &Justification<_, _, _> = lookup_result.get().expect("selected_line already is a JustificationReference");
+                    let checked = just.2.contains(&proofref);
+                    let dep = proofref.clone();
+                    let selected_line_ = selected_line.clone();
+                    let handle_dep_changed = self.link.callback(move |e: MouseEvent| {
+                        if let Some(target) = e.target() {
+                            if let Ok(checkbox) = target.dyn_into::<web_sys::HtmlInputElement>() {
+                                return ProofWidgetMsg::LineAction(LineActionKind::SetDependency { to: checkbox.checked(), dep }, selected_line_);
+                            }
+                        }
+                        ProofWidgetMsg::Nop
+                    });
                     let (s_line, s_depth) = self.ref_to_line_depth[&selected_line];
                     if line < s_line && depth <= s_depth {
-                        return html! { <input type="checkbox"></input> };
+                        return html! { <input type="checkbox" onclick=handle_dep_changed checked=checked></input> };
                     }
                 }
             }
@@ -147,30 +163,30 @@ impl ProofWidget {
             indentation.add_child(html! { <span style="background-color:black">{"-"}</span>});
             indentation.add_child(html! { <span style="color:white">{"-"}</span>});
         }
-        let r1 = proofref.clone();
+        let proofref_ = proofref.clone();
         let handle_action = self.link.callback(move |e: ChangeData| {
             if let ChangeData::Select(s) = e {
                 let value = s.value();
                 s.set_selected_index(0);
                 match &*value {
-                    "insert_line_before_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: false, relative_to: LAKItem::Line }, r1.clone()),
-                    "insert_line_after_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: true, relative_to: LAKItem::Line }, r1.clone()),
-                    "insert_line_before_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: false, relative_to: LAKItem::Subproof }, r1.clone()),
-                    "insert_line_after_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: true, relative_to: LAKItem::Subproof }, r1.clone()),
-                    "insert_subproof_before_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: false, relative_to: LAKItem::Line }, r1.clone()),
-                    "insert_subproof_after_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: true, relative_to: LAKItem::Line }, r1.clone()),
-                    "insert_subproof_before_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: false, relative_to: LAKItem::Subproof }, r1.clone()),
-                    "insert_subproof_after_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: true, relative_to: LAKItem::Subproof }, r1.clone()),
+                    "insert_line_before_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: false, relative_to: LAKItem::Line }, proofref_.clone()),
+                    "insert_line_after_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: true, relative_to: LAKItem::Line }, proofref_.clone()),
+                    "insert_line_before_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: false, relative_to: LAKItem::Subproof }, proofref_.clone()),
+                    "insert_line_after_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: true, relative_to: LAKItem::Subproof }, proofref_.clone()),
+                    "insert_subproof_before_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: false, relative_to: LAKItem::Line }, proofref_.clone()),
+                    "insert_subproof_after_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: true, relative_to: LAKItem::Line }, proofref_.clone()),
+                    "insert_subproof_before_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: false, relative_to: LAKItem::Subproof }, proofref_.clone()),
+                    "insert_subproof_after_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: true, relative_to: LAKItem::Subproof }, proofref_.clone()),
                     _ => ProofWidgetMsg::Nop,
                 }
             } else {
                 ProofWidgetMsg::Nop
             }
         });
-        let r2 = proofref.clone();
-        let handle_input = self.link.callback(move |e: InputData| ProofWidgetMsg::LineChanged(r2.clone(), e.value.clone()));
-        let r3 = proofref.clone();
-        let select_line = self.link.callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::Select, r3.clone()));
+        let proofref_ = proofref.clone();
+        let handle_input = self.link.callback(move |e: InputData| ProofWidgetMsg::LineChanged(proofref_.clone(), e.value.clone()));
+        let proofref_ = proofref.clone();
+        let select_line = self.link.callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::Select, proofref_.clone()));
         let action_selector = html! {
             <select onchange=handle_action>
                 <option value="Action">{ "Action" }</option>
@@ -318,6 +334,18 @@ impl Component for ProofWidget {
                 self.selected_line = Some(proofref);
                 ret = true;
             },
+            ProofWidgetMsg::LineAction(LineActionKind::SetDependency { to, dep }, proofref) => {
+                self.prf.with_mut_step(&proofref, |j| {
+                    let mut dep_set: BTreeSet<<P as Proof>::Reference> = mem::replace(&mut j.2, vec![]).into_iter().collect();
+                    if to {
+                        dep_set.insert(dep);
+                    } else {
+                        dep_set.remove(&dep);
+                    }
+                    j.2.extend(dep_set);
+                });
+                ret = true;
+            }
         }
         if ret {
             calculate_lineinfo(&mut self.ref_to_line_depth, self.prf.top_level_proof(), &mut 1, &mut 0);

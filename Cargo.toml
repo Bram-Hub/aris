@@ -17,10 +17,11 @@ jni = { version = "0.10.2", optional = true }
 yew = { version = "0.13", optional = true }
 wasm-bindgen = { version = "^0.2", optional = true }
 wee_alloc = { version = "0.4", optional = true }
+web-sys = { version = "0.3", optional = true }
 
 [features]
 java = ["jni"]
-js = ["yew/web_sys", "wasm-bindgen", "wee_alloc/size_classes"]
+js = ["web-sys", "yew/web_sys", "wasm-bindgen", "wee_alloc/size_classes"]
 workaround_rls_vscode_bug_586 = []
 
 [build-dependencies]
