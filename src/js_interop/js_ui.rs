@@ -112,7 +112,15 @@ impl ProofWidget {
                 // TODO: seperators and submenus by RuleClassification
                 rules.add_child(html!{ <option value=RuleM::to_serialized_name(*rule)> { rule.get_name() } </option> });
             }
+            let lookup_result = self.prf.lookup(proofref.clone()).expect("proofref should exist in self.prf");
+            let just: &Justification<_, _, _> = lookup_result.get().expect("proofref already is a JustificationReference");
+            let mut dep_lines = String::new();
+            for (i, dep) in just.2.iter().enumerate() {
+                let (dep_line, _) = self.ref_to_line_depth[&dep];
+                dep_lines += &format!("{}{}", dep_line, if i < just.2.len()-1 { ", " } else { "" })
+            }
             html! {
+                <div>
                 <td>
                 <select onchange=handle_rule_select>
                     <option value="no_rule_selected">{"Rule"}</option>
@@ -120,6 +128,10 @@ impl ProofWidget {
                     { rules }
                 </select>
                 </td>
+                <td>
+                <input type="text" readonly=true value=dep_lines></input>
+                </td>
+                </div>
             }
         } else {
             yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new())
