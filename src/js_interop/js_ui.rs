@@ -74,7 +74,7 @@ pub enum LineActionKind {
     Insert { what: LAKItem, after: bool, relative_to: LAKItem, },
     SetRule { rule: Rule },
     Select,
-    SetDependency { to: bool, dep: <P as Proof>::Reference },
+    SetDependency { to: bool, dep: frunk::Coproduct<<P as Proof>::Reference, frunk::Coproduct<<P as Proof>::SubproofReference, frunk::coproduct::CNil>> },
 }
 
 #[derive(Debug)]
@@ -90,6 +90,34 @@ pub struct ProofWidgetProps {
 }
 
 impl ProofWidget {
+    pub fn render_dep_or_sdep_checkbox(&self, proofref: Coprod!(<P as Proof>::Reference, <P as Proof>::SubproofReference)) -> Html {
+        if let Some(selected_line) = self.selected_line {
+            use frunk::Coproduct::{Inl, Inr};
+            if let Inr(Inl(_)) = selected_line {
+                let lookup_result = self.prf.lookup(selected_line.clone()).expect("selected_line should exist in self.prf");
+                let just: &Justification<_, _, _> = lookup_result.get().expect("selected_line already is a JustificationReference");
+                let checked = match proofref {
+                    Inl(lr) => just.2.contains(&lr),
+                    Inr(Inl(sr)) => just.3.contains(&sr),
+                    Inr(Inr(void)) => match void {},
+                };
+                let dep = proofref.clone();
+                let selected_line_ = selected_line.clone();
+                let handle_dep_changed = self.link.callback(move |e: MouseEvent| {
+                    if let Some(target) = e.target() {
+                        if let Ok(checkbox) = target.dyn_into::<web_sys::HtmlInputElement>() {
+                            return ProofWidgetMsg::LineAction(LineActionKind::SetDependency { to: checkbox.checked(), dep }, selected_line_);
+                        }
+                    }
+                    ProofWidgetMsg::Nop
+                });
+                if self.prf.can_reference_dep(&selected_line, &proofref) {
+                    return html! { <input type="checkbox" onclick=handle_dep_changed checked=checked></input> };
+                }
+            }
+        }
+        yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new())
+    }
     pub fn render_justification_widget(&self, line: usize, depth: usize, proofref: <P as Proof>::Reference) -> Html {
         /* TODO: does HTML/do browsers have a way to do nested menus?
         https://developer.mozilla.org/en-US/docs/Web/HTML/Element/menu is 
@@ -142,30 +170,7 @@ impl ProofWidget {
             } else {
                 yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new())
             };
-        let dep_checkbox = (|| {
-            if let Some(selected_line) = self.selected_line {
-                use frunk::Coproduct::{Inl, Inr};
-                if let Inr(Inl(_)) = selected_line {
-                    let lookup_result = self.prf.lookup(selected_line.clone()).expect("selected_line should exist in self.prf");
-                    let just: &Justification<_, _, _> = lookup_result.get().expect("selected_line already is a JustificationReference");
-                    let checked = just.2.contains(&proofref);
-                    let dep = proofref.clone();
-                    let selected_line_ = selected_line.clone();
-                    let handle_dep_changed = self.link.callback(move |e: MouseEvent| {
-                        if let Some(target) = e.target() {
-                            if let Ok(checkbox) = target.dyn_into::<web_sys::HtmlInputElement>() {
-                                return ProofWidgetMsg::LineAction(LineActionKind::SetDependency { to: checkbox.checked(), dep }, selected_line_);
-                            }
-                        }
-                        ProofWidgetMsg::Nop
-                    });
-                    if self.prf.can_reference_dep(&selected_line, &frunk::Coproduct::inject(proofref)) {
-                        return html! { <input type="checkbox" onclick=handle_dep_changed checked=checked></input> };
-                    }
-                }
-            }
-            yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new())
-        })();
+        let dep_checkbox = self.render_dep_or_sdep_checkbox(frunk::Coproduct::inject(proofref.clone()));
         let lineinfo = format!("{} ({:?})", line, proofref);
         let mut indentation = yew::virtual_dom::VList::new();
         for _ in 0..(depth+1) {
@@ -248,16 +253,10 @@ impl ProofWidget {
             output.add_child(self.render_proof_line(*line, *depth, prem.clone()));
             *line += 1;
         }
-        let sdep_checkbox = (|| {
-            match (self.selected_line, sref) {
-                (Some(selected), Some(sr)) if self.prf.can_reference_dep(&selected, &frunk::Coproduct::inject(sr)) => {
-                    html! {
-                        <input type="checkbox"></input>
-                    }
-                },
-                _ => yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new()),
-            }
-        })();
+        let sdep_checkbox = match sref {
+            Some(sr) => self.render_dep_or_sdep_checkbox(frunk::Coproduct::inject(sr)),
+            None => yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new()),
+        };
         let mut spacer = yew::virtual_dom::VList::new();
         spacer.add_child(html! { <td></td> });
         spacer.add_child(html! { <td></td> });
@@ -373,13 +372,20 @@ impl Component for ProofWidget {
             },
             ProofWidgetMsg::LineAction(LineActionKind::SetDependency { to, dep }, proofref) => {
                 self.prf.with_mut_step(&proofref, |j| {
-                    let mut dep_set: BTreeSet<<P as Proof>::Reference> = mem::replace(&mut j.2, vec![]).into_iter().collect();
-                    if to {
-                        dep_set.insert(dep);
-                    } else {
-                        dep_set.remove(&dep);
+                    fn toggle_dep_or_sdep<T: Ord>(dep: T, deps: &mut Vec<T>, to: bool) {
+                        let mut dep_set: BTreeSet<T> = mem::replace(deps, vec![]).into_iter().collect();
+                        if to {
+                            dep_set.insert(dep);
+                        } else {
+                            dep_set.remove(&dep);
+                        }
+                        deps.extend(dep_set);
                     }
-                    j.2.extend(dep_set);
+                    match dep {
+                        Inl(lr) => toggle_dep_or_sdep(lr, &mut j.2, to),
+                        Inr(Inl(sr)) => toggle_dep_or_sdep(sr, &mut j.3, to),
+                        Inr(Inr(void)) => match void {},
+                    }
                 });
                 ret = true;
             }
