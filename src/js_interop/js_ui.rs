@@ -128,9 +128,7 @@ impl ProofWidget {
                     { rules }
                 </select>
                 </td>
-                <td>
-                <input type="text" readonly=true value=dep_lines></input>
-                </td>
+                <td><input type="text" readonly=true value=dep_lines></input></td>
                 </div>
             }
         } else {
@@ -214,6 +212,21 @@ impl ProofWidget {
             </select>
         };
         let justification_widget = self.render_justification_widget(line, depth, proofref.clone());
+        let rule_feedback = (|| {
+            use parser::parse;
+            let raw_line = match self.ref_to_input.get(&proofref).and_then(|x| if x.len() > 0 { Some(x) } else { None }) {
+                None => { return html! { <span></span> }; },
+                Some(x) => x,
+            };
+            match parse(&raw_line).map(|_| self.prf.verify_line(&proofref)) {
+                None => html! { <span style="background-color:yellow">{ "Parse error" }</span> },
+                Some(Ok(())) => html! { <span style="background-color:lightgreen">{ "Correct" }</span> },
+                Some(Err(e)) => {
+                    // TODO: proper CSS hover box
+                    html! { <span style="background-color:red" title=format!("{}", e)>{ "Error (hover for details)" }</span> }
+                },
+            }
+        })();
         html! {
             <tr>
                 <td> { selection_indicator } </td>
@@ -225,6 +238,7 @@ impl ProofWidget {
                 <input type="text" oninput=handle_input onfocus=select_line style="width:400px" value=self.ref_to_input.get(&proofref).unwrap_or(&String::new()) />
                 </td>
                 { justification_widget }
+                <td>{ rule_feedback }</td>
             </tr>
         }
     }
