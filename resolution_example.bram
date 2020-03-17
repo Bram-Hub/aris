@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<bram>
+  <program>Aris</program>
+  <version>0.0.187</version>
+  <metadata>
+    <author>UNKNOWN</author>
+    <hash>kooQv0rquDJOd13c4W/D7hVmoLgY0he6ThphwKbnQLI=</hash>
+  </metadata>
+  <proof id="0">
+    <assumption linenum="0">
+      <sen>(a1 ∨ a2 ∨ c)</sen>
+      <raw>(a1 ∨ a2 ∨ c)</raw>
+    </assumption>
+    <assumption linenum="1">
+      <sen>(b1 ∨ b2 ∨ ¬c)</sen>
+      <raw>(b1 ∨ b2 ∨ ¬c)</raw>
+    </assumption>
+    <step linenum="2">
+      <rule>SUBPROOF</rule>
+      <premise>1</premise>
+    </step>
+    <step linenum="4">
+      <rule>SUBPROOF</rule>
+      <premise>2</premise>
+    </step>
+    <step linenum="6">
+      <rule>SUBPROOF</rule>
+      <premise>3</premise>
+    </step>
+    <step linenum="15">
+      <sen>(a1 ∨ a2 ∨ b1 ∨ b2)</sen>
+      <raw>a1 ∨ a2 ∨ b1 ∨ b2</raw>
+      <rule>DISJUNCTIVE_SYLLOGISM</rule>
+      <premise>2</premise>
+      <premise>4</premise>
+      <premise>0</premise>
+      <premise>6</premise>
+    </step>
+    <goal>
+      <sen>(a1 ∨ a2 ∨ b1 ∨ b2)</sen>
+      <raw>a1 ∨ a2 ∨ b1 ∨ b2</raw>
+    </goal>
+  </proof>
+  <proof id="1">
+    <assumption linenum="2">
+      <sen>a1</sen>
+      <raw>a1</raw>
+    </assumption>
+    <step linenum="3">
+      <sen>(a1 ∨ a2 ∨ b1 ∨ b2)</sen>
+      <raw>a1 ∨ a2 ∨ b1 ∨ b2</raw>
+      <rule>ADDITION</rule>
+      <premise>2</premise>
+    </step>
+  </proof>
+  <proof id="2">
+    <assumption linenum="4">
+      <sen>a2</sen>
+      <raw>a2</raw>
+    </assumption>
+    <step linenum="5">
+      <sen>(a1 ∨ a2 ∨ b1 ∨ b2)</sen>
+      <raw>a1 ∨ a2 ∨ b1 ∨ b2</raw>
+      <rule>ADDITION</rule>
+      <premise>4</premise>
+    </step>
+  </proof>
+  <proof id="3">
+    <assumption linenum="6">
+      <sen>c</sen>
+      <raw>c</raw>
+    </assumption>
+    <step linenum="7">
+      <rule>SUBPROOF</rule>
+      <premise>4</premise>
+    </step>
+    <step linenum="9">
+      <rule>SUBPROOF</rule>
+      <premise>5</premise>
+    </step>
+    <step linenum="11">
+      <rule>SUBPROOF</rule>
+      <premise>6</premise>
+    </step>
+    <step linenum="14">
+      <sen>(a1 ∨ a2 ∨ b1 ∨ b2)</sen>
+      <raw>a1 ∨ a2 ∨ b1 ∨ b2</raw>
+      <rule>DISJUNCTIVE_SYLLOGISM</rule>
+      <premise>9</premise>
+      <premise>11</premise>
+      <premise>7</premise>
+      <premise>1</premise>
+    </step>
+  </proof>
+  <proof id="4">
+    <assumption linenum="7">
+      <sen>b1</sen>
+      <raw>b1</raw>
+    </assumption>
+    <step linenum="8">
+      <sen>(a1 ∨ a2 ∨ b1 ∨ b2)</sen>
+      <raw>a1 ∨ a2 ∨ b1 ∨ b2</raw>
+      <rule>ADDITION</rule>
+      <premise>7</premise>
+    </step>
+  </proof>
+  <proof id="5">
+    <assumption linenum="9">
+      <sen>b2</sen>
+      <raw>b2</raw>
+    </assumption>
+    <step linenum="10">
+      <sen>(a1 ∨ a2 ∨ b1 ∨ b2)</sen>
+      <raw>a1 ∨ a2 ∨ b1 ∨ b2</raw>
+      <rule>ADDITION</rule>
+      <premise>9</premise>
+    </step>
+  </proof>
+  <proof id="6">
+    <assumption linenum="11">
+      <sen>¬c</sen>
+      <raw>¬c</raw>
+    </assumption>
+    <step linenum="12">
+      <sen>⊥</sen>
+      <raw>⊥</raw>
+      <rule>CONTRADICTION</rule>
+      <premise>11</premise>
+      <premise>6</premise>
+    </step>
+    <step linenum="13">
+      <sen>(a1 ∨ a2 ∨ b1 ∨ b2)</sen>
+      <raw>a1 ∨ a2 ∨ b1 ∨ b2</raw>
+      <rule>PRINCIPLE_OF_EXPLOSION</rule>
+      <premise>12</premise>
+    </step>
+  </proof>
+</bram>

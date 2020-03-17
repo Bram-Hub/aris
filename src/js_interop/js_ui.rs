@@ -118,7 +118,7 @@ impl ProofWidget {
         }
         yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new())
     }
-    pub fn render_justification_widget(&self, line: usize, depth: usize, proofref: <P as Proof>::Reference) -> Html {
+    pub fn render_justification_widget(&self, _line: usize, _depth: usize, proofref: <P as Proof>::Reference) -> Html {
         /* TODO: does HTML/do browsers have a way to do nested menus?
         https://developer.mozilla.org/en-US/docs/Web/HTML/Element/menu is 
         "experimental", and currently firefox only, and a bunch of tutorials for the 
@@ -135,17 +135,33 @@ impl ProofWidget {
                 }
                 ProofWidgetMsg::Nop
             });
-            let mut rules = yew::virtual_dom::VList::new();
-            for rule in RuleM::ALL_RULES {
-                // TODO: seperators and submenus by RuleClassification
-                rules.add_child(html!{ <option value=RuleM::to_serialized_name(*rule)> { rule.get_name() } </option> });
-            }
             let lookup_result = self.prf.lookup(proofref.clone()).expect("proofref should exist in self.prf");
             let just: &Justification<_, _, _> = lookup_result.get().expect("proofref already is a JustificationReference");
             let mut dep_lines = String::new();
             for (i, dep) in just.2.iter().enumerate() {
                 let (dep_line, _) = self.ref_to_line_depth[&dep];
                 dep_lines += &format!("{}{}", dep_line, if i < just.2.len()-1 { ", " } else { "" })
+            }
+            if just.2.len() > 0 && just.3.len() > 0 {
+                dep_lines += "; "
+            }
+            for (i, sdep) in just.3.iter().enumerate() {
+                if let Some(sub) = self.prf.lookup_subproof(sdep.clone()) {
+                    let (mut lo, mut hi) = (usize::max_value(), usize::min_value());
+                    for line in sub.premises().into_iter().chain(sub.direct_lines().into_iter()) {
+                        if let Some((i, _)) = self.ref_to_line_depth.get(&line) {
+                            lo = std::cmp::min(lo, *i);
+                            hi = std::cmp::max(hi, *i);
+                        }
+                    }
+                    dep_lines += &format!("{}-{}{}", lo, hi, if i < just.3.len()-1 { ", " } else { "" });
+                }
+            }
+
+            let mut rules = yew::virtual_dom::VList::new();
+            for rule in RuleM::ALL_RULES {
+                // TODO: seperators and submenus by RuleClassification
+                rules.add_child(html!{ <option value=RuleM::to_serialized_name(*rule) selected=(just.1 == *rule)> { rule.get_name() } </option> });
             }
             html! {
                 <div>
@@ -171,7 +187,7 @@ impl ProofWidget {
                 yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new())
             };
         let dep_checkbox = self.render_dep_or_sdep_checkbox(frunk::Coproduct::inject(proofref.clone()));
-        let lineinfo = format!("{} ({:?})", line, proofref);
+        let lineinfo = format!("{}", line);
         let mut indentation = yew::virtual_dom::VList::new();
         for _ in 0..(depth+1) {
             indentation.add_child(html! { <span style="background-color:black">{"-"}</span>});
@@ -277,7 +293,6 @@ impl ProofWidget {
             yew::virtual_dom::VNode::from(output)
         }
     }
-
 }
 pub fn calculate_lineinfo(output: &mut HashMap<<P as Proof>::Reference, (usize, usize)>, prf: &<P as Proof>::Subproof, line: &mut usize, depth: &mut usize) {
     for prem in prf.premises() {
@@ -294,23 +309,51 @@ pub fn calculate_lineinfo(output: &mut HashMap<<P as Proof>::Reference, (usize, 
     }
 }
 
+pub fn initialize_inputs(prf: &P) -> HashMap<<P as Proof>::Reference, String> {
+    fn aux(p: &<P as Proof>::Subproof, out: &mut HashMap<<P as Proof>::Reference, String>) {
+        use frunk::Coproduct::{self, Inl, Inr};
+        for line in p.premises().into_iter().map(Coproduct::inject).chain(p.lines().into_iter()) {
+            match line {
+                Inl(lr) => {
+                    if let Some(e) = p.lookup_expr(lr) {
+                        out.insert(lr.clone(), format!("{}", e));
+                    }
+                },
+                Inr(Inl(sr)) => aux(&p.lookup_subproof(sr).unwrap(), out),
+                Inr(Inr(void)) => match void {},
+            }
+        }
+    }
+
+    let mut out = HashMap::new();
+    aux(prf.top_level_proof(), &mut out);
+    out
+}
+
 impl Component for ProofWidget {
     type Message = ProofWidgetMsg;
     type Properties = ProofWidgetProps;
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        use expression_builders::var;
+        /*use expression_builders::var;
         let mut prf = P::new();
         prf.add_premise(var("__js_ui_blank_premise"));
-        prf.add_step(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]));
-        Self {
+        prf.add_step(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]));*/
+        let data = include_bytes!("../../resolution_example.bram");
+        let (prf, _metadata) = crate::proofs::xml_interop::proof_from_xml::<P, _>(&data[..]).unwrap();
+
+        let mut ref_to_line_depth = HashMap::new();
+        calculate_lineinfo(&mut ref_to_line_depth, prf.top_level_proof(), &mut 1, &mut 0);
+        let mut tmp = Self {
             link,
-            ref_to_line_depth: HashMap::new(),
-            ref_to_input: HashMap::new(),
+            ref_to_line_depth,
+            ref_to_input: initialize_inputs(&prf),
             prf,
             selected_line: None,
             preblob: "".into(),
             props,
-        }
+        };
+        tmp.update(ProofWidgetMsg::Nop);
+        tmp
     }
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         let mut ret = false;
@@ -400,10 +443,12 @@ impl Component for ProofWidget {
         html! {
             <div>
                 { interactive_proof }
-                <hr />
-                <pre> { format!("{}\n{:#?}", self.prf, self.prf) } </pre>
-                <hr />
-                <pre> { self.preblob.clone() } </pre>
+                <div style="display: none">
+                    <hr />
+                    <pre> { format!("{}\n{:#?}", self.prf, self.prf) } </pre>
+                    <hr />
+                    <pre> { self.preblob.clone() } </pre>
+                </div>
             </div>
         }
     }
@@ -440,17 +485,19 @@ impl Component for App {
     fn view(&self) -> Html {
         html! {
             <div>
-                <p>{ "Enter Expression:" }</p>
-                <ExprEntry initial_contents="forall A, ((exists B, A -> B) & C & f(x, y | z)) <-> Q <-> R" onchange=self.link.callback(|(x, y)| Msg::ExprChanged(x, y)) />
-                <div>
-                    { &self.last_good_parse }
-                    <br/>
-                    <pre>
-                        { self.current_expr.as_ref().map(|e| format!("{:#?}", e)).unwrap_or("Error".into()) }
-                    </pre>
-                </div>
-                <hr />
                 <ProofWidget verbose=true />
+                <div style="display: none">
+                    <hr />
+                    <p>{ "Enter Expression:" }</p>
+                    <ExprEntry initial_contents="forall A, ((exists B, A -> B) & C & f(x, y | z)) <-> Q <-> R" onchange=self.link.callback(|(x, y)| Msg::ExprChanged(x, y)) />
+                    <div>
+                        { &self.last_good_parse }
+                        <br/>
+                        <pre>
+                            { self.current_expr.as_ref().map(|e| format!("{:#?}", e)).unwrap_or("Error".into()) }
+                        </pre>
+                    </div>
+                </div>
             </div>
         }
     }
