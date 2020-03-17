@@ -72,6 +72,7 @@ pub enum LAKItem {
 #[derive(Debug)]
 pub enum LineActionKind {
     Insert { what: LAKItem, after: bool, relative_to: LAKItem, },
+    Delete { what: LAKItem },
     SetRule { rule: Rule },
     Select,
     SetDependency { to: bool, dep: frunk::Coproduct<<P as Proof>::Reference, frunk::Coproduct<<P as Proof>::SubproofReference, frunk::coproduct::CNil>> },
@@ -199,6 +200,8 @@ impl ProofWidget {
                 let value = s.value();
                 s.set_selected_index(0);
                 match &*value {
+                    "delete_line" => ProofWidgetMsg::LineAction(LineActionKind::Delete { what: LAKItem::Line }, proofref_.clone()),
+                    "delete_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Delete { what: LAKItem::Subproof }, proofref_.clone()),
                     "insert_line_before_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: false, relative_to: LAKItem::Line }, proofref_.clone()),
                     "insert_line_after_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: true, relative_to: LAKItem::Line }, proofref_.clone()),
                     "insert_line_before_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: false, relative_to: LAKItem::Subproof }, proofref_.clone()),
@@ -218,9 +221,12 @@ impl ProofWidget {
         let proofref_ = proofref.clone();
         let select_line = self.link.callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::Select, proofref_.clone()));
         let action_selector = html! {
+            // TODO: only show ones that are valid for the current line (e.g. no deleting the toplevel subproof)
             <select onchange=handle_action>
                 <option value="Action">{ "Action" }</option>
                 <hr />
+                <option value="delete_line">{ "delete_line" }</option>
+                <option value="delete_subproof">{ "delete_subproof" }</option>
                 <option value="insert_line_before_line">{ "insert_line_before_line" }</option>
                 <option value="insert_line_after_line">{ "insert_line_after_line" }</option>
                 //<option value="insert_line_before_subproof">{ "insert_line_before_subproof" }</option>
@@ -402,6 +408,35 @@ impl Component for ProofWidget {
                 }
                 self.selected_line = Some(to_select);
                 self.preblob += &format!("{:?}\n", self.prf.premises());
+                ret = true;
+            },
+            ProofWidgetMsg::LineAction(LineActionKind::Delete { what }, proofref) => {
+                let parent = self.prf.parent_of_line(&frunk::Coproduct::inject(proofref.clone()));
+                match what {
+                    LAKItem::Line => {
+                        fn remove_line_if_allowed<P: Proof>(prf: &mut P, proofref: <P as Proof>::Reference) {
+                            let is_premise = match prf.lookup(proofref.clone()) {
+                                Some(Inl(_)) => true,
+                                Some(Inr(Inl(_))) => false,
+                                Some(Inr(Inr(void))) => match void {},
+                                None => panic!("prf.lookup failed in while processing a Delete"),
+                            };
+                            if (is_premise && prf.premises().len() > 1) || (!is_premise && prf.lines().len() > 1) {
+                                prf.remove_line(proofref);
+                            }
+                        }
+                        match parent {
+                            Some(sr) => { self.prf.with_mut_subproof(&sr, |sub| { remove_line_if_allowed(sub, proofref); }); },
+                            None => { remove_line_if_allowed(&mut self.prf, proofref); },
+                        }
+                    },
+                    LAKItem::Subproof => {
+                        match parent {
+                            Some(sr) => { self.prf.remove_subproof(sr); },
+                            None => {}, // shouldn't delete the root subproof
+                        }
+                    },
+                }
                 ret = true;
             },
             ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule }, proofref) => {

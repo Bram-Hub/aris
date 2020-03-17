@@ -178,6 +178,7 @@ impl<T> Pools<T> {
     }
     fn remove_subproof(&mut self, idx: &SubKey) {
         self.sub_map.remove(idx);
+        // TODO: recursively cleanup child subproofs
         for (_, v) in self.sub_map.iter_mut() {
             let line_list = std::mem::replace(&mut v.line_list, ZipperVec::new());
             v.line_list = ZipperVec::from_vec(line_list.iter().filter(|x| x.get() != Some(idx)).cloned().collect());
