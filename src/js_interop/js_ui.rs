@@ -220,22 +220,41 @@ impl ProofWidget {
         let handle_input = self.link.callback(move |e: InputData| ProofWidgetMsg::LineChanged(proofref_.clone(), e.value.clone()));
         let proofref_ = proofref.clone();
         let select_line = self.link.callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::Select, proofref_.clone()));
-        let action_selector = html! {
-            // TODO: only show ones that are valid for the current line (e.g. no deleting the toplevel subproof)
+        let action_selector = {
+            use frunk::Coproduct::{self, Inl, Inr};
+            let mut options = yew::virtual_dom::VList::new();
+            if may_remove_line(&self.prf, &proofref) {
+                options.add_child(html! { <option value="delete_line">{ "Delete line" }</option> });
+            }
+            if let Some(_) = self.prf.parent_of_line(&Coproduct::inject(proofref.clone())) {
+                // only allow deleting non-root subproofs
+                options.add_child(html! { <option value="delete_subproof">{ "Delete subproof" }</option> });
+            }
+            match proofref {
+                Inl(_) => {
+                    options.add_child(html! { <option value="insert_line_before_line">{ "Insert premise before this premise" }</option> });
+                    options.add_child(html! { <option value="insert_line_after_line">{ "Insert premise after this premise" }</option> });
+                },
+                Inr(Inl(_)) => {
+                    options.add_child(html! { <option value="insert_line_before_line">{ "Insert step before this step" }</option> });
+                    options.add_child(html! { <option value="insert_line_after_line">{ "Insert step after this step" }</option> });
+                    // Only show subproof creation relative to justification lines, since it may confuse users to have subproofs appear after all the premises when they selected a premise
+                    options.add_child(html! { <option value="insert_subproof_before_line">{ "Insert subproof before this step" }</option> });
+                    options.add_child(html! { <option value="insert_subproof_after_line">{ "Insert subproof after this step" }</option> });
+                },
+                Inr(Inr(void)) => match void {},
+            }
+            html! {
             <select onchange=handle_action>
                 <option value="Action">{ "Action" }</option>
                 <hr />
-                <option value="delete_line">{ "delete_line" }</option>
-                <option value="delete_subproof">{ "delete_subproof" }</option>
-                <option value="insert_line_before_line">{ "insert_line_before_line" }</option>
-                <option value="insert_line_after_line">{ "insert_line_after_line" }</option>
+                { options }
                 //<option value="insert_line_before_subproof">{ "insert_line_before_subproof" }</option>
                 //<option value="insert_line_after_subproof">{ "insert_line_after_subproof" }</option>
-                <option value="insert_subproof_before_line">{ "insert_subproof_before_line" }</option>
-                <option value="insert_subproof_after_line">{ "insert_subproof_after_line" }</option>
                 //<option value="insert_subproof_before_subproof">{ "insert_subproof_before_subproof" }</option>
                 //<option value="insert_subproof_after_subproof">{ "insert_subproof_after_subproof" }</option>
             </select>
+            }
         };
         let justification_widget = self.render_justification_widget(line, depth, proofref.clone());
         let rule_feedback = (|| {
@@ -336,6 +355,21 @@ pub fn initialize_inputs(prf: &P) -> HashMap<<P as Proof>::Reference, String> {
     out
 }
 
+fn may_remove_line<P: Proof>(prf: &P, proofref: &<P as Proof>::Reference) -> bool {
+    use frunk::Coproduct::{Inl, Inr};
+    let is_premise = match prf.lookup(proofref.clone()) {
+        Some(Inl(_)) => true,
+        Some(Inr(Inl(_))) => false,
+        Some(Inr(Inr(void))) => match void {},
+        None => panic!("prf.lookup failed in while processing a Delete"),
+    };
+    let parent = prf.parent_of_line(&frunk::Coproduct::inject(proofref.clone()));
+    match parent.and_then(|x| prf.lookup_subproof(x)) {
+        Some(sub) => (is_premise && sub.premises().len() > 1) || (!is_premise && sub.lines().len() > 1),
+        None => (is_premise && prf.premises().len() > 1) || (!is_premise && prf.lines().len() > 1)
+    }
+}
+
 impl Component for ProofWidget {
     type Message = ProofWidgetMsg;
     type Properties = ProofWidgetProps;
@@ -415,13 +449,7 @@ impl Component for ProofWidget {
                 match what {
                     LAKItem::Line => {
                         fn remove_line_if_allowed<P: Proof>(prf: &mut P, proofref: <P as Proof>::Reference) {
-                            let is_premise = match prf.lookup(proofref.clone()) {
-                                Some(Inl(_)) => true,
-                                Some(Inr(Inl(_))) => false,
-                                Some(Inr(Inr(void))) => match void {},
-                                None => panic!("prf.lookup failed in while processing a Delete"),
-                            };
-                            if (is_premise && prf.premises().len() > 1) || (!is_premise && prf.lines().len() > 1) {
+                            if may_remove_line(prf, &proofref) {
                                 prf.remove_line(proofref);
                             }
                         }
