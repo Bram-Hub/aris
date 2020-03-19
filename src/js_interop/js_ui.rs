@@ -54,11 +54,26 @@ impl Component for ExprEntry {
 // yew doesn't seem to allow Components to be generic over <P: Proof>, so fix a proof type P at the module level
 pub type P = PooledProof<Hlist![Expr]>;
 
+pub struct ProofUiData<P: Proof> {
+    ref_to_line_depth: HashMap<<P as Proof>::Reference, (usize, usize)>,
+    ref_to_input: HashMap<<P as Proof>::Reference, String>,
+}
+
+impl<P: Proof> ProofUiData<P> {
+    pub fn from_proof(prf: &P) -> ProofUiData<P> {
+        let mut ref_to_line_depth = HashMap::new();
+        calculate_lineinfo::<P>(&mut ref_to_line_depth, prf.top_level_proof(), &mut 1, &mut 0);
+        ProofUiData {
+            ref_to_line_depth,
+            ref_to_input: initialize_inputs(prf),
+        }
+    }
+}
+
 pub struct ProofWidget {
     link: ComponentLink<Self>,
     prf: P,
-    ref_to_line_depth: HashMap<<P as Proof>::Reference, (usize, usize)>,
-    ref_to_input: HashMap<<P as Proof>::Reference, String>,
+    pud: ProofUiData<P>,
     selected_line: Option<<P as Proof>::Reference>,
     preblob: String,
     props: ProofWidgetProps,
@@ -140,7 +155,7 @@ impl ProofWidget {
             let just: &Justification<_, _, _> = lookup_result.get().expect("proofref already is a JustificationReference");
             let mut dep_lines = String::new();
             for (i, dep) in just.2.iter().enumerate() {
-                let (dep_line, _) = self.ref_to_line_depth[&dep];
+                let (dep_line, _) = self.pud.ref_to_line_depth[&dep];
                 dep_lines += &format!("{}{}", dep_line, if i < just.2.len()-1 { ", " } else { "" })
             }
             if just.2.len() > 0 && just.3.len() > 0 {
@@ -150,7 +165,7 @@ impl ProofWidget {
                 if let Some(sub) = self.prf.lookup_subproof(sdep.clone()) {
                     let (mut lo, mut hi) = (usize::max_value(), usize::min_value());
                     for line in sub.premises().into_iter().chain(sub.direct_lines().into_iter()) {
-                        if let Some((i, _)) = self.ref_to_line_depth.get(&line) {
+                        if let Some((i, _)) = self.pud.ref_to_line_depth.get(&line) {
                             lo = std::cmp::min(lo, *i);
                             hi = std::cmp::max(hi, *i);
                         }
@@ -259,7 +274,7 @@ impl ProofWidget {
         let justification_widget = self.render_justification_widget(line, depth, proofref.clone());
         let rule_feedback = (|| {
             use parser::parse;
-            let raw_line = match self.ref_to_input.get(&proofref).and_then(|x| if x.len() > 0 { Some(x) } else { None }) {
+            let raw_line = match self.pud.ref_to_input.get(&proofref).and_then(|x| if x.len() > 0 { Some(x) } else { None }) {
                 None => { return html! { <span></span> }; },
                 Some(x) => x,
             };
@@ -280,7 +295,7 @@ impl ProofWidget {
                 <td>
                 { indentation }
                 { action_selector }
-                <input type="text" oninput=handle_input onfocus=select_line style="width:400px" value=self.ref_to_input.get(&proofref).unwrap_or(&String::new()) />
+                <input type="text" oninput=handle_input onfocus=select_line style="width:400px" value=self.pud.ref_to_input.get(&proofref).unwrap_or(&String::new()) />
                 </td>
                 { justification_widget }
                 <td>{ rule_feedback }</td>
@@ -319,7 +334,8 @@ impl ProofWidget {
         }
     }
 }
-pub fn calculate_lineinfo(output: &mut HashMap<<P as Proof>::Reference, (usize, usize)>, prf: &<P as Proof>::Subproof, line: &mut usize, depth: &mut usize) {
+
+pub fn calculate_lineinfo<P: Proof>(output: &mut HashMap<<P as Proof>::Reference, (usize, usize)>, prf: &<P as Proof>::Subproof, line: &mut usize, depth: &mut usize) {
     for prem in prf.premises() {
         output.insert(prem.clone(), (*line, *depth));
         *line += 1;
@@ -328,30 +344,30 @@ pub fn calculate_lineinfo(output: &mut HashMap<<P as Proof>::Reference, (usize, 
         use frunk::Coproduct::{Inl, Inr};
         match lineref {
             Inl(r) => { output.insert(r, (*line, *depth)); *line += 1; },
-            Inr(Inl(sr)) => { *depth += 1; calculate_lineinfo(output, &prf.lookup_subproof(sr).unwrap(), line, depth); *depth -= 1; },
+            Inr(Inl(sr)) => { *depth += 1; calculate_lineinfo::<P>(output, &prf.lookup_subproof(sr).unwrap(), line, depth); *depth -= 1; },
             Inr(Inr(void)) => { match void {} },
         }
     }
 }
 
-pub fn initialize_inputs(prf: &P) -> HashMap<<P as Proof>::Reference, String> {
-    fn aux(p: &<P as Proof>::Subproof, out: &mut HashMap<<P as Proof>::Reference, String>) {
+pub fn initialize_inputs<P: Proof>(prf: &P) -> HashMap<<P as Proof>::Reference, String> {
+    fn aux<P: Proof>(p: &<P as Proof>::Subproof, out: &mut HashMap<<P as Proof>::Reference, String>) {
         use frunk::Coproduct::{self, Inl, Inr};
         for line in p.premises().into_iter().map(Coproduct::inject).chain(p.lines().into_iter()) {
             match line {
                 Inl(lr) => {
-                    if let Some(e) = p.lookup_expr(lr) {
+                    if let Some(e) = p.lookup_expr(lr.clone()) {
                         out.insert(lr.clone(), format!("{}", e));
                     }
                 },
-                Inr(Inl(sr)) => aux(&p.lookup_subproof(sr).unwrap(), out),
+                Inr(Inl(sr)) => aux::<P>(&p.lookup_subproof(sr).unwrap(), out),
                 Inr(Inr(void)) => match void {},
             }
         }
     }
 
     let mut out = HashMap::new();
-    aux(prf.top_level_proof(), &mut out);
+    aux::<P>(prf.top_level_proof(), &mut out);
     out
 }
 
@@ -381,13 +397,11 @@ impl Component for ProofWidget {
         let data = include_bytes!("../../resolution_example.bram");
         let (prf, _metadata) = crate::proofs::xml_interop::proof_from_xml::<P, _>(&data[..]).unwrap();
 
-        let mut ref_to_line_depth = HashMap::new();
-        calculate_lineinfo(&mut ref_to_line_depth, prf.top_level_proof(), &mut 1, &mut 0);
+        let pud = ProofUiData::from_proof(&prf);
         let mut tmp = Self {
             link,
-            ref_to_line_depth,
-            ref_to_input: initialize_inputs(&prf),
             prf,
+            pud,
             selected_line: None,
             preblob: "".into(),
             props,
@@ -405,7 +419,7 @@ impl Component for ProofWidget {
         match msg {
             ProofWidgetMsg::Nop => {},
             ProofWidgetMsg::LineChanged(r, input) => {
-                self.ref_to_input.insert(r.clone(), input.clone());
+                self.pud.ref_to_input.insert(r.clone(), input.clone());
                 if let Some(e) = crate::parser::parse(&input) {
                     match r {
                         Inl(_) => { self.prf.with_mut_premise(&r, |x| { *x = e }); },
@@ -448,17 +462,20 @@ impl Component for ProofWidget {
                 let parent = self.prf.parent_of_line(&frunk::Coproduct::inject(proofref.clone()));
                 match what {
                     LAKItem::Line => {
-                        fn remove_line_if_allowed<P: Proof>(prf: &mut P, proofref: <P as Proof>::Reference) {
+                        fn remove_line_if_allowed<P: Proof, Q: Proof<Reference=<P as Proof>::Reference>>(prf: &mut Q, pud: &mut ProofUiData<P>, proofref: <Q as Proof>::Reference) {
+                            pud.ref_to_line_depth.remove(&proofref);
+                            pud.ref_to_input.remove(&proofref);
                             if may_remove_line(prf, &proofref) {
                                 prf.remove_line(proofref);
                             }
                         }
                         match parent {
-                            Some(sr) => { self.prf.with_mut_subproof(&sr, |sub| { remove_line_if_allowed(sub, proofref); }); },
-                            None => { remove_line_if_allowed(&mut self.prf, proofref); },
+                            Some(sr) => { let pud = &mut self.pud; self.prf.with_mut_subproof(&sr, |sub| { remove_line_if_allowed(sub, pud, proofref); }); },
+                            None => { remove_line_if_allowed(&mut self.prf, &mut self.pud, proofref); },
                         }
                     },
                     LAKItem::Subproof => {
+                        // TODO: recursively clean out the ProofUiData entries for lines inside a subproof before deletion
                         match parent {
                             Some(sr) => { self.prf.remove_subproof(sr); },
                             None => {}, // shouldn't delete the root subproof
@@ -497,7 +514,7 @@ impl Component for ProofWidget {
             }
         }
         if ret {
-            calculate_lineinfo(&mut self.ref_to_line_depth, self.prf.top_level_proof(), &mut 1, &mut 0);
+            calculate_lineinfo::<P>(&mut self.pud.ref_to_line_depth, self.prf.top_level_proof(), &mut 1, &mut 0);
         }
         ret
     }

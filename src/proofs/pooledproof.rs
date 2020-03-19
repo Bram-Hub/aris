@@ -159,8 +159,20 @@ impl<T> Pools<T> {
             Inr(Inl(just)) => self.remove_step(just),
             Inr(Inr(void)) => match *void {},
         }
+    }
+    fn remove_line_helper(&mut self, idx: &Coprod!(PremKey, JustKey, SubKey)) {
+        use frunk::Coproduct::{Inl, Inr};
         let just_map = std::mem::replace(&mut self.just_map, BTreeMap::new());
-        self.just_map = just_map.into_iter().map(|(k, Justification(expr, rule, deps, sdeps))| (k, Justification(expr, rule, deps.into_iter().filter(|d| d != idx).collect(), sdeps))).collect();
+        self.just_map = just_map.into_iter().map(|(k, Justification(expr, rule, deps, sdeps))| {
+            let (new_deps, new_sdeps) = match idx {
+                Inl(pr) => (deps.into_iter().filter(|d| d != &Coproduct::inject(pr.clone())).collect(), sdeps),
+                Inr(Inl(jr)) => (deps.into_iter().filter(|d| d != &Coproduct::inject(jr.clone())).collect(), sdeps),
+                Inr(Inr(Inl(sr))) => (deps, sdeps.into_iter().filter(|d| d != sr).collect()),
+                Inr(Inr(Inr(void))) => match *void {},
+            };
+            (k, Justification(expr, rule, new_deps, new_sdeps))
+        }).collect();
+        self.containing_subproof.remove(idx);
     }
     fn remove_premise(&mut self, idx: &PremKey) {
         self.prem_map.remove(idx);
@@ -168,6 +180,7 @@ impl<T> Pools<T> {
             let premise_list = std::mem::replace(&mut v.premise_list, ZipperVec::new());
             v.premise_list = ZipperVec::from_vec(premise_list.iter().filter(|x| x != &idx).cloned().collect());
         }
+        self.remove_line_helper(&Coproduct::inject(idx.clone()));
     }
     fn remove_step(&mut self, idx: &JustKey) {
         self.just_map.remove(idx);
@@ -175,16 +188,27 @@ impl<T> Pools<T> {
             let line_list = std::mem::replace(&mut v.line_list, ZipperVec::new());
             v.line_list = ZipperVec::from_vec(line_list.iter().filter(|x| x.get() != Some(idx)).cloned().collect());
         }
+        self.remove_line_helper(&Coproduct::inject(idx.clone()));
     }
     fn remove_subproof(&mut self, idx: &SubKey) {
-        self.sub_map.remove(idx);
-        // TODO: recursively cleanup child subproofs
+        use frunk::Coproduct::{Inl, Inr};
+        if let Some(sub) = self.sub_map.remove(idx) {
+            for prem in sub.premise_list.iter() {
+                self.remove_premise(prem);
+            }
+            for line in sub.line_list.iter() {
+                match line {
+                    Inl(jr) => { self.remove_step(jr); },
+                    Inr(Inl(sr)) => { self.remove_subproof(sr); }
+                    Inr(Inr(void)) => match *void {},
+                }
+            }
+        }
         for (_, v) in self.sub_map.iter_mut() {
             let line_list = std::mem::replace(&mut v.line_list, ZipperVec::new());
             v.line_list = ZipperVec::from_vec(line_list.iter().filter(|x| x.get() != Some(idx)).cloned().collect());
         }
-        let just_map = std::mem::replace(&mut self.just_map, BTreeMap::new());
-        self.just_map = just_map.into_iter().map(|(k, Justification(expr, rule, deps, sdeps))| (k, Justification(expr, rule, deps, sdeps.into_iter().filter(|d| d != idx).collect()))).collect();
+        self.remove_line_helper(&Coproduct::inject(idx.clone()));
     }
 }
 
