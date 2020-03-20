@@ -534,6 +534,51 @@ impl Component for ProofWidget {
     }
 }
 
+pub struct TabbedContainer {
+    link: ComponentLink<Self>,
+    tabs: Vec<(String, Html)>,
+    current_tab: usize,
+}
+
+#[derive(Clone,Properties)]
+pub struct TabbedContainerProps {
+    tab_ids: Vec<String>,
+    children: Children,
+}
+
+impl Component for TabbedContainer {
+    type Message = usize;
+    type Properties = TabbedContainerProps;
+
+    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+        let tabs: Vec<(String, Html)> = props.tab_ids.into_iter().zip(props.children.to_vec().into_iter()).collect();
+        Self { link, tabs, current_tab: 0 }
+    }
+
+    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+        self.current_tab = msg;
+        true
+    }
+
+    fn view(&self) -> Html {
+        let mut tab_links = yew::virtual_dom::VList::new();
+        let mut out = yew::virtual_dom::VList::new();
+        for (i, (name, data)) in self.tabs.iter().enumerate() {
+            tab_links.add_child(html! { <input type="button" onclick=self.link.callback(move |_| i) value=name /> });
+            if i == self.current_tab {
+                out.add_child(data.clone());
+            }
+        }
+
+        html! {
+            <div>
+                <div> { tab_links }</div>
+                { out }
+            </div>
+        }
+    }
+}
+
 pub struct App {
     link: ComponentLink<Self>,
     last_good_parse: String,
@@ -563,21 +608,34 @@ impl Component for App {
     }
 
     fn view(&self) -> Html {
+        let exprwidget = html! {
+            <div style="display: none">
+                <hr />
+                <p>{ "Enter Expression:" }</p>
+                <ExprEntry initial_contents="forall A, ((exists B, A -> B) & C & f(x, y | z)) <-> Q <-> R" onchange=self.link.callback(|(x, y)| Msg::ExprChanged(x, y)) />
+                <div>
+                    { &self.last_good_parse }
+                    <br/>
+                    <pre>
+                        { self.current_expr.as_ref().map(|e| format!("{:#?}", e)).unwrap_or("Error".into()) }
+                    </pre>
+                </div>
+            </div>
+        };
+        let tabview = html! {
+            <div style="display: none">
+                <TabbedContainer tab_ids=vec!["foo".into(), "bar".into(), "baz".into()]>
+                    <div>{"foo tab"}</div>
+                    <div>{"bar tab"}</div>
+                    <div>{"baz tab"}</div>
+                </TabbedContainer>
+            </div>
+        };
         html! {
             <div>
                 <ProofWidget verbose=true />
-                <div style="display: none">
-                    <hr />
-                    <p>{ "Enter Expression:" }</p>
-                    <ExprEntry initial_contents="forall A, ((exists B, A -> B) & C & f(x, y | z)) <-> Q <-> R" onchange=self.link.callback(|(x, y)| Msg::ExprChanged(x, y)) />
-                    <div>
-                        { &self.last_good_parse }
-                        <br/>
-                        <pre>
-                            { self.current_expr.as_ref().map(|e| format!("{:#?}", e)).unwrap_or("Error".into()) }
-                        </pre>
-                    </div>
-                </div>
+                { exprwidget }
+                { tabview }
             </div>
         }
     }
