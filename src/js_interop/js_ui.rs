@@ -37,6 +37,7 @@ impl Component for ExprEntry {
     }
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         use parser::parse;
+        self.current_input = msg.clone();
         self.current_expr = parse(&*msg);
         if let Some(expr) = &self.current_expr {
             self.last_good_parse = format!("{}", expr);
@@ -46,7 +47,16 @@ impl Component for ExprEntry {
     }
     fn view(&self) -> Html {
         html! {
-            <input type="text" oninput=self.link.callback(|e: InputData| e.value) style="width:400px" value={ &self.current_input } />
+            <div>
+                <input type="text" oninput=self.link.callback(|e: InputData| e.value) style="width:400px" value={ &self.current_input } />
+                <div>
+                    { &self.last_good_parse }
+                    <br/>
+                    <pre>
+                        { self.current_expr.as_ref().map(|e| format!("{:#?}", e)).unwrap_or("Error".into()) }
+                    </pre>
+                </div>
+            </div>
         }
     }
 }
@@ -103,6 +113,7 @@ pub enum ProofWidgetMsg {
 #[derive(Clone, Properties)]
 pub struct ProofWidgetProps {
     verbose: bool,
+    blank: bool,
 }
 
 impl ProofWidget {
@@ -390,12 +401,17 @@ impl Component for ProofWidget {
     type Message = ProofWidgetMsg;
     type Properties = ProofWidgetProps;
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        /*use expression_builders::var;
-        let mut prf = P::new();
-        prf.add_premise(var("__js_ui_blank_premise"));
-        prf.add_step(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]));*/
-        let data = include_bytes!("../../resolution_example.bram");
-        let (prf, _metadata) = crate::proofs::xml_interop::proof_from_xml::<P, _>(&data[..]).unwrap();
+        let mut prf;
+        if props.blank {
+            use expression_builders::var;
+            prf = P::new();
+            prf.add_premise(var(""));
+            prf.add_step(Justification(var(""), RuleM::Reit, vec![], vec![]));
+        } else {
+            let data = include_bytes!("../../resolution_example.bram");
+            let (prf2, _metadata) = crate::proofs::xml_interop::proof_from_xml::<P, _>(&data[..]).unwrap();
+            prf = prf2;
+        }
 
         let pud = ProofUiData::from_proof(&prf);
         let mut tmp = Self {
@@ -566,7 +582,9 @@ impl Component for TabbedContainer {
         for (i, (name, data)) in self.tabs.iter().enumerate() {
             tab_links.add_child(html! { <input type="button" onclick=self.link.callback(move |_| i) value=name /> });
             if i == self.current_tab {
-                out.add_child(data.clone());
+                out.add_child(html! { <div> { data.clone() } </div> });
+            } else {
+                out.add_child(html! { <div style="display:none"> { data.clone() } </div> });
             }
         }
 
@@ -609,32 +627,20 @@ impl Component for App {
 
     fn view(&self) -> Html {
         let exprwidget = html! {
-            <div style="display: none">
-                <hr />
+            <div>
                 <p>{ "Enter Expression:" }</p>
                 <ExprEntry initial_contents="forall A, ((exists B, A -> B) & C & f(x, y | z)) <-> Q <-> R" onchange=self.link.callback(|(x, y)| Msg::ExprChanged(x, y)) />
-                <div>
-                    { &self.last_good_parse }
-                    <br/>
-                    <pre>
-                        { self.current_expr.as_ref().map(|e| format!("{:#?}", e)).unwrap_or("Error".into()) }
-                    </pre>
-                </div>
             </div>
         };
         let tabview = html! {
-            <div style="display: none">
-                <TabbedContainer tab_ids=vec!["foo".into(), "bar".into(), "baz".into()]>
-                    <div>{"foo tab"}</div>
-                    <div>{"bar tab"}</div>
-                    <div>{"baz tab"}</div>
-                </TabbedContainer>
-            </div>
+            <TabbedContainer tab_ids=vec!["Resolution example".into(), "Untitled proof".into(), "Parser demo".into()]>
+                <ProofWidget verbose=true blank=false />
+                <ProofWidget verbose=true blank=true />
+                { exprwidget }
+            </TabbedContainer>
         };
         html! {
             <div>
-                <ProofWidget verbose=true />
-                { exprwidget }
                 { tabview }
             </div>
         }
