@@ -315,9 +315,10 @@ impl ProofWidget {
     }
 
     pub fn render_proof(&self, prf: &<P as Proof>::Subproof, sref: Option<<P as Proof>::SubproofReference>, line: &mut usize, depth: &mut usize) -> Html {
-        let mut output = yew::virtual_dom::VList::new();
+        // output has a bool tag to prune subproof spacers with, because VNode's PartialEq doesn't do the right thing
+        let mut output: Vec<(Html, bool)> = Vec::new();
         for prem in prf.premises() {
-            output.add_child(self.render_proof_line(*line, *depth, prem.clone()));
+            output.push((self.render_proof_line(*line, *depth, prem.clone()), false));
             *line += 1;
         }
         let sdep_checkbox = match sref {
@@ -329,15 +330,44 @@ impl ProofWidget {
         spacer.add_child(html! { <td></td> });
         spacer.add_child(html! { <td>{ sdep_checkbox }</td> });
         spacer.add_child(html! { <td style="background-color:black"></td> });
-        output.add_child(yew::virtual_dom::VNode::from(spacer));
+        output.push((yew::virtual_dom::VNode::from(spacer), false));
+        let row_spacer = {
+            let mut indentation = yew::virtual_dom::VList::new();
+            for _ in 0..(*depth+1) {
+                indentation.add_child(html! { <span style="background-color:black">{"-"}</span>});
+                indentation.add_child(html! { <span style="color:white">{"-"}</span>});
+            }
+            //(html!{ <tr><td><span style="color:white">{"-"}</span></td></tr> }, true)
+            (html!{ <tr><td></td><td></td><td></td><td>{ indentation }</td></tr> }, true)
+        };
         for lineref in prf.lines() {
             use frunk::Coproduct::{Inl, Inr};
             match lineref {
-                Inl(r) => { output.add_child(self.render_proof_line(*line, *depth, r.clone())); *line += 1; },
-                Inr(Inl(sr)) => { *depth += 1; output.add_child(self.render_proof(&prf.lookup_subproof(sr.clone()).unwrap(), Some(sr), line, depth)); *depth -= 1; },
+                Inl(r) => { output.push((self.render_proof_line(*line, *depth, r.clone()), false)); *line += 1; },
+                Inr(Inl(sr)) => {
+                    *depth += 1;
+                    output.push(row_spacer.clone());
+                    output.push((self.render_proof(&prf.lookup_subproof(sr.clone()).unwrap(), Some(sr), line, depth), false));
+                    output.push(row_spacer.clone());
+                    *depth -= 1;
+                },
                 Inr(Inr(void)) => { match void {} },
             }
         }
+        // collapse 2 consecutive row spacers to just 1, formed by adjacent suproofs
+        // also remove spacers at the end of an output (since that only occurs if a subproof is the last line of another subproof)
+        // This can't be replaced with a range-based loop, since output.len() changes on removal
+        {
+            let mut i = 0;
+            while i < output.len() {
+                if output[i].1 && ((i == output.len()-1) || output[i+1].1) {
+                    output.remove(i);
+                }
+                i += 1;
+            }
+        }
+        let output: Vec<Html> = output.into_iter().map(|(x,_)| x).collect();
+        let output = yew::virtual_dom::VList::new_with_children(output);
         if *depth == 0 {
             html! { <table>{ output }</table> }
         } else {
