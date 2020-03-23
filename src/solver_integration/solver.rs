@@ -51,6 +51,7 @@ impl<P: Proof> SatProofBuilder<P> {
         for lit in clause {
             exprs.push(self.lit_to_expr(lit));
         }
+        // TODO: Expr::from_disjuncts is semantically the right thing, but the current code may handle the len=1 case differently
         if exprs.len() > 0 {
             Expr::AssocBinop { symbol: ASymbol::Or, exprs }
         } else {

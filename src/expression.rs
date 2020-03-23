@@ -619,6 +619,38 @@ impl Expr {
         }
     }
     */
+    pub fn disjuncts(&self) -> Vec<Expr> {
+        use Expr::*;
+        match self {
+            Contradiction => vec![],
+            AssocBinop { symbol: ASymbol::Or, exprs } => exprs.clone(),
+            _ => vec![self.clone()],
+        }
+    }
+    pub fn from_disjuncts(mut disjuncts: Vec<Expr>) -> Expr {
+        use Expr::*;
+        match disjuncts.len() {
+            0 => Contradiction,
+            1 => disjuncts.pop().unwrap(),
+            _ => AssocBinop { symbol: ASymbol::Or, exprs: disjuncts },
+        }
+    }
+    pub fn conjuncts(&self) -> Vec<Expr> {
+        use Expr::*;
+        match self {
+            Tautology => vec![],
+            AssocBinop { symbol: ASymbol::And, exprs } => exprs.clone(),
+            _ => vec![self.clone()],
+        }
+    }
+    pub fn from_conjuncts(mut conjuncts: Vec<Expr>) -> Expr {
+        use Expr::*;
+        match conjuncts.len() {
+            0 => Tautology,
+            1 => conjuncts.pop().unwrap(),
+            _ => AssocBinop { symbol: ASymbol::And, exprs: conjuncts },
+        }
+    }
 }
 
 

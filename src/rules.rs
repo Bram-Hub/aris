@@ -54,6 +54,7 @@ Adding the tests and implementing the rule can be interleaved; it's convenient t
 */
 use super::*;
 use std::collections::{HashMap, HashSet};
+use std::iter::FromIterator;
 use frunk::Coproduct::{self, Inl, Inr};
 use petgraph::algo::tarjan_scc;
 use petgraph::graphmap::DiGraphMap;
@@ -98,6 +99,7 @@ pub enum RedundantPrepositionalInference {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AutomationRelatedRules {
     AsymmetricTautology,
+    Resolution,
 }
 
 /// The RuleT instance for SharedChecks does checking that is common to all the rules;
@@ -204,7 +206,8 @@ pub mod RuleM {
         [BiconditionalNegation, "BICONDITIONAL_NEGATION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiconditionalNegation))))))],
         [BiconditionalSubstitution, "BICONDITIONAL_SUBSTITUTION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiconditionalSubstitution))))))],
 
-        [AsymmetricTautology, "ASYMMETRIC_TAUTOLOGY", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::AsymmetricTautology))))))))]
+        [AsymmetricTautology, "ASYMMETRIC_TAUTOLOGY", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::AsymmetricTautology))))))))],
+        [Resolution, "RESOLUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::Resolution))))))))]
     }
 }
 
@@ -267,6 +270,18 @@ impl<T: RuleT> RuleT for SharedChecks<T> {
         self.0.check(p, expr, deps, sdeps)
     }
 }
+
+pub fn do_expressions_contradict<P: Proof>(prem1: &Expr, prem2: &Expr) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
+    either_order(prem1, prem2, |i, j| {
+        if let Expr::Unop { symbol: USymbol::Not, ref operand } = i {
+            if **operand == *j {
+                return Ok(Some(()));
+            }
+        }
+       Ok(None)
+    }, || Err(ProofCheckError::Other(format!("Expected one of {{{}, {}}} to be the negation of the other.", prem1, prem2))))
+}
+
 
 impl RuleT for PrepositionalInference {
     fn get_name(&self) -> String {
@@ -476,14 +491,7 @@ impl RuleT for PrepositionalInference {
                 if let Expr::Contradiction = conclusion {
                     let prem1 = p.lookup_expr_or_die(deps[0].clone())?;
                     let prem2 = p.lookup_expr_or_die(deps[1].clone())?;
-                    either_order(&prem1, &prem2, |i, j| {
-                        if let Expr::Unop { symbol: USymbol::Not, ref operand } = i {
-                            if **operand == *j {
-                                return Ok(Some(()));
-                            }
-                        }
-                       Ok(None)
-                    }, || Err(Other("Expected one dependency to be the negation of the other.".into())))
+                    do_expressions_contradict::<P>(&prem1, &prem2)
                 } else {
                     return Err(ConclusionOfWrongForm(Expr::Contradiction));
                 }
@@ -906,6 +914,7 @@ impl RuleT for AutomationRelatedRules {
     fn get_name(&self) -> String {
         match self {
             AutomationRelatedRules::AsymmetricTautology => "AsymmetricTautology",
+            AutomationRelatedRules::Resolution => "Resolution",
         }.into()
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
@@ -914,16 +923,41 @@ impl RuleT for AutomationRelatedRules {
     fn num_deps(&self) -> Option<usize> {
         match self {
             AutomationRelatedRules::AsymmetricTautology => None,
+            AutomationRelatedRules::Resolution => Some(2),
         }
     }
     fn num_subdeps(&self) -> Option<usize> {
         match self {
-            AutomationRelatedRules::AsymmetricTautology => Some(0),
+            AutomationRelatedRules::AsymmetricTautology | AutomationRelatedRules::Resolution => Some(0),
         }
     }
-    fn check<P: Proof>(self, _p: &P, _expr: Expr, _deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
+    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
         match self {
             AutomationRelatedRules::AsymmetricTautology => unimplemented!(),
+            AutomationRelatedRules::Resolution => {
+                let prem0 = p.lookup_expr_or_die(deps[0].clone())?;
+                let prem1 = p.lookup_expr_or_die(deps[1].clone())?;
+                let mut premise_disjuncts = HashSet::new();
+                premise_disjuncts.extend(prem0.disjuncts());
+                premise_disjuncts.extend(prem1.disjuncts());
+                let conclusion_disjuncts = HashSet::from_iter(conclusion.disjuncts().into_iter());
+                let mut remainder = premise_disjuncts.difference(&conclusion_disjuncts).cloned().collect::<Vec<Expr>>();
+                //println!("resolution remainder of {:?} and {:?} is {:?}", premise_disjuncts, conclusion_disjuncts, remainder);
+                remainder.sort();
+                match &remainder[..] {
+                    [e1, e2] => {
+                        do_expressions_contradict::<P>(e1, e2)
+                    },
+                    _ => {
+                        let mut pretty_remainder: String = "{".into();
+                        for (i, expr) in remainder.iter().enumerate() {
+                            pretty_remainder += &format!("{}{}", expr, if i != remainder.len()-1 { ", " } else { "" });
+                        }
+                        pretty_remainder += "}";
+                        Err(ProofCheckError::Other(format!("Difference between premise disjuncts and conclusion disjuncts ({}) should be exactly 2 expressions that produce a contradiction.", pretty_remainder)))
+                    },
+                }
+            },
         }
     }
 }

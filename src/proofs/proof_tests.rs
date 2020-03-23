@@ -41,7 +41,7 @@ macro_rules! enumerate_subproofless_tests {
             test_contradictionintro, test_notelim, test_impelim, test_commutation, 
             test_association, test_demorgan, test_idempotence, test_doublenegation, 
             test_distribution, test_complement, test_identity, test_annihilation, 
-            test_inverse, test_absorption, test_reduction, test_adjacency,
+            test_inverse, test_absorption, test_reduction, test_adjacency, test_resolution,
         }
     }
 }
@@ -828,4 +828,28 @@ pub fn test_adjacency<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
     let r6 = prf.add_step(Justification(p("B"), RuleM::Adjacency, vec![p2.clone()], vec![]));
 
     (prf, vec![r1, r2, r3, r4], vec![r5, r6])
+}
+
+pub fn test_resolution<P: Proof>() -> (P, Vec<P::Reference>, Vec<P::Reference>) {
+    use parser::parse_unwrap as p;
+    let mut prf = P::new();
+    let p1 = prf.add_premise(p("a1 | a2 | c"));
+    let p2 = prf.add_premise(p("b1 | b2 | ~c"));
+    let p3 = prf.add_premise(p("~c"));
+    let p4 = prf.add_premise(p("c"));
+    let p5 = prf.add_premise(p("a1 & a2 & c"));
+    let p6 = prf.add_premise(p("(a1 & a2) | c"));
+
+    let r1 = prf.add_step(Justification(p("a1 | a2 | b1 | b2"), RuleM::Resolution, vec![p1.clone(), p2.clone()], vec![]));
+    let r2 = prf.add_step(Justification(p("a1 | a2"), RuleM::Resolution, vec![p1.clone(), p3.clone()], vec![]));
+    let r3 = prf.add_step(Justification(p("_|_"), RuleM::Resolution, vec![p3.clone(), p4.clone()], vec![]));
+    let r4 = prf.add_step(Justification(p("a1 & a2"), RuleM::Resolution, vec![p3.clone(), p6.clone()], vec![]));
+
+    let r5 = prf.add_step(Justification(p("a1 | a2 | c | b1 | b2"), RuleM::Resolution, vec![p1.clone(), p2.clone()], vec![]));
+    let r6 = prf.add_step(Justification(p("a1 | a2 | b1"), RuleM::Resolution, vec![p1.clone(), p2.clone()], vec![]));
+    let r7 = prf.add_step(Justification(p("a1 | a2"), RuleM::Resolution, vec![p5.clone(), p3.clone()], vec![]));
+    let r8 = prf.add_step(Justification(p("a1 | a2"), RuleM::Resolution, vec![p3.clone(), p5.clone()], vec![]));
+    let r9 = prf.add_step(Justification(p("a1 | a2"), RuleM::Resolution, vec![p5.clone(), p5.clone()], vec![]));
+
+    (prf, vec![r1, r2, r3, r4], vec![r5, r6, r7, r8, r9])
 }
