@@ -5,7 +5,7 @@ use rules::{Rule, RuleM, RuleT};
 use proofs::{Proof, Justification, pooledproof::PooledProof};
 use std::collections::{BTreeSet,HashMap};
 use std::mem;
-use wasm_bindgen::JsCast;
+use wasm_bindgen::{closure::Closure, JsValue, JsCast};
 
 pub struct ExprEntry {
     link: ComponentLink<Self>,
@@ -113,7 +113,7 @@ pub enum ProofWidgetMsg {
 #[derive(Clone, Properties)]
 pub struct ProofWidgetProps {
     verbose: bool,
-    blank: bool,
+    data: Option<Vec<u8>>,
 }
 
 impl ProofWidget {
@@ -432,15 +432,14 @@ impl Component for ProofWidget {
     type Properties = ProofWidgetProps;
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let mut prf;
-        if props.blank {
+        if let Some(data) = &props.data {
+            let (prf2, _metadata) = crate::proofs::xml_interop::proof_from_xml::<P, _>(&data[..]).unwrap();
+            prf = prf2;
+        } else {
             use expression_builders::var;
             prf = P::new();
             prf.add_premise(var(""));
             prf.add_step(Justification(var(""), RuleM::Reit, vec![], vec![]));
-        } else {
-            let data = include_bytes!("../../resolution_example.bram");
-            let (prf2, _metadata) = crate::proofs::xml_interop::proof_from_xml::<P, _>(&data[..]).unwrap();
-            prf = prf2;
         }
 
         let pud = ProofUiData::from_proof(&prf);
@@ -641,15 +640,75 @@ impl Component for TabbedContainer {
     }
 }
 
+pub struct FileOpenHelper {
+    filepicker_visible: bool,
+    file_open_closure: Closure<dyn FnMut(JsValue)>,
+    filename_tx: std::sync::mpsc::Sender<(String, web_sys::FileReader)>,
+}
+
+impl FileOpenHelper {
+    fn new(parent: ComponentLink<App>) -> Self {
+        let (filename_tx, filename_rx) = std::sync::mpsc::channel::<(String, web_sys::FileReader)>();
+        let file_open_closure = Closure::wrap(Box::new(move |_| {
+            if let Ok((fname, reader)) = filename_rx.recv() {
+                if let Ok(contents) = reader.result() {
+                    if let Some(contents) = contents.as_string() {
+                        parent.send_message(AppMsg::CreateTab { name: fname, content: html! { <ProofWidget verbose=true data=Some(contents.into_bytes()) /> }});
+                    }
+                }
+            }
+        }) as Box<dyn FnMut(JsValue)>);
+        Self {
+            filepicker_visible: false,
+            file_open_closure,
+            filename_tx,
+        }
+    }
+    fn fileopen1(&mut self) -> ShouldRender {
+        self.filepicker_visible = true;
+        true
+        // For "security reasons", you can't trigger a click event on an <input type="file" /> from javascript
+        // so the below approach that would have gotten things working without these auxillary continuation/mpsc shenanigans doesn't work
+        /*let window = web_sys::window().expect("web_sys::window failed");
+        let document = window.document().expect("window.document failed");
+        let node = self.node_ref.get().expect("MenuWidget::node_ref failed");
+        let input = document.create_element("input").expect("document.create_element(\"input\") failed");
+        let input = input.dyn_into::<web_sys::HtmlInputElement>().expect("dyn_into::HtmlInputElement failed");
+        input.set_type("file");
+        node.append_child(&input);
+        input.click();
+        Timeout::new(1, move || {
+            node.remove_child(&input);
+        }).forget();*/
+    }
+    fn fileopen2(&mut self, file_list: web_sys::FileList) -> ShouldRender {
+        self.filepicker_visible = false;
+        if let Some(file) = file_list.get(0) {
+            // MDN (https://developer.mozilla.org/en-US/docs/Web/API/Blob/text) and web-sys (https://docs.rs/web-sys/0.3.36/web_sys/struct.Blob.html#method.text)
+            // both document "Blob.text()" as being a thing, but both chrome and firefox say that "getObject(...).text is not a function"
+            /*let _ = self.filename_tx.send(file.name());
+            file.dyn_into::<web_sys::Blob>().expect("dyn_into::<web_sys::Blob> failed").text().then(&self.file_open_closure);*/
+            let reader = web_sys::FileReader::new().expect("FileReader");
+            reader.set_onload(Some(self.file_open_closure.as_ref().unchecked_ref()));
+            reader.read_as_text(&file).expect("FileReader::read_as_text");
+            let _ = self.filename_tx.send((file.name(), reader));
+        }
+        true
+    }
+}
+
 pub struct MenuWidget {
     link: ComponentLink<Self>,
     props: MenuWidgetProps,
     node_ref: NodeRef,
     next_tab_idx: usize,
+    file_open_helper: FileOpenHelper,
 }
+
 pub enum MenuWidgetMsg {
     FileNew,
-    FileOpen,
+    FileOpen1,
+    FileOpen2(web_sys::FileList),
     FileSave,
     Nop,
 }
@@ -665,20 +724,26 @@ impl Component for MenuWidget {
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         props.oncreate.emit(link.clone());
-        Self { link, props, node_ref: NodeRef::default(), next_tab_idx: 1 }
+        let file_open_helper = FileOpenHelper::new(props.parent.clone());
+        Self { link, props, node_ref: NodeRef::default(), next_tab_idx: 1, file_open_helper, }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             MenuWidgetMsg::FileNew => {
-                self.props.parent.send_message(AppMsg::CreateTab { name: format!("Untitled proof {}", self.next_tab_idx), content: html! { <ProofWidget verbose=true blank=true /> } });
+                self.props.parent.send_message(AppMsg::CreateTab { name: format!("Untitled proof {}", self.next_tab_idx), content: html! { <ProofWidget verbose=true data=None /> } });
                 self.next_tab_idx += 1;
+                false
             },
-            MenuWidgetMsg::FileOpen => {},
-            MenuWidgetMsg::FileSave => {},
-            MenuWidgetMsg::Nop => {},
+            MenuWidgetMsg::FileOpen1 => self.file_open_helper.fileopen1(),
+            MenuWidgetMsg::FileOpen2(file_list) => self.file_open_helper.fileopen2(file_list),
+            MenuWidgetMsg::FileSave => {
+                false
+            },
+            MenuWidgetMsg::Nop => {
+                false
+            },
         }
-        false
     }
 
     fn view(&self) -> Html {
@@ -688,7 +753,7 @@ impl Component for MenuWidget {
                 s.set_selected_index(0);
                 match &*value {
                     "new_proof" => MenuWidgetMsg::FileNew,
-                    "open_proof" => MenuWidgetMsg::FileOpen,
+                    "open_proof" => MenuWidgetMsg::FileOpen1,
                     "save_proof" => MenuWidgetMsg::FileSave,
                     _ => MenuWidgetMsg::Nop,
                 }
@@ -696,15 +761,28 @@ impl Component for MenuWidget {
                 MenuWidgetMsg::Nop
             }
         });
+        let handle_open_file = self.link.callback(move |e| {
+            if let ChangeData::Files(file_list) = e {
+                MenuWidgetMsg::FileOpen2(file_list)
+            } else {
+                MenuWidgetMsg::Nop
+            }
+        });
+        let filepicker_modal = html! {
+            <div id="menuwidget_filepicker_modal" style={ if self.file_open_helper.filepicker_visible { "" } else { "display:none" } }>
+                <input type="file" onchange=handle_open_file />
+            </div>
+        };
         html! {
             <div ref=self.node_ref.clone()>
                 <select onchange=handle_file_menu>
                     <option value="File">{ "File" }</option>
                     <hr />
                     <option value="new_proof">{ "New blank proof" }</option>
-                    //<option value="open_proof">{ "Open proof" }</option>
+                    <option value="open_proof">{ "Open proof" }</option>
                     //<option value="save_proof">{ "Save proof (WIP, don't overwrite proofs yet)" }</option>
                 </select>
+                { filepicker_modal }
             </div>
         }
     }
@@ -774,7 +852,7 @@ impl Component for App {
         };
         let tabview = html! {
             <TabbedContainer tab_ids=vec!["Resolution example".into(), "Parser demo".into()] oncreate=self.link.callback(|link| AppMsg::TabbedContainerInit(link))>
-                <ProofWidget verbose=true blank=false />
+                <ProofWidget verbose=true data=Some(include_bytes!("../../resolution_example.bram").to_vec()) />
                 { exprwidget }
             </TabbedContainer>
         };
