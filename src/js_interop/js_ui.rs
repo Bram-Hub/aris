@@ -1,4 +1,4 @@
-extern crate yew;
+use gloo::timers::callback::{Timeout, Interval};
 use yew::prelude::*;
 use expression::Expr;
 use rules::{Rule, RuleM, RuleT};
@@ -585,32 +585,46 @@ pub struct TabbedContainer {
     tabs: Vec<(String, Html)>,
     current_tab: usize,
 }
+pub enum TabbedContainerMsg {
+    SwitchTab(usize),
+    CreateTab { name: String, content: Html },
+}
 
 #[derive(Clone,Properties)]
 pub struct TabbedContainerProps {
     tab_ids: Vec<String>,
     children: Children,
+    oncreate: Callback<ComponentLink<TabbedContainer>>,
 }
 
 impl Component for TabbedContainer {
-    type Message = usize;
+    type Message = TabbedContainerMsg;
     type Properties = TabbedContainerProps;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let tabs: Vec<(String, Html)> = props.tab_ids.into_iter().zip(props.children.to_vec().into_iter()).collect();
+        props.oncreate.emit(link.clone());
         Self { link, tabs, current_tab: 0 }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        self.current_tab = msg;
-        true
+        match msg {
+            TabbedContainerMsg::SwitchTab(idx) => {
+                self.current_tab = idx;
+                true
+            }
+            TabbedContainerMsg::CreateTab { name, content } => {
+                self.tabs.push((name, content));
+                true
+            }
+        }
     }
 
     fn view(&self) -> Html {
         let mut tab_links = yew::virtual_dom::VList::new();
         let mut out = yew::virtual_dom::VList::new();
         for (i, (name, data)) in self.tabs.iter().enumerate() {
-            tab_links.add_child(html! { <input type="button" onclick=self.link.callback(move |_| i) value=name /> });
+            tab_links.add_child(html! { <input type="button" onclick=self.link.callback(move |_| TabbedContainerMsg::SwitchTab(i)) value=name /> });
             if i == self.current_tab {
                 out.add_child(html! { <div> { data.clone() } </div> });
             } else {
@@ -627,29 +641,125 @@ impl Component for TabbedContainer {
     }
 }
 
-pub struct App {
+pub struct MenuWidget {
     link: ComponentLink<Self>,
-    last_good_parse: String,
-    current_expr: Option<Expr>,
+    props: MenuWidgetProps,
+    node_ref: NodeRef,
+    next_tab_idx: usize,
+}
+pub enum MenuWidgetMsg {
+    FileNew,
+    FileOpen,
+    FileSave,
+    Nop,
+}
+#[derive(Properties, Clone)]
+pub struct MenuWidgetProps {
+    parent: ComponentLink<App>,
+    oncreate: Callback<ComponentLink<MenuWidget>>,
 }
 
-pub enum Msg {
-    ExprChanged(String, Option<Expr>),
-}
+impl Component for MenuWidget {
+    type Message = MenuWidgetMsg;
+    type Properties = MenuWidgetProps;
 
-impl Component for App {
-    type Message = Msg;
-    type Properties = ();
-
-    fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self { link, last_good_parse: "".into(), current_expr: None }
+    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+        props.oncreate.emit(link.clone());
+        Self { link, props, node_ref: NodeRef::default(), next_tab_idx: 1 }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Msg::ExprChanged(last_good_parse, current_expr) => {
+            MenuWidgetMsg::FileNew => {
+                self.props.parent.send_message(AppMsg::CreateTab { name: format!("Untitled proof {}", self.next_tab_idx), content: html! { <ProofWidget verbose=true blank=true /> } });
+                self.next_tab_idx += 1;
+            },
+            MenuWidgetMsg::FileOpen => {},
+            MenuWidgetMsg::FileSave => {},
+            MenuWidgetMsg::Nop => {},
+        }
+        false
+    }
+
+    fn view(&self) -> Html {
+        let handle_file_menu = self.link.callback(move |e: ChangeData| {
+            if let ChangeData::Select(s) = e {
+                let value = s.value();
+                s.set_selected_index(0);
+                match &*value {
+                    "new_proof" => MenuWidgetMsg::FileNew,
+                    "open_proof" => MenuWidgetMsg::FileOpen,
+                    "save_proof" => MenuWidgetMsg::FileSave,
+                    _ => MenuWidgetMsg::Nop,
+                }
+            } else {
+                MenuWidgetMsg::Nop
+            }
+        });
+        html! {
+            <div ref=self.node_ref.clone()>
+                <select onchange=handle_file_menu>
+                    <option value="File">{ "File" }</option>
+                    <hr />
+                    <option value="new_proof">{ "New blank proof" }</option>
+                    //<option value="open_proof">{ "Open proof" }</option>
+                    //<option value="save_proof">{ "Save proof (WIP, don't overwrite proofs yet)" }</option>
+                </select>
+            </div>
+        }
+    }
+}
+
+
+pub struct App {
+    link: ComponentLink<Self>,
+    last_good_parse: String,
+    current_expr: Option<Expr>,
+    tabcontainer_link: Option<ComponentLink<TabbedContainer>>,
+    menuwidget_link: Option<ComponentLink<MenuWidget>>,
+}
+
+pub enum AppMsg {
+    ExprChanged(String, Option<Expr>),
+    TabbedContainerInit(ComponentLink<TabbedContainer>),
+    MenuWidgetInit(ComponentLink<MenuWidget>),
+    CreateTab { name: String, content: Html },
+}
+
+impl Component for App {
+    type Message = AppMsg;
+    type Properties = ();
+
+    fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
+        Self {
+            link,
+            last_good_parse: "".into(), current_expr: None,
+            tabcontainer_link: None,
+            menuwidget_link: None,
+        }
+    }
+
+    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+        match msg {
+            AppMsg::ExprChanged(last_good_parse, current_expr) => {
                 self.last_good_parse = last_good_parse;
                 self.current_expr = current_expr;
+                true
+            },
+            AppMsg::TabbedContainerInit(tabcontainer_link) => {
+                self.tabcontainer_link = Some(tabcontainer_link);
+                false
+            },
+            AppMsg::MenuWidgetInit(menuwidget_link) => {
+                // create the first blank proof tab
+                menuwidget_link.send_message(MenuWidgetMsg::FileNew);
+                self.menuwidget_link = Some(menuwidget_link);
+                false
+            },
+            AppMsg::CreateTab { name, content } => {
+                if let Some(tabcontainer_link) = &self.tabcontainer_link {
+                    tabcontainer_link.send_message(TabbedContainerMsg::CreateTab { name, content });
+                }
                 true
             },
         }
@@ -659,18 +769,18 @@ impl Component for App {
         let exprwidget = html! {
             <div>
                 <p>{ "Enter Expression:" }</p>
-                <ExprEntry initial_contents="forall A, ((exists B, A -> B) & C & f(x, y | z)) <-> Q <-> R" onchange=self.link.callback(|(x, y)| Msg::ExprChanged(x, y)) />
+                <ExprEntry initial_contents="forall A, ((exists B, A -> B) & C & f(x, y | z)) <-> Q <-> R" onchange=self.link.callback(|(x, y)| AppMsg::ExprChanged(x, y)) />
             </div>
         };
         let tabview = html! {
-            <TabbedContainer tab_ids=vec!["Resolution example".into(), "Untitled proof".into(), "Parser demo".into()]>
+            <TabbedContainer tab_ids=vec!["Resolution example".into(), "Parser demo".into()] oncreate=self.link.callback(|link| AppMsg::TabbedContainerInit(link))>
                 <ProofWidget verbose=true blank=false />
-                <ProofWidget verbose=true blank=true />
                 { exprwidget }
             </TabbedContainer>
         };
         html! {
             <div>
+                <MenuWidget parent=self.link.clone() oncreate=self.link.callback(|link| AppMsg::MenuWidgetInit(link)) />
                 { tabview }
             </div>
         }

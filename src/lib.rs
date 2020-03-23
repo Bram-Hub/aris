@@ -7,6 +7,8 @@ extern crate jni;
 #[cfg(feature="js")]
 extern crate yew;
 #[cfg(feature="js")]
+extern crate gloo;
+#[cfg(feature="js")]
 extern crate wasm_bindgen;
 #[cfg(feature="js")]
 extern crate wee_alloc;
