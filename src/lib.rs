@@ -1,3 +1,5 @@
+#![cfg_attr(feature="js", recursion_limit="256")] // html macro requires a high recursion_limit
+
 #[macro_use] extern crate frunk;
 #[macro_use] extern crate nom;
 #[macro_use] extern crate lazy_static;

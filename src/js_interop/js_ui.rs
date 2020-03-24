@@ -747,20 +747,6 @@ impl Component for MenuWidget {
     }
 
     fn view(&self) -> Html {
-        let handle_file_menu = self.link.callback(move |e: ChangeData| {
-            if let ChangeData::Select(s) = e {
-                let value = s.value();
-                s.set_selected_index(0);
-                match &*value {
-                    "new_proof" => MenuWidgetMsg::FileNew,
-                    "open_proof" => MenuWidgetMsg::FileOpen1,
-                    "save_proof" => MenuWidgetMsg::FileSave,
-                    _ => MenuWidgetMsg::Nop,
-                }
-            } else {
-                MenuWidgetMsg::Nop
-            }
-        });
         let handle_open_file = self.link.callback(move |e| {
             if let ChangeData::Files(file_list) = e {
                 MenuWidgetMsg::FileOpen2(file_list)
@@ -768,21 +754,23 @@ impl Component for MenuWidget {
                 MenuWidgetMsg::Nop
             }
         });
-        let filepicker_modal = html! {
-            <div id="menuwidget_filepicker_modal" style={ if self.file_open_helper.filepicker_visible { "" } else { "display:none" } }>
-                <input type="file" onchange=handle_open_file />
-            </div>
-        };
         html! {
-            <div ref=self.node_ref.clone()>
-                <select onchange=handle_file_menu>
-                    <option value="File">{ "File" }</option>
-                    <hr />
-                    <option value="new_proof">{ "New blank proof" }</option>
-                    <option value="open_proof">{ "Open proof" }</option>
-                    //<option value="save_proof">{ "Save proof (WIP, don't overwrite proofs yet)" }</option>
-                </select>
-                { filepicker_modal }
+            <div ref=self.node_ref.clone() class="dropdown show">
+                <a class="btn btn-secondary dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{"File"}</a>
+                <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+                    <div>
+                        <label for="file-menu-new-proof" class="dropdown-item">{"New blank proof"}</label>
+                        <input id="file-menu-new-proof" style="display:none" type="button" onclick=self.link.callback(|_| MenuWidgetMsg::FileNew) />
+                    </div>
+                    <div>
+                        <label for="file-menu-open-proof" class="dropdown-item">{"Open proof"}</label>
+                        <input id="file-menu-open-proof" style="display:none" type="file" onchange=handle_open_file />
+                    </div>
+                    /*<div>
+                        <label for="file-menu-save-proof" class="dropdown-item">{"Save proof (WIP, don't overwrite proofs yet)"}</label>
+                        <input id="file-menu-save-proof" style="display:none" type="button" onclick=self.link.callback(|_| MenuWidgetMsg::FileSave) />
+                    </div>*/
+                </div>
             </div>
         }
     }
