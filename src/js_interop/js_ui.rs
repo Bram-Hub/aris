@@ -5,6 +5,7 @@ use rules::{Rule, RuleM, RuleT};
 use proofs::{Proof, Justification, pooledproof::PooledProof};
 use std::collections::{BTreeSet,HashMap};
 use std::{fmt, mem};
+use std::sync::atomic::{self, AtomicUsize};
 use wasm_bindgen::{closure::Closure, JsValue, JsCast};
 
 pub struct ExprEntry {
@@ -80,6 +81,15 @@ impl<P: Proof> ProofUiData<P> {
     }
 }
 
+/// ProofWidget needs globally unique ids to distinguish DOM ids between different ProofWidget instances
+/// Failing to make the DOM ids globally unique makes the bootstrap menus from one proof affect another
+fn next_proof_widget_id() -> usize {
+    lazy_static!  {
+        static ref PROOF_WIDGET_ID_ALLOCATOR: AtomicUsize = AtomicUsize::new(0);
+    }
+    PROOF_WIDGET_ID_ALLOCATOR.fetch_add(1, atomic::Ordering::SeqCst)
+}
+
 pub struct ProofWidget {
     link: ComponentLink<Self>,
     prf: P,
@@ -87,6 +97,7 @@ pub struct ProofWidget {
     selected_line: Option<<P as Proof>::Reference>,
     preblob: String,
     props: ProofWidgetProps,
+    proofid: usize,
 }
 
 #[derive(Debug)]
@@ -215,7 +226,7 @@ impl ProofWidget {
             let mut rules = yew::virtual_dom::VList::new();
             for rule in RuleM::ALL_RULES {
                 // TODO: seperators and submenus by RuleClassification
-                let label_name = format!("rule-for-line-{}-{}", line, RuleM::to_serialized_name(*rule));
+                let label_name = format!("proof-{}-rule-for-line-{}-{}", self.proofid, line, RuleM::to_serialized_name(*rule));
                 let proofref_ = proofref.clone();
                 rules.add_child(html! {
                     <div>
@@ -244,8 +255,8 @@ impl ProofWidget {
             };*/
             let rule_selector = html! {
                 <div class="dropdown show">
-                    <a class="btn btn-secondary dropdown-toggle" href="#" role="button" id=format!("rule-for-line-{}", line) data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{ just.1.get_name() }</a>
-                    <div class="dropdown-menu" style={ enable_scrollbar } aria-labelledby=format!("rule-for-line-{}", line)>
+                    <a class="btn btn-secondary dropdown-toggle" href="#" role="button" id=format!("proof-{}-rule-for-line-{}", self.proofid, line) data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{ just.1.get_name() }</a>
+                    <div class="dropdown-menu" style={ enable_scrollbar } aria-labelledby=format!("proof-{}-rule-for-line-{}", self.proofid, line)>
                         { rules }
                     </div>
                 </div>
@@ -506,6 +517,7 @@ impl Component for ProofWidget {
             pud,
             selected_line: None,
             preblob: "".into(),
+            proofid: next_proof_widget_id(),
             props,
         };
         tmp.update(ProofWidgetMsg::Nop);
