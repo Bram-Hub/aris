@@ -357,11 +357,11 @@ impl ProofWidget {
                 Some(x) => x,
             };
             match parse(&raw_line).map(|_| self.prf.verify_line(&proofref)) {
-                None => html! { <span style="background-color:yellow">{ "Parse error" }</span> },
-                Some(Ok(())) => html! { <span style="background-color:lightgreen">{ "Correct" }</span> },
+                None => html! { <span class="alert alert-warning">{ "Parse error" }</span> },
+                Some(Ok(())) => html! { <span class="alert alert-success">{ "Correct" }</span> },
                 Some(Err(e)) => {
                     // TODO: proper CSS hover box
-                    html! { <span style="background-color:red" title=format!("{}", e)>{ "Error (hover for details)" }</span> }
+                    html! { <span class="alert alert-danger" title=format!("{}", e)>{ "Error (hover for details)" }</span> }
                 },
             }
         })();
