@@ -145,12 +145,13 @@ impl ProofWidget {
         }
         yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new())
     }
-    pub fn render_justification_widget(&self, _line: usize, _depth: usize, proofref: <P as Proof>::Reference) -> Html {
+    pub fn render_justification_widget(&self, line: usize, _depth: usize, proofref: <P as Proof>::Reference) -> Html {
         /* TODO: does HTML/do browsers have a way to do nested menus?
         https://developer.mozilla.org/en-US/docs/Web/HTML/Element/menu is 
         "experimental", and currently firefox only, and a bunch of tutorials for the 
         DDG query "javascript nested context menus" build their own menus out of 
-        {div,nav,ul,li} with CSS for displaying the submenus on hover */ 
+        {div,nav,ul,li} with CSS for displaying the submenus on hover */
+        // Apparently it used to exist in Bootstrap, but was removed: https://github.com/twbs/bootstrap/issues/16387#issuecomment-97153831
         use frunk::Coproduct::{Inl, Inr};
         if let Inr(Inl(_)) = proofref {
             let proofref_ = proofref.clone();
@@ -185,19 +186,61 @@ impl ProofWidget {
                 }
             }
 
-            let mut rules = yew::virtual_dom::VList::new();
+            /*let mut rules = yew::virtual_dom::VList::new();
             for rule in RuleM::ALL_RULES {
                 // TODO: seperators and submenus by RuleClassification
                 rules.add_child(html!{ <option value=RuleM::to_serialized_name(*rule) selected=(just.1 == *rule)> { rule.get_name() } </option> });
             }
-            html! {
-                <div>
-                <td>
+            let rule_selector = html! {
                 <select onchange=handle_rule_select>
                     <option value="no_rule_selected">{"Rule"}</option>
                     <hr />
                     { rules }
                 </select>
+            };*/
+
+            let mut rules = yew::virtual_dom::VList::new();
+            for rule in RuleM::ALL_RULES {
+                // TODO: seperators and submenus by RuleClassification
+                let label_name = format!("rule-for-line-{}-{}", line, RuleM::to_serialized_name(*rule));
+                let proofref_ = proofref.clone();
+                rules.add_child(html! {
+                    <div>
+                        <label for={ label_name.clone() } class="dropdown-item">{ rule.get_name() }</label>
+                        <input id={ label_name } style="display:none" type="button" onclick=self.link.callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule: *rule }, proofref_)) />
+                    </div>
+                });
+            }
+            let enable_scrollbar = "max-height: 400px; overflow-y: auto"; // https://github.com/davidstutz/bootstrap-multiselect/issues/1#issuecomment-12063820
+            /*let submenu_onclick = self.link.callback(move |e: MouseEvent| {
+                e.stop_propagation();
+                e.prevent_default();
+                let _ = js_sys::eval(&format!("$({:?}).toggle()", format!("#rule-for-line-{}-inference2", line))); ProofWidgetMsg::Nop });*/
+            /*let inference_submenu = html! {
+                <div class="dropdown-submenu">
+                    <div class="dropright show">
+                        /*<label for={ format!("rule-for-line-{}-inference", line) } class="btn btn-secondary dropdown-toggle" >{ "Inference" }</label>
+                        <input id={ format!("rule-for-line-{}-inference", line) } data-toggle="dropdown" style="visibility:hidden" type="button" onchange=self.link.callback(|e| { ProofWidgetMsg::Nop })/>*/
+
+                        <a class="dropdown-item dropdown-toggle" href="#" role="button" id=format!("rule-for-line-{}-inference", line) data-toggle="dropdown">{ "Inference" }</a>
+                        <div class="dropdown-menu" style={ enable_scrollbar } id=format!("rule-for-line-{}-inference2", line) aria-labelledby=format!("rule-for-line-{}-inference", line)>
+                            { rules }
+                        </div>
+                    </div>
+                </div>
+            };*/
+            let rule_selector = html! {
+                <div class="dropdown show">
+                    <a class="btn btn-secondary dropdown-toggle" href="#" role="button" id=format!("rule-for-line-{}", line) data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{ just.1.get_name() }</a>
+                    <div class="dropdown-menu" style={ enable_scrollbar } aria-labelledby=format!("rule-for-line-{}", line)>
+                        { rules }
+                    </div>
+                </div>
+            };
+            html! {
+                <div>
+                <td>
+                { rule_selector }
                 </td>
                 <td><input type="text" readonly=true value=dep_lines></input></td>
                 </div>
