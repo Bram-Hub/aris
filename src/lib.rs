@@ -48,6 +48,10 @@ use rewrite_rules::*;
 pub mod equivalences;
 use equivalences::*;
 
+/// libaris::combinatorics contains utilities for calculating permutations and combinations of elements
+pub mod combinatorics;
+use combinatorics::*;
+
 /// libaris::java_interop contains native methods for various objects in the Java version of Aris, as well as convenience methods for dealing with Java objects.
 #[cfg(feature="java")]
 pub mod java_interop {

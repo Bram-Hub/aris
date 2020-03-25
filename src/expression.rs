@@ -64,6 +64,8 @@ assert_eq!(does_it_have_any_ands(&expr3), false);
 */
 use super::*;
 use std::collections::{HashSet, HashMap};
+use std::collections::{BTreeSet, VecDeque};
+use std::iter::FromIterator;
 
 /// Symbol for unary operations
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
@@ -682,3 +684,87 @@ pub mod expression_builders {
     pub fn exists(name: &str, body: Expr) -> Expr { Expr::Quantifier { symbol: QSymbol::Exists, name: name.into(), body: Box::new(body) } }
 }
 
+pub fn expressions_for_depth(depth: usize, max_assoc: usize, mut vars: BTreeSet<String>) -> BTreeSet<Expr> {
+    let mut ret = BTreeSet::new();
+    if depth == 0 {
+        ret.insert(Expr::Contradiction);
+        ret.insert(Expr::Tautology);
+        ret.extend(vars.iter().cloned().map(|name| Expr::Var { name }));
+    } else {
+        use expression_builders::{var, apply, not, binop, assocbinop, forall, exists};
+        let smaller: Vec<_> = expressions_for_depth(depth-1, max_assoc, vars.clone()).into_iter().collect();
+        let mut products = vec![];
+        for i in 2..=max_assoc {
+            products.extend(cartesian_product((0..i).into_iter().map(|_| smaller.clone()).collect()));
+        }
+        for v in vars.iter() {
+            for arglist in products.iter() {
+                ret.insert(apply(var(v), arglist));
+            }
+        }
+        for e in smaller.iter() {
+            ret.insert(not(e.clone()));
+        }
+        for symbol in &[BSymbol::Implies, /*BSymbol::Plus, BSymbol::Mult*/] {
+            for lhs in smaller.iter() {
+                for rhs in smaller.iter() {
+                    ret.insert(binop(*symbol, lhs.clone(), rhs.clone()));
+                }
+            }
+        }
+        for symbol in &[ASymbol::And, ASymbol::Or, ASymbol::Bicon, ASymbol::Equiv] {
+            for arglist in products.iter() {
+                ret.insert(assocbinop(*symbol, &arglist));
+            }
+        }
+        let x = format!("x{}", depth);
+        vars.insert(x.clone());
+        for body in expressions_for_depth(depth-1, max_assoc, vars).into_iter() {
+            ret.insert(forall(&x, body.clone()));
+            ret.insert(exists(&x, body.clone()));
+        }
+    }
+    ret
+}
+
+#[test]
+fn test_expressions_for_depth() {
+    let vars = BTreeSet::from_iter(vec!["a".into()]);
+    for depth in 0..3 {
+        let set = expressions_for_depth(depth, 2, vars.clone());
+        println!("Depth: {}", depth);
+        for expr in set {
+            println!("\t{}", expr);
+        }
+    }
+}
+
+/*
+pub struct ExpressionGenerator {
+    num_freevars: usize,
+    max_depth: usize,
+    vars_in_scope: BTreeSet<String>,
+    queue: VecDeque<Expr>,
+}
+
+impl ExpressionGenerator {
+    pub fn new() -> ExpressionGenerator {
+        ExpressionGenerator {
+            num_freevars: 0,
+            max_depth: 0,
+            vars_in_scope: BTreeSet::new(),
+            queue: VecDeque::from_iter(vec![Expr::Contradiction, Expr::Tautology]),
+        }
+    }
+    pub fn generate_batch(&mut self) {
+        //let queue = vec![];
+    }
+}
+
+impl Iterator for ExpressionGenerator {
+    type Item = Expr;
+    fn next(&mut self) -> Option<Expr> {
+        self.queue.pop_front()
+    }
+}
+*/
