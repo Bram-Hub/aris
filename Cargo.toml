@@ -23,7 +23,7 @@ web-sys = { version = "0.3", optional = true }
 
 [features]
 java = ["jni"]
-js = ["js-sys", "web-sys", "yew/web_sys", "wasm-bindgen", "wee_alloc/size_classes", "gloo"]
+js = ["js-sys", "web-sys", "web-sys/HtmlAnchorElement", "yew/web_sys", "wasm-bindgen", "wee_alloc/size_classes", "gloo"]
 workaround_rls_vscode_bug_586 = []
 
 [build-dependencies]
