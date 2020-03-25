@@ -4,14 +4,16 @@ version = "0.1.0"
 authors = ["Avi Weinstock <aweinstock314@gmail.com>"]
 
 [dependencies]
+base64 = "0.12.0"
 #either = "1.5.0"
+failure = "0.1.6"
 frunk = "0.2.2"
+lazy_static = "1.4.0"
 nom = "4.1.1"
 petgraph = "0.4.13"
-xml-rs = "0.8.0"
-lazy_static = "1.4.0"
+sha2 = "0.8.1"
 varisat = "0.2.1"
-failure = "0.1.6"
+xml-rs = "0.8.0"
 
 jni = { version = "0.10.2", optional = true }
 yew = { version = "0.13", optional = true }

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::io::{Read, Write};
 use xml::reader::EventReader;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ProofMetaData {
     pub author: Option<String>, // TODO: it seems like the java SaveManager might treat this as a Vec<String>
     pub hash: Option<String>,
@@ -134,18 +134,18 @@ pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Result<(P, ProofMetaData), Str
 }
 
 pub fn xml_from_proof_and_metadata<P: Proof, W: Write>(prf: &P, meta: &ProofMetaData, out: W) -> xml::writer::Result<()> {
-    use xml::writer::{EventWriter, XmlEvent::{self, *}};
+    use xml::writer::{EmitterConfig, EventWriter, XmlEvent::{self, *}};
     fn leaf_tag<W: Write>(ew: &mut EventWriter<W>, name: &str, val: &str) -> xml::writer::Result<()> {
         ew.write(XmlEvent::start_element(name))?;
         ew.write(Characters(val))?;
         ew.write(XmlEvent::end_element().name(name))?;
         Ok(())
     }
-    let mut ew = EventWriter::new(out);
+    let mut ew = EventWriter::new_with_config(out, EmitterConfig::new().perform_indent(true));
     ew.write(StartDocument {
         version: xml::common::XmlVersion::Version10,
         encoding: Some("UTF-8"),
-        standalone: None,
+        standalone: Some(false),
     })?;
     ew.write(XmlEvent::start_element("bram"))?;
     leaf_tag(&mut ew, "program", "Aris")?;
@@ -167,17 +167,37 @@ pub fn xml_from_proof_and_metadata<P: Proof, W: Write>(prf: &P, meta: &ProofMeta
         deps_map: HashMap<P::Reference, usize>,
         sdeps_map: HashMap<P::SubproofReference, usize>,
     }
+    fn allocate_identifiers<P: Proof>(prf: &P::Subproof, state: &mut SerializationState<P>) {
+        for prem in prf.premises() {
+            state.deps_map.insert(prem, state.linenum);
+            state.linenum += 1;
+        }
+        for step in prf.lines() {
+            use frunk::Coproduct::{Inl, Inr};
+            match step {
+                Inl(lr) => {
+                    state.deps_map.insert(lr, state.linenum);
+                    state.linenum += 1;
+                },
+                Inr(Inl(sr)) => {
+                    state.sdeps_map.insert(sr.clone(), state.linenum);
+                    // the java version seems to require that the linenum of a subproof aliases its first premise, so don't increment linenum here
+                    let sub = prf.lookup_subproof(sr).unwrap();
+                    allocate_identifiers(&sub, state);
+                },
+                Inr(Inr(void)) => match void {},
+            }
+        }
+    }
 
     fn aux<P: Proof, W: Write>(prf: &P::Subproof, proofid: usize, state: &mut SerializationState<P>, ew: &mut EventWriter<W>) -> xml::writer::Result<()> {
         ew.write(XmlEvent::start_element("proof").attr("id", &format!("{}", proofid)))?;
         for prem in prf.premises() {
-            ew.write(XmlEvent::start_element("assumption").attr("linenum", &format!("{}", state.linenum)))?;
+            ew.write(XmlEvent::start_element("assumption").attr("linenum", &format!("{}", state.deps_map[&prem])))?;
             if let Some(expr) = prf.lookup_expr(prem.clone()) {
                 leaf_tag(ew, "raw", &format!("{}", expr))?;
             }
             ew.write(XmlEvent::end_element())?;
-            state.deps_map.insert(prem, state.linenum);
-            state.linenum += 1;
         }
         for step in prf.lines() {
             use frunk::Coproduct::{Inl, Inr};
@@ -185,7 +205,7 @@ pub fn xml_from_proof_and_metadata<P: Proof, W: Write>(prf: &P, meta: &ProofMeta
                 Inl(lr) => match prf.lookup(lr.clone()).unwrap() {
                     Inl(_) => panic!("prf.lines() returned a premise"),
                     Inr(Inl(just)) => {
-                        ew.write(XmlEvent::start_element("step").attr("linenum", &format!("{}", state.linenum)))?;
+                        ew.write(XmlEvent::start_element("step").attr("linenum", &format!("{}", state.deps_map[&lr])))?;
                         leaf_tag(ew, "raw", &format!("{}", just.0))?;
                         leaf_tag(ew, "rule", &RuleM::to_serialized_name(just.1))?;
                         for dep in just.2 {
@@ -195,20 +215,16 @@ pub fn xml_from_proof_and_metadata<P: Proof, W: Write>(prf: &P, meta: &ProofMeta
                             leaf_tag(ew, "premise", &format!("{}", state.sdeps_map[&sdep]))?;
                         }
                         ew.write(XmlEvent::end_element().name("step"))?;
-                        state.deps_map.insert(lr, state.linenum);
-                        state.linenum += 1;
                     },
                     Inr(Inr(void)) => match void {},
                 },
                 Inr(Inl(sr)) => {
-                    ew.write(XmlEvent::start_element("step").attr("linenum", &format!("{}", state.linenum)))?;
+                    ew.write(XmlEvent::start_element("step").attr("linenum", &format!("{}", state.sdeps_map[&sr])))?;
                     leaf_tag(ew, "rule", "SUBPROOF")?;
                     leaf_tag(ew, "premise", &format!("{}", state.sproofid))?;
                     ew.write(XmlEvent::end_element().name("step"))?;
                     state.queue.push((state.sproofid, sr.clone()));
-                    state.sdeps_map.insert(sr, state.linenum);
                     state.sproofid += 1;
-                    state.linenum += 1;
                 },
                 Inr(Inr(void)) => match void {},
             }
@@ -223,6 +239,7 @@ pub fn xml_from_proof_and_metadata<P: Proof, W: Write>(prf: &P, meta: &ProofMeta
         deps_map: HashMap::new(),
         sdeps_map: HashMap::new(),
     };
+    allocate_identifiers(prf.top_level_proof(), &mut state);
     aux(prf.top_level_proof(), 0, &mut state, &mut ew)?;
     while let Some((id, sr)) = state.queue.pop() {
         if let Some(sub) = prf.lookup_subproof(sr) {
@@ -234,6 +251,23 @@ pub fn xml_from_proof_and_metadata<P: Proof, W: Write>(prf: &P, meta: &ProofMeta
     Ok(())
 }
 
+pub fn xml_from_proof_and_metadata_with_hash<P: Proof, W: Write>(prf: &P, meta: &ProofMetaData, out: W) -> xml::writer::Result<()> {
+    use sha2::Digest;
+    let mut meta = meta.clone();
+    meta.hash = None;
+    let mut payload = vec![];
+    xml_from_proof_and_metadata(prf, &meta, &mut payload)?;
+    let mut ctx = sha2::Sha256::new();
+    ctx.input(&payload[..]);
+    ctx.input(b"\n");
+    if let Some(author) = &meta.author {
+        ctx.input(&author);
+    }
+    let hash = ctx.result();
+    meta.hash = Some(base64::encode(&hash[..]));
+    xml_from_proof_and_metadata(prf, &meta, out)
+}
+
 #[test]
 fn test_xml() {
     let data = &include_bytes!("../../propositional_logic_arguments_for_proofs_ii_problem_10.bram")[..];
@@ -241,7 +275,7 @@ fn test_xml() {
     let (prf, metadata) = proof_from_xml::<P, _>(data).unwrap();
     println!("{:?} {:?}\n{}", metadata.author, metadata.hash, prf);
     let mut reserialized = vec![];
-    xml_from_proof_and_metadata(&prf, &metadata, &mut reserialized).unwrap();
+    xml_from_proof_and_metadata_with_hash(&prf, &metadata, &mut reserialized).unwrap();
     println!("{}", String::from_utf8_lossy(&reserialized));
 }
 

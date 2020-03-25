@@ -814,10 +814,10 @@ impl Component for MenuWidget {
                     let mut data = vec![];
                     let metadata = xml_interop::ProofMetaData {
                         author: Some("ARIS-YEW-UI".into()),
-                        hash: Some("WS7f1l4P38b8ATYWRVA1RhOlI93THrvxHqE/PJCfGKA=".into()),
+                        hash: None,
                         goals: vec![],
                     };
-                    xml_interop::xml_from_proof_and_metadata(prf, &metadata, &mut data).expect("xml_from_proof_and_metadata failed");
+                    xml_interop::xml_from_proof_and_metadata_with_hash(prf, &metadata, &mut data).expect("xml_from_proof_and_metadata failed");
                     let window = web_sys::window().expect("web_sys::window failed");
                     let document = window.document().expect("window.document failed");
                     let anchor = document.create_element("a").expect("document.create_element(\"a\") failed");
@@ -865,7 +865,7 @@ impl Component for MenuWidget {
                         <input id="file-menu-open-proof" style="display:none" type="file" onchange=handle_open_file />
                     </div>
                     <div>
-                        <label for="file-menu-save-proof" class="dropdown-item">{"Save proof (WIP, not yet backwards compatible with aris-java)"}</label>
+                        <label for="file-menu-save-proof" class="dropdown-item">{"Save proof"}</label>
                         <input id="file-menu-save-proof" style="display:none" type="button" onclick=self.link.callback(|_| MenuWidgetMsg::FileSave) />
                     </div>
                 </div>

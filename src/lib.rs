@@ -15,10 +15,12 @@ extern crate wasm_bindgen;
 #[cfg(feature="js")]
 extern crate wee_alloc;
 
-extern crate petgraph;
-extern crate xml;
-extern crate varisat;
+extern crate base64;
 extern crate failure;
+extern crate petgraph;
+extern crate sha2;
+extern crate varisat;
+extern crate xml;
 
 pub mod zipper_vec;
 use zipper_vec::*;
