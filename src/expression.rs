@@ -66,7 +66,6 @@ use super::*;
 use std::collections::{HashSet, HashMap};
 use std::collections::{BTreeSet, VecDeque};
 use std::iter::FromIterator;
-use frunk::Generic;
 
 /// Symbol for unary operations
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
