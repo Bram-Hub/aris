@@ -66,6 +66,7 @@ use super::*;
 use std::collections::{HashSet, HashMap};
 use std::collections::{BTreeSet, VecDeque};
 use std::iter::FromIterator;
+use frunk::Generic;
 
 /// Symbol for unary operations
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
@@ -653,49 +654,73 @@ impl Expr {
             _ => AssocBinop { symbol: ASymbol::And, exprs: conjuncts },
         }
     }
-    /// Negate all of the quantifiers in an expression.
-    /// ~Forall(x) phi(x) -> Exists(x) ~phi(x)
-    /// Strategy: Find all of the quantifiers and replace them with the opposite one.
     pub fn negate_quantifiers(self) -> Expr {
         use Expr::*;
 
-        //     let demorgans = |new_symbol, exprs: Vec<Expr>| {
-        //         AssocBinop {
-        //             symbol: new_symbol,
-        //             exprs: exprs.into_iter().map(|expr| Unop {
-        //                 symbol: USymbol::Not,
-        //                 operand: Box::new(expr)
-        //             }).collect()
-        //         }
-        //     };
-        //
-        //     match expr {
-        //         Unop { symbol: USymbol::Not, operand } => {
-        //             match *operand {
-        //                 AssocBinop { symbol: ASymbol::And, exprs } => (demorgans(ASymbol::Or, exprs), true),
-        //                 AssocBinop { symbol: ASymbol::Or, exprs } => (demorgans(ASymbol::And, exprs), true),
-        //                 _ => (expression_builders::not(*operand), false)
-        //             }
-        //         }
-        //         _ => (expr, false)
-        //     }
         self.transform(&|expr| {
             let gen_opposite = |new_symbol, name, body | {
-                Quantifier {symbol: new_symbol, name, body}
+                Quantifier {symbol: new_symbol, name, body: Box::new(expression_builders::not(body))}
             };
 
             match expr {
-                Quantifier { symbol, name, body } => {
-                    match symbol {
-                        QSymbol::Exists => (gen_opposite(QSymbol::Forall, name, body), true),
-                        QSymbol::Forall => (gen_opposite(QSymbol::Exists, name, body), true)
+                Unop {symbol: USymbol::Not, operand} => {
+                    match *operand {
+                        Quantifier { symbol, name, body } => {
+                            match symbol {
+                                QSymbol::Exists => (gen_opposite(QSymbol::Forall, name, *body), true),
+                                QSymbol::Forall => (gen_opposite(QSymbol::Exists, name, *body), true)
+                            }
+                        },
+                        _ => (expression_builders::not(*operand), false)
                     }
-                },
+                }
                 _ => (expr, false)
             }
         })
     }
+    // check for quantifier,
+    // as long as the prefix is the same,
+    // keep pushing variables into a set.
+    // as soon as you reach a non-quantifier,
+    // rewrap all the quantifiers in sorted order
+    // if the sorted set is the same as the initial set, return false
+    pub fn swap_quantifiers(self) -> Expr {
+        use Expr::*;
 
+        self.transform(&|expr| {
+            let mut mod_expr = expr.clone();
+            let mut stack = vec![];
+            let mut last_quantifier = None;
+
+            loop {
+                match mod_expr {
+                    Quantifier { symbol, name, body } => {
+                        if last_quantifier.is_none() || last_quantifier == Some(symbol) {
+                            last_quantifier = Some(symbol);
+                            stack.push( name);
+                            mod_expr = *body;
+                        } else {
+                            mod_expr = Quantifier { symbol, name, body };
+                            break;
+                        }
+                    },
+                    _ => break,
+                }
+            }
+
+            stack.sort();
+
+            if let Some(sym) = &last_quantifier {
+                for l_name in stack {
+                    mod_expr = Quantifier { symbol: *sym, name: l_name, body: Box::new(mod_expr) };
+                }
+
+                return (mod_expr.clone(), mod_expr != expr);
+            }
+
+            (expr, false)
+        })
+    }
 }
 
 

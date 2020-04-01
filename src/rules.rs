@@ -107,7 +107,7 @@ pub enum AutomationRelatedRules {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum QuantifierEquivalence {
     QuantifierNegation, NullQuantification, ReplacingBoundVars, SwappingQuantifiers,
-    AristotleanSquare, QuantifierDistribution, PrenexLaws
+    AristoteleanSquare, QuantifierDistribution, PrenexLaws
 }
 
 
@@ -222,7 +222,7 @@ pub mod RuleM {
         [NullQuantification, "NULL_QUANTIFICATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::NullQuantification)))))))))],
         [ReplacingBoundVars, "REPLACING_BOUND_VARS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::ReplacingBoundVars)))))))))],
         [SwappingQuantifiers, "SWAPPING_QUANTIFIERS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::SwappingQuantifiers)))))))))],
-        [AristotleanSquare, "ARISTOTLEAN_SQUARE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::AristotleanSquare)))))))))],
+        [AristoteleanSquare, "ARISTOTELEAN_SQUARE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::AristoteleanSquare)))))))))],
         [QuantifierDistribution, "QUANTIFIER_DISTRIBUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::QuantifierDistribution)))))))))],
         [PrenexLaws, "PRENEX_LAWS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::PrenexLaws)))))))))]
     }
@@ -1003,8 +1003,6 @@ impl RuleT for QuantifierEquivalence {
         use QuantifierEquivalence::*;
         match self {
             QuantifierNegation => {
-                let prem = p.lookup_expr_or_die(deps[0].clone())?;
-                check_by_normalize_first_expr(p, deps.clone(), conclusion.clone(), false, Expr::normalize_demorgans);
                 check_by_normalize_first_expr(p, deps, conclusion, false, Expr::negate_quantifiers)
             },
             NullQuantification => {
@@ -1027,14 +1025,9 @@ impl RuleT for QuantifierEquivalence {
                 }
             },
             ReplacingBoundVars => unimplemented!(),
-            ReplacingBoundVars => unimplemented!(),
-            SwappingQuantifiers => unimplemented!(),
-            //  {
-            // let prem = p.lookup_expr_or_die(deps[0].clone())?;
-            //     if let Expr::Quantifier{symbol, ref name, ref body} = prem {
-
-            //     }
-            // }
+            SwappingQuantifiers => {
+                check_by_normalize_first_expr(p, deps, conclusion, false, Expr::swap_quantifiers)
+            }
             AristoteleanSquare => unimplemented!(),
             QuantifierDistribution => unimplemented!(),
             PrenexLaws => unimplemented!()
