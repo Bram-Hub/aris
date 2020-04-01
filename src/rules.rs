@@ -34,7 +34,7 @@ Each `check` implementation usually starts off with bringing the rules of the re
     - The `Coproduct::{Inl,Inr}` wrapping depends on type of rule that the rule is in
     - For the string, use same name as in the Java (deserializing the UI's usage of it will fail if the name isn't the same)
 - In the `impl RuleT for WhicheverEnum` block:
-    - Add the metadata, if applicable 
+    - Add the metadata, if applicable
     - Add the new rule to the `check` method's main match block, with an `unimplemented!()` body
 - Verify that all the structural changes compile, possibly commit the structural changes so far
     - Commit `b86de7fbe6bea3947ef864b8f253be34ec0c1306` is a good example of what the structure should look like at this point
@@ -50,7 +50,6 @@ Adding the tests and implementing the rule can be interleaved; it's convenient t
 - Add a `RuleT` impl block for the new enum
     - if default metadata applies to all rules of the type, add those (e.g. `Equivalence`)
     - if default metadata doesn't apply to all rules of the type, add an empty match block (e.g. `PrepositionalInference`)
-
 */
 use super::*;
 use std::collections::{HashMap, HashSet};
@@ -58,6 +57,9 @@ use std::iter::FromIterator;
 use frunk::Coproduct::{self, Inl, Inr};
 use petgraph::algo::tarjan_scc;
 use petgraph::graphmap::DiGraphMap;
+use rules::ProofCheckError::{ConclusionOfWrongForm, DepOfWrongForm, DoesNotOccur, Other};
+use expression::Expr::Quantifier;
+use nom::ErrorKind::ExprRes;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PrepositionalInference {
@@ -79,7 +81,7 @@ pub enum PredicateInference {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Equivalence {
-    DeMorgan, Association, Commutation, Idempotence, Distribution, 
+    DeMorgan, Association, Commutation, Idempotence, Distribution,
     DoubleNegation, Complement, Identity, Annihilation, Inverse, Absorption,
     Reduction, Adjacency
 }
@@ -102,6 +104,13 @@ pub enum AutomationRelatedRules {
     Resolution,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum QuantifierEquivalence {
+    QuantifierNegation, NullQuantification, ReplacingBoundVars, SwappingQuantifiers,
+    AristotleanSquare, QuantifierDistribution, PrenexLaws
+}
+
+
 /// The RuleT instance for SharedChecks does checking that is common to all the rules;
 ///  it should always be the outermost constructor of the Rule type alias.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -109,7 +118,7 @@ pub struct SharedChecks<T>(T);
 
 pub type Rule = SharedChecks<Coprod!(PrepositionalInference, PredicateInference,
     Equivalence, ConditionalEquivalence, RedundantPrepositionalInference,
-    AutomationRelatedRules)>;
+    AutomationRelatedRules, QuantifierEquivalence)>;
 
 /// Conveniences for constructing rules of the appropriate type, primarily for testing.
 /// The non-standard naming conventions here are because a module is being used to pretend to be an enum.
@@ -177,7 +186,7 @@ pub mod RuleM {
         [HypotheticalSyllogism, "HYPOTHETICAL_SYLLOGISM", (SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::HypotheticalSyllogism)))))))],
         [ExcludedMiddle, "EXCLUDED_MIDDLE", (SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ExcludedMiddle)))))))],
         [ConstructiveDilemma, "CONSTRUCTIVE_DILEMMA", (SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ConstructiveDilemma)))))))],
-    
+
         [Association, "ASSOCIATION", (SharedChecks(Inr(Inr(Inl(Equivalence::Association)))))],
         [Commutation, "COMMUTATION", (SharedChecks(Inr(Inr(Inl(Equivalence::Commutation)))))],
         [Idempotence, "IDEMPOTENCE", (SharedChecks(Inr(Inr(Inl(Equivalence::Idempotence)))))],
@@ -207,7 +216,15 @@ pub mod RuleM {
         [BiconditionalSubstitution, "BICONDITIONAL_SUBSTITUTION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiconditionalSubstitution))))))],
 
         [AsymmetricTautology, "ASYMMETRIC_TAUTOLOGY", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::AsymmetricTautology))))))))],
-        [Resolution, "RESOLUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::Resolution))))))))]
+        [Resolution, "RESOLUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::Resolution))))))))],
+
+        [QuantifierNegation, "QUANTIFIER_NEGATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::QuantifierNegation)))))))))],
+        [NullQuantification, "NULL_QUANTIFICATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::NullQuantification)))))))))],
+        [ReplacingBoundVars, "REPLACING_BOUND_VARS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::ReplacingBoundVars)))))))))],
+        [SwappingQuantifiers, "SWAPPING_QUANTIFIERS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::SwappingQuantifiers)))))))))],
+        [AristotleanSquare, "ARISTOTLEAN_SQUARE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::AristotleanSquare)))))))))],
+        [QuantifierDistribution, "QUANTIFIER_DISTRIBUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::QuantifierDistribution)))))))))],
+        [PrenexLaws, "PRENEX_LAWS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::PrenexLaws)))))))))]
     }
 }
 
@@ -829,8 +846,6 @@ impl RuleT for Equivalence {
     fn num_subdeps(&self) -> Option<usize> { Some(0) }
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
         use Equivalence::*;
-
-
         match self {
             DeMorgan => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.normalize_demorgans()),
             Association => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.combine_associative_ops()),
@@ -962,6 +977,67 @@ impl RuleT for AutomationRelatedRules {
                     },
                 }
             },
+        }
+    }
+}
+
+impl RuleT for QuantifierEquivalence {
+    fn get_name(&self) -> String {
+        use QuantifierEquivalence::*;
+        match self {
+            QuantifierNegation => "Quantifier Negation",
+            NullQuantification => "Null Quantification",
+            ReplacingBoundVars => "Replacing Bound Variables",
+            SwappingQuantifiers => "Swapping Quantifiers of Same Type",
+            AristoteleanSquare => "Aristotelean Square of Opposition",
+            QuantifierDistribution => "Quantifier Distribution",
+            PrenexLaws => "Prenex Laws",
+        }.into()
+    }
+    fn get_classifications(&self) -> HashSet<RuleClassification> {
+        [RuleClassification::Equivalence].iter().cloned().collect()
+    }
+    fn num_deps(&self) -> Option<usize> { Some(1) } // all equivalence rules rewrite a single statement
+    fn num_subdeps(&self) -> Option<usize> { Some(0) }
+    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
+        use QuantifierEquivalence::*;
+        match self {
+            QuantifierNegation => {
+                let prem = p.lookup_expr_or_die(deps[0].clone())?;
+                check_by_normalize_first_expr(p, deps.clone(), conclusion.clone(), false, Expr::normalize_demorgans);
+                check_by_normalize_first_expr(p, deps, conclusion, false, Expr::negate_quantifiers)
+            },
+            NullQuantification => {
+                let prem = p.lookup_expr_or_die(deps[0].clone())?;
+                if let Expr::Quantifier{symbol, ref name, ref body} = prem {
+                    if conclusion != **body {
+                        return Err(Other(format!("Expected conclusion {} to be equal to body {}", conclusion, body)));
+                    }
+
+                    if freevars(body).contains(name) {
+                        return Err(Other(format!("Error: Can't eliminate {} when it is within the body {}", name, **body)));
+                    }
+
+                    Ok(())
+                } else {
+                    Err(ProofCheckError::OneOf(vec![
+                        DepOfWrongForm(prem.clone(), expression_builders::quantifierplaceholder(QSymbol::Exists)),
+                        DepOfWrongForm(prem.clone(), expression_builders::quantifierplaceholder(QSymbol::Forall))
+                    ]))
+                }
+            },
+            ReplacingBoundVars => unimplemented!(),
+            ReplacingBoundVars => unimplemented!(),
+            SwappingQuantifiers => unimplemented!(),
+            //  {
+            // let prem = p.lookup_expr_or_die(deps[0].clone())?;
+            //     if let Expr::Quantifier{symbol, ref name, ref body} = prem {
+
+            //     }
+            // }
+            AristoteleanSquare => unimplemented!(),
+            QuantifierDistribution => unimplemented!(),
+            PrenexLaws => unimplemented!()
         }
     }
 }

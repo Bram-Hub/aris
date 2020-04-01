@@ -653,6 +653,49 @@ impl Expr {
             _ => AssocBinop { symbol: ASymbol::And, exprs: conjuncts },
         }
     }
+    /// Negate all of the quantifiers in an expression.
+    /// ~Forall(x) phi(x) -> Exists(x) ~phi(x)
+    /// Strategy: Find all of the quantifiers and replace them with the opposite one.
+    pub fn negate_quantifiers(self) -> Expr {
+        use Expr::*;
+
+        //     let demorgans = |new_symbol, exprs: Vec<Expr>| {
+        //         AssocBinop {
+        //             symbol: new_symbol,
+        //             exprs: exprs.into_iter().map(|expr| Unop {
+        //                 symbol: USymbol::Not,
+        //                 operand: Box::new(expr)
+        //             }).collect()
+        //         }
+        //     };
+        //
+        //     match expr {
+        //         Unop { symbol: USymbol::Not, operand } => {
+        //             match *operand {
+        //                 AssocBinop { symbol: ASymbol::And, exprs } => (demorgans(ASymbol::Or, exprs), true),
+        //                 AssocBinop { symbol: ASymbol::Or, exprs } => (demorgans(ASymbol::And, exprs), true),
+        //                 _ => (expression_builders::not(*operand), false)
+        //             }
+        //         }
+        //         _ => (expr, false)
+        //     }
+        self.transform(&|expr| {
+            let gen_opposite = |new_symbol, name, body | {
+                Quantifier {symbol: new_symbol, name, body}
+            };
+
+            match expr {
+                Quantifier { symbol, name, body } => {
+                    match symbol {
+                        QSymbol::Exists => (gen_opposite(QSymbol::Forall, name, body), true),
+                        QSymbol::Forall => (gen_opposite(QSymbol::Exists, name, body), true)
+                    }
+                },
+                _ => (expr, false)
+            }
+        })
+    }
+
 }
 
 
