@@ -425,8 +425,7 @@ pub fn test_forallintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Refer
         let (r17, r18) = sub1.with_mut_subproof(&r14, |sub2| {
             let r15 = sub2.add_subproof();
             let r17 = sub2.with_mut_subproof(&r15, |sub3| {
-                let r16 = sub3.add_premise(p("s(a, b)"));
-                let r17 = sub3.add_step(Justification(p("s(a, b)"), RuleM::Reit, vec![r16.clone()], vec![]));
+                let r17 = sub3.add_step(Justification(p("s(a, b)"), RuleM::Reit, vec![], vec![]));
                 r17
             }).unwrap();
             let r18 = sub2.add_step(Justification(p("forall y, s(a, y)"), RuleM::ForallIntro, vec![], vec![r15]));
@@ -435,7 +434,15 @@ pub fn test_forallintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Refer
         let r19 = sub1.add_step(Justification(p("forall x, forall y, s(x, y)"), RuleM::ForallIntro, vec![], vec![r14]));
         (r17, r18, r19)
     }).unwrap();
-    (prf, vec![r5, r6, r7, r8, r11, r17, r18, r19], vec![r9, r12])
+
+    let r20 = prf.add_subproof();
+    let r22 = prf.with_mut_subproof(&r20, |sub| {
+        let r21 = sub.add_premise(p("a"));
+        let r22 = sub.add_step(Justification(p("a"), RuleM::Reit, vec![r21.clone()], vec![]));
+        r22
+    }).unwrap();
+    let r23 = prf.add_step(Justification(p("forall x, x"), RuleM::ForallIntro, vec![], vec![r20]));
+    (prf, vec![r5, r6, r7, r8, r11, r18, r19, r22], vec![r9, r12, r17, r23])
 }
 
 pub fn test_existsintro<P: Proof+Debug>() -> (P, Vec<P::Reference>, Vec<P::Reference>) where P::Subproof: Debug, P::Reference: Debug, P::SubproofReference: Debug {

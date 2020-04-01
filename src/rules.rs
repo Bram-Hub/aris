@@ -697,12 +697,16 @@ impl RuleT for PredicateInference {
                     for (r, expr) in sproof.exprs().into_iter().map(|r| sproof.lookup_expr_or_die(r.clone()).map(|e| (r, e))).collect::<Result<Vec<_>, _>>()? {
                         if let Ok(Expr::Var { name: constant }) = unifies_wrt_var::<P>(body, &expr, name) {
                             println!("ForallIntro constant {:?}", constant);
-                            if let Some(dangling) = generalizable_variable_counterexample(&sproof, r, &constant) {
+                            if let Some(dangling) = generalizable_variable_counterexample(&sproof, r.clone(), &constant) {
                                 return Err(Other(format!("The constant {} occurs in dependency {} that's outside the subproof.", constant, dangling)));
                             } else {
                                 let expected = subst(body, &constant, expression_builders::var(name));
                                 if &expected != &**body {
                                     return Err(Other(format!("Not all free occurrences of {} are replaced with {} in {}.", constant, name, body)));
+                                }
+                                let tdeps = sproof.transitive_dependencies(r.clone());
+                                if sproof.premises().into_iter().any(|subprem| tdeps.contains(&subprem)) {
+                                    return Err(Other(format!("ForallIntro should not make use of the subproof's premises.")));
                                 }
                                 return Ok(());
                             }
