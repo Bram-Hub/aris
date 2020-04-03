@@ -804,6 +804,60 @@ impl Expr {
             }
         })
     }
+
+    pub fn aristotelean_square(self) -> Expr {
+        use Expr::*;
+
+        self.transform(&|expr| {
+            let gen_opposite = |symbol, name, body | {
+                match symbol {
+                    QSymbol::Exists => (Quantifier { symbol: QSymbol::Forall, name, body }, true),
+                    QSymbol::Forall => (Quantifier { symbol: QSymbol::Exists, name, body }, true),
+                }
+            };
+
+            let orig_expr = expr.clone();
+            match expr {
+                // find unop quantifier on the left
+                Unop { symbol: USymbol::Not, operand } => {
+                    match *operand {
+                        Quantifier { symbol, name, body } => {
+                            match *body {
+                                // find implies, turn into associative binop
+                                Binop { symbol: BSymbol::Implies, left, right } => {
+                                    let new_exprs = vec![*left, expression_builders::not(*right)];
+
+                                    let new_body = AssocBinop { symbol: ASymbol::And, exprs: new_exprs };
+                                    gen_opposite(symbol, name, Box::new(new_body))
+                                },
+
+                                // find and with exactly 2 exprs
+                                AssocBinop {symbol: ASymbol::And, exprs } => {
+                                    if exprs.len() != 2 {
+                                        (orig_expr, false)
+                                    }
+
+                                    else {
+                                        let new_body = Binop {
+                                            symbol: BSymbol::Implies,
+                                            left: Box::new(exprs[0].clone()),
+                                            right: Box::new(exprs[1].clone())
+                                        };
+                                        return gen_opposite(symbol, name, Box::new(new_body))
+                                    }
+                                },
+
+                                _ => (orig_expr, false)
+                            }
+                        },
+                        _ => (expression_builders::not(*operand), false)
+                    }
+                },
+
+                _ => (expr, false)
+            }
+        })
+    }
 }
 
 

@@ -1028,7 +1028,9 @@ impl RuleT for QuantifierEquivalence {
             SwappingQuantifiers => {
                 check_by_normalize_first_expr(p, deps, conclusion, false, Expr::swap_quantifiers)
             }
-            AristoteleanSquare => unimplemented!(),
+            AristoteleanSquare => {
+                check_by_normalize_first_expr(p, deps, conclusion, false, Expr::aristotelean_square)
+            }
             QuantifierDistribution => unimplemented!(),
             PrenexLaws => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::normalize_prenex_laws),
         }
