@@ -835,15 +835,14 @@ impl Expr {
                                 AssocBinop {symbol: ASymbol::And, exprs } => {
                                     if exprs.len() != 2 {
                                         (orig_expr, false)
-                                    }
-
-                                    else {
+                                    } else {
                                         let new_body = Binop {
                                             symbol: BSymbol::Implies,
                                             left: Box::new(exprs[0].clone()),
-                                            right: Box::new(exprs[1].clone())
+                                            right: Box::new(expression_builders::not(exprs[1].clone()))
                                         };
-                                        return gen_opposite(symbol, name, Box::new(new_body))
+
+                                        gen_opposite(symbol, name, Box::new(new_body))
                                     }
                                 },
 
