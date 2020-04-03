@@ -125,7 +125,7 @@ pub extern "system" fn Java_edu_rpi_aris_rules_Rule_verifyClaim(env: JNIEnv, rul
                 }
                 sdeps.push(sdep);
             } else {
-                deps.push(jobject_to_expr(env, env.call_method(prem, "getPremise", "()Ledu/rpi/aris/ast/Expression;", &[])?.l()?)?);
+                deps.push(frunk::Coproduct::Inl(jobject_to_expr(env, env.call_method(prem, "getPremise", "()Ledu/rpi/aris/ast/Expression;", &[])?.l()?)?));
             }
         }
         println!("Rule::verifyClaim deps: {:?} {:?}", deps, sdeps);

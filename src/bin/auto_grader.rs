@@ -3,6 +3,8 @@ extern crate libaris;
 // This file builds the headless version of Aris,
 // meant for verifying proofs submitted on Submitty.
 #[macro_use] extern crate frunk;
+use frunk::Coproduct;
+
 use std::env;
 use std::path::Path;
 use std::fs::File;
@@ -10,13 +12,13 @@ use std::collections::HashSet;
 use std::fmt::Debug;
 
 use libaris::rules::ProofCheckError;
-use libaris::proofs::{Proof, Justification};
+use libaris::proofs::{Proof, Justification, PJRef};
 use libaris::expression::Expr;
 use libaris::proofs::xml_interop::proof_from_xml;
 use libaris::proofs::lined_proof::LinedProof;
 
-fn validate_recursive<P: Proof>(proof: &P, line: P::Reference) -> Result<(), (P::Reference, ProofCheckError<P::Reference, P::SubproofReference>)>
-where P::Reference:Debug, P::SubproofReference:Debug {
+fn validate_recursive<P: Proof>(proof: &P, line: PJRef<P>) -> Result<(), (PJRef<P>, ProofCheckError<PJRef<P>, P::SubproofReference>)>
+where PJRef<P>:Debug, P::SubproofReference:Debug {
     use ProofCheckError::*;
     use frunk::Coproduct::{Inl, Inr};
     let mut q = vec![line];
@@ -27,7 +29,7 @@ where P::Reference:Debug, P::SubproofReference:Debug {
         //println!("q: {:?} {:?}", r, q);
         proof.verify_line(&r).map_err(|e| (r.clone(), e))?;
 
-        let line = proof.lookup(r.clone());
+        let line = proof.lookup_pj(&r);
         //println!("line: {:?}", line);
 
         match line {
@@ -37,8 +39,8 @@ where P::Reference:Debug, P::SubproofReference:Debug {
                 q.extend(deps);
 
                 for sdep in sdeps.iter() {
-                    let sub = proof.lookup_subproof_or_die(sdep.clone()).map_err(|e| (r.clone(), e))?;
-                    q.extend(sub.direct_lines());
+                    let sub = proof.lookup_subproof_or_die(&sdep).map_err(|e| (r.clone(), e))?;
+                    q.extend(sub.direct_lines().into_iter().map(Coproduct::inject));
                 }
             },
             Some(Inr(Inr(void))) => match void {},
@@ -78,8 +80,8 @@ fn main() -> Result<(), String> {
     let student_premises = s_prf.premises();
 
     // Adds the premises into two sets to compare them
-    let instructor_set = instructor_premises.into_iter().map(|r| i_prf.lookup_expr(r)).collect::<Option<HashSet<Expr>>>().expect("Instructor set creation failed");
-    let student_set = student_premises.into_iter().map(|r| s_prf.lookup_expr(r)).collect::<Option<HashSet<Expr>>>().expect("Student set creation failed");
+    let instructor_set = instructor_premises.into_iter().map(|r| i_prf.lookup_premise(&r)).collect::<Option<HashSet<Expr>>>().expect("Instructor set creation failed");
+    let student_set = student_premises.into_iter().map(|r| s_prf.lookup_premise(&r)).collect::<Option<HashSet<Expr>>>().expect("Student set creation failed");
 
     if instructor_set != student_set {
         return Err("Premises do not match!".into());
@@ -91,8 +93,8 @@ fn main() -> Result<(), String> {
 
     // Verify that the goals are in the student lines and that the instructor's conclusion line matches some student's conclusion, and that the student's conclusion checks out using DFS.
     for i_goal in i_meta.goals {
-        if let Some(i) = student_lines.iter().find(|i| s_prf.lookup_expr(*i.clone()).as_ref() == Some(&i_goal)) {
-            match validate_recursive(&s_prf, *i) {
+        if let Some(i) = student_lines.iter().find(|i| s_prf.lookup_expr(&Coproduct::inject(*i.clone())).as_ref() == Some(&i_goal)) {
+            match validate_recursive(&s_prf, Coproduct::inject(*i)) {
                 Ok(()) => {},
                 Err((r, e)) => return {
                     // Create a lined proof to get line numbers from line reference via linear search

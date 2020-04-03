@@ -1,20 +1,35 @@
+use frunk::Coproduct;
 use varisat::{CnfFormula, Lit, Var, solver::Solver, checker::{ProofProcessor, CheckedProofStep}, ExtendFormula};
-use crate::proofs::{Proof, pooledproof::PooledProof, Justification};
+use crate::proofs::{Proof, pooledproof::PooledProof, Justification, PJRef};
 use crate::expression::{Expr, ASymbol, BSymbol, USymbol};
 use crate::rules::{RuleM, Rule};
 use std::collections::HashMap;
-use std::fmt::{Debug, Display};
+use std::fmt::{self, Debug, Display};
 
-#[derive(Debug)]
 struct SatProofBuilder<P: Proof>{
     proof: P,
     main_subproof: P::SubproofReference,
-    next_premise_insertion: P::Reference,
-    cnf_premise: P::Reference,
-    premises: Vec<P::Reference>,
-    cnf_conclusion: P::Reference,
-    clause_id2ref: HashMap<u64, P::Reference>,
+    next_premise_insertion: Option<P::JustificationReference>,
+    cnf_premise: P::PremiseReference,
+    premises: Vec<P::PremiseReference>,
+    cnf_conclusion: P::JustificationReference,
+    clause_id2ref: HashMap<u64, PJRef<P>>,
 }
+
+impl<P: Proof> Debug for SatProofBuilder<P> where P: Debug, P::PremiseReference: Debug, P::JustificationReference: Debug, P::SubproofReference: Debug {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("SatProofBuilder")
+            .field("proof", &self.proof)
+            .field("main_subproof", &self.main_subproof)
+            .field("next_premise_insertion", &self.next_premise_insertion)
+            .field("cnf_premise", &self.cnf_premise)
+            .field("premises", &self.premises)
+            .field("cnf_conclusion", &self.cnf_conclusion)
+            .field("clause_id2ref", &self.clause_id2ref)
+            .finish()
+    }
+}
+
 impl<P: Proof> SatProofBuilder<P> {
     fn new() -> SatProofBuilder<P> {
         let mut proof = P::new();
@@ -24,12 +39,12 @@ impl<P: Proof> SatProofBuilder<P> {
             sub.add_premise(empty_and.clone())
         }).unwrap();
         let cnf_conclusion = proof.add_step(Justification(
-            Expr::Unop { symbol: USymbol::Not , operand: Box::new(empty_and) },
+            Expr::Unop { symbol: USymbol::Not, operand: Box::new(empty_and) },
             RuleM::NotIntro, vec![], vec![main_subproof.clone()]));
         SatProofBuilder {
             proof,
             main_subproof,
-            next_premise_insertion: cnf_premise.clone(),
+            next_premise_insertion: None,
             cnf_premise,
             cnf_conclusion,
             premises: vec![],
@@ -59,24 +74,28 @@ impl<P: Proof> SatProofBuilder<P> {
         }
     }
 
-    fn add_clause(&mut self, id: u64, clause: &[Lit], rule: Rule, deps: Vec<P::Reference>, is_premise: bool) {
+    fn add_clause(&mut self, id: u64, clause: &[Lit], rule: Rule, deps: Vec<PJRef<P>>, is_premise: bool) {
         let clause_expr = self.clause_to_expr(clause);
         let next_premise_clone = self.next_premise_insertion.clone();
         let just = Justification(clause_expr, rule, deps, vec![]);
         let r = self.proof.with_mut_subproof(&self.main_subproof, move |sub| {
             if is_premise {
-                sub.add_step_relative(just, next_premise_clone, true)
+                if let Some(next_premise) = next_premise_clone {
+                    sub.add_step_relative(just, &next_premise, true)
+                } else {
+                    sub.add_step(just)
+                }
             } else {
                 sub.add_step(just)
             }
         }).unwrap();
-        self.clause_id2ref.insert(id, r.clone());
+        self.clause_id2ref.insert(id, Coproduct::inject(r.clone()));
         if is_premise {
-            self.next_premise_insertion = r.clone();
+            self.next_premise_insertion = Some(r);
         }
     }
 }
-impl<P: Proof+Debug+Display> ProofProcessor for SatProofBuilder<P> where P::Subproof: Debug, P::Reference: Debug, P::SubproofReference: Debug {
+impl<P: Proof+Debug+Display> ProofProcessor for SatProofBuilder<P> where P::Subproof: Debug, PJRef<P>: Debug, P::SubproofReference: Debug {
     fn process_step(&mut self, step: &CheckedProofStep) -> Result<(), failure::Error> {
         use self::CheckedProofStep::*;
         println!("{:?}", step);
@@ -85,7 +104,7 @@ impl<P: Proof+Debug+Display> ProofProcessor for SatProofBuilder<P> where P::Subp
         match step {
             AddClause { id, clause } => {
                 let premise_clone = self.cnf_premise.clone();
-                self.add_clause(*id, clause, RuleM::AndElim, vec![premise_clone], true);
+                self.add_clause(*id, clause, RuleM::AndElim, vec![Coproduct::inject(premise_clone)], true);
                 
             },
             AtClause { id, redundant:_, clause, propagations } => {

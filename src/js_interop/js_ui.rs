@@ -1,12 +1,13 @@
-use gloo::timers::callback::{Timeout, Interval};
-use yew::prelude::*;
 use expression::Expr;
+use frunk::Coproduct;
+use gloo::timers::callback::{Timeout, Interval};
+use proofs::{Proof, Justification, pooledproof::PooledProof, PJRef, pj_to_pjs, js_to_pjs};
 use rules::{Rule, RuleM, RuleT};
-use proofs::{Proof, Justification, pooledproof::PooledProof};
 use std::collections::{BTreeSet,HashMap};
-use std::{fmt, mem};
 use std::sync::atomic::{self, AtomicUsize};
+use std::{fmt, mem};
 use wasm_bindgen::{closure::Closure, JsValue, JsCast};
+use yew::prelude::*;
 
 pub struct ExprEntry {
     link: ComponentLink<Self>,
@@ -66,8 +67,8 @@ impl Component for ExprEntry {
 pub type P = PooledProof<Hlist![Expr]>;
 
 pub struct ProofUiData<P: Proof> {
-    ref_to_line_depth: HashMap<<P as Proof>::Reference, (usize, usize)>,
-    ref_to_input: HashMap<<P as Proof>::Reference, String>,
+    ref_to_line_depth: HashMap<PJRef<P>, (usize, usize)>,
+    ref_to_input: HashMap<PJRef<P>, String>,
 }
 
 impl<P: Proof> ProofUiData<P> {
@@ -94,7 +95,7 @@ pub struct ProofWidget {
     link: ComponentLink<Self>,
     prf: P,
     pud: ProofUiData<P>,
-    selected_line: Option<<P as Proof>::Reference>,
+    selected_line: Option<PJRef<P>>,
     preblob: String,
     props: ProofWidgetProps,
     proofid: usize,
@@ -111,13 +112,13 @@ pub enum LineActionKind {
     Delete { what: LAKItem },
     SetRule { rule: Rule },
     Select,
-    SetDependency { to: bool, dep: frunk::Coproduct<<P as Proof>::Reference, frunk::Coproduct<<P as Proof>::SubproofReference, frunk::coproduct::CNil>> },
+    SetDependency { to: bool, dep: frunk::Coproduct<PJRef<P>, frunk::Coproduct<<P as Proof>::SubproofReference, frunk::coproduct::CNil>> },
 }
 
 pub enum ProofWidgetMsg {
     Nop,
-    LineChanged(<P as Proof>::Reference, String),
-    LineAction(LineActionKind, <P as Proof>::Reference),
+    LineChanged(PJRef<P>, String),
+    LineAction(LineActionKind, PJRef<P>),
     CallOnProof(Box<dyn FnOnce(&P)>),
 }
 
@@ -141,11 +142,11 @@ pub struct ProofWidgetProps {
 }
 
 impl ProofWidget {
-    pub fn render_dep_or_sdep_checkbox(&self, proofref: Coprod!(<P as Proof>::Reference, <P as Proof>::SubproofReference)) -> Html {
+    pub fn render_dep_or_sdep_checkbox(&self, proofref: Coprod!(PJRef<P>, <P as Proof>::SubproofReference)) -> Html {
         if let Some(selected_line) = self.selected_line {
             use frunk::Coproduct::{Inl, Inr};
             if let Inr(Inl(_)) = selected_line {
-                let lookup_result = self.prf.lookup(selected_line.clone()).expect("selected_line should exist in self.prf");
+                let lookup_result = self.prf.lookup_pj(&selected_line).expect("selected_line should exist in self.prf");
                 let just: &Justification<_, _, _> = lookup_result.get().expect("selected_line already is a JustificationReference");
                 let checked = match proofref {
                     Inl(lr) => just.2.contains(&lr),
@@ -169,7 +170,7 @@ impl ProofWidget {
         }
         yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new())
     }
-    pub fn render_justification_widget(&self, line: usize, _depth: usize, proofref: <P as Proof>::Reference) -> Html {
+    pub fn render_justification_widget(&self, line: usize, _depth: usize, proofref: PJRef<P>) -> Html {
         /* TODO: does HTML/do browsers have a way to do nested menus?
         https://developer.mozilla.org/en-US/docs/Web/HTML/Element/menu is 
         "experimental", and currently firefox only, and a bunch of tutorials for the 
@@ -187,7 +188,7 @@ impl ProofWidget {
                 }
                 ProofWidgetMsg::Nop
             });
-            let lookup_result = self.prf.lookup(proofref.clone()).expect("proofref should exist in self.prf");
+            let lookup_result = self.prf.lookup_pj(&proofref).expect("proofref should exist in self.prf");
             let just: &Justification<_, _, _> = lookup_result.get().expect("proofref already is a JustificationReference");
             let mut dep_lines = String::new();
             for (i, dep) in just.2.iter().enumerate() {
@@ -198,9 +199,9 @@ impl ProofWidget {
                 dep_lines += "; "
             }
             for (i, sdep) in just.3.iter().enumerate() {
-                if let Some(sub) = self.prf.lookup_subproof(sdep.clone()) {
+                if let Some(sub) = self.prf.lookup_subproof(&sdep) {
                     let (mut lo, mut hi) = (usize::max_value(), usize::min_value());
-                    for line in sub.premises().into_iter().chain(sub.direct_lines().into_iter()) {
+                    for line in sub.premises().into_iter().map(Coproduct::inject).chain(sub.direct_lines().into_iter().map(Coproduct::inject)) {
                         if let Some((i, _)) = self.pud.ref_to_line_depth.get(&line) {
                             lo = std::cmp::min(lo, *i);
                             hi = std::cmp::max(hi, *i);
@@ -273,7 +274,7 @@ impl ProofWidget {
             yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new())
         }
     }
-    pub fn render_proof_line(&self, line: usize, depth: usize, proofref: <P as Proof>::Reference) -> Html {
+    pub fn render_proof_line(&self, line: usize, depth: usize, proofref: PJRef<P>) -> Html {
         let selection_indicator =
             if self.selected_line == Some(proofref.clone()) {
                 html! { <span style="background-color: cyan; color: blue"> { ">" } </span> }
@@ -314,12 +315,12 @@ impl ProofWidget {
         let proofref_ = proofref.clone();
         let select_line = self.link.callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::Select, proofref_.clone()));
         let action_selector = {
-            use frunk::Coproduct::{self, Inl, Inr};
+            use frunk::Coproduct::{Inl, Inr};
             let mut options = yew::virtual_dom::VList::new();
             if may_remove_line(&self.prf, &proofref) {
                 options.add_child(html! { <option value="delete_line">{ "Delete line" }</option> });
             }
-            if let Some(_) = self.prf.parent_of_line(&Coproduct::inject(proofref.clone())) {
+            if let Some(_) = self.prf.parent_of_line(&pj_to_pjs::<P>(proofref.clone())) {
                 // only allow deleting non-root subproofs
                 options.add_child(html! { <option value="delete_subproof">{ "Delete subproof" }</option> });
             }
@@ -385,7 +386,7 @@ impl ProofWidget {
         // output has a bool tag to prune subproof spacers with, because VNode's PartialEq doesn't do the right thing
         let mut output: Vec<(Html, bool)> = Vec::new();
         for prem in prf.premises() {
-            output.push((self.render_proof_line(*line, *depth, prem.clone()), false));
+            output.push((self.render_proof_line(*line, *depth, Coproduct::inject(prem.clone())), false));
             *line += 1;
         }
         let sdep_checkbox = match sref {
@@ -410,11 +411,11 @@ impl ProofWidget {
         for lineref in prf.lines() {
             use frunk::Coproduct::{Inl, Inr};
             match lineref {
-                Inl(r) => { output.push((self.render_proof_line(*line, *depth, r.clone()), false)); *line += 1; },
+                Inl(r) => { output.push((self.render_proof_line(*line, *depth, Coproduct::inject(r.clone())), false)); *line += 1; },
                 Inr(Inl(sr)) => {
                     *depth += 1;
                     output.push(row_spacer.clone());
-                    output.push((self.render_proof(&prf.lookup_subproof(sr.clone()).unwrap(), Some(sr), line, depth), false));
+                    output.push((self.render_proof(&prf.lookup_subproof(&sr).unwrap(), Some(sr), line, depth), false));
                     output.push(row_spacer.clone());
                     *depth -= 1;
                 },
@@ -443,33 +444,38 @@ impl ProofWidget {
     }
 }
 
-pub fn calculate_lineinfo<P: Proof>(output: &mut HashMap<<P as Proof>::Reference, (usize, usize)>, prf: &<P as Proof>::Subproof, line: &mut usize, depth: &mut usize) {
+pub fn calculate_lineinfo<P: Proof>(output: &mut HashMap<PJRef<P>, (usize, usize)>, prf: &<P as Proof>::Subproof, line: &mut usize, depth: &mut usize) {
     for prem in prf.premises() {
-        output.insert(prem.clone(), (*line, *depth));
+        output.insert(Coproduct::inject(prem.clone()), (*line, *depth));
         *line += 1;
     }
     for lineref in prf.lines() {
         use frunk::Coproduct::{Inl, Inr};
         match lineref {
-            Inl(r) => { output.insert(r, (*line, *depth)); *line += 1; },
-            Inr(Inl(sr)) => { *depth += 1; calculate_lineinfo::<P>(output, &prf.lookup_subproof(sr).unwrap(), line, depth); *depth -= 1; },
+            Inl(r) => { output.insert(Coproduct::inject(r), (*line, *depth)); *line += 1; },
+            Inr(Inl(sr)) => { *depth += 1; calculate_lineinfo::<P>(output, &prf.lookup_subproof(&sr).unwrap(), line, depth); *depth -= 1; },
             Inr(Inr(void)) => { match void {} },
         }
     }
 }
 
-pub fn initialize_inputs<P: Proof>(prf: &P) -> HashMap<<P as Proof>::Reference, String> {
-    fn aux<P: Proof>(p: &<P as Proof>::Subproof, out: &mut HashMap<<P as Proof>::Reference, String>) {
-        use frunk::Coproduct::{self, Inl, Inr};
-        for line in p.premises().into_iter().map(Coproduct::inject).chain(p.lines().into_iter()) {
+pub fn initialize_inputs<P: Proof>(prf: &P) -> HashMap<PJRef<P>, String> {
+    fn aux<P: Proof>(p: &<P as Proof>::Subproof, out: &mut HashMap<PJRef<P>, String>) {
+        use frunk::Coproduct::{Inl, Inr};
+        for line in p.premises().into_iter().map(Coproduct::inject).chain(p.lines().into_iter().map(js_to_pjs::<P>)) {
             match line {
-                Inl(lr) => {
-                    if let Some(e) = p.lookup_expr(lr.clone()) {
-                        out.insert(lr.clone(), format!("{}", e));
+                Inl(pr) => {
+                    if let Some(e) = p.lookup_expr(&Coproduct::inject(pr.clone())) {
+                        out.insert(Coproduct::inject(pr.clone()), format!("{}", e));
+                    }
+                }
+                Inr(Inl(jr)) => {
+                    if let Some(e) = p.lookup_expr(&Coproduct::inject(jr.clone())) {
+                        out.insert(Coproduct::inject(jr.clone()), format!("{}", e));
                     }
                 },
-                Inr(Inl(sr)) => aux::<P>(&p.lookup_subproof(sr).unwrap(), out),
-                Inr(Inr(void)) => match void {},
+                Inr(Inr(Inl(sr))) => aux::<P>(&p.lookup_subproof(&sr).unwrap(), out),
+                Inr(Inr(Inr(void))) => match void {},
             }
         }
     }
@@ -479,16 +485,16 @@ pub fn initialize_inputs<P: Proof>(prf: &P) -> HashMap<<P as Proof>::Reference, 
     out
 }
 
-fn may_remove_line<P: Proof>(prf: &P, proofref: &<P as Proof>::Reference) -> bool {
+fn may_remove_line<P: Proof>(prf: &P, proofref: &PJRef<P>) -> bool {
     use frunk::Coproduct::{Inl, Inr};
-    let is_premise = match prf.lookup(proofref.clone()) {
+    let is_premise = match prf.lookup_pj(proofref) {
         Some(Inl(_)) => true,
         Some(Inr(Inl(_))) => false,
         Some(Inr(Inr(void))) => match void {},
         None => panic!("prf.lookup failed in while processing a Delete"),
     };
-    let parent = prf.parent_of_line(&frunk::Coproduct::inject(proofref.clone()));
-    match parent.and_then(|x| prf.lookup_subproof(x)) {
+    let parent = prf.parent_of_line(&pj_to_pjs::<P>(proofref.clone()));
+    match parent.and_then(|x| prf.lookup_subproof(&x)) {
         Some(sub) => (is_premise && sub.premises().len() > 1) || (!is_premise && sub.lines().len() > 1),
         None => (is_premise && prf.premises().len() > 1) || (!is_premise && prf.lines().len() > 1)
     }
@@ -501,7 +507,7 @@ impl Component for ProofWidget {
         props.oncreate.emit(link.clone());
         let mut prf;
         if let Some(data) = &props.data {
-            let (prf2, _metadata) = crate::proofs::xml_interop::proof_from_xml::<P, _>(&data[..]).unwrap();
+            let (prf2, _metadata) = crate::xml_interop::proof_from_xml::<P, _>(&data[..]).unwrap();
             prf = prf2;
         } else {
             use expression_builders::var;
@@ -536,8 +542,8 @@ impl Component for ProofWidget {
                 self.pud.ref_to_input.insert(r.clone(), input.clone());
                 if let Some(e) = crate::parser::parse(&input) {
                     match r {
-                        Inl(_) => { self.prf.with_mut_premise(&r, |x| { *x = e }); },
-                        Inr(Inl(_)) => { self.prf.with_mut_step(&r, |x| { x.0 = e }); },
+                        Inl(pr) => { self.prf.with_mut_premise(&pr, |x| { *x = e }); },
+                        Inr(Inl(jr)) => { self.prf.with_mut_step(&jr, |x| { x.0 = e }); },
                         Inr(Inr(void)) => match void {},
                     }
                 }
@@ -555,14 +561,14 @@ impl Component for ProofWidget {
                 };
                 match what {
                     LAKItem::Line => match insertion_point {
-                        Inl(_) => { to_select = self.prf.add_premise_relative(var("__js_ui_blank_premise"), insertion_point, after); },
-                        Inr(Inl(_)) => { to_select = self.prf.add_step_relative(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]), insertion_point, after); },
+                        Inl(pr) => { to_select = Inl(self.prf.add_premise_relative(var("__js_ui_blank_premise"), &pr, after)); },
+                        Inr(Inl(jr)) => { to_select = Inr(Inl(self.prf.add_step_relative(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]), &jr, after))); },
                         Inr(Inr(void)) => match void {},
                     },
                     LAKItem::Subproof => {
-                        let sr = self.prf.add_subproof_relative(insertion_point, after);
+                        let sr = self.prf.add_subproof_relative(&insertion_point.get().unwrap(), after);
                         to_select = self.prf.with_mut_subproof(&sr, |sub| {
-                            let to_select = sub.add_premise(var("__js_ui_blank_premise"));
+                            let to_select = Inl(sub.add_premise(var("__js_ui_blank_premise")));
                             sub.add_step(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]));
                             to_select
                         }).unwrap();
@@ -573,14 +579,14 @@ impl Component for ProofWidget {
                 ret = true;
             },
             ProofWidgetMsg::LineAction(LineActionKind::Delete { what }, proofref) => {
-                let parent = self.prf.parent_of_line(&frunk::Coproduct::inject(proofref.clone()));
+                let parent = self.prf.parent_of_line(&pj_to_pjs::<P>(proofref.clone()));
                 match what {
                     LAKItem::Line => {
-                        fn remove_line_if_allowed<P: Proof, Q: Proof<Reference=<P as Proof>::Reference>>(prf: &mut Q, pud: &mut ProofUiData<P>, proofref: <Q as Proof>::Reference) {
+                        fn remove_line_if_allowed<P: Proof, Q: Proof<PremiseReference=<P as Proof>::PremiseReference, JustificationReference=<P as Proof>::JustificationReference>>(prf: &mut Q, pud: &mut ProofUiData<P>, proofref: PJRef<Q>) {
                             pud.ref_to_line_depth.remove(&proofref);
                             pud.ref_to_input.remove(&proofref);
                             if may_remove_line(prf, &proofref) {
-                                prf.remove_line(proofref);
+                                prf.remove_line(&proofref);
                             }
                         }
                         match parent {
@@ -591,7 +597,7 @@ impl Component for ProofWidget {
                     LAKItem::Subproof => {
                         // TODO: recursively clean out the ProofUiData entries for lines inside a subproof before deletion
                         match parent {
-                            Some(sr) => { self.prf.remove_subproof(sr); },
+                            Some(sr) => { self.prf.remove_subproof(&sr); },
                             None => {}, // shouldn't delete the root subproof
                         }
                     },
@@ -599,7 +605,9 @@ impl Component for ProofWidget {
                 ret = true;
             },
             ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule }, proofref) => {
-                self.prf.with_mut_step(&proofref, |j| { j.1 = rule });
+                if let Inr(Inl(jr)) = &proofref {
+                    self.prf.with_mut_step(&jr, |j| { j.1 = rule });
+                }
                 self.selected_line = Some(proofref);
                 ret = true;
             },
@@ -608,22 +616,24 @@ impl Component for ProofWidget {
                 ret = true;
             },
             ProofWidgetMsg::LineAction(LineActionKind::SetDependency { to, dep }, proofref) => {
-                self.prf.with_mut_step(&proofref, |j| {
-                    fn toggle_dep_or_sdep<T: Ord>(dep: T, deps: &mut Vec<T>, to: bool) {
-                        let mut dep_set: BTreeSet<T> = mem::replace(deps, vec![]).into_iter().collect();
-                        if to {
-                            dep_set.insert(dep);
-                        } else {
-                            dep_set.remove(&dep);
+                if let Inr(Inl(jr)) = &proofref {
+                    self.prf.with_mut_step(&jr, |j| {
+                        fn toggle_dep_or_sdep<T: Ord>(dep: T, deps: &mut Vec<T>, to: bool) {
+                            let mut dep_set: BTreeSet<T> = mem::replace(deps, vec![]).into_iter().collect();
+                            if to {
+                                dep_set.insert(dep);
+                            } else {
+                                dep_set.remove(&dep);
+                            }
+                            deps.extend(dep_set);
                         }
-                        deps.extend(dep_set);
-                    }
-                    match dep {
-                        Inl(lr) => toggle_dep_or_sdep(lr, &mut j.2, to),
-                        Inr(Inl(sr)) => toggle_dep_or_sdep(sr, &mut j.3, to),
-                        Inr(Inr(void)) => match void {},
-                    }
-                });
+                        match dep {
+                            Inl(lr) => toggle_dep_or_sdep(lr, &mut j.2, to),
+                            Inr(Inl(sr)) => toggle_dep_or_sdep(sr, &mut j.3, to),
+                            Inr(Inr(void)) => match void {},
+                        }
+                    });
+                }
                 ret = true;
             },
             ProofWidgetMsg::CallOnProof(f) => {

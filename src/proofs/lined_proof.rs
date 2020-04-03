@@ -4,7 +4,7 @@ use std::fmt::Debug;
 pub struct Line<P: Proof> {
     pub raw_expr: String,
     pub is_premise: bool,
-    pub reference: P::Reference,
+    pub reference: PJRef<P>,
     pub subreference: Option<P::SubproofReference>, // None for toplevel lines
 }
 
@@ -23,7 +23,7 @@ impl<P: Proof> PartialEq for Line<P> {
     }
 }
 
-impl<P: Proof+Debug> Debug for Line<P> where P::Reference: Debug, P::SubproofReference: Debug {
+impl<P: Proof+Debug> Debug for Line<P> where PJRef<P>: Debug, P::SubproofReference: Debug {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
         fmt.debug_struct("Line")
             .field("raw_expr", &self.raw_expr)
@@ -35,7 +35,7 @@ impl<P: Proof+Debug> Debug for Line<P> where P::Reference: Debug, P::SubproofRef
 }
 
 impl<P: Proof> Line<P> {
-    fn new(raw_expr: String, is_premise: bool, reference: P::Reference, subreference: Option<P::SubproofReference>) -> Self {
+    fn new(raw_expr: String, is_premise: bool, reference: PJRef<P>, subreference: Option<P::SubproofReference>) -> Self {
         Line { raw_expr, is_premise, reference, subreference }
     }
 }
@@ -46,7 +46,7 @@ pub struct LinedProof<P: Proof> {
     pub lines: ZipperVec<Line<P>>,
 }
 
-impl<P: Proof+Debug> Debug for LinedProof<P> where P::Reference: Debug, P::SubproofReference: Debug {
+impl<P: Proof+Debug> Debug for LinedProof<P> where PJRef<P>: Debug, P::SubproofReference: Debug {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
         fmt.debug_struct("LinedProof")
             .field("proof", &self.proof)
@@ -56,7 +56,7 @@ impl<P: Proof+Debug> Debug for LinedProof<P> where P::Reference: Debug, P::Subpr
 }
 
 
-impl<P: Proof+Debug> LinedProof<P> where P::Reference: Debug, P::SubproofReference: Debug {
+impl<P: Proof+Debug> LinedProof<P> where PJRef<P>: Debug, P::SubproofReference: Debug {
     pub fn new() -> Self {
         LinedProof {
             proof: P::new(),
@@ -70,17 +70,17 @@ impl<P: Proof+Debug> LinedProof<P> where P::Reference: Debug, P::SubproofReferen
         fn aux<P: Proof>(p: &P::Subproof, ret: &mut LinedProof<P>, current_sub: Option<P::SubproofReference>) {
             use frunk::Coproduct::{Inl, Inr};
             for prem in p.premises() {
-                let e = p.lookup_expr(prem.clone()).unwrap();
-                ret.lines.push(Line::new(format!("{}", e), true, prem, current_sub.clone()));
+                let e = p.lookup_premise(&prem).unwrap();
+                ret.lines.push(Line::new(format!("{}", e), true, Inl(prem), current_sub.clone()));
             }
             for line in p.lines() {
                 match line {
                     Inl(r) => {
-                        let e = p.lookup_expr(r.clone()).unwrap();
-                        ret.lines.push(Line::new(format!("{}", e), false, r, current_sub.clone()));
+                        let just = p.lookup_step(&r).unwrap();
+                        ret.lines.push(Line::new(format!("{}", just.0), false, Inr(Inl(r)), current_sub.clone()));
                     },
                     Inr(Inl(s)) => {
-                        let sub = p.lookup_subproof(s.clone()).unwrap();
+                        let sub = p.lookup_subproof(&s).unwrap();
                         aux(&sub, ret, Some(s));
                     },
                     Inr(Inr(void)) => match void {},
@@ -93,16 +93,22 @@ impl<P: Proof+Debug> LinedProof<P> where P::Reference: Debug, P::SubproofReferen
         ret
     }
     pub fn add_line(&mut self, i: usize, is_premise: bool, subproof_level: usize) {
+        use frunk::Coproduct::{Inl, Inr};
         println!("add_line {:?} {:?} {:?}", i, is_premise, subproof_level);
         let const_true = Expr::Tautology;
         let line: Option<Line<P>> = self.lines.get(i).map(|x| x.clone());
         match line {
             None => {
-                let r = if is_premise { self.proof.add_premise(const_true) } else { self.proof.add_step(Justification(const_true, RuleM::Reit, vec![], vec![])) };
+                let r = if is_premise { Inl(self.proof.add_premise(const_true)) } else { Inr(Inl(self.proof.add_step(Justification(const_true, RuleM::Reit, vec![], vec![])))) };
                 self.lines.push(Line { raw_expr: "".into(), is_premise, reference: r, subreference: None });
             },
             Some(line) => {
-                let r = if is_premise { self.proof.add_premise_relative(const_true, line.reference.clone(), true) } else { self.proof.add_step_relative(Justification(const_true, RuleM::Reit, vec![], vec![]), line.reference.clone(), true) };
+                let r = match (is_premise, line.reference.clone()) {
+                    (true, Inl(pr)) => Inl(self.proof.add_premise_relative(const_true, &pr, true)),
+                    (false, Inr(Inl(jr))) => Inr(Inl(self.proof.add_step_relative(Justification(const_true, RuleM::Reit, vec![], vec![]), &jr, true))),
+                    (_, Inr(Inr(void))) => match void {},
+                    (b, r) => panic!("LinedProof::add_line, is_premise was {}, but the line reference was {:?}", b, r),
+                };
                 self.lines.insert_relative(Line { raw_expr: "".into(), is_premise, reference: r, subreference: None /* TODO */}, &line, true);
             },
         };
@@ -120,11 +126,11 @@ impl<P: Proof+Debug> LinedProof<P> where P::Reference: Debug, P::SubproofReferen
         if (i >= 1 || self.proof.premises().len() > 1) && i < self.lines.len() {
             let line = self.lines.pop(i).unwrap();
             println!("Deleting {:?}", line);
-            self.proof.remove_line(line.reference.clone());
+            self.proof.remove_line(&line.reference);
             if let Some(subreference) = line.subreference {
-                if let Some(sub) = self.proof.lookup_subproof(subreference.clone()) {
+                if let Some(sub) = self.proof.lookup_subproof(&subreference) {
                     if sub.premises().len() + sub.lines().len() == 0 {
-                        self.proof.remove_subproof(subreference);
+                        self.proof.remove_subproof(&subreference);
                     }
                 }
             }

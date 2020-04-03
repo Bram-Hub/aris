@@ -1,4 +1,5 @@
 use super::*;
+use proofs::PJRef;
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use xml::reader::EventReader;
@@ -36,7 +37,7 @@ pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Result<(P, ProofMetaData), Str
     //let parse = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
     let mut subproofs: HashMap<_, <P as Proof>::SubproofReference> = HashMap::new();
     let mut lines_to_subs = HashMap::new();
-    let mut line_refs: HashMap<_, <P as Proof>::Reference> = HashMap::new();
+    let mut line_refs: HashMap<_, PJRef<P>> = HashMap::new();
     let mut last_linenum = "".into();
     let mut proof = P::new();
     let mut current_proof_id = "0".into();
@@ -92,7 +93,7 @@ pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Result<(P, ProofMetaData), Str
                     "hash" => { metadata.hash = Some(contents.clone()) },
                     "raw" => { last_raw = contents.clone(); },
                     "assumption" => {
-                        on_current_proof! { proof, { let p = proof.add_premise(parse!(&last_raw)); line_refs.insert(last_linenum.clone(), p).ok_or(format!("Multiple assumptions with line number {}", last_linenum)) } }
+                        on_current_proof! { proof, { let p = proof.add_premise(parse!(&last_raw)); line_refs.insert(last_linenum.clone(), Coproduct::inject(p)).ok_or(format!("Multiple assumptions with line number {}", last_linenum)) } }
                     },
                     "rule" => { last_rule = contents.clone(); },
                     "premise" => { seen_premises.push(contents.clone()); },
@@ -112,7 +113,7 @@ pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Result<(P, ProofMetaData), Str
                                 //println!("{:?} {:?}", deps, sdeps);
                                 let just = Justification(parse!(&last_raw), rule, deps, sdeps);
                                 //println!("{:?}", just);
-                                on_current_proof! { proof, { let p = proof.add_step(just); line_refs.insert(last_linenum.clone(), p); } }
+                                on_current_proof! { proof, { let p = proof.add_step(just); line_refs.insert(last_linenum.clone(), Coproduct::inject(p)); } }
                             },
                         }
                     },
@@ -164,25 +165,25 @@ pub fn xml_from_proof_and_metadata<P: Proof, W: Write>(prf: &P, meta: &ProofMeta
         queue: Vec<(usize, P::SubproofReference)>,
         linenum: usize,
         sproofid: usize,
-        deps_map: HashMap<P::Reference, usize>,
+        deps_map: HashMap<PJRef<P>, usize>,
         sdeps_map: HashMap<P::SubproofReference, usize>,
     }
     fn allocate_identifiers<P: Proof>(prf: &P::Subproof, state: &mut SerializationState<P>) {
         for prem in prf.premises() {
-            state.deps_map.insert(prem, state.linenum);
+            state.deps_map.insert(Coproduct::inject(prem), state.linenum);
             state.linenum += 1;
         }
         for step in prf.lines() {
             use frunk::Coproduct::{Inl, Inr};
             match step {
-                Inl(lr) => {
-                    state.deps_map.insert(lr, state.linenum);
+                Inl(jr) => {
+                    state.deps_map.insert(Coproduct::inject(jr), state.linenum);
                     state.linenum += 1;
                 },
                 Inr(Inl(sr)) => {
                     state.sdeps_map.insert(sr.clone(), state.linenum);
                     // the java version seems to require that the linenum of a subproof aliases its first premise, so don't increment linenum here
-                    let sub = prf.lookup_subproof(sr).unwrap();
+                    let sub = prf.lookup_subproof(&sr).unwrap();
                     allocate_identifiers(&sub, state);
                 },
                 Inr(Inr(void)) => match void {},
@@ -193,8 +194,8 @@ pub fn xml_from_proof_and_metadata<P: Proof, W: Write>(prf: &P, meta: &ProofMeta
     fn aux<P: Proof, W: Write>(prf: &P::Subproof, proofid: usize, state: &mut SerializationState<P>, ew: &mut EventWriter<W>) -> xml::writer::Result<()> {
         ew.write(XmlEvent::start_element("proof").attr("id", &format!("{}", proofid)))?;
         for prem in prf.premises() {
-            ew.write(XmlEvent::start_element("assumption").attr("linenum", &format!("{}", state.deps_map[&prem])))?;
-            if let Some(expr) = prf.lookup_expr(prem.clone()) {
+            ew.write(XmlEvent::start_element("assumption").attr("linenum", &format!("{}", state.deps_map[&Coproduct::inject(prem.clone())])))?;
+            if let Some(expr) = prf.lookup_premise(&prem) {
                 leaf_tag(ew, "raw", &format!("{}", expr))?;
             }
             ew.write(XmlEvent::end_element())?;
@@ -202,21 +203,18 @@ pub fn xml_from_proof_and_metadata<P: Proof, W: Write>(prf: &P, meta: &ProofMeta
         for step in prf.lines() {
             use frunk::Coproduct::{Inl, Inr};
             match step {
-                Inl(lr) => match prf.lookup(lr.clone()).unwrap() {
-                    Inl(_) => panic!("prf.lines() returned a premise"),
-                    Inr(Inl(just)) => {
-                        ew.write(XmlEvent::start_element("step").attr("linenum", &format!("{}", state.deps_map[&lr])))?;
-                        leaf_tag(ew, "raw", &format!("{}", just.0))?;
-                        leaf_tag(ew, "rule", &RuleM::to_serialized_name(just.1))?;
-                        for dep in just.2 {
-                            leaf_tag(ew, "premise", &format!("{}", state.deps_map[&dep]))?;
-                        }
-                        for sdep in just.3 {
-                            leaf_tag(ew, "premise", &format!("{}", state.sdeps_map[&sdep]))?;
-                        }
-                        ew.write(XmlEvent::end_element().name("step"))?;
-                    },
-                    Inr(Inr(void)) => match void {},
+                Inl(jr) => {
+                    let just = prf.lookup_step(&jr).unwrap();
+                    ew.write(XmlEvent::start_element("step").attr("linenum", &format!("{}", state.deps_map[&Coproduct::inject(jr.clone())])))?;
+                    leaf_tag(ew, "raw", &format!("{}", just.0))?;
+                    leaf_tag(ew, "rule", &RuleM::to_serialized_name(just.1))?;
+                    for dep in just.2 {
+                        leaf_tag(ew, "premise", &format!("{}", state.deps_map[&dep]))?;
+                    }
+                    for sdep in just.3 {
+                        leaf_tag(ew, "premise", &format!("{}", state.sdeps_map[&sdep]))?;
+                    }
+                    ew.write(XmlEvent::end_element().name("step"))?;
                 },
                 Inr(Inl(sr)) => {
                     ew.write(XmlEvent::start_element("step").attr("linenum", &format!("{}", state.sdeps_map[&sr])))?;
@@ -242,7 +240,7 @@ pub fn xml_from_proof_and_metadata<P: Proof, W: Write>(prf: &P, meta: &ProofMeta
     allocate_identifiers(prf.top_level_proof(), &mut state);
     aux(prf.top_level_proof(), 0, &mut state, &mut ew)?;
     while let Some((id, sr)) = state.queue.pop() {
-        if let Some(sub) = prf.lookup_subproof(sr) {
+        if let Some(sub) = prf.lookup_subproof(&sr) {
             aux(&sub, id, &mut state, &mut ew)?;
         }
     }
@@ -316,13 +314,13 @@ fn test_xml2() {
     let (prf, metadata) = proof_from_xml::<P, _>(&xml[..]).unwrap();
     println!("{:?} {:?}\n{}", metadata.author, metadata.hash, prf);
     let lines = prf.lines();
-    let sub = prf.lookup_subproof(lines[0].get::<<P as Proof>::SubproofReference, _>().unwrap().clone()).unwrap();
+    let sub = prf.lookup_subproof(&lines[0].get::<<P as Proof>::SubproofReference, _>().unwrap().clone()).unwrap();
     use expression_builders::{var, binop};
-    assert_eq!(prf.lookup_expr(sub.premises()[0]), Some(var("A")));
+    assert_eq!(prf.lookup_premise(&sub.premises()[0]), Some(var("A")));
     let sub_lines = sub.lines();
-    let Justification(e1, r1, d1, s1) = prf.lookup(sub_lines[0].get::<<P as Proof>::Reference, _>().unwrap().clone()).unwrap().get::<Justification<_, _, _>, _>().unwrap().clone();
+    let Justification(e1, r1, d1, s1) = prf.lookup_pj(&Coproduct::inject(sub_lines[0].get::<<P as Proof>::JustificationReference, _>().unwrap().clone())).unwrap().get::<Justification<_, _, _>, _>().unwrap().clone();
     assert_eq!(e1, var("A")); assert_eq!(r1, RuleM::Reit); assert_eq!(d1.len(), 1); assert_eq!(s1.len(), 0);
-    let Justification(e2, r2, d2, s2) = prf.lookup(lines[1].get::<<P as Proof>::Reference, _>().unwrap().clone()).unwrap().get::<Justification<_, _, _>, _>().unwrap().clone();
+    let Justification(e2, r2, d2, s2) = prf.lookup_pj(&Coproduct::inject(lines[1].get::<<P as Proof>::JustificationReference, _>().unwrap().clone())).unwrap().get::<Justification<_, _, _>, _>().unwrap().clone();
     assert_eq!(e2, binop(BSymbol::Implies, var("A"), var("A"))); assert_eq!(r2, RuleM::ImpIntro); assert_eq!(d2.len(), 0); assert_eq!(s2.len(), 1);
 }
 
