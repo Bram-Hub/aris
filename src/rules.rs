@@ -1002,35 +1002,11 @@ impl RuleT for QuantifierEquivalence {
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<P::Reference>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<P::Reference, P::SubproofReference>> {
         use QuantifierEquivalence::*;
         match self {
-            QuantifierNegation => {
-                check_by_normalize_first_expr(p, deps, conclusion, false, Expr::negate_quantifiers)
-            },
-            NullQuantification => {
-                let prem = p.lookup_expr_or_die(deps[0].clone())?;
-                if let Expr::Quantifier{symbol, ref name, ref body} = prem {
-                    if conclusion != **body {
-                        return Err(Other(format!("Expected conclusion {} to be equal to body {}", conclusion, body)));
-                    }
-
-                    if freevars(body).contains(name) {
-                        return Err(Other(format!("Error: Can't eliminate {} when it is within the body {}", name, **body)));
-                    }
-
-                    Ok(())
-                } else {
-                    Err(ProofCheckError::OneOf(vec![
-                        DepOfWrongForm(prem.clone(), expression_builders::quantifierplaceholder(QSymbol::Exists)),
-                        DepOfWrongForm(prem.clone(), expression_builders::quantifierplaceholder(QSymbol::Forall))
-                    ]))
-                }
-            },
+            QuantifierNegation => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::negate_quantifiers),
+            NullQuantification => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::normalize_null_quantifiers),
             ReplacingBoundVars => unimplemented!(),
-            SwappingQuantifiers => {
-                check_by_normalize_first_expr(p, deps, conclusion, false, Expr::swap_quantifiers)
-            }
-            AristoteleanSquare => {
-                check_by_normalize_first_expr(p, deps, conclusion, false, Expr::aristotelean_square)
-            }
+            SwappingQuantifiers => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::swap_quantifiers),
+            AristoteleanSquare => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::aristotelean_square),
             QuantifierDistribution => unimplemented!(),
             PrenexLaws => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::normalize_prenex_laws),
         }

@@ -677,6 +677,23 @@ impl Expr {
             }
         })
     }
+    pub fn normalize_null_quantifiers(self) -> Expr {
+        use Expr::*;
+
+        self.transform(&|expr| {
+            match expr {
+                Quantifier { symbol, name, body } => {
+                    if freevars(&body).contains(&name) {
+                        (Quantifier { symbol, name, body }, false)
+                    } else {
+                        // if name is not free in body, then the quantifier isn't binding anything and can be removed
+                        (*body, true)
+                    }
+                },
+                _ => (expr, false),
+            }
+        })
+    }
     // check for quantifier,
     // as long as the prefix is the same,
     // keep pushing variables into a set.
