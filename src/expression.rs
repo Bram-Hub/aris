@@ -720,6 +720,90 @@ impl Expr {
             (expr, false)
         })
     }
+
+    /// 7a1. forall x, (phi(x) ∧ psi) == (forall x, phi(x)) ∧ psi
+    /// 7a2. exists x, (phi(x) ∧ psi) == (exists x, phi(x)) ∧ psi
+    /// 7b1. forall x, (phi(x) ∨ psi) == (forall x, phi(x)) ∨ psi
+    /// 7b2. exists x, (phi(x) ∨ psi) == (exists x, phi(x)) ∨ psi
+    /// 7c1. forall x, (phi(x) → psi) == (exists x, phi(x)) → psi (! Quantifier changes!)
+    /// 7c2. exists x, (phi(x) → psi) == (forall x, phi(x)) → psi (! Quantifier changes!)
+    /// 7d1. forall x, (psi → phi(x)) == psi → (forall x, phi(x))
+    /// 7d2. exists x, (psi → phi(x)) == psi → (exists x, phi(x))
+    pub fn normalize_prenex_laws(self) -> Expr {
+        use Expr::*;
+        let transform_7ab = |asymbol: ASymbol, exprs: Vec<Expr>| {
+            // hoist a forall out of an and/or when the binder won't capture any of the other arms
+            // if the binder doesn't occur in `all_free` (the union of all the arms freevars), it won't induce capturing
+            let mut all_free = HashSet::new();
+            for expr in &exprs {
+                all_free.extend(freevars(&expr));
+            }
+            let mut found = None;
+            let mut others = vec![];
+            for expr in exprs.into_iter() {
+                match expr {
+                    Quantifier { symbol, name, body } => {
+                        if found.is_none() && !all_free.contains(&name) {
+                            found = Some((symbol, name));
+                            others.push(*body);
+                        } else {
+                            others.push(Quantifier { symbol, name, body });
+                        }
+                    },
+                    _ => { others.push(expr)},
+                }
+            }
+            if let Some((symbol, name)) = found {
+                let body = Box::new(AssocBinop { symbol: asymbol, exprs: others });
+                (Quantifier { symbol, name, body }, true)
+            } else {
+                // if none of the subexpressions were quantifiers whose binder was free, `others` should be in the same as `exprs`
+                (AssocBinop { symbol: asymbol, exprs: others }, false)
+            }
+        };
+        let reconstruct_7cd = |symbol: QSymbol, name: String, left, right| {
+            let body = Box::new(Binop { symbol: BSymbol::Implies, left, right });
+            (Quantifier { symbol, name, body }, true)
+        };
+        self.transform(&|expr| {
+            match expr {
+                AssocBinop { symbol, exprs } => {
+                    match symbol {
+                        ASymbol::And => transform_7ab(ASymbol::And, exprs),
+                        ASymbol::Or => transform_7ab(ASymbol::Or, exprs),
+                        _ => (AssocBinop { symbol, exprs }, false)
+                    }
+                },
+                Binop { symbol: BSymbol::Implies, mut left, mut right } => {
+                    let left_free = freevars(&left);
+                    let right_free = freevars(&right);
+                    left = match *left {
+                        Quantifier { symbol, name, body } if !right_free.contains(&name) => {
+                            // 7c case, quantifier is flipped
+                            match symbol {
+                                QSymbol::Forall => { return reconstruct_7cd(QSymbol::Exists, name, body, right); },
+                                QSymbol::Exists => { return reconstruct_7cd(QSymbol::Forall, name, body, right); },
+                            }
+                        },
+                        left => Box::new(left),
+                    };
+                    right = match *right {
+                        Quantifier { symbol, name, body } if !left_free.contains(&name) => {
+                            // 7d case, quantifier is not flipped
+                            // exhaustive match despite the bodies being the same: since if more quantifiers are added, should reconsider here instead of blindly hoisting the new quantifier
+                            match symbol {
+                                QSymbol::Forall => { return reconstruct_7cd(QSymbol::Forall, name, left, body); },
+                                QSymbol::Exists => { return reconstruct_7cd(QSymbol::Exists, name, left, body); },
+                            }
+                        },
+                        right => Box::new(right),
+                    };
+                    (Binop { symbol: BSymbol::Implies, left, right }, false)
+                },
+                _ => (expr, false),
+            }
+        })
+    }
 }
 
 

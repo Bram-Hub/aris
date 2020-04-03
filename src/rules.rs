@@ -1030,7 +1030,7 @@ impl RuleT for QuantifierEquivalence {
             }
             AristoteleanSquare => unimplemented!(),
             QuantifierDistribution => unimplemented!(),
-            PrenexLaws => unimplemented!()
+            PrenexLaws => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::normalize_prenex_laws),
         }
     }
 }
