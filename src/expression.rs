@@ -695,6 +695,61 @@ impl Expr {
             }
         })
     }
+    pub fn replacing_bound_vars(self) -> Expr {
+        use Expr::*;
+
+        // replaces the letter names with numbers
+        fn aux(expr: Expr, mut gamma: Vec<String>) -> Expr {
+            match expr {
+                Var { name } => {
+                    // look up the name in gamma, get the index
+                    let i = gamma.into_iter().enumerate().find(|(_,n)| n == &name).unwrap().0;
+                    Var { name: format!("{}", i) }
+                },
+                // push the name onto gamma from the actual quantifier,
+                // Example: for forall x, P(x)
+                // push x onto gamma
+                // save the length of gamma before recursing, to use as the new name
+                Quantifier { symbol, name, body } => {
+                    let current_level = format!("{}", gamma.len());
+                    gamma.push(name);
+                    let new_body = aux(*body, gamma);
+                    Quantifier { symbol, name: current_level, body: Box::new(new_body) }
+                },
+                // All the remainder cases
+                Contradiction => Contradiction,
+                Tautology => Tautology,
+                Apply { func, args } => {
+                    let func = aux(*func, gamma.clone());
+                    let args = args.into_iter().map(|e| aux(e, gamma.clone())).collect();
+                    Apply { func: Box::new(func), args }
+                },
+                Unop { symbol, operand } => {
+                    Unop { symbol, operand: Box::new(aux(*operand, gamma)) }
+                },
+                Binop { symbol, left, right } => {
+                    let left = Box::new(aux(*left, gamma.clone()));
+                    let right = Box::new(aux(*right, gamma));
+                    Binop { symbol, left, right }
+                },
+                AssocBinop { symbol, exprs } => {
+                    let exprs = exprs.into_iter().map(|e| aux(e, gamma.clone())).collect();
+                    AssocBinop { symbol, exprs }
+                }
+            }
+        }
+
+        let mut gamma = vec![];
+        gamma.extend(freevars(&self));
+
+        let mut ret = aux(self, gamma.clone());
+        // at this point, we've numbered all the vars, including the free ones
+        // replace the free vars with their original names
+        for (i, name) in gamma.into_iter().enumerate() {
+            ret = subst(&ret, &format!("{}", i), Var { name });
+        }
+        ret
+    }
     // check for quantifier,
     // as long as the prefix is the same,
     // keep pushing variables into a set.
