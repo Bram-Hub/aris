@@ -66,6 +66,7 @@ use super::*;
 use std::collections::{HashSet, HashMap};
 use std::collections::{BTreeSet, VecDeque};
 use std::iter::FromIterator;
+use std::mem;
 
 /// Symbol for unary operations
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
@@ -870,6 +871,50 @@ impl Expr {
                     }
                 },
 
+                _ => (expr, false)
+            }
+        })
+    }
+
+    pub fn quantifier_distribution(self) -> Expr {
+        use Expr::*;
+
+        let push_quantifier_inside = |qsymbol: QSymbol, qname: String, exprs: &mut Vec<Expr>| {
+            for mut iter in exprs.iter_mut() {
+                match qsymbol {
+                    QSymbol::Exists => {
+                        let tmp = mem::replace(iter, Contradiction);
+                        *iter = expression_builders::exists(qname.as_str(),  tmp);
+                    },
+
+                    QSymbol::Forall => {
+                        let tmp = mem::replace(iter, Contradiction);
+                        *iter = expression_builders::forall(qname.as_str(), tmp);
+                    }
+                }
+            }
+        };
+
+        self.transform(&|expr| {
+            let orig_expr = expr.clone();
+
+            match expr {
+                Quantifier { symbol: qsymbol, name, body } => {
+                    match *body {
+                        AssocBinop { symbol: asymbol, mut exprs } => {
+                            // continue only if asymbol is And or Or
+                            match asymbol {
+                                ASymbol::And | ASymbol::Or => {},
+                                _ => return (orig_expr, false)
+                            };
+
+                            // inline push_quantifier_inside here
+                            push_quantifier_inside(qsymbol, name, &mut exprs);
+                            (expression_builders::assocbinop(asymbol, &exprs), true)
+                        },
+                        _ => (orig_expr, false)
+                    }
+                }
                 _ => (expr, false)
             }
         })
