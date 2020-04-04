@@ -74,8 +74,8 @@ define_rewrite_rule! { CONDITIONAL_IMPLICATION_RULES; [
     "~(phi -> psi)" -> "phi & ~psi"
 ]}
 define_rewrite_rule! { CONDITIONAL_BIIMPLICATION_RULES; [ // equivalence
-    "phi <-> psi" -> "(phi -> psi) & (psi -> phi)",
-    "phi <-> psi" -> "(phi & psi) | (~phi & ~psi)"
+    "(phi -> psi) & (psi -> phi)" -> "phi <-> psi",
+    "(phi & psi) | (~phi & ~psi)" -> "phi <-> psi"
 ]}
 define_rewrite_rule! { CONDITIONAL_CONTRAPOSITION_RULES; [
     "~phi -> ~psi" -> "psi -> phi"
