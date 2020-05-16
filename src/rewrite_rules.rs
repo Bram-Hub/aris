@@ -1,5 +1,5 @@
 use expression::*;
-use combinatorics::{combinations, cartesian_product_pair, cartesian_product};
+use combinatorics::{combinations, cartesian_product};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

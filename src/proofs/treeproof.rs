@@ -132,14 +132,6 @@ impl<A, B> /* Bifunctor for */ Line<A, B> {
 }
 
 pub enum PremiseOrLine<T> { Premise(T, Expr), Line(T, Justification<Expr, Coprod!(LineDep, LineDep), SubproofDep>) }
-impl<T> PremiseOrLine<T> {
-    fn get_expr(&self) -> &Expr {
-        match self {
-            PremiseOrLine::Premise(_, ref e) => e,
-            PremiseOrLine::Line(_, Justification(ref e, _, _, _)) => e,
-        }
-    }
-}
 
 impl Display for TreeProof<(),()> {
     fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> { self.0.fmt(fmt) }

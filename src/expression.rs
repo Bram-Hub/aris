@@ -64,8 +64,7 @@ assert_eq!(does_it_have_any_ands(&expr3), false);
 */
 use super::*;
 use std::collections::{HashSet, HashMap};
-use std::collections::{BTreeSet, VecDeque};
-use std::iter::FromIterator;
+use std::collections::BTreeSet;
 use std::mem;
 
 /// Symbol for unary operations
@@ -935,7 +934,7 @@ impl Expr {
         use Expr::*;
 
         let push_quantifier_inside = |qsymbol: QSymbol, qname: String, exprs: &mut Vec<Expr>| {
-            for mut iter in exprs.iter_mut() {
+            for iter in exprs.iter_mut() {
                 match qsymbol {
                     QSymbol::Exists => {
                         let tmp = mem::replace(iter, Contradiction);
@@ -1050,6 +1049,8 @@ pub fn expressions_for_depth(depth: usize, max_assoc: usize, mut vars: BTreeSet<
 
 #[test]
 fn test_expressions_for_depth() {
+    use std::iter::FromIterator;
+
     let vars = BTreeSet::from_iter(vec!["a".into()]);
     for depth in 0..3 {
         let set = expressions_for_depth(depth, 2, vars.clone());
