@@ -58,9 +58,6 @@ use std::iter::FromIterator;
 use frunk::Coproduct::{self, Inl, Inr};
 use petgraph::algo::tarjan_scc;
 use petgraph::graphmap::DiGraphMap;
-use rules::ProofCheckError::{ConclusionOfWrongForm, DepOfWrongForm, DoesNotOccur, Other};
-use expression::Expr::Quantifier;
-use nom::ErrorKind::ExprRes;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PrepositionalInference {
@@ -143,6 +140,7 @@ pub mod RuleM {
             }
         };
         (DECLARE_STATICS; [$id: ident, $value:expr]) => {
+            #[allow(unused_parens)]
             pub static $id: Rule = $value;
         };
         (DECLARE_STATICS; [$id: ident, $value:expr], $([$id_rec:ident, $value_rec:expr]),+) => {

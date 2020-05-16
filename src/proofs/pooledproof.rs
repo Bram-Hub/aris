@@ -399,7 +399,6 @@ impl<Tail: Default+Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
         self.premise_list.iter().cloned().collect()
     }
     fn lines(&self) -> Vec<Coprod!(Self::JustificationReference, Self::SubproofReference)> {
-        use self::Coproduct::{Inl, Inr};
         self.line_list.iter().cloned().collect()
     }
     fn parent_of_line(&self, r: &Coprod!(Self::PremiseReference, Self::JustificationReference, Self::SubproofReference)) -> Option<Self::SubproofReference> {

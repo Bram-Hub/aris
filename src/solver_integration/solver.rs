@@ -1,7 +1,7 @@
 use frunk::Coproduct;
-use varisat::{CnfFormula, Lit, Var, solver::Solver, checker::{ProofProcessor, CheckedProofStep}, ExtendFormula};
-use crate::proofs::{Proof, pooledproof::PooledProof, Justification, PJRef};
-use crate::expression::{Expr, ASymbol, BSymbol, USymbol};
+use varisat::{Lit, checker::{ProofProcessor, CheckedProofStep}};
+use crate::proofs::{Proof, Justification, PJRef};
+use crate::expression::{Expr, ASymbol, USymbol};
 use crate::rules::{RuleM, Rule};
 use std::collections::HashMap;
 use std::fmt::{self, Debug, Display};
@@ -105,7 +105,7 @@ impl<P: Proof+Debug+Display> ProofProcessor for SatProofBuilder<P> where P::Subp
             AddClause { id, clause } => {
                 let premise_clone = self.cnf_premise.clone();
                 self.add_clause(*id, clause, RuleM::AndElim, vec![Coproduct::inject(premise_clone)], true);
-                
+
             },
             AtClause { id, redundant:_, clause, propagations } => {
                 let deps = propagations.iter().map(|p| self.clause_id2ref[p].clone()).collect::<Vec<_>>();
@@ -121,6 +121,9 @@ impl<P: Proof+Debug+Display> ProofProcessor for SatProofBuilder<P> where P::Subp
 // (a) && (~a || b) && (~b)
 #[test]
 fn test_generate_proof() {
+    use varisat::{CnfFormula, Var, Lit, Solver, ExtendFormula};
+    use crate::proofs::pooledproof::PooledProof;
+
     let mut cnf = CnfFormula::new();
     let a = Var::from_index(0);
     let b = Var::from_index(1);

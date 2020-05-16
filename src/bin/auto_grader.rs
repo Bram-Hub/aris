@@ -74,7 +74,7 @@ fn main() -> Result<(), String> {
     type P = libaris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
 
     let (i_prf, i_meta) = proof_from_xml::<P, _>(&instructor_file).unwrap();
-    let (s_prf, s_meta) = proof_from_xml::<P, _>(&student_file).unwrap();
+    let (s_prf, _) = proof_from_xml::<P, _>(&student_file).unwrap();
 
     let instructor_premises = i_prf.premises();
     let student_premises = s_prf.premises();
@@ -88,7 +88,7 @@ fn main() -> Result<(), String> {
     }
 
     // Gets the top level lines
-    let instructor_lines = i_prf.direct_lines();
+    let _ = i_prf.direct_lines();
     let student_lines = s_prf.direct_lines();
 
     // Verify that the goals are in the student lines and that the instructor's conclusion line matches some student's conclusion, and that the student's conclusion checks out using DFS.
@@ -99,7 +99,7 @@ fn main() -> Result<(), String> {
                 Err((r, e)) => return {
                     // Create a lined proof to get line numbers from line reference via linear search
                     let s_prf_with_lines = LinedProof::from_proof(s_prf.clone());
-                    let (index, _) = s_prf_with_lines.lines.iter().enumerate().find(|(i, rl)| rl.reference == r)
+                    let (index, _) = s_prf_with_lines.lines.iter().enumerate().find(|(_, rl)| rl.reference == r)
                         .expect("Failed to find line number for building error message (BAD!!)");
                     eprintln!("{}", s_prf);
                     Err(format!("validate_recursive failed for line {}: {}", index + 1, e))
