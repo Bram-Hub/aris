@@ -274,7 +274,7 @@ impl ProofWidget {
             yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new())
         }
     }
-    pub fn render_proof_line(&self, line: usize, depth: usize, proofref: PJRef<P>) -> Html {
+    pub fn render_proof_line(&self, line: usize, depth: usize, proofref: PJRef<P>, edge_decoration: &str) -> Html {
         let selection_indicator =
             if self.selected_line == Some(proofref.clone()) {
                 html! { <span style="background-color: cyan; color: blue"> { ">" } </span> }
@@ -284,10 +284,12 @@ impl ProofWidget {
         let dep_checkbox = self.render_dep_or_sdep_checkbox(frunk::Coproduct::inject(proofref.clone()));
         let lineinfo = format!("{}", line);
         let mut indentation = yew::virtual_dom::VList::new();
-        for _ in 0..(depth+1) {
-            indentation.add_child(html! { <span style="background-color:black">{"-"}</span>});
-            indentation.add_child(html! { <span style="color:white">{"-"}</span>});
+        for _ in 0..depth {
+            //indentation.add_child(html! { <span style="background-color:black">{"-"}</span>});
+            //indentation.add_child(html! { <span style="color:white">{"-"}</span>});
+            indentation.add_child(html! { <span>{"\u{2502}"}</span>});
         }
+        indentation.add_child(html! { <span>{edge_decoration}</span>});
         let proofref_ = proofref.clone();
         let handle_action = self.link.callback(move |e: ChangeData| {
             if let ChangeData::Select(s) = e {
@@ -385,8 +387,9 @@ impl ProofWidget {
     pub fn render_proof(&self, prf: &<P as Proof>::Subproof, sref: Option<<P as Proof>::SubproofReference>, line: &mut usize, depth: &mut usize) -> Html {
         // output has a bool tag to prune subproof spacers with, because VNode's PartialEq doesn't do the right thing
         let mut output: Vec<(Html, bool)> = Vec::new();
-        for prem in prf.premises() {
-            output.push((self.render_proof_line(*line, *depth, Coproduct::inject(prem.clone())), false));
+        for (i, prem) in prf.premises().iter().enumerate() {
+            let edge_decoration = if i == 0 { "\u{250c}" } else { "\u{2502}" };
+            output.push((self.render_proof_line(*line, *depth, Coproduct::inject(prem.clone()), edge_decoration), false));
             *line += 1;
         }
         let sdep_checkbox = match sref {
@@ -397,7 +400,14 @@ impl ProofWidget {
         spacer.add_child(html! { <td></td> });
         spacer.add_child(html! { <td></td> });
         spacer.add_child(html! { <td>{ sdep_checkbox }</td> });
-        spacer.add_child(html! { <td style="background-color:black"></td> });
+        //spacer.add_child(html! { <td style="background-color:black"></td> });
+        let mut spacer_lines = String::new();
+        for _ in 0..*depth {
+            spacer_lines += "\u{2502}";
+        }
+        spacer_lines += "\u{251c}";
+        spacer.add_child(html! { <td>{spacer_lines}</td> });
+        
         output.push((yew::virtual_dom::VNode::from(spacer), false));
         let row_spacer = {
             let mut indentation = yew::virtual_dom::VList::new();
@@ -408,18 +418,20 @@ impl ProofWidget {
             //(html!{ <tr><td><span style="color:white">{"-"}</span></td></tr> }, true)
             (html!{ <tr><td></td><td></td><td></td><td>{ indentation }</td></tr> }, true)
         };
-        for lineref in prf.lines() {
+        let prf_lines = prf.lines();
+        for (i, lineref) in prf_lines.iter().enumerate() {
             use frunk::Coproduct::{Inl, Inr};
+            let edge_decoration = if i == prf_lines.len()-1 { "\u{2514}" } else { "\u{2502}" };
             match lineref {
-                Inl(r) => { output.push((self.render_proof_line(*line, *depth, Coproduct::inject(r.clone())), false)); *line += 1; },
+                Inl(r) => { output.push((self.render_proof_line(*line, *depth, Coproduct::inject(r.clone()), edge_decoration), false)); *line += 1; },
                 Inr(Inl(sr)) => {
                     *depth += 1;
-                    output.push(row_spacer.clone());
-                    output.push((self.render_proof(&prf.lookup_subproof(&sr).unwrap(), Some(sr), line, depth), false));
-                    output.push(row_spacer.clone());
+                    //output.push(row_spacer.clone());
+                    output.push((self.render_proof(&prf.lookup_subproof(&sr).unwrap(), Some(*sr), line, depth), false));
+                    //output.push(row_spacer.clone());
                     *depth -= 1;
                 },
-                Inr(Inr(void)) => { match void {} },
+                Inr(Inr(void)) => { match *void {} },
             }
         }
         // collapse 2 consecutive row spacers to just 1, formed by adjacent suproofs
