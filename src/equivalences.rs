@@ -46,7 +46,9 @@ define_rewrite_rule! { ABSORPTION_RULES; [
 ]}
 define_rewrite_rule! { REDUCTION_RULES; [
     "phi & (~phi | psi)" -> "phi & psi",
-    "phi | (~phi & psi)" -> "phi | psi"
+    "~phi & (phi | psi)" -> "~phi & psi",
+    "phi | (~phi & psi)" -> "phi | psi",
+    "~phi | (phi & psi)" -> "~phi | psi"
 ]}
 define_rewrite_rule! { ADJACENCY_RULES; [
     "(phi | psi) & (phi | ~psi)" -> "phi",
