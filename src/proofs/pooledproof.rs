@@ -237,9 +237,21 @@ impl<T> PooledSubproof<T> {
 }
 
 impl<T: Clone> Pools<T> {
-    pub fn next_premkey(&self) -> PremKey { PremKey(self.prem_map.range(..).next_back().map(|(k, _)| k.0+1).unwrap_or(0)) }
-    pub fn next_justkey(&self) -> JustKey { JustKey(self.just_map.range(..).next_back().map(|(k, _)| k.0+1).unwrap_or(0)) }
-    pub fn next_subkey(&self) -> SubKey { SubKey(self.sub_map.range(..).next_back().map(|(k, _)| k.0+1).unwrap_or(0)) }
+    /// Get next unused key in pool's premises map
+    pub fn next_premkey(&self) -> PremKey {
+	// Increment highest index
+	PremKey(self.prem_map.keys().next_back().map(|key| key.0 + 1).unwrap_or(0))
+    }
+    /// Get next unused key in pool's justifications map
+    pub fn next_justkey(&self) -> JustKey {
+	// Increment highest index
+	JustKey(self.just_map.keys().next_back().map(|key| key.0 + 1).unwrap_or(0))
+    }
+    /// Get next unused key in pool's subproofs map
+    pub fn next_subkey(&self) -> SubKey {
+	// Increment highest index
+	SubKey(self.sub_map.keys().next_back().map(|key| key.0 + 1).unwrap_or(0))
+    }
     fn add_pools(&mut self, other: &Self) -> (PremKey, JustKey, SubKey) {
         // TODO: deduplicate values for efficiency on joining subproofs with copies of the same expression multiple times
         let premkey = self.next_premkey(); let justkey = self.next_justkey(); let subkey = self.next_subkey();
