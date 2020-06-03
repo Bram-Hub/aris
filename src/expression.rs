@@ -67,6 +67,8 @@ use std::collections::{HashSet, HashMap};
 use std::collections::BTreeSet;
 use std::mem;
 
+use itertools::Itertools;
+
 /// Symbol for unary operations
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[repr(C)]
@@ -458,6 +460,63 @@ impl Expr {
         })
     }
 
+    /// Like `transform_expr_inner()` but both the parameter and return types
+    /// are `Box<Expr>` instead of `Expr`
+    fn box_transform_expr_inner<Trans>(expr: Box<Expr>, trans: &Trans) -> (Box<Expr>, bool)
+    where Trans: Fn(Expr) -> (Expr, bool) {
+        let (result, status) = Self::transform_expr_inner(*expr, trans);
+        return (Box::new(result), status);
+    }
+
+    /// Helper function for `tranform()`; use the `trans` function to transform
+    /// `expr`, yielding a tuple of the transformed expression and a `bool`
+    /// indicating whether the expression can be transformed again.
+    fn transform_expr_inner<Trans>(expr: Expr, trans: &Trans) -> (Expr, bool)
+    where Trans: Fn(Expr) -> (Expr, bool) {
+        use Expr::*;
+
+        let (result, status) = trans(expr);
+        let (result, status2) = match result {
+            // Base cases: these just got transformed above so no need to recurse them
+            e @ Contradiction => (e, false),
+            e @ Tautology => (e, false),
+            e @ Var { .. } => (e, false),
+
+            // Recursive cases: transform each of the sub-expressions of the various compound expressions
+            // and then construct a new instance of that compound expression with their transformed results.
+            // If any transformation is successful, we return success
+            Apply { func, args } => {
+                let (func, fs) = Self::box_transform_expr_inner(func, trans);
+                // Fancy iterator hackery to transform each sub expr and then collect all their results
+                let (args, stats) : (Vec<_>, Vec<_>) = args.into_iter().map(move |expr| Self::transform_expr_inner(expr, trans)).unzip();
+                let success = fs || stats.into_iter().any(|x| x);
+                (Apply { func, args }, success)
+            },
+            Unop { symbol, operand } => {
+                let (operand, success) = Self::box_transform_expr_inner(operand, trans);
+                (Unop { symbol, operand }, success)
+            },
+            Binop { symbol, left, right } => {
+                let (left, ls) = Self::box_transform_expr_inner(left, trans);
+                let (right, rs) = Self::box_transform_expr_inner(right, trans);
+                let success = ls || rs;
+                (Binop { symbol, left, right }, success)
+            },
+            AssocBinop { symbol, exprs } => {
+                let (exprs, stats): (Vec<_>, Vec<_>) = exprs.into_iter().map(move |expr| Self::transform_expr_inner(expr, trans)).unzip();
+                let success = stats.into_iter().any(|x| x);
+                (AssocBinop { symbol, exprs }, success)
+            },
+            Quantifier { symbol, name, body } => {
+                let (body, success) = Self::box_transform_expr_inner(body, trans);
+                (Quantifier { symbol, name, body }, success)
+            },
+        };
+        // The key to this function is that it returns true if ANYTHING was transformed. That means
+        // if either the whole expression or any of the inner expressions, we should re-run on everything.
+        (result, status || status2)
+    }
+
     /// Recursive transforming visitor over an expression
     /// trans_fn is a function that takes an Expr and returns one of two things:
     /// 1. If this expression is not transformable, (original expr, false)
@@ -469,69 +528,131 @@ impl Expr {
     /// that it matches.
     pub fn transform<Trans>(self, trans_fn: &Trans) -> Expr
     where Trans: Fn(Expr) -> (Expr, bool) {
-        use Expr::*;
-
-        // Because I don't like typing
-        fn box_transform_expr_inner<Trans>(expr: Box<Expr>, trans: &Trans) -> (Box<Expr>, bool)
-        where Trans: Fn(Expr) -> (Expr, bool) {
-            let (result, status) = transform_expr_inner(*expr, trans);
-            return (Box::new(result), status);
-        }
-
-        fn transform_expr_inner<Trans>(expr: Expr, trans: &Trans) -> (Expr, bool)
-        where Trans: Fn(Expr) -> (Expr, bool) {
-            let (result, status) = trans(expr);
-            let (result, status2) = match result {
-                // Base cases: these just got transformed above so no need to recurse them
-                e @ Contradiction => (e, false),
-                e @ Tautology => (e, false),
-                e @ Var { .. } => (e, false),
-
-                // Recursive cases: transform each of the sub-expressions of the various compound expressions
-                // and then construct a new instance of that compound expression with their transformed results.
-                // If any transformation is successful, we return success
-                Apply { func, args } => {
-                    let (func, fs) = box_transform_expr_inner(func, trans);
-                    // Fancy iterator hackery to transform each sub expr and then collect all their results
-                    let (args, stats) : (Vec<_>, Vec<_>) = args.into_iter().map(move |expr| transform_expr_inner(expr, trans)).unzip();
-                    let success = fs || stats.into_iter().any(|x| x);
-                    (Apply { func, args }, success)
-                },
-                Unop { symbol, operand } => {
-                    let (operand, success) = box_transform_expr_inner(operand, trans);
-                    (Unop { symbol, operand }, success)
-                },
-                Binop { symbol, left, right } => {
-                    let (left, ls) = box_transform_expr_inner(left, trans);
-                    let (right, rs) = box_transform_expr_inner(right, trans);
-                    let success = ls || rs;
-                    (Binop { symbol, left, right }, success)
-                },
-                AssocBinop { symbol, exprs } => {
-                    let (exprs, stats): (Vec<_>, Vec<_>) = exprs.into_iter().map(move |expr| transform_expr_inner(expr, trans)).unzip();
-                    let success = stats.into_iter().any(|x| x);
-                    (AssocBinop { symbol, exprs }, success)
-                },
-                Quantifier { symbol, name, body } => {
-                    let (body, success) = box_transform_expr_inner(body, trans);
-                    (Quantifier { symbol, name, body }, success)
-                },
-            };
-            // The key to this function is that it returns true if ANYTHING was transformed. That means
-            // if either the whole expression or any of the inner expressions, we should re-run on everything.
-            (result, status || status2)
-        }
-
         // Worklist: Keep reducing and transforming as long as something changes. This will loop infinitely
         // if your transformation creates patterns that it matches.
-        let (mut result, mut status) = transform_expr_inner(self, trans_fn);
+        let (mut result, mut status) = Self::transform_expr_inner(self, trans_fn);
         while status {
             // Rust pls
-            let (x, y) = transform_expr_inner(result, trans_fn);
+            let (x, y) = Self::transform_expr_inner(result, trans_fn);
             result = x;
             status = y;
         }
         result
+    }
+
+    /// Like `transform_set()`, but the result is converted to a vector. This is
+    /// used because `itertools::Itertools::cartesian_product` requires `Clone`,
+    /// which `std::collections::hash_set::IntoIter` doesn't implement.
+    fn transform_set_vec<Trans>(self, trans_fn: &Trans) -> Vec<Expr>
+    where Trans: Fn(Expr) -> (Expr, bool) {
+        self.transform_set(trans_fn).into_iter().collect()
+    }
+
+    /// Recursive transforming visitor over an expression, yielding a set of
+    /// possible transformations. The parameter `trans_fn` takes an Expr and
+    /// returns one of two things:
+    ///
+    ///   1. If this expression is not transformable, (original expr, false)
+    ///   2. If this expression is transformable, (transformed expr, true)
+    ///
+    /// This should be used for non-confluent rewriting rules, and `transform()`
+    /// should be used for confluent rewriting rules.
+    pub fn transform_set<Trans>(self, trans_fn: &Trans) -> HashSet<Expr>
+    where Trans: Fn(Expr) -> (Expr, bool) {
+        use Expr::*;
+
+        let mut set = HashSet::new();
+
+        // Add all incremental normalization levels to set. Keep transforming
+        // the expression and adding the result to the set, until the expression
+        // is not transformable.
+        {
+            let mut expr = self;
+            let mut normable = true;
+            set.insert(expr.clone());
+            while normable {
+                let result = trans_fn(expr.clone());
+                expr = result.0;
+                normable = result.1;
+                set.insert(expr.clone());
+            }
+        }
+
+        // Now that all incremental normalization levels are in the set,
+        // recursively run this on all sub-nodes of the expression.
+        for expr in set.clone() {
+            match expr {
+                // Base case: no sub-nodes
+                Contradiction => {}
+                Tautology => {}
+                Var { .. } => {}
+
+                // Add the Cartesian product of the set of `func`
+                // transformations and the sets of transformations of `args`
+                Apply { func, args } => {
+                    let func_set = func
+                        .transform_set(trans_fn)
+                        .into_iter()
+                        .map(Box::new);
+                    let args_set = args
+                        .into_iter()
+                        .map(|arg| arg.transform_set_vec(trans_fn))
+                        .multi_cartesian_product();
+                    set.extend(
+                        func_set
+                            .cartesian_product(args_set)
+                            .map(|(func, args)| Apply { func, args })
+                    );
+                }
+
+                // Add the set of transformations of `operand`
+                Unop { symbol, operand } => {
+                    set.extend(
+                        operand
+                            .transform_set(trans_fn)
+                            .into_iter()
+                            .map(Box::new)
+                            .map(move |operand| Unop { symbol, operand })
+                    );
+                }
+
+                // Add the Cartesian product of the transformation sets of the
+                // `left` and `right` sub-nodes
+                Binop { symbol, left, right } => {
+                    let left_set = left.transform_set(trans_fn).into_iter().map(Box::new);
+                    let right_set = right.transform_set_vec(trans_fn).into_iter().map(Box::new);
+                    let binop_set = left_set
+                        .cartesian_product(right_set)
+                        .map(|(left, right)| Binop { symbol, left, right });
+                    set.extend(binop_set);
+                }
+
+                // Add the Cartesian product of the transformation sets of the
+                // sub-nodes in `exprs`
+                AssocBinop { symbol, exprs } => {
+                    set.extend(
+                        exprs
+                            .into_iter()
+                            .map(|expr| expr.transform_set_vec(trans_fn))
+                            .multi_cartesian_product()
+                            .map(|exprs| AssocBinop { symbol, exprs })
+                    );
+                }
+
+                // Add the set of transformations of `body`
+                Quantifier { symbol, name, body } => {
+                    let body_set = body.transform_set(trans_fn).into_iter().map(Box::new);
+                    let quant_set = body_set.map(|body| Quantifier {
+                        symbol,
+                        name: name.clone(),
+                        body,
+                    });
+                    set.extend(quant_set);
+                }
+            }
+        }
+
+        set
     }
 
     /// Simplify an expression with recursive DeMorgan's
