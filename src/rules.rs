@@ -815,8 +815,27 @@ where F: Fn(Expr) -> Expr {
     else { Err(ProofCheckError::Other(format!("{} and {} are not equal.", p, q))) }
 }
 
-fn check_by_rewrite_rule<P: Proof>(p: &P, deps: Vec<PJRef<P>>, conclusion: Expr, commutative: bool, rule: &RewriteRule) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
+fn check_by_rewrite_rule_confl<P: Proof>(p: &P, deps: Vec<PJRef<P>>, conclusion: Expr, commutative: bool, rule: &RewriteRule) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
     check_by_normalize_first_expr(p, deps, conclusion, commutative, |e| rule.reduce(e))
+}
+
+fn check_by_rewrite_rule_non_confl<P: Proof>(p: &P, deps: Vec<PJRef<P>>, conclusion: Expr, commutative: bool, rule: &RewriteRule) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
+    let premise = p.lookup_expr_or_die(&deps[0])?;
+    let premise_set = rule.reduce_set(premise.clone());
+    let conclusion_set = rule.reduce_set(conclusion.clone());
+    let (premise_set, conclusion_set) = if commutative {
+	let sort_ops = |set: HashSet<Expr>| set.into_iter().map(Expr::sort_commutative_ops).collect();
+	(sort_ops(premise_set), sort_ops(conclusion_set))
+    } else {
+	(premise_set, conclusion_set)
+    };
+    // The premise and conclusion are equal if the set intersection is nonempty
+    let is_eq = premise_set.intersection(&conclusion_set).next().is_some();
+    if is_eq {
+	Ok(())
+    } else {
+	Err(ProofCheckError::Other(format!("{} and {} are not equal.", premise, conclusion)))
+    }
 }
 
 impl RuleT for Equivalence {
@@ -850,18 +869,18 @@ impl RuleT for Equivalence {
             Association => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.combine_associative_ops()),
             Commutation => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.sort_commutative_ops()),
             Idempotence => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.normalize_idempotence()),
-            DoubleNegation => check_by_rewrite_rule(p, deps, conclusion, false, &DOUBLE_NEGATION_RULES),
+            DoubleNegation => check_by_rewrite_rule_confl(p, deps, conclusion, false, &DOUBLE_NEGATION_RULES),
             // Distribution and Reduction have outputs containing binops that need commutative sorting
             // because we can't expect people to know the specific order of outputs that our definition
             // of the rules uses
-            Distribution => check_by_rewrite_rule(p, deps, conclusion, true, &DISTRIBUTION_RULES),
-            Complement => check_by_rewrite_rule(p, deps, conclusion, false, &COMPLEMENT_RULES),
-            Identity => check_by_rewrite_rule(p, deps, conclusion, false, &IDENTITY_RULES),
-            Annihilation => check_by_rewrite_rule(p, deps, conclusion, false, &ANNIHILATION_RULES),
-            Inverse => check_by_rewrite_rule(p, deps, conclusion, false, &INVERSE_RULES),
-            Absorption => check_by_rewrite_rule(p, deps, conclusion, false, &ABSORPTION_RULES),
-            Reduction => check_by_rewrite_rule(p, deps, conclusion, true, &REDUCTION_RULES),
-            Adjacency => check_by_rewrite_rule(p, deps, conclusion, false, &ADJACENCY_RULES),
+            Distribution => check_by_rewrite_rule_confl(p, deps, conclusion, true, &DISTRIBUTION_RULES),
+            Complement => check_by_rewrite_rule_confl(p, deps, conclusion, false, &COMPLEMENT_RULES),
+            Identity => check_by_rewrite_rule_confl(p, deps, conclusion, false, &IDENTITY_RULES),
+            Annihilation => check_by_rewrite_rule_confl(p, deps, conclusion, false, &ANNIHILATION_RULES),
+            Inverse => check_by_rewrite_rule_confl(p, deps, conclusion, false, &INVERSE_RULES),
+            Absorption => check_by_rewrite_rule_confl(p, deps, conclusion, false, &ABSORPTION_RULES),
+            Reduction => check_by_rewrite_rule_non_confl(p, deps, conclusion, true, &REDUCTION_RULES),
+            Adjacency => check_by_rewrite_rule_confl(p, deps, conclusion, false, &ADJACENCY_RULES),
         }
     }
 }
@@ -893,19 +912,19 @@ impl RuleT for ConditionalEquivalence {
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PJRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
         use ConditionalEquivalence::*;
         match self {
-            Complement => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_COMPLEMENT_RULES),
-            Identity => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_IDENTITY_RULES),
-            Annihilation => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_ANNIHILATION_RULES),
-            Implication => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_IMPLICATION_RULES),
-            BiImplication => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_BIIMPLICATION_RULES),
-            Contraposition => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_CONTRAPOSITION_RULES),
-            Currying => check_by_rewrite_rule(p, deps, conclusion, false, &CONDITIONAL_CURRYING_RULES),
-            ConditionalDistribution => check_by_rewrite_rule(p, deps, conclusion, true, &CONDITIONAL_DISTRIBUTION_RULES),
-            ConditionalReduction => check_by_rewrite_rule(p, deps, conclusion, true, &CONDITIONAL_REDUCTION_RULES),
-            KnightsAndKnaves => check_by_rewrite_rule(p, deps, conclusion, true, &KNIGHTS_AND_KNAVES_RULES),
-            ConditionalIdempotence => check_by_rewrite_rule(p, deps, conclusion, true, &CONDITIONAL_IDEMPOTENCE_RULES),
-            BiconditionalNegation => check_by_rewrite_rule(p, deps, conclusion, true, &BICONDITIONAL_NEGATION_RULES),
-            BiconditionalSubstitution => check_by_rewrite_rule(p, deps, conclusion, true, &BICONDITIONAL_SUBSTITUTION_RULES)
+            Complement => check_by_rewrite_rule_confl(p, deps, conclusion, false, &CONDITIONAL_COMPLEMENT_RULES),
+            Identity => check_by_rewrite_rule_confl(p, deps, conclusion, false, &CONDITIONAL_IDENTITY_RULES),
+            Annihilation => check_by_rewrite_rule_confl(p, deps, conclusion, false, &CONDITIONAL_ANNIHILATION_RULES),
+            Implication => check_by_rewrite_rule_confl(p, deps, conclusion, false, &CONDITIONAL_IMPLICATION_RULES),
+            BiImplication => check_by_rewrite_rule_confl(p, deps, conclusion, false, &CONDITIONAL_BIIMPLICATION_RULES),
+            Contraposition => check_by_rewrite_rule_confl(p, deps, conclusion, false, &CONDITIONAL_CONTRAPOSITION_RULES),
+            Currying => check_by_rewrite_rule_confl(p, deps, conclusion, false, &CONDITIONAL_CURRYING_RULES),
+            ConditionalDistribution => check_by_rewrite_rule_confl(p, deps, conclusion, true, &CONDITIONAL_DISTRIBUTION_RULES),
+            ConditionalReduction => check_by_rewrite_rule_confl(p, deps, conclusion, true, &CONDITIONAL_REDUCTION_RULES),
+            KnightsAndKnaves => check_by_rewrite_rule_confl(p, deps, conclusion, true, &KNIGHTS_AND_KNAVES_RULES),
+            ConditionalIdempotence => check_by_rewrite_rule_confl(p, deps, conclusion, true, &CONDITIONAL_IDEMPOTENCE_RULES),
+            BiconditionalNegation => check_by_rewrite_rule_confl(p, deps, conclusion, true, &BICONDITIONAL_NEGATION_RULES),
+            BiconditionalSubstitution => check_by_rewrite_rule_confl(p, deps, conclusion, true, &BICONDITIONAL_SUBSTITUTION_RULES)
         }
     }
 }

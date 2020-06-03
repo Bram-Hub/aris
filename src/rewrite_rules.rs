@@ -26,6 +26,12 @@ impl RewriteRule {
     pub fn reduce(&self, e: Expr) -> Expr {
         reduce_pattern(e, &self.reductions)
     }
+
+    /// Reduce an expression with the rewrite rule's reductions, yielding a set
+    /// of possible reductions
+    pub fn reduce_set(&self, e: Expr) -> HashSet<Expr> {
+        reduce_pattern_set(e, &self.reductions)
+    }
 }
 
 
@@ -168,13 +174,70 @@ fn permute_patterns(patterns: Vec<(Expr, Expr)>) -> Vec<(Expr, Expr)> {
 /// let patterns = vec![(pattern1, replace1), (pattern2, replace2)];
 /// reduce_pattern(var("some_expr"), &patterns);
 /// ```
-pub fn reduce_pattern(e: Expr, patterns: &Vec<(Expr, Expr)>) -> Expr {
+pub fn reduce_pattern(e: Expr, patterns: &[(Expr, Expr)]) -> Expr {
+    let patterns = freevarsify_pattern(&e, patterns);
+    e.transform(&|expr| reduce_transform_func(expr, &patterns))
+}
+
+/// Like `reduce_pattern()`, but creates a set of possible reductions. This set
+/// will contain all levels of reduction (up to full normalization), and on all
+/// sub-nodes of the expression.
+pub fn reduce_pattern_set(e: Expr, patterns: &[(Expr, Expr)]) -> HashSet<Expr> {
+    let patterns = freevarsify_pattern(&e, patterns);
+    e.transform_set(&|expr| reduce_transform_func(expr, &patterns))
+}
+
+/// Helper function for `reduce_pattern()` and `reduce_pattern_set()`; try to
+/// reduce `expr` using `patterns`. The returned `bool` in the tuple indicates
+/// whether the transformation can be done again.
+///
+/// Parameters:
+///   * `expr` - expression to reduce
+///   * `patterns` - patterns returned by `freevarsify_pattern()`
+fn reduce_transform_func(expr: Expr, patterns: &[(Expr, Expr, HashSet<String>)]) -> (Expr, bool) {
+    // Try all our patterns at every level of the tree
+    for (pattern, replace, pattern_vars) in patterns {
+	// Unify3D
+	let ret = unify(vec![Constraint::Equal(pattern.clone(), expr.clone())].into_iter().collect());
+	if let Some(ret) = ret {
+	    // Collect all unification results and make sure we actually match exactly
+	    let mut subs = HashMap::new();
+	    let mut any_bad = false;
+	    for subst in ret.0 {
+		// We only want to unify our pattern variables. This prevents us from going backwards
+		// and unifying a pattern variable in expr with some expression of our pattern variable
+		if pattern_vars.contains(&subst.0) {
+		    // Sanity check: Only one unification per variable
+		    assert!(subs.insert(subst.0, subst.1).is_none());
+		} else {
+		    any_bad = true;
+		}
+	    }
+
+	    // Make sure we have a substitution for every variable in the pattern set (and only for them)
+	    if !any_bad && subs.len() == pattern_vars.len() {
+		let subst_replace = subs.into_iter().fold(replace.clone(), |z, (x, y)| subst(&z, &x, y));
+		return (subst_replace, true);
+	    }
+	}
+    }
+    (expr, false)
+}
+
+/// Helper function for `reduce_pattern()` and `reduce_pattern_set()`; given an
+/// expression `e` and a slice of (`pattern`, `replace`) pairs, get a vector of
+/// (`new_pattern`, `new_replace`, `pattern_vars`), where:
+///
+///   * `new_pattern` is the old `pattern` with all free variables in `e` renamed to fresh variables
+///   * `new_replace` is the old `replace` with the renames in `new_pattern`
+///   * `pattern_vars` is the set of free variables in `new_pattern`
+fn freevarsify_pattern(e: &Expr, patterns: &[(Expr, Expr)]) -> Vec<(Expr, Expr, HashSet<String>)> {
     use expression_builders::*;
 
-    let e_free = freevars(&e);
+    let e_free = freevars(e);
 
     // Find all free variables in the patterns and map them to generated names free for e
-    let patterns = patterns.iter().map(|(pattern, replace)| {
+    patterns.iter().map(|(pattern, replace)| {
         let mut pattern = pattern.clone();
         let mut replace = replace.clone();
         let free_pattern = freevars(&pattern);
@@ -193,35 +256,5 @@ pub fn reduce_pattern(e: Expr, patterns: &Vec<(Expr, Expr)>) -> Expr {
         }
 
         (pattern, replace, pattern_vars)
-    }).collect::<Vec<_>>();
-
-    e.transform(&|expr| {
-        // Try all our patterns at every level of the tree
-        for (pattern, replace, pattern_vars) in &patterns {
-            // Unify3D
-            let ret = unify(vec![Constraint::Equal(pattern.clone(), expr.clone())].into_iter().collect());
-            if let Some(ret) = ret {
-                // Collect all unification results and make sure we actually match exactly
-                let mut subs = HashMap::new();
-                let mut any_bad = false;
-                for subst in ret.0 {
-                    // We only want to unify our pattern variables. This prevents us from going backwards
-                    // and unifying a pattern variable in expr with some expression of our pattern variable
-                    if pattern_vars.contains(&subst.0) {
-                        // Sanity check: Only one unification per variable
-                        assert!(subs.insert(subst.0, subst.1).is_none());
-                    } else {
-                        any_bad = true;
-                    }
-                }
-
-                // Make sure we have a substitution for every variable in the pattern set (and only for them)
-                if !any_bad && subs.len() == pattern_vars.len() {
-                    let subst_replace = subs.into_iter().fold(replace.clone(), |z, (x, y)| subst(&z, &x, y));
-                    return (subst_replace, true);
-                }
-            }
-        }
-        (expr, false)
-    })
+    }).collect::<Vec<_>>()
 }

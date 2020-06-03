@@ -21,6 +21,7 @@ extern crate petgraph;
 extern crate sha2;
 extern crate varisat;
 extern crate xml;
+extern crate itertools;
 
 pub mod zipper_vec;
 use zipper_vec::*;
