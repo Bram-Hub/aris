@@ -101,6 +101,49 @@ pub enum Expr {
     Quantifier { symbol: QSymbol, name: String, body: Box<Expr> },
 }
 
+/// An expression in [negation normal form (NNF)][nnf]. This can be obtained
+/// from an [`Expr`](Expr) with [`Expr::into_nnf()`](Expr::into_nnf) or methods
+/// on `NnfExpr`.
+///
+/// [nnf]: https://en.wikipedia.org/wiki/Negation_normal_form
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub enum NnfExpr {
+    /// A variable that may or may not be negated.
+    Lit {
+        /// Whether the variable is positive
+        polarity: bool,
+        /// Name of the variable
+        name: String
+    },
+    /// Sub-expressions OR'ed together
+    Or {
+        exprs: Vec<NnfExpr>
+    },
+    /// Sub-expressions AND'ed together
+    And {
+        exprs: Vec<NnfExpr>
+    },
+}
+
+/// An expression in [conjunctive normal form (CNF)][cnf]. This can be obtained
+/// from an [`Expr`](Expr) with [`Expr::into_cnf()`](Expr::into_cnf) or an
+/// [`NnfExpr`](NnfExpr) with [`NnfExpr::into_cnf()`](NnfExpr::into_cnf).
+/// Alternatively it can be built with methods on `CnfExpr`. Internally,
+/// `CnfExpr` is represented as a `Vec<Vec<(bool, String)>>`. The inner vector
+/// stores the list of literals OR'ed together, and the outer vector stores the
+/// list of clauses AND'ed together. The `bool` and `String` describe the
+/// polarity and name of the literal.
+///
+/// ```rust
+/// use libaris::expression::Expr;
+/// # use libaris::expression::CnfExpr;
+/// assert_eq!(Expr::Tautology.into_cnf(), Some(CnfExpr::tautology()));
+/// ```
+///
+/// [cnf]: https://en.wikipedia.org/wiki/Conjunctive_normal_form
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct CnfExpr(Vec<Vec<(bool, String)>>);
+
 impl std::fmt::Display for USymbol {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self { USymbol::Not => write!(f, "¬"), }
@@ -137,6 +180,19 @@ impl std::fmt::Display for QSymbol {
     }
 }
 
+fn assoc_display_helper<S, E>(f: &mut std::fmt::Formatter, symbol: S, exprs: &[E]) -> std::fmt::Result
+where
+    S: std::fmt::Display,
+    E: std::fmt::Display,
+{
+    let s = exprs
+        .iter()
+        .map(E::to_string)
+        .collect::<Vec<_>>()
+        .join(&format!(" {} ", symbol));
+    write!(f, "({})", s)
+}
+
 impl std::fmt::Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         use Expr::*;
@@ -147,8 +203,21 @@ impl std::fmt::Display for Expr {
             Apply { func, args } => { write!(f, "{}", func)?; if args.len() > 0 { write!(f, "({})", args.iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join(", "))? }; Ok(()) }
             Unop { symbol, operand } => write!(f, "{}{}", symbol, operand),
             Binop { symbol, left, right } => write!(f, "({} {} {})", left, symbol, right),
-            AssocBinop { symbol, exprs } => write!(f, "({})", exprs.iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join(&format!(" {} ", symbol))),
+            AssocBinop { symbol, exprs } => assoc_display_helper(f, symbol, exprs),
             Quantifier { symbol, name, body } => write!(f, "({} {}, {})", symbol, name, body),
+        }
+    }
+}
+
+impl std::fmt::Display for NnfExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            NnfExpr::Lit { polarity, name } => {
+                let neg = if *polarity { "" } else { "¬" };
+                write!(f, "{}{}", neg, name)
+            }
+            NnfExpr::And { exprs } => assoc_display_helper(f, "∧", exprs),
+            NnfExpr::Or { exprs } => assoc_display_helper(f, "∨", exprs),
         }
     }
 }
@@ -1094,8 +1163,348 @@ impl Expr {
             }
         })
     }
+
+    /// Convert an [`Expr`](Expr) into a [`CnfExpr`](CnfExpr), or return
+    /// [`None`](None) if there are any quantifiers, applications, or
+    /// arithmetic.
+    ///
+    /// ```rust
+    /// use libaris::parser::parse_unwrap as p;
+    /// # use libaris::expression::Expr;
+    /// use libaris::expression::CnfExpr;
+    ///
+    /// let a = CnfExpr::var("A");
+    /// let b = CnfExpr::var("B");
+    /// let exprs = vec![a, b];
+    ///
+    /// assert_eq!(p("A | B").into_cnf().unwrap(), CnfExpr::or(exprs.clone()));
+    /// assert_eq!(p("A & B").into_cnf().unwrap(), CnfExpr::and(exprs));
+    /// assert_eq!(p("~A").into_cnf().unwrap(), CnfExpr::literal(false, "A"));
+    /// ```
+    pub fn into_cnf(self) -> Option<CnfExpr> {
+        self.into_nnf().map(NnfExpr::into_cnf)
+    }
+
+    /// Convert an [`Expr`](Expr) into an [`NnfExpr`](NnfExpr), or return
+    /// [`None`](None) if there are any quantifiers, applications, or
+    /// arithmetic.
+    ///
+    /// ```rust
+    /// use libaris::parser::parse_unwrap as p;
+    /// # use libaris::expression::Expr;
+    /// use libaris::expression::NnfExpr;
+    ///
+    /// let a = NnfExpr::var("A");
+    /// let b = NnfExpr::var("B");
+    /// let exprs = vec![a, b];
+    ///
+    /// assert_eq!(p("A | B").into_nnf().unwrap(), NnfExpr::Or { exprs: exprs.clone() });
+    /// assert_eq!(p("A & B").into_nnf().unwrap(), NnfExpr::And { exprs });
+    /// assert_eq!(p("~A").into_nnf().unwrap(), NnfExpr::var("A").not());
+    /// ```
+    pub fn into_nnf(self) -> Option<NnfExpr> {
+        use Expr::*;
+
+        // Helper function for converting a vector of expressions to NNF
+        fn map_nnf(exprs: Vec<Expr>) -> Option<Vec<NnfExpr>> {
+            exprs.into_iter().map(Expr::into_nnf).collect()
+        }
+
+        // Recursively convert to NNF
+        match self {
+            // Base cases
+            Contradiction => Some(NnfExpr::contradiction()),
+            Tautology => Some(NnfExpr::tautology()),
+            Var { name } => Some(NnfExpr::var(name)),
+            Apply { .. } | Quantifier { .. } => None,
+
+            // Recursive cases
+            Unop { symbol: USymbol::Not, operand } => operand.into_nnf().map(NnfExpr::not),
+            Binop { symbol, left, right } => {
+                match symbol {
+                    BSymbol::Implies => {
+                        let left = left.into_nnf()?;
+                        let right = right.into_nnf()?;
+                        Some(left.implies(right))
+                    }
+                    BSymbol::Mult | BSymbol::Plus => None,
+                }
+            }
+            AssocBinop { symbol, exprs } => {
+                match symbol {
+                    ASymbol::And => map_nnf(exprs).map(|exprs| NnfExpr::And { exprs }),
+                    ASymbol::Or => map_nnf(exprs).map(|exprs| NnfExpr::Or { exprs }),
+                    ASymbol::Bicon => {
+                        exprs
+                            .into_iter()
+                            .map(Self::into_nnf)
+                            .collect::<Option<Vec<NnfExpr>>>()?
+                            .into_iter()
+                            .fold1(NnfExpr::bicon)
+                    }
+                    ASymbol::Equiv => None,
+                }
+            }
+        }
+    }
 }
 
+impl NnfExpr {
+    /// Create a true NNF expression.
+    ///
+    /// ```rust
+    /// use libaris::parser::parse_unwrap as p;
+    /// # use libaris::expression::NnfExpr;
+    ///
+    /// assert_eq!(p("⊤").into_nnf(), Some(NnfExpr::tautology()));
+    /// ```
+    pub fn tautology() -> Self {
+        // An empty AND
+        // AND() ≡ ⊤
+        Self::And { exprs: vec![] }
+    }
+
+    /// Create a false NNF expression.
+    ///
+    /// ```rust
+    /// use libaris::parser::parse_unwrap as p;
+    /// # use libaris::expression::NnfExpr;
+    ///
+    /// assert_eq!(p("⊥").into_nnf(), Some(NnfExpr::contradiction()));
+    /// ```
+    pub fn contradiction() -> Self {
+        // An empty OR
+        // OR() ≡ ⊥
+        Self::Or { exprs: vec![] }
+    }
+
+    /// Create an NNF expression by applying logical implication to two NNF
+    /// expressions.
+    ///
+    /// ```rust
+    /// use libaris::parser::parse_unwrap as p;
+    /// # use libaris::expression::NnfExpr;
+    ///
+    /// let a = NnfExpr::var("A");
+    /// let b = NnfExpr::var("B");
+    ///
+    /// assert_eq!(p("A -> B").into_nnf(), Some(a.implies(b)));
+    /// ```
+    pub fn implies(self, other: Self) -> Self {
+        // A → B ≡ ¬A ∨ B
+        Self::Or { exprs: vec![self.not(), other] }
+    }
+
+    /// Create an NNF expression from a variable name
+    ///
+    /// ```rust
+    /// use libaris::parser::parse_unwrap as p;
+    /// # use libaris::expression::NnfExpr;
+    ///
+    /// assert_eq!(p("A").into_nnf(), Some(NnfExpr::var("A")));
+    /// ```
+    pub fn var<S: ToString>(name: S) -> Self {
+        let name = name.to_string();
+        Self::Lit { polarity: true, name }
+    }
+
+    /// Create an NNF expression by applying the logical biconditional to two NNF
+    /// expressions.
+    ///
+    /// ```rust
+    /// use libaris::parser::parse_unwrap as p;
+    /// # use libaris::expression::NnfExpr;
+    ///
+    /// let a = NnfExpr::var("A");
+    /// let b = NnfExpr::var("B");
+    ///
+    /// assert_eq!(p("A <-> B").into_nnf(), Some(a.bicon(b)));
+    /// ```
+    pub fn bicon(self, other: Self) -> Self {
+        // A ↔ B ≡ (A → B) ∧ (A → B)
+        let a = self.clone().implies(other.clone());
+        let b = other.implies(self);
+        Self::And { exprs: vec![a, b] }
+    }
+
+    /// Create an NNF expression by applying logical NOT to an NNF expression.
+    ///
+    /// ```rust
+    /// use libaris::parser::parse_unwrap as p;
+    /// # use libaris::expression::NnfExpr;
+    ///
+    /// let a = NnfExpr::var("A");
+    ///
+    /// assert_eq!(p("~A").into_nnf(), Some(a.not()));
+    /// ```
+    pub fn not(self) -> Self {
+        let map_not = |exprs: Vec<Self>| exprs.into_iter().map(Self::not).collect();
+        match self {
+            NnfExpr::Lit { polarity, name } => NnfExpr::Lit { polarity: !polarity, name },
+            NnfExpr::And { exprs } => NnfExpr::Or { exprs: map_not(exprs) },
+            NnfExpr::Or { exprs } => NnfExpr::And { exprs: map_not(exprs) },
+        }
+    }
+
+    /// Convert from [`NnfExpr`](NnfExpr) into [`CnfExpr`](CnfExpr) by distributing ORs.
+    ///
+    /// ```rust
+    /// # use libaris::expression::NnfExpr;
+    /// # use libaris::expression::CnfExpr;
+    /// assert_eq!(NnfExpr::var("A").into_cnf(), CnfExpr::var("A"));
+    /// ```
+    pub fn into_cnf(self) -> CnfExpr {
+        // Make an iterator over the CNF conversions of NNF expressions
+        fn map_cnf(exprs: Vec<NnfExpr>) -> impl Iterator<Item=CnfExpr> {
+            exprs.into_iter().map(NnfExpr::into_cnf)
+        }
+
+        match self {
+            NnfExpr::Lit { polarity, name } => CnfExpr::literal(polarity, name),
+            NnfExpr::And { exprs } => CnfExpr::and(map_cnf(exprs)),
+            NnfExpr::Or { exprs } => CnfExpr::or(map_cnf(exprs)),
+        }
+    }
+}
+
+impl CnfExpr {
+    /// Create a true CNF expression.
+    ///
+    /// ```rust
+    /// use libaris::parser::parse_unwrap as p;
+    /// # use libaris::expression::CnfExpr;
+    ///
+    /// assert_eq!(p("⊤").into_cnf(), Some(CnfExpr::tautology()));
+    /// ```
+    pub fn tautology() -> Self {
+        // An empty AND
+        // AND() ≡ ⊤
+        CnfExpr(vec![])
+    }
+
+    /// Create a false CNF expression.
+    ///
+    /// ```rust
+    /// use libaris::parser::parse_unwrap as p;
+    /// # use libaris::expression::CnfExpr;
+    ///
+    /// assert_eq!(p("⊥").into_cnf(), Some(CnfExpr::contradiction()));
+    /// ```
+    pub fn contradiction() -> Self {
+        // An AND with an empty OR inside
+        // AND(OR()) ≡ OR() ≡ ⊥
+        CnfExpr(vec![vec![]])
+    }
+
+    /// Create a CNF expression from a literal (a variable name and its
+    /// polarity).
+    ///
+    /// ```rust
+    /// use libaris::parser::parse_unwrap as p;
+    /// # use libaris::expression::CnfExpr;
+    ///
+    /// assert_eq!(p("A").into_cnf().unwrap(), CnfExpr::literal(true, "A"));
+    /// assert_eq!(p("~A").into_cnf().unwrap(), CnfExpr::literal(false, "A"));
+    /// ```
+    pub fn literal<S: ToString>(polarity: bool, name: S) -> Self {
+	CnfExpr(vec![vec![(polarity, name.to_string())]])
+    }
+
+    /// Create a CNF expression from a variable.
+    ///
+    /// ```rust
+    /// use libaris::parser::parse_unwrap as p;
+    /// # use libaris::expression::CnfExpr;
+    ///
+    /// assert_eq!(p("A").into_cnf().unwrap(), CnfExpr::var("A"));
+    /// ```
+    pub fn var<S: ToString>(name: S) -> Self {
+        Self::literal(true, name)
+    }
+
+    /// Create a CNF expression by applying logical AND to many CNF expressions.
+    ///
+    /// ```rust
+    /// use libaris::parser::parse_unwrap as p;
+    /// # use libaris::expression::CnfExpr;
+    ///
+    /// let a = CnfExpr::var("A");
+    /// let b = CnfExpr::var("B");
+    ///
+    /// assert_eq!(p("A & B").into_cnf(), Some(CnfExpr::and(vec![a, b])));
+    /// ```
+    pub fn and<I>(exprs: I) -> Self
+    where I: IntoIterator<Item=CnfExpr>
+    {
+        CnfExpr(exprs.into_iter().flat_map(|expr| expr.0).collect())
+    }
+
+    /// Create a CNF expression by applying logical OR to many CNF expressions.
+    ///
+    /// ```rust
+    /// use libaris::parser::parse_unwrap as p;
+    /// # use libaris::expression::CnfExpr;
+    ///
+    /// let a = CnfExpr::var("A");
+    /// let b = CnfExpr::var("B");
+    ///
+    /// assert_eq!(p("A | B").into_cnf(), Some(CnfExpr::or(vec![a, b])));
+    /// ```
+    pub fn or<I>(exprs: I) -> Self
+    where I: IntoIterator<Item=CnfExpr>
+    {
+        let clauses = exprs
+            .into_iter()
+            .map(|expr| expr.0)
+            .multi_cartesian_product()
+            .map(|clauses| clauses.concat())
+            .collect::<Vec<Vec<(bool, String)>>>();
+        if clauses.is_empty() {
+            CnfExpr::contradiction()
+        } else {
+            CnfExpr(clauses)
+        }
+    }
+
+    /// Use CNF expression to create a [`varisat::CnfFormula`][cnfformula]
+    /// usable by [`varisat`][varisat].
+    ///
+    /// ```rust
+    /// # use libaris::expression::CnfExpr;
+    /// let sat = CnfExpr::var("A").to_varisat();
+    /// ```
+    ///
+    /// [cnfformula]: varisat::CnfFormula
+    /// [varisat]: varisat
+    pub fn to_varisat(&self) -> varisat::CnfFormula {
+        // Get the variables in the expression and make a hash table from the
+        // variable name to the corresponding `varisat::Var`.
+        let vars = self
+            .0
+            .iter()
+            .flatten()
+            .map(|(_, name)| name.to_string())
+            .enumerate()
+            .map(|(index, name)| (name, varisat::Var::from_index(index)))
+            .collect::<HashMap<String, varisat::Var>>();
+
+        // Use the `vars` hash table above to convert the expression into an
+        // iterator over clauses, where each clause is a `Vec<varisat::Lit>`.
+        // Basically, this converts each `(bool, String)` in the `CnfExpr` to
+        // `varisat::Lit`.
+        let clauses = self
+            .0
+            .iter()
+            .map(|clause| {
+                clause
+                    .into_iter()
+                    .map(|(is_pos, name)| varisat::Lit::from_var(vars[name], *is_pos))
+                    .collect::<Vec<varisat::Lit>>()
+            });
+
+        varisat::CnfFormula::from(clauses)
+    }
+}
 
 #[test]
 pub fn test_combine_associative_ops() {
@@ -1118,6 +1527,7 @@ pub mod expression_builders {
     pub fn not(expr: Expr) -> Expr { Expr::Unop { symbol: USymbol::Not, operand: Box::new(expr) } }
     pub fn binop(symbol: BSymbol, l: Expr, r: Expr) -> Expr { Expr::Binop { symbol, left: Box::new(l), right: Box::new(r) } }
     pub fn binopplaceholder(symbol: BSymbol) -> Expr { binop(symbol, var("_"), var("_")) }
+    pub fn implies(l: Expr, r: Expr) -> Expr { binop(BSymbol::Implies, l, r) }
     pub fn assocbinop(symbol: ASymbol, exprs: &[Expr]) -> Expr { Expr::AssocBinop { symbol, exprs: exprs.iter().cloned().collect() } }
     pub fn assocplaceholder(symbol: ASymbol) -> Expr { assocbinop(symbol, &[var("_"), var("_"), var("...")]) }
     pub fn quantifierplaceholder(symbol: QSymbol) -> Expr { Expr::Quantifier { symbol, name: "_".into(), body: Box::new(var("_")) } }
