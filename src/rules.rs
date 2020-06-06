@@ -100,6 +100,7 @@ pub enum RedundantPrepositionalInference {
 pub enum AutomationRelatedRules {
     AsymmetricTautology,
     Resolution,
+    TautologicalConsequence,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -216,6 +217,7 @@ pub mod RuleM {
 
         [AsymmetricTautology, "ASYMMETRIC_TAUTOLOGY", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::AsymmetricTautology))))))))],
         [Resolution, "RESOLUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::Resolution))))))))],
+        [TautologicalConsequence, "TAUTOLOGICAL_CONSEQUENCE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::TautologicalConsequence))))))))],
 
         [QuantifierNegation, "QUANTIFIER_NEGATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::QuantifierNegation)))))))))],
         [NullQuantification, "NULL_QUANTIFICATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::NullQuantification)))))))))],
@@ -952,6 +954,7 @@ impl RuleT for AutomationRelatedRules {
         match self {
             AutomationRelatedRules::AsymmetricTautology => "AsymmetricTautology",
             AutomationRelatedRules::Resolution => "Resolution",
+            AutomationRelatedRules::TautologicalConsequence => "TautologicalConsequence",
         }.into()
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
@@ -961,11 +964,14 @@ impl RuleT for AutomationRelatedRules {
         match self {
             AutomationRelatedRules::AsymmetricTautology => None,
             AutomationRelatedRules::Resolution => Some(2),
+            AutomationRelatedRules::TautologicalConsequence => None,
         }
     }
     fn num_subdeps(&self) -> Option<usize> {
         match self {
-            AutomationRelatedRules::AsymmetricTautology | AutomationRelatedRules::Resolution => Some(0),
+            AutomationRelatedRules::AsymmetricTautology
+                | AutomationRelatedRules::Resolution
+                | AutomationRelatedRules::TautologicalConsequence => Some(0),
         }
     }
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PJRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
@@ -995,6 +1001,39 @@ impl RuleT for AutomationRelatedRules {
                     },
                 }
             },
+            AutomationRelatedRules::TautologicalConsequence => {
+                // Closure for making CNF conversion errors
+                let cnf_error = || ProofCheckError::Other(format!("Failed converting to CNF; the premises for this rule should not use quantifiers, arithmetic, or application."));
+
+                // Closure to convert expression into CNF and change to result type
+                let into_cnf = |expr: Expr| expr.into_cnf().ok_or_else(cnf_error);
+
+                // Convert the premises to a single expression by AND-ing them together
+                let premises = deps
+                    .into_iter()
+                    .map(|dep| p.lookup_expr_or_die(&dep))
+                    .collect::<Result<Vec<Expr>, _>>()?;
+		let premise = Expr::AssocBinop { symbol: ASymbol::And, exprs: premises };
+
+                // Create `varisat` formula of `~(P -> Q)`. If this is
+                // unsatisfiable, then we've proven `P -> Q`.
+                use expression_builders::*;
+                let sat = not(implies(premise, conclusion));
+                let sat = into_cnf(sat)?.to_varisat();
+                let mut solver = varisat::Solver::new();
+                solver.add_formula(&sat);
+
+                // This shouldn't fail with the default config, so it's safe to
+                // unwrap the result
+                let is_sat = solver.solve().expect("failed checking with varisat");
+
+                // If unsatisfiable, we know `P -> Q`
+                if is_sat {
+                    Err(ProofCheckError::Other("Not true by tautological consequence".to_string()))
+                } else {
+                    Ok(())
+                }
+            }
         }
     }
 }

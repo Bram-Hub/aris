@@ -9,7 +9,7 @@ pub fn parse(input: &str) -> Option<Expr> {
 /// parser::parse_unwrap is a convenience function used in the tests, and panics if the input doesn't parse
 /// for handling user input, call parser::parse instead and handle the None case
 pub fn parse_unwrap(input: &str) -> Expr {
-    parse(input).unwrap()
+    parse(input).expect(&format!("failed parsing: {}", input))
 }
 
 fn custom_error<A, B>(a: A, x: u32) -> nom::IResult<A, B> {
