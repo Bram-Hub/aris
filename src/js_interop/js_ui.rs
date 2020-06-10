@@ -287,7 +287,7 @@ impl ProofWidget {
         for _ in 0..depth {
             //indentation.add_child(html! { <span style="background-color:black">{"-"}</span>});
             //indentation.add_child(html! { <span style="color:white">{"-"}</span>});
-            indentation.add_child(html! { <span>{"\u{2502}"}</span>});
+            indentation.add_child(html! { <span>{"\u{2503}"}</span>});
         }
         indentation.add_child(html! { <span>{edge_decoration}</span>});
         let proofref_ = proofref.clone();
@@ -388,7 +388,7 @@ impl ProofWidget {
         // output has a bool tag to prune subproof spacers with, because VNode's PartialEq doesn't do the right thing
         let mut output: Vec<(Html, bool)> = Vec::new();
         for (i, prem) in prf.premises().iter().enumerate() {
-            let edge_decoration = if i == 0 { "\u{250c}" } else { "\u{2502}" };
+            let edge_decoration = if i == 0 { "\u{250f}" } else { "\u{2503}" };
             output.push((self.render_proof_line(*line, *depth, Coproduct::inject(prem.clone()), edge_decoration), false));
             *line += 1;
         }
@@ -403,9 +403,9 @@ impl ProofWidget {
         //spacer.add_child(html! { <td style="background-color:black"></td> });
         let mut spacer_lines = String::new();
         for _ in 0..*depth {
-            spacer_lines += "\u{2502}";
+            spacer_lines += "\u{2503}";
         }
-        spacer_lines += "\u{251c}";
+        spacer_lines += "\u{2523}";
         spacer.add_child(html! { <td>{spacer_lines}</td> });
         
         output.push((yew::virtual_dom::VNode::from(spacer), false));
@@ -421,7 +421,7 @@ impl ProofWidget {
         let prf_lines = prf.lines();
         for (i, lineref) in prf_lines.iter().enumerate() {
             use frunk::Coproduct::{Inl, Inr};
-            let edge_decoration = if i == prf_lines.len()-1 { "\u{2514}" } else { "\u{2502}" };
+            let edge_decoration = if i == prf_lines.len()-1 { "\u{2517}" } else { "\u{2503}" };
             match lineref {
                 Inl(r) => { output.push((self.render_proof_line(*line, *depth, Coproduct::inject(r.clone()), edge_decoration), false)); *line += 1; },
                 Inr(Inl(sr)) => {
