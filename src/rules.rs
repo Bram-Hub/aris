@@ -954,7 +954,7 @@ impl RuleT for AutomationRelatedRules {
         match self {
             AutomationRelatedRules::AsymmetricTautology => "AsymmetricTautology",
             AutomationRelatedRules::Resolution => "Resolution",
-            AutomationRelatedRules::TautologicalConsequence => "TautologicalConsequence",
+            AutomationRelatedRules::TautologicalConsequence => "Tautological Consequence",
         }.into()
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
