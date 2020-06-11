@@ -935,10 +935,10 @@ impl RuleT for RedundantPrepositionalInference {
     fn get_name(&self) -> String {
         use RedundantPrepositionalInference::*;
         match self {
-            ModusTollens => "ModusTollens",
-            HypotheticalSyllogism => "HypotheticalSyllogism",
-            ExcludedMiddle => "ExcludedMiddle",
-            ConstructiveDilemma => "ConstructiveDilemma",
+            ModusTollens => "Modus Tollens",
+            HypotheticalSyllogism => "Hypothetical Syllogism",
+            ExcludedMiddle => "Excluded Middle",
+            ConstructiveDilemma => "Constructive Dilemma",
         }.into()
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
@@ -952,7 +952,7 @@ impl RuleT for RedundantPrepositionalInference {
 impl RuleT for AutomationRelatedRules {
     fn get_name(&self) -> String {
         match self {
-            AutomationRelatedRules::AsymmetricTautology => "AsymmetricTautology",
+            AutomationRelatedRules::AsymmetricTautology => "Asymmetric Tautology",
             AutomationRelatedRules::Resolution => "Resolution",
             AutomationRelatedRules::TautologicalConsequence => "Tautological Consequence",
         }.into()
