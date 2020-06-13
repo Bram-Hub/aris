@@ -1013,25 +1013,39 @@ impl RuleT for AutomationRelatedRules {
                     .into_iter()
                     .map(|dep| p.lookup_expr_or_die(&dep))
                     .collect::<Result<Vec<Expr>, _>>()?;
-		let premise = Expr::AssocBinop { symbol: ASymbol::And, exprs: premises };
+                let premise = Expr::AssocBinop { symbol: ASymbol::And, exprs: premises };
 
                 // Create `varisat` formula of `~(P -> Q)`. If this is
                 // unsatisfiable, then we've proven `P -> Q`.
                 use expression_builders::*;
                 let sat = not(implies(premise, conclusion));
-                let sat = into_cnf(sat)?.to_varisat();
+                let (sat, vars) = into_cnf(sat)?.to_varisat();
                 let mut solver = varisat::Solver::new();
                 solver.add_formula(&sat);
 
-                // This shouldn't fail with the default config, so it's safe to
-                // unwrap the result
-                let is_sat = solver.solve().expect("failed checking with varisat");
+                // Does not panic on the default config
+                solver.solve().expect("varisat error");
 
                 // If unsatisfiable, we know `P -> Q`
-                if is_sat {
-                    Err(ProofCheckError::Other("Not true by tautological consequence".to_string()))
-                } else {
-                    Ok(())
+                match solver.model() {
+                    Some(model) => {
+                        // Satisfiable, so `P -> Q` is false. The counterexample is `model`.
+
+                        // Convert model to human-readable variable assignments
+                        // for an error message
+                        let model = model
+                            .into_iter()
+                            .map(|lit| {
+                                let name = vars.get(&lit.var()).expect("taut con vars map error");
+                                let val = if lit.is_positive() { '⊤' } else { '⊥' };
+                                format!("{} = {}", name, val)
+                            })
+                            .collect::<Vec<String>>()
+                            .join(", ");
+
+                        Err(ProofCheckError::Other(format!("Not true by tautological consequence; Counterexample: {}", model)))
+                    }
+                    None => Ok(()),
                 }
             }
         }
