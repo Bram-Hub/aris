@@ -1467,16 +1467,18 @@ impl CnfExpr {
     }
 
     /// Use CNF expression to create a [`varisat::CnfFormula`][cnfformula]
-    /// usable by [`varisat`][varisat].
+    /// usable by [`varisat`][varisat]. Additionally, it returns the mapping
+    /// between variable names and [`varisat::Var`](varisat::Var) so that the
+    /// model returned by `varisat` can be pretty printed.
     ///
     /// ```rust
     /// # use libaris::expression::CnfExpr;
-    /// let sat = CnfExpr::var("A").to_varisat();
+    /// let (sat, vars) = CnfExpr::var("A").to_varisat();
     /// ```
     ///
     /// [cnfformula]: varisat::CnfFormula
     /// [varisat]: varisat
-    pub fn to_varisat(&self) -> varisat::CnfFormula {
+    pub fn to_varisat(&self) -> (varisat::CnfFormula, HashMap<varisat::Var, String>) {
         // Get the variables in the expression and make a hash table from the
         // variable name to the corresponding `varisat::Var`.
         let vars = self
@@ -1484,6 +1486,8 @@ impl CnfExpr {
             .iter()
             .flatten()
             .map(|(_, name)| name.to_string())
+            .collect::<BTreeSet<String>>() // Sort and remove duplicates
+            .into_iter()
             .enumerate()
             .map(|(index, name)| (name, varisat::Var::from_index(index)))
             .collect::<HashMap<String, varisat::Var>>();
@@ -1502,7 +1506,16 @@ impl CnfExpr {
                     .collect::<Vec<varisat::Lit>>()
             });
 
-        varisat::CnfFormula::from(clauses)
+        let sat = varisat::CnfFormula::from(clauses);
+
+        // Reverse order of `HashMap`. Convert `HashMap<String, varisat::Var>`
+        // to `HashMap<varisat::Var, String>`.
+        let vars = vars
+            .into_iter()
+            .map(|(name, var)| (var, name))
+            .collect::<HashMap<varisat::Var, String>>();
+
+        (sat, vars)
     }
 }
 
