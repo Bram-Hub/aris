@@ -1,0 +1,11 @@
+.indent {
+    vertical-align: middle;
+    text-align: right;
+    padding-right: 0px;
+    line-height: 1;
+    font-size: 35px;
+}
+
+.proof-line * {
+    vertical-align: middle;
+}
