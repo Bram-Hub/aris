@@ -172,9 +172,9 @@ impl ProofWidget {
     }
     pub fn render_justification_widget(&self, line: usize, _depth: usize, proofref: PJRef<P>) -> Html {
         /* TODO: does HTML/do browsers have a way to do nested menus?
-        https://developer.mozilla.org/en-US/docs/Web/HTML/Element/menu is 
-        "experimental", and currently firefox only, and a bunch of tutorials for the 
-        DDG query "javascript nested context menus" build their own menus out of 
+        https://developer.mozilla.org/en-US/docs/Web/HTML/Element/menu is
+        "experimental", and currently firefox only, and a bunch of tutorials for the
+        DDG query "javascript nested context menus" build their own menus out of
         {div,nav,ul,li} with CSS for displaying the submenus on hover */
         // Apparently it used to exist in Bootstrap, but was removed: https://github.com/twbs/bootstrap/issues/16387#issuecomment-97153831
         use frunk::Coproduct::{Inl, Inr};
@@ -287,9 +287,9 @@ impl ProofWidget {
         for _ in 0..depth {
             //indentation.add_child(html! { <span style="background-color:black">{"-"}</span>});
             //indentation.add_child(html! { <span style="color:white">{"-"}</span>});
-            indentation.add_child(html! { <span>{"\u{2503}"}</span>});
+            indentation.add_child(html! { <span class="indent">{"\u{2503}"}</span>});
         }
-        indentation.add_child(html! { <span>{edge_decoration}</span>});
+        indentation.add_child(html! { <span class="indent">{edge_decoration}</span>});
         let proofref_ = proofref.clone();
         let handle_action = self.link.callback(move |e: ChangeData| {
             if let ChangeData::Select(s) = e {
@@ -369,7 +369,7 @@ impl ProofWidget {
             }
         })();
         html! {
-            <tr>
+            <tr class="proof-line">
                 <td> { selection_indicator } </td>
                 <td> { lineinfo } </td>
                 <td> { dep_checkbox } </td>
@@ -405,10 +405,12 @@ impl ProofWidget {
         for _ in 0..*depth {
             spacer_lines += "\u{2503}";
         }
-        spacer_lines += "\u{2523}";
-        spacer.add_child(html! { <td>{spacer_lines}</td> });
-        
-        output.push((yew::virtual_dom::VNode::from(spacer), false));
+        spacer_lines += &format!("{}{}", "\u{2523}", "\u{2501}".repeat(4));
+        spacer.add_child(html! { <td> <span class="indent"> {spacer_lines} </span> </td> });
+
+        let spacer = html! { <tr> { spacer } </tr> };
+
+        output.push((spacer, false));
         let row_spacer = {
             let mut indentation = yew::virtual_dom::VList::new();
             for _ in 0..(*depth+1) {
