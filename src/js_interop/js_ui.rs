@@ -431,7 +431,7 @@ impl ProofWidget {
         let prf_lines = prf.lines();
         for (i, lineref) in prf_lines.iter().enumerate() {
             use frunk::Coproduct::{Inl, Inr};
-            let edge_decoration = { box_chars::VERT }.to_string();
+            let edge_decoration = if i == prf_lines.len()-1 { box_chars::UP_RIGHT } else { box_chars::VERT }.to_string();
             match lineref {
                 Inl(r) => { output.push((self.render_proof_line(*line, *depth, Coproduct::inject(r.clone()), &edge_decoration), false)); *line += 1; },
                 Inr(Inl(sr)) => {
