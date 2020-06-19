@@ -1037,7 +1037,7 @@ impl RuleT for AutomationRelatedRules {
                             .into_iter()
                             .map(|lit| {
                                 let name = vars.get(&lit.var()).expect("taut con vars map error");
-                                let val = if lit.is_positive() { '⊤' } else { '⊥' };
+                                let val = if lit.is_positive() { 'T' } else { 'F' };
                                 format!("{} = {}", name, val)
                             })
                             .collect::<Vec<String>>()
