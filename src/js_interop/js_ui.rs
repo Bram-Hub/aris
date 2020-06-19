@@ -401,7 +401,7 @@ impl ProofWidget {
         // output has a bool tag to prune subproof spacers with, because VNode's PartialEq doesn't do the right thing
         let mut output: Vec<(Html, bool)> = Vec::new();
         for (i, prem) in prf.premises().iter().enumerate() {
-            let edge_decoration = if i == 0 { box_chars::UP_VERT } else { box_chars::VERT }.to_string(); 
+            let edge_decoration = { box_chars::VERT }.to_string(); 
             output.push((self.render_proof_line(*line, *depth, Coproduct::inject(prem.clone()), &edge_decoration), false));
             *line += 1;
         }
@@ -436,7 +436,7 @@ impl ProofWidget {
         let prf_lines = prf.lines();
         for (i, lineref) in prf_lines.iter().enumerate() {
             use frunk::Coproduct::{Inl, Inr};
-            let edge_decoration = if i == prf_lines.len()-1 { box_chars::VERT } else { box_chars::VERT }.to_string();
+            let edge_decoration = if i == prf_lines.len()-1 { box_chars::UP_RIGHT } else { box_chars::VERT }.to_string();
             match lineref {
                 Inl(r) => { output.push((self.render_proof_line(*line, *depth, Coproduct::inject(r.clone()), &edge_decoration), false)); *line += 1; },
                 Inr(Inl(sr)) => {
