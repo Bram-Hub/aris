@@ -281,7 +281,7 @@ impl ProofWidget {
                 </div>
             }
         } else {
-            yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new())
+            html! { <div><td></td><td></td></div> }
         }
     }
     pub fn render_proof_line(&self, line: usize, depth: usize, proofref: PJRef<P>, edge_decoration: &str) -> Html {
@@ -371,7 +371,10 @@ impl ProofWidget {
             };
             match parse(&raw_line).map(|_| self.prf.verify_line(&proofref)) {
                 None => html! { <span class="alert alert-warning">{ "Parse error" }</span> },
-                Some(Ok(())) => html! { <span class="alert alert-success">{ "Correct" }</span> },
+                Some(Ok(())) => match proofref {
+                    Coproduct::Inl(_) => html! { <span class="alert alert-success">{ "Premise" }</span> },
+                    _ => html! { <span class="alert alert-success">{ "Correct" }</span> },
+                },
                 Some(Err(e)) => {
                     // TODO: proper CSS hover box
                     html! { <span class="alert alert-danger" title=format!("{}", e)>{ "Error (hover for details)" }</span> }
