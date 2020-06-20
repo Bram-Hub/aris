@@ -1,13 +1,13 @@
 use expression::Expr;
 use frunk::Coproduct;
-use gloo::timers::callback::{Timeout, Interval};
+use gloo::timers::callback::Timeout;
 use proofs::{Proof, Justification, pooledproof::PooledProof, PJRef, pj_to_pjs, js_to_pjs};
-use rules::{Rule, RuleM, RuleT};
+use rules::{Rule, RuleM, RuleT, RuleClassification};
 use std::collections::{BTreeSet,HashMap};
-use std::sync::atomic::{self, AtomicUsize};
 use std::{fmt, mem};
 use wasm_bindgen::{closure::Closure, JsValue, JsCast};
 use yew::prelude::*;
+use strum::IntoEnumIterator;
 
 mod box_chars {
     pub(super) const VERT: char = '│';
@@ -92,15 +92,6 @@ impl<P: Proof> ProofUiData<P> {
     }
 }
 
-/// ProofWidget needs globally unique ids to distinguish DOM ids between different ProofWidget instances
-/// Failing to make the DOM ids globally unique makes the bootstrap menus from one proof affect another
-fn next_proof_widget_id() -> usize {
-    lazy_static!  {
-        static ref PROOF_WIDGET_ID_ALLOCATOR: AtomicUsize = AtomicUsize::new(0);
-    }
-    PROOF_WIDGET_ID_ALLOCATOR.fetch_add(1, atomic::Ordering::SeqCst)
-}
-
 pub struct ProofWidget {
     link: ComponentLink<Self>,
     prf: P,
@@ -108,7 +99,6 @@ pub struct ProofWidget {
     selected_line: Option<PJRef<P>>,
     preblob: String,
     props: ProofWidgetProps,
-    proofid: usize,
 }
 
 #[derive(Debug)]
@@ -180,24 +170,60 @@ impl ProofWidget {
         }
         yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new())
     }
-    pub fn render_justification_widget(&self, line: usize, _depth: usize, proofref: PJRef<P>) -> Html {
-        /* TODO: does HTML/do browsers have a way to do nested menus?
-        https://developer.mozilla.org/en-US/docs/Web/HTML/Element/menu is
-        "experimental", and currently firefox only, and a bunch of tutorials for the
-        DDG query "javascript nested context menus" build their own menus out of
-        {div,nav,ul,li} with CSS for displaying the submenus on hover */
-        // Apparently it used to exist in Bootstrap, but was removed: https://github.com/twbs/bootstrap/issues/16387#issuecomment-97153831
+    /// Create a drop-down menu allowing the user to select the rule used in a
+    /// justification line. This uses the [Bootstrap-submenu][lib] library.
+    ///
+    /// ## Parameters:
+    ///   + `pjref` - reference to the justification line containing this menu
+    ///   + `cur_rule_name` - name of the current selected rule
+    ///
+    /// [lib]: https://github.com/vsn4ik/bootstrap-submenu
+    fn render_rules_menu(&self, pjref: PJRef<P>, cur_rule_name: &str) -> Html {
+        // Create menu items for rule classes
+        let menu = RuleClassification::iter()
+            .map(|rule_class| {
+                // Create menu items for rules in class
+                let rules = rule_class
+                    .rules()
+                    .map(|rule| {
+                        // Create menu item for rule
+                        html! {
+                            <button class="dropdown-item" type="button" onclick=self.link.callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule }, pjref))>
+                                { rule.get_name() }
+                            </button>
+                        }
+                    })
+                    .collect::<Vec<yew::virtual_dom::VNode>>();
+                let rules = yew::virtual_dom::VList::new_with_children(rules);
+                // Create sub-menu for rule class
+                html! {
+                    <div class="dropdown dropright dropdown-submenu">
+                        <button class="dropdown-item dropdown-toggle" type="button" data-toggle="dropdown"> { rule_class } </button>
+                        <div class="dropdown-menu dropdown-scrollbar"> { rules } </div>
+                    </div>
+                }
+            })
+            .collect::<Vec<yew::virtual_dom::VNode>>();
+        let menu = yew::virtual_dom::VList::new_with_children(menu);
+
+        // Create top-level menu button
+        html! {
+            <div class="dropright">
+                <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown" data-submenu="">
+                    { cur_rule_name }
+                </button>
+                <div class="dropdown-menu">
+                    { menu }
+                </div>
+                <script>
+                    { "$('[data-submenu]').submenupicker()" }
+                </script>
+            </div>
+        }
+    }
+    pub fn render_justification_widget(&self, proofref: PJRef<P>) -> Html {
         use frunk::Coproduct::{Inl, Inr};
         if let Inr(Inl(_)) = proofref {
-            let proofref_ = proofref.clone();
-            let handle_rule_select = self.link.callback(move |e: ChangeData| {
-                if let ChangeData::Select(s) = e {
-                    if let Some(rule) = RuleM::from_serialized_name(&s.value()) {
-                        return ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule }, proofref_);
-                    }
-                }
-                ProofWidgetMsg::Nop
-            });
             let lookup_result = self.prf.lookup_pj(&proofref).expect("proofref should exist in self.prf");
             let just: &Justification<_, _, _> = lookup_result.get().expect("proofref already is a JustificationReference");
             let mut dep_lines = String::new();
@@ -221,57 +247,8 @@ impl ProofWidget {
                 }
             }
 
-            /*let mut rules = yew::virtual_dom::VList::new();
-            for rule in RuleM::ALL_RULES {
-                // TODO: seperators and submenus by RuleClassification
-                rules.add_child(html!{ <option value=RuleM::to_serialized_name(*rule) selected=(just.1 == *rule)> { rule.get_name() } </option> });
-            }
-            let rule_selector = html! {
-                <select onchange=handle_rule_select>
-                    <option value="no_rule_selected">{"Rule"}</option>
-                    <hr />
-                    { rules }
-                </select>
-            };*/
-
-            let mut rules = yew::virtual_dom::VList::new();
-            for rule in RuleM::ALL_RULES {
-                // TODO: seperators and submenus by RuleClassification
-                let label_name = format!("proof-{}-rule-for-line-{}-{}", self.proofid, line, RuleM::to_serialized_name(*rule));
-                let proofref_ = proofref.clone();
-                rules.add_child(html! {
-                    <div>
-                        <label for={ label_name.clone() } class="dropdown-item">{ rule.get_name() }</label>
-                        <input id={ label_name } style="display:none" type="button" onclick=self.link.callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule: *rule }, proofref_)) />
-                    </div>
-                });
-            }
-            let enable_scrollbar = "max-height: 400px; overflow-y: auto"; // https://github.com/davidstutz/bootstrap-multiselect/issues/1#issuecomment-12063820
-            /*let submenu_onclick = self.link.callback(move |e: MouseEvent| {
-                e.stop_propagation();
-                e.prevent_default();
-                let _ = js_sys::eval(&format!("$({:?}).toggle()", format!("#rule-for-line-{}-inference2", line))); ProofWidgetMsg::Nop });*/
-            /*let inference_submenu = html! {
-                <div class="dropdown-submenu">
-                    <div class="dropright show">
-                        /*<label for={ format!("rule-for-line-{}-inference", line) } class="btn btn-secondary dropdown-toggle" >{ "Inference" }</label>
-                        <input id={ format!("rule-for-line-{}-inference", line) } data-toggle="dropdown" style="visibility:hidden" type="button" onchange=self.link.callback(|e| { ProofWidgetMsg::Nop })/>*/
-
-                        <a class="dropdown-item dropdown-toggle" href="#" role="button" id=format!("rule-for-line-{}-inference", line) data-toggle="dropdown">{ "Inference" }</a>
-                        <div class="dropdown-menu" style={ enable_scrollbar } id=format!("rule-for-line-{}-inference2", line) aria-labelledby=format!("rule-for-line-{}-inference", line)>
-                            { rules }
-                        </div>
-                    </div>
-                </div>
-            };*/
-            let rule_selector = html! {
-                <div class="dropdown show">
-                    <a class="btn btn-secondary dropdown-toggle" href="#" role="button" id=format!("proof-{}-rule-for-line-{}", self.proofid, line) data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{ just.1.get_name() }</a>
-                    <div class="dropdown-menu" style={ enable_scrollbar } aria-labelledby=format!("proof-{}-rule-for-line-{}", self.proofid, line)>
-                        { rules }
-                    </div>
-                </div>
-            };
+            let cur_rule_name = just.1.get_name();
+            let rule_selector = self.render_rules_menu(proofref, &cur_rule_name);
             html! {
                 <div>
                 <td>
@@ -281,7 +258,12 @@ impl ProofWidget {
                 </div>
             }
         } else {
-            html! { <div><td></td><td></td></div> }
+            html! {
+                <div>
+                    <td></td>
+                    <td></td>
+                </div>
+            }
         }
     }
     pub fn render_proof_line(&self, line: usize, depth: usize, proofref: PJRef<P>, edge_decoration: &str) -> Html {
@@ -362,7 +344,7 @@ impl ProofWidget {
             </select>
             }
         };
-        let justification_widget = self.render_justification_widget(line, depth, proofref.clone());
+        let justification_widget = self.render_justification_widget(proofref.clone());
         let rule_feedback = (|| {
             use parser::parse;
             let raw_line = match self.pud.ref_to_input.get(&proofref).and_then(|x| if x.len() > 0 { Some(x) } else { None }) {
@@ -400,8 +382,8 @@ impl ProofWidget {
     pub fn render_proof(&self, prf: &<P as Proof>::Subproof, sref: Option<<P as Proof>::SubproofReference>, line: &mut usize, depth: &mut usize) -> Html {
         // output has a bool tag to prune subproof spacers with, because VNode's PartialEq doesn't do the right thing
         let mut output: Vec<(Html, bool)> = Vec::new();
-        for (i, prem) in prf.premises().iter().enumerate() {
-            let edge_decoration = { box_chars::VERT }.to_string(); 
+        for prem in prf.premises().iter() {
+            let edge_decoration = { box_chars::VERT }.to_string();
             output.push((self.render_proof_line(*line, *depth, Coproduct::inject(prem.clone()), &edge_decoration), false));
             *line += 1;
         }
@@ -424,15 +406,6 @@ impl ProofWidget {
         let spacer = html! { <tr> { spacer } </tr> };
 
         output.push((spacer, false));
-        let row_spacer = {
-            let mut indentation = yew::virtual_dom::VList::new();
-            for _ in 0..(*depth+1) {
-                indentation.add_child(html! { <span style="background-color:black">{"-"}</span>});
-                indentation.add_child(html! { <span style="color:white">{"-"}</span>});
-            }
-            //(html!{ <tr><td><span style="color:white">{"-"}</span></td></tr> }, true)
-            (html!{ <tr><td></td><td></td><td></td><td>{ indentation }</td></tr> }, true)
-        };
         let prf_lines = prf.lines();
         for (i, lineref) in prf_lines.iter().enumerate() {
             use frunk::Coproduct::{Inl, Inr};
@@ -550,7 +523,6 @@ impl Component for ProofWidget {
             pud,
             selected_line: None,
             preblob: "".into(),
-            proofid: next_proof_widget_id(),
             props,
         };
         tmp.update(ProofWidgetMsg::Nop);

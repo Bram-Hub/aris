@@ -22,6 +22,9 @@ extern crate sha2;
 extern crate varisat;
 extern crate xml;
 extern crate itertools;
+extern crate strum;
+#[macro_use]
+extern crate strum_macros;
 
 pub mod zipper_vec;
 use zipper_vec::*;
