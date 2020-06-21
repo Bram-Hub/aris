@@ -807,6 +807,7 @@ pub enum MenuWidgetMsg {
     FileOpen1,
     FileOpen2(web_sys::FileList),
     FileSave,
+    NewExprTree,
     Nop,
 }
 #[derive(Properties, Clone)]
@@ -868,6 +869,16 @@ impl Component for MenuWidget {
                 })));
                 false
             },
+            MenuWidgetMsg::NewExprTree => {
+                self.props.parent.send_message(AppMsg::CreateTab {
+                    name: format!("Expr Tree {}", self.next_tab_idx),
+                    content: html! {
+                        <ExprAstWidget initial_contents="forall A, ((exists B, A -> B) & C & f(x, y | z)) <-> Q <-> R" onchange=self.props.parent.callback(|(x, y)| AppMsg::ExprChanged(x, y)) />
+                    }
+                });
+                self.next_tab_idx += 1;
+                false
+            },
             MenuWidgetMsg::Nop => {
                 false
             },
@@ -897,6 +908,10 @@ impl Component for MenuWidget {
                     <div>
                         <label for="file-menu-save-proof" class="dropdown-item">{"Save proof"}</label>
                         <input id="file-menu-save-proof" style="display:none" type="button" onclick=self.link.callback(|_| MenuWidgetMsg::FileSave) />
+                    </div>
+                    <div>
+                        <label for="file-menu-new-expr-tree" class="dropdown-item">{"New expression tree"}</label>
+                        <input id="file-menu-new-expr-tree" style="display:none" type="button" onclick=self.link.callback(|_| MenuWidgetMsg::NewExprTree) />
                     </div>
                 </div>
             </div>
@@ -984,7 +999,6 @@ impl Component for App {
         let tabview = html! {
             <TabbedContainer tab_ids=vec![resolution_fname.clone(), "Parser demo".into()] oncreate=self.link.callback(|link| AppMsg::TabbedContainerInit(link))>
                 <ProofWidget verbose=true data=Some(include_bytes!("../../resolution_example.bram").to_vec()) oncreate=self.link.callback(move |link| AppMsg::RegisterProofName { name: resolution_fname_.clone(), link }) />
-                <ExprAstWidget initial_contents="forall A, ((exists B, A -> B) & C & f(x, y | z)) <-> Q <-> R" onchange=self.link.callback(|(x, y)| AppMsg::ExprChanged(x, y)) />
             </TabbedContainer>
         };
         html! {
