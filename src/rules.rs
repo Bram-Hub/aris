@@ -1014,7 +1014,7 @@ impl RuleT for AutomationRelatedRules {
             },
             AutomationRelatedRules::TautologicalConsequence => {
                 // Closure for making CNF conversion errors
-                let cnf_error = || ProofCheckError::Other(format!("Failed converting to CNF; the premises for this rule should not use quantifiers, arithmetic, or application."));
+                let cnf_error = || ProofCheckError::Other(format!("Failed converting to CNF; the propositions for this rule should not use quantifiers, arithmetic, or application."));
 
                 // Closure to convert expression into CNF and change to result type
                 let into_cnf = |expr: Expr| expr.into_cnf().ok_or_else(cnf_error);
