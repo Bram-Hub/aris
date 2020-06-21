@@ -352,14 +352,14 @@ impl ProofWidget {
                 Some(x) => x,
             };
             match parse(&raw_line).map(|_| self.prf.verify_line(&proofref)) {
-                None => html! { <span class="alert alert-warning">{ "Parse error" }</span> },
+                None => html! { <span class="alert alert-warning small-alert">{ "Parse error" }</span> },
                 Some(Ok(())) => match proofref {
-                    Coproduct::Inl(_) => html! { <span class="alert alert-success">{ "Premise" }</span> },
-                    _ => html! { <span class="alert alert-success">{ "Correct" }</span> },
+                    Coproduct::Inl(_) => html! { <span class="alert alert-success small-alert">{ "Premise" }</span> },
+                    _ => html! { <span class="alert alert-success small-alert">{ "Correct" }</span> },
                 },
                 Some(Err(e)) => {
                     // TODO: proper CSS hover box
-                    html! { <span class="alert alert-danger" title=format!("{}", e)>{ "Error (hover for details)" }</span> }
+                    html! { <span class="alert alert-danger small-alert" title=format!("{}", e)>{ "Error (hover for details)" }</span> }
                 },
             }
         })();
