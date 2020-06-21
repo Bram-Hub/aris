@@ -19,7 +19,7 @@ mod box_chars {
     pub(super) const DOWN_VERT: char = '╷';
 }
 
-pub struct ExprEntry {
+pub struct ExprAstWidget {
     link: ComponentLink<Self>,
     current_input: String,
     last_good_parse: String,
@@ -28,14 +28,14 @@ pub struct ExprEntry {
 }
 
 #[derive(Clone, Properties)]
-pub struct ExprEntryProps {
+pub struct ExprAstWidgetProps {
     pub initial_contents: String,
     pub onchange: Callback<(String, Option<Expr>)>,
 }
 
-impl Component for ExprEntry {
+impl Component for ExprAstWidget {
     type Message = String;
-    type Properties = ExprEntryProps;
+    type Properties = ExprAstWidgetProps;
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let mut ret = Self {
             link,
@@ -60,6 +60,7 @@ impl Component for ExprEntry {
     fn view(&self) -> Html {
         html! {
             <div>
+                <h2> {"Enter Expression:"} </h2>
                 <input type="text" oninput=self.link.callback(|e: InputData| e.value) style="width:400px" value={ &self.current_input } />
                 <div>
                     { &self.last_good_parse }
@@ -978,18 +979,12 @@ impl Component for App {
     }
 
     fn view(&self) -> Html {
-        let exprwidget = html! {
-            <div>
-                <p>{ "Enter Expression:" }</p>
-                <ExprEntry initial_contents="forall A, ((exists B, A -> B) & C & f(x, y | z)) <-> Q <-> R" onchange=self.link.callback(|(x, y)| AppMsg::ExprChanged(x, y)) />
-            </div>
-        };
         let resolution_fname: String = "resolution_example.bram".into();
         let resolution_fname_ = resolution_fname.clone();
         let tabview = html! {
             <TabbedContainer tab_ids=vec![resolution_fname.clone(), "Parser demo".into()] oncreate=self.link.callback(|link| AppMsg::TabbedContainerInit(link))>
                 <ProofWidget verbose=true data=Some(include_bytes!("../../resolution_example.bram").to_vec()) oncreate=self.link.callback(move |link| AppMsg::RegisterProofName { name: resolution_fname_.clone(), link }) />
-                { exprwidget }
+                <ExprAstWidget initial_contents="forall A, ((exists B, A -> B) & C & f(x, y | z)) <-> Q <-> R" onchange=self.link.callback(|(x, y)| AppMsg::ExprChanged(x, y)) />
             </TabbedContainer>
         };
         html! {
