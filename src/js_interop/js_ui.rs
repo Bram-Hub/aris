@@ -24,13 +24,11 @@ pub struct ExprAstWidget {
     current_input: String,
     last_good_parse: String,
     current_expr: Option<Expr>,
-    onchange: Callback<(String, Option<Expr>)>,
 }
 
 #[derive(Clone, Properties)]
 pub struct ExprAstWidgetProps {
     pub initial_contents: String,
-    pub onchange: Callback<(String, Option<Expr>)>,
 }
 
 impl Component for ExprAstWidget {
@@ -42,7 +40,6 @@ impl Component for ExprAstWidget {
             current_expr: None,
             current_input: props.initial_contents.clone(),
             last_good_parse: "".into(),
-            onchange: props.onchange,
         };
         ret.update(props.initial_contents);
         ret
@@ -54,7 +51,6 @@ impl Component for ExprAstWidget {
         if let Some(expr) = &self.current_expr {
             self.last_good_parse = format!("{}", expr);
         }
-        self.onchange.emit((self.last_good_parse.clone(), self.current_expr.clone()));
         true
     }
     fn view(&self) -> Html {
@@ -873,7 +869,7 @@ impl Component for MenuWidget {
                 self.props.parent.send_message(AppMsg::CreateTab {
                     name: format!("Expr Tree {}", self.next_tab_idx),
                     content: html! {
-                        <ExprAstWidget initial_contents="forall A, ((exists B, A -> B) & C & f(x, y | z)) <-> Q <-> R" onchange=self.props.parent.callback(|(x, y)| AppMsg::ExprChanged(x, y)) />
+                        <ExprAstWidget initial_contents="forall A, ((exists B, A -> B) & C & f(x, y | z)) <-> Q <-> R" />
                     }
                 });
                 self.next_tab_idx += 1;
@@ -922,15 +918,12 @@ impl Component for MenuWidget {
 
 pub struct App {
     link: ComponentLink<Self>,
-    last_good_parse: String,
-    current_expr: Option<Expr>,
     tabcontainer_link: Option<ComponentLink<TabbedContainer>>,
     menuwidget_link: Option<ComponentLink<MenuWidget>>,
     proofs: HashMap<String, ComponentLink<ProofWidget>>,
 }
 
 pub enum AppMsg {
-    ExprChanged(String, Option<Expr>),
     TabbedContainerInit(ComponentLink<TabbedContainer>),
     MenuWidgetInit(ComponentLink<MenuWidget>),
     CreateTab { name: String, content: Html },
@@ -945,7 +938,6 @@ impl Component for App {
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         Self {
             link,
-            last_good_parse: "".into(), current_expr: None,
             tabcontainer_link: None,
             menuwidget_link: None,
             proofs: HashMap::new(),
@@ -954,11 +946,6 @@ impl Component for App {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            AppMsg::ExprChanged(last_good_parse, current_expr) => {
-                self.last_good_parse = last_good_parse;
-                self.current_expr = current_expr;
-                true
-            },
             AppMsg::TabbedContainerInit(tabcontainer_link) => {
                 self.tabcontainer_link = Some(tabcontainer_link);
                 false
