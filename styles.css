@@ -18,3 +18,10 @@
     max-height: 400px;
     overflow-y: auto;
 }
+
+/* Apply this to a bootstrap alert on a <span> tag and it will be button-sized */
+.small-alert {
+    display: inline-block;
+    padding: 0.375rem 0.75rem;
+    margin-bottom: 0;
+}
