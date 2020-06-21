@@ -229,9 +229,20 @@ pub mod RuleM {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// Classifications of rules for displaying in a nested drop-down menu in the GUI
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Display, EnumIter)]
 pub enum RuleClassification {
     Introduction, Elimination, Equivalence, Inference, Predicate
+}
+
+impl RuleClassification {
+    /// Get an iterator over the rules in this rule classification
+    pub fn rules(self) -> impl Iterator<Item=Rule> {
+        RuleM::ALL_RULES
+            .iter()
+            .filter(move |rule| rule.get_classifications().contains(&self))
+            .cloned()
+    }
 }
 
 /// libaris::rules::RuleT contains metadata and implementations of the rules

@@ -11,3 +11,10 @@
 .proof-line * {
     vertical-align: middle;
 }
+
+/* Enable scrollbar in bootstrap drop-down menu
+   https://github.com/davidstutz/bootstrap-multiselect/issues/1#issuecomment-12063820 */
+.dropdown-scrollbar {
+    max-height: 400px;
+    overflow-y: auto;
+}
