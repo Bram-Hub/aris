@@ -357,9 +357,17 @@ impl ProofWidget {
                     Coproduct::Inl(_) => html! { <span class="alert alert-success small-alert">{ "Premise" }</span> },
                     _ => html! { <span class="alert alert-success small-alert">{ "Correct" }</span> },
                 },
-                Some(Err(e)) => {
-                    // TODO: proper CSS hover box
-                    html! { <span class="alert alert-danger small-alert" title=format!("{}", e)>{ "Error (hover for details)" }</span> }
+                Some(Err(err)) => {
+                    html! {
+                        <>
+                            <button type="button" class="btn btn-danger" data-toggle="popover" data-content=err>
+                                { "Error" }
+                            </button>
+                            <script>
+                                { "$('[data-toggle=popover]').popover()" }
+                            </script>
+                        </>
+                    }
                 },
             }
         })();
