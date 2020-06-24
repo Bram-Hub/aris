@@ -15,8 +15,6 @@ mod box_chars {
     pub(super) const DOWN_RIGHT: char = '╭';
     pub(super) const UP_RIGHT: char = '╰';
     pub(super) const HORIZ: char = '─';
-    pub(super) const UP_VERT: char = '╵';
-    pub(super) const DOWN_VERT: char = '╷';
 }
 
 pub struct ExprAstWidget {
@@ -375,8 +373,8 @@ impl ProofWidget {
                 <td> { dep_checkbox } </td>
                 <td>
                 { indentation }
-                { action_selector }
                 <input type="text" oninput=handle_input onfocus=select_line style="width:400px" value=self.pud.ref_to_input.get(&proofref).unwrap_or(&String::new()) />
+                { action_selector }
                 </td>
                 { justification_widget }
                 <td>{ rule_feedback }</td>
