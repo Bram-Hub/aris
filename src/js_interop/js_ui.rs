@@ -350,7 +350,7 @@ impl ProofWidget {
                 None => html! { <span class="alert alert-warning small-alert">{ "Parse error" }</span> },
                 Some(Ok(())) => match proofref {
                     Coproduct::Inl(_) => html! { <span class="alert alert-success small-alert">{ "Premise" }</span> },
-                    _ => html! { <span class="alert alert-success small-alert">{ "Correct" }</span> },
+                    _ => html! { <span class="alert small-alert bg-success text-white">{ "Correct" }</span> },
                 },
                 Some(Err(err)) => {
                     html! {
