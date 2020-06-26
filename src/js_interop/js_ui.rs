@@ -374,10 +374,10 @@ impl ProofWidget {
                 <td>
                 { indentation }
                 <input type="text" oninput=handle_input onfocus=select_line style="width:400px" value=self.pud.ref_to_input.get(&proofref).unwrap_or(&String::new()) />
-                { action_selector }
                 </td>
+                <td>{ rule_feedback } </td>
                 { justification_widget }
-                <td>{ rule_feedback }</td>
+                <td>{ action_selector }</td>
             </tr>
         }
     }
