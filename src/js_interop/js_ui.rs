@@ -381,6 +381,36 @@ impl ProofWidget {
             }
         }
     }
+    fn render_rule_feedback(&self, proofref: PJRef<P>, is_subproof: bool) -> Html {
+        use parser::parse;
+        let raw_line = match self.pud.ref_to_input.get(&proofref).and_then(|x| if x.len() > 0 { Some(x) } else { None }) {
+            None => { return html! { <span></span> }; },
+            Some(x) => x,
+        };
+        match parse(&raw_line).map(|_| self.prf.verify_line(&proofref)) {
+            None => html! { <span class="alert alert-warning small-alert">{ "Parse error" }</span> },
+            Some(Ok(())) => match proofref {
+                Coproduct::Inl(_) => html! {
+                    <span class="alert alert-success small-alert">
+                        { if is_subproof { "Assumption" } else { "Premise" } }
+                    </span>
+                },
+                _ => html! { <span class="alert small-alert bg-success text-white">{ "Correct" }</span> },
+            },
+            Some(Err(err)) => {
+                html! {
+                    <>
+                        <button type="button" class="btn btn-danger" data-toggle="popover" data-content=err>
+                            { "Error" }
+                        </button>
+                        <script>
+                            { "$('[data-toggle=popover]').popover()" }
+                        </script>
+                    </>
+                }
+            },
+        }
+    }
     pub fn render_proof_line(&self, line: usize, depth: usize, proofref: PJRef<P>, edge_decoration: &str) -> Html {
         let selection_indicator =
             if self.selected_line == Some(proofref.clone()) {
@@ -460,33 +490,8 @@ impl ProofWidget {
             }
         };
         let justification_widget = self.render_justification_widget(proofref.clone());
-        let rule_feedback = (|| {
-            use parser::parse;
-            let raw_line = match self.pud.ref_to_input.get(&proofref).and_then(|x| if x.len() > 0 { Some(x) } else { None }) {
-                None => { return html! { <span></span> }; },
-                Some(x) => x,
-            };
-            match parse(&raw_line).map(|_| self.prf.verify_line(&proofref)) {
-                None => html! { <span class="alert alert-warning small-alert">{ "Parse error" }</span> },
-                Some(Ok(())) => match proofref {
-                    Coproduct::Inl(_) => html! { <span class="alert alert-success small-alert">{ "Premise" }</span> },
-                    _ => html! { <span class="alert small-alert bg-success text-white">{ "Correct" }</span> },
-                },
-                Some(Err(err)) => {
-                    html! {
-                        <>
-                            <button type="button" class="btn btn-danger" data-toggle="popover" data-content=err>
-                                { "Error" }
-                            </button>
-                            <script>
-                                { "$('[data-toggle=popover]').popover()" }
-                            </script>
-                        </>
-                    }
-                },
-            }
-        })();
         let init_value = self.pud.ref_to_input.get(&proofref).cloned().unwrap_or_default();
+        let in_subproof = depth > 0;
         html! {
             <tr class="proof-line">
                 <td> { selection_indicator } </td>
@@ -499,7 +504,7 @@ impl ProofWidget {
                         onfocus=select_line
                         init_value=init_value />
                 </td>
-                <td>{ rule_feedback } </td>
+                <td> { self.render_rule_feedback(proofref, in_subproof) } </td>
                 { justification_widget }
                 <td>{ action_selector }</td>
             </tr>
