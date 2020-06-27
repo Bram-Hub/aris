@@ -1,4 +1,5 @@
 use expression::Expr;
+use parser::prettify_expr;
 use frunk::Coproduct;
 use gloo::timers::callback::Timeout;
 use proofs::{Proof, Justification, pooledproof::PooledProof, PJRef, pj_to_pjs, js_to_pjs};
@@ -15,6 +16,121 @@ mod box_chars {
     pub(super) const DOWN_RIGHT: char = '╭';
     pub(super) const UP_RIGHT: char = '╰';
     pub(super) const HORIZ: char = '─';
+}
+
+/// A text field for entering expressions
+pub struct ExprEntry {
+    /// Link to self
+    link: ComponentLink<Self>,
+    /// Properties
+    props: ExprEntryProps,
+    /// Reference to `<input>` node
+    node_ref: NodeRef,
+}
+
+/// Message indicating text was changed
+pub enum ExprEntryMsg {
+    /// Text field was edited
+    Edit,
+    /// Text field was focused
+    Focus,
+}
+
+/// Properties for `ExprEntry`
+#[derive(Clone, Properties)]
+pub struct ExprEntryProps {
+    /// Callback to call when text field is changed, with the first parameter
+    /// being the new text
+    oninput: Callback<String>,
+    /// Callback to call when text field is focused
+    #[prop_or_default]
+    onfocus: Option<Callback<()>>,
+    /// Initial text in text field when it is loaded
+    init_value: String,
+}
+
+impl Component for ExprEntry {
+    type Message = ExprEntryMsg;
+    type Properties = ExprEntryProps;
+    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+        Self {
+            link,
+            props,
+            node_ref: NodeRef::default(),
+        }
+    }
+    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+        match msg {
+            ExprEntryMsg::Edit => self.handle_edit(),
+            ExprEntryMsg::Focus => {
+                if let Some(onfocus) = &self.props.onfocus {
+                    onfocus.emit(())
+                }
+            }
+        }
+
+        false
+    }
+    fn view(&self) -> Html {
+        html! {
+            <input
+                ref=self.node_ref.clone()
+                type="text"
+                style="width:400px"
+                oninput=self.link.callback(|_| ExprEntryMsg::Edit)
+                onfocus=self.link.callback(|_| ExprEntryMsg::Focus)
+                value=self.props.init_value />
+        }
+    }
+}
+
+impl ExprEntry {
+    /// Handle an edit of the expression text field by prettifying the text with
+    /// `libaris::parse::prettify_expr()`. To preserve the cursor position, the
+    /// strings to the left and right of the cursor are prettified separately.
+    fn handle_edit(&self) {
+        // Get `<input>` element used as a text field
+        let input_elem = self.node_ref
+            .cast::<web_sys::HtmlInputElement>()
+            .expect("failed casting node ref to input element");
+
+        // Get cursor position in text field
+        let cursor_pos = input_elem
+            .selection_start()
+            .expect("failed getting selection start")
+            .unwrap_or_default()
+            as usize;
+
+        // Get text to the left and right of cursor position
+        //
+        // NOTE: The cursor position is measured in characters, not bytes, so
+        // the `String` must be converted to `Vec<char>`.
+        let value = input_elem.value().chars().collect::<Vec<char>>();
+        let (left, right) = value.split_at(cursor_pos);
+
+        // Convert left and right text back into regular `Strings` and prettify
+        let left = left.into_iter().collect::<String>();
+        let left = prettify_expr(&left);
+        let right = right.into_iter().collect::<String>();
+        let right = prettify_expr(&right);
+
+        // Compute new cursor position
+        let cursor_pos = left.chars().count() as u32;
+
+        // Update text field value
+        let value = [left, right].concat();
+        input_elem.set_value(&value);
+
+        // Update cursor position
+        input_elem
+            .set_selection_start(Some(cursor_pos))
+            .expect("failed setting selection start");
+        input_elem
+            .set_selection_end(Some(cursor_pos))
+            .expect("failed setting selection end");
+
+        self.props.oninput.emit(value);
+    }
 }
 
 pub struct ExprAstWidget {
@@ -52,16 +168,20 @@ impl Component for ExprAstWidget {
         true
     }
     fn view(&self) -> Html {
+        let expr_debug = self.current_expr
+            .as_ref()
+            .map(|e| format!("{:#?}", e))
+            .unwrap_or("Error".into());
         html! {
             <div>
                 <h2> {"Enter Expression:"} </h2>
-                <input type="text" oninput=self.link.callback(|e: InputData| e.value) style="width:400px" value={ &self.current_input } />
+                <ExprEntry
+                    oninput=self.link.callback(|value| value)
+                    init_value={ &self.current_input } />
                 <div>
                     { &self.last_good_parse }
                     <br/>
-                    <pre>
-                        { self.current_expr.as_ref().map(|e| format!("{:#?}", e)).unwrap_or("Error".into()) }
-                    </pre>
+                    <pre> { expr_debug } </pre>
                 </div>
             </div>
         }
@@ -300,9 +420,9 @@ impl ProofWidget {
             }
         });
         let proofref_ = proofref.clone();
-        let handle_input = self.link.callback(move |e: InputData| ProofWidgetMsg::LineChanged(proofref_.clone(), e.value.clone()));
+        let handle_input = self.link.callback(move |value: String| ProofWidgetMsg::LineChanged(proofref_.clone(), value));
         let proofref_ = proofref.clone();
-        let select_line = self.link.callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::Select, proofref_.clone()));
+        let select_line = self.link.callback(move |()| ProofWidgetMsg::LineAction(LineActionKind::Select, proofref_.clone()));
         let action_selector = {
             use frunk::Coproduct::{Inl, Inr};
             let mut options = yew::virtual_dom::VList::new();
@@ -366,14 +486,18 @@ impl ProofWidget {
                 },
             }
         })();
+        let init_value = self.pud.ref_to_input.get(&proofref).cloned().unwrap_or_default();
         html! {
             <tr class="proof-line">
                 <td> { selection_indicator } </td>
                 <td> { lineinfo } </td>
                 <td> { dep_checkbox } </td>
                 <td>
-                { indentation }
-                <input type="text" oninput=handle_input onfocus=select_line style="width:400px" value=self.pud.ref_to_input.get(&proofref).unwrap_or(&String::new()) />
+                    { indentation }
+                    <ExprEntry
+                        oninput=handle_input
+                        onfocus=select_line
+                        init_value=init_value />
                 </td>
                 <td>{ rule_feedback } </td>
                 { justification_widget }
