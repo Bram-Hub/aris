@@ -862,7 +862,19 @@ impl Component for TabbedContainer {
         let mut tab_links = yew::virtual_dom::VList::new();
         let mut out = yew::virtual_dom::VList::new();
         for (i, (name, data)) in self.tabs.iter().enumerate() {
-            tab_links.add_child(html! { <input type="button" onclick=self.link.callback(move |_| TabbedContainerMsg::SwitchTab(i)) value=name /> });
+            let onclick = self.link.callback(move |_| TabbedContainerMsg::SwitchTab(i));
+            let link_class = if i == self.current_tab {
+                "nav-link active"
+            } else {
+                "nav-link"
+            };
+            tab_links.add_child(html! {
+                <li class="nav-item">
+                    <a class=link_class href="#" onclick=onclick>
+                        { name }
+                    </a>
+                </li>
+            });
             if i == self.current_tab {
                 out.add_child(html! { <div> { data.clone() } </div> });
             } else {
@@ -872,7 +884,7 @@ impl Component for TabbedContainer {
 
         html! {
             <div>
-                <div> { tab_links }</div>
+                <ul class="nav nav-pills"> { tab_links } </ul>
                 { out }
             </div>
         }
