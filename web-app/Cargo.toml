@@ -1,0 +1,19 @@
+[package]
+name = "aris-web-app"
+version = "0.1.0"
+authors = ["Avi Weinstock <aweinstock314@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+aris = { path = "../aris" }
+yew = "0.16.2"
+gloo = "0.2.0"
+wasm-bindgen = "^0.2"
+wee_alloc = "0.4"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = ["HtmlAnchorElement"] }
+frunk = "0.2.2"
+strum = "0.18.0"
+
+[lib]
+crate_type = ["cdylib", "rlib"]

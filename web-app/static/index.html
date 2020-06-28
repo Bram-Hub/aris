@@ -14,9 +14,9 @@
     <script src="vendored/bootstrap.bundle.min.js" integrity="sha384-1CmrxMRARb6aLqgBO7yyAxTOQE2AKb9GfXnEo760AUcUmFx3ibVJJAzGytlQcNXd" crossorigin="anonymous"></script>
     <script src="vendored/bootstrap-submenu.min.js" integrity="sha384-p9cpfn4GxrhaxjNJV0HguYSwg/S0x5a3tLXFMyBQtrGd0zdVWRKwpqNGuNRrfLtH" crossorigin="anonymous"></script>
     <script type="module">
-        import init, { run_app } from './pkg/libaris.js';
+        import init, { run_app } from './pkg/aris_web_app.js';
         async function main() {
-            await init('./pkg/libaris_bg.wasm');
+            await init('./pkg/aris_web_app_bg.wasm');
             run_app();
         }
         main()

@@ -1,5 +1,10 @@
 use super::*;
 
+use aris::rules::Rule;
+use aris::rules::RuleClassification;
+use aris::rules::RuleM;
+use aris::rules::RuleT;
+
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern "system" fn Java_edu_rpi_aris_rules_Rule_fromRule(env: JNIEnv, _: JObject, rule: JObject) -> jobject {
@@ -104,7 +109,7 @@ pub extern "system" fn Java_edu_rpi_aris_rules_Rule_subProofPremises(env: JNIEnv
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern "system" fn Java_edu_rpi_aris_rules_Rule_verifyClaim(env: JNIEnv, ruleobj: JObject, conclusion: JObject, premises: jarray) -> jstring {
-    use proofs::java_shallow_proof::JavaShallowProof;
+    use aris::proofs::java_shallow_proof::JavaShallowProof;
     with_thrown_errors(&env, |env| {
         let ptr: jni::sys::jlong = env.get_field(ruleobj, "pointerToRustHeap", "J")?.j()?;
         let rule: &Rule = unsafe { &*(ptr as *mut Rule) };

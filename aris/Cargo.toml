@@ -1,0 +1,22 @@
+[package]
+name = "aris"
+version = "0.1.0"
+authors = ["Avi Weinstock <aweinstock314@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+base64 = "0.12.0"
+failure = "0.1.6"
+lazy_static = "1.4.0"
+nom = "4.1.1"
+petgraph = "0.4.13"
+sha2 = "0.8.1"
+varisat = "0.2.1"
+xml-rs = "0.8.0"
+itertools = "0.9.0"
+frunk = "0.2.2"
+strum = "0.18.0"
+strum_macros = "0.18.0"
+
+[build-dependencies]
+version_check = "0.9"

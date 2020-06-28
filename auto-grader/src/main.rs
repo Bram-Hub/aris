@@ -1,4 +1,4 @@
-extern crate libaris;
+extern crate aris;
 
 // This file builds the headless version of Aris,
 // meant for verifying proofs submitted on Submitty.
@@ -11,11 +11,11 @@ use std::fs::File;
 use std::collections::HashSet;
 use std::fmt::Debug;
 
-use libaris::rules::ProofCheckError;
-use libaris::proofs::{Proof, Justification, PJRef};
-use libaris::expression::Expr;
-use libaris::proofs::xml_interop::proof_from_xml;
-use libaris::proofs::lined_proof::LinedProof;
+use aris::rules::ProofCheckError;
+use aris::proofs::{Proof, Justification, PJRef};
+use aris::expression::Expr;
+use aris::proofs::xml_interop::proof_from_xml;
+use aris::proofs::lined_proof::LinedProof;
 
 fn validate_recursive<P: Proof>(proof: &P, line: PJRef<P>) -> Result<(), (PJRef<P>, ProofCheckError<PJRef<P>, P::SubproofReference>)>
 where PJRef<P>:Debug, P::SubproofReference:Debug {
@@ -71,7 +71,7 @@ fn main() -> Result<(), String> {
     let instructor_file = File::open(&instructor_path).expect("Could not open instructor file");
     let student_file = File::open(&student_path).expect("Could not open student file");
 
-    type P = libaris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
+    type P = aris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
 
     let (i_prf, i_meta) = proof_from_xml::<P, _>(&instructor_file).unwrap();
     let (s_prf, _) = proof_from_xml::<P, _>(&student_file).unwrap();

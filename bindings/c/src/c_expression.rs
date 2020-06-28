@@ -1,5 +1,8 @@
-use super::*;
-use std::ffi::{CStr/*, CString*/};
+use crate::with_null_options;
+
+pub use aris::expression::*;
+
+use std::ffi::CStr;
 
 #[no_mangle] pub extern "C" fn aris_vec_expr_index(x: &Vec<Expr>, i: usize) -> Expr { x[i].clone() }
 #[no_mangle] pub extern "C" fn aris_vec_string_index(x: &Vec<String>, i: usize) -> String { x[i].clone() }
@@ -9,6 +12,6 @@ use std::ffi::{CStr/*, CString*/};
 pub extern "C" fn aris_expr_parse(e: *const i8) -> *mut Expr {
     with_null_options(|| {
         let s = unsafe { CStr::from_ptr(e) }.to_string_lossy().into_owned();
-        parser::parse(&s)
+        aris::parser::parse(&s)
     })
 }

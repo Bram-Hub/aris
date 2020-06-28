@@ -1,5 +1,11 @@
 use super::*;
 
+use aris::expression::ASymbol;
+use aris::expression::BSymbol;
+use aris::expression::Expr;
+use aris::expression::QSymbol;
+use aris::expression::USymbol;
+
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern "system" fn Java_edu_rpi_aris_ast_Expression_toDebugString(env: JNIEnv, obj: JObject) -> jstring {
@@ -31,7 +37,7 @@ pub extern "system" fn Java_edu_rpi_aris_ast_Expression_equals(env: JNIEnv, this
 pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> {
     let cls = env.call_method(obj, "getClass", "()Ljava/lang/Class;", &[])?.l()?;
     let name = String::from(env.get_string(JString::from(env.call_method(cls, "getName", "()Ljava/lang/String;", &[])?.l()?))?);
-    use expression_builders::*;
+    use aris::expression::expression_builders::*;
     let handle_binop = |symbol: BSymbol| -> jni::errors::Result<Expr> {
         let left = env.get_field(obj, "l", "Ledu/rpi/aris/ast/Expression;")?.l()?;
         let right = env.get_field(obj, "r", "Ledu/rpi/aris/ast/Expression;")?.l()?;
@@ -71,7 +77,7 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
             let func = jobject_to_expr(env, env.get_field(obj, "func", "Ledu/rpi/aris/ast/Expression;")?.l()?)?;
             let mut args = vec![];
             java_iterator_for_each(env, env.get_field(obj, "args", "Ljava/util/List;")?.l()?, |arg| { Ok(args.push(jobject_to_expr(env, arg)?)) })?;
-            Ok(expression_builders::apply(func, &args[..]))
+            Ok(aris::expression::expression_builders::apply(func, &args[..]))
         },
         _ => Err(jni::errors::Error::from_kind(jni::errors::ErrorKind::Msg(format!("jobject_to_expr: unknown class {}", name)))),
     }
@@ -83,7 +89,7 @@ pub extern "system" fn Java_edu_rpi_aris_ast_Expression_parseViaRust(env: JNIEnv
     with_thrown_errors(&env, |env| {
         if let Ok(e) = JavaStr::from_env(&env, e)?.to_str() {
             //println!("received {:?}", e);
-            let parsed = parser::parse(&e);
+            let parsed = aris::parser::parse(&e);
             //println!("parse: {:?}", parsed);
             if let Some(expr) = parsed {
                 let r = expr_to_jobject(&env, expr)?;
@@ -184,4 +190,3 @@ impl HasClass for Expr {
         }
     }
 }
-
