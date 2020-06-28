@@ -265,7 +265,7 @@ pub struct ProofWidgetProps {
 }
 
 impl ProofWidget {
-    pub fn render_dep_or_sdep_checkbox(&self, proofref: Coprod!(PJRef<P>, <P as Proof>::SubproofReference)) -> Html {
+    pub fn render_line_num_dep_checkbox(&self, line: usize, proofref: Coprod!(PJRef<P>, <P as Proof>::SubproofReference)) -> Html {
         if let Some(selected_line) = self.selected_line {
             use frunk::Coproduct::{Inl, Inr};
             if let Inr(Inl(_)) = selected_line {
@@ -287,7 +287,18 @@ impl ProofWidget {
                     ProofWidgetMsg::Nop
                 });
                 if self.prf.can_reference_dep(&selected_line, &proofref) {
-                    return html! { <input type="checkbox" onclick=handle_dep_changed checked=checked></input> };
+                    let id = format!("dep-box-{}", line);
+                    return html! {
+                        <div class="custom-control custom-checkbox checkbox-big">
+                            <input
+                                id=id
+                                type="checkbox"
+                                class="custom-control-input"
+                                onclick=handle_dep_changed
+                                checked=checked />
+                            <label for=id class="custom-control-label"> { line } </label>
+                        </div>
+                    };
                 }
             }
         }
@@ -426,8 +437,7 @@ impl ProofWidget {
             } else {
                 yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new())
             };
-        let dep_checkbox = self.render_dep_or_sdep_checkbox(frunk::Coproduct::inject(proofref.clone()));
-        let lineinfo = format!("{}", line);
+        let line_num_dep_checkbox = self.render_line_num_dep_checkbox(line, frunk::Coproduct::inject(proofref.clone()));
         let mut indentation = yew::virtual_dom::VList::new();
         for _ in 0..depth {
             //indentation.add_child(html! { <span style="background-color:black">{"-"}</span>});
@@ -503,8 +513,7 @@ impl ProofWidget {
         html! {
             <tr class="proof-line">
                 <td> { selection_indicator } </td>
-                <td> { lineinfo } </td>
-                <td> { dep_checkbox } </td>
+                <td> { line_num_dep_checkbox } </td>
                 <td>
                     { indentation }
                     <ExprEntry
@@ -527,14 +536,13 @@ impl ProofWidget {
             output.push((self.render_proof_line(*line, *depth, Coproduct::inject(prem.clone()), &edge_decoration), false));
             *line += 1;
         }
-        let sdep_checkbox = match sref {
-            Some(sr) => self.render_dep_or_sdep_checkbox(frunk::Coproduct::inject(sr)),
+        let dep_checkbox = match sref {
+            Some(sr) => self.render_line_num_dep_checkbox(*line, frunk::Coproduct::inject(sr)),
             None => yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new()),
         };
         let mut spacer = yew::virtual_dom::VList::new();
         spacer.add_child(html! { <td></td> });
-        spacer.add_child(html! { <td></td> });
-        spacer.add_child(html! { <td>{ sdep_checkbox }</td> });
+        spacer.add_child(html! { <td>{ dep_checkbox }</td> });
         //spacer.add_child(html! { <td style="background-color:black"></td> });
         let mut spacer_lines = String::new();
         for _ in 0..*depth {
