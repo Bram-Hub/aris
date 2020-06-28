@@ -71,6 +71,10 @@ impl Component for ExprEntry {
 
         false
     }
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        self.props = props;
+        true
+    }
     fn view(&self) -> Html {
         html! {
             <input
@@ -165,6 +169,10 @@ impl Component for ExprAstWidget {
         if let Some(expr) = &self.current_expr {
             self.last_good_parse = format!("{}", expr);
         }
+        true
+    }
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        self.update(props.initial_contents);
         true
     }
     fn view(&self) -> Html {
@@ -309,7 +317,7 @@ impl ProofWidget {
                         }
                     })
                     .collect::<Vec<yew::virtual_dom::VNode>>();
-                let rules = yew::virtual_dom::VList::new_with_children(rules);
+                let rules = yew::virtual_dom::VList::new_with_children(rules, None);
                 // Create sub-menu for rule class
                 html! {
                     <div class="dropdown dropright dropdown-submenu">
@@ -319,7 +327,7 @@ impl ProofWidget {
                 }
             })
             .collect::<Vec<yew::virtual_dom::VNode>>();
-        let menu = yew::virtual_dom::VList::new_with_children(menu);
+        let menu = yew::virtual_dom::VList::new_with_children(menu, None);
 
         // Create top-level menu button
         html! {
@@ -567,7 +575,7 @@ impl ProofWidget {
             }
         }
         let output: Vec<Html> = output.into_iter().map(|(x,_)| x).collect();
-        let output = yew::virtual_dom::VList::new_with_children(output);
+        let output = yew::virtual_dom::VList::new_with_children(output, None);
         if *depth == 0 {
             html! { <table>{ output }</table> }
         } else {
@@ -776,6 +784,10 @@ impl Component for ProofWidget {
         }
         ret
     }
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        self.props = props;
+        true
+    }
     fn view(&self) -> Html {
         let interactive_proof = self.render_proof(self.prf.top_level_proof(), None, &mut 1, &mut 0);
         html! {
@@ -835,6 +847,10 @@ impl Component for TabbedContainer {
                 false
             },
         }
+    }
+
+    fn change(&mut self, _: Self::Properties) -> ShouldRender {
+        false
     }
 
     fn view(&self) -> Html {
@@ -1008,6 +1024,11 @@ impl Component for MenuWidget {
         }
     }
 
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        self.props = props;
+        true
+    }
+
     fn view(&self) -> Html {
         let handle_open_file = self.link.callback(move |e| {
             if let ChangeData::Files(file_list) = e {
@@ -1105,6 +1126,10 @@ impl Component for App {
                 false
             }
         }
+    }
+
+    fn change(&mut self, _: Self::Properties) -> ShouldRender {
+        false
     }
 
     fn view(&self) -> Html {
