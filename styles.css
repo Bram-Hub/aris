@@ -26,3 +26,10 @@
     padding: 0.375rem 0.75rem;
     margin-bottom: 0;
 }
+
+/* Apply `checkbox-big` to a Bootstrap checkbox <div> to increase the size
+   https://mdbootstrap.com/snippets/jquery/mdbootstrap/820928 */
+.checkbox-big .custom-control-label::before, .checkbox-big .custom-control-label::after {
+    width: 1.2rem;
+    height: 1.2rem;
+}
