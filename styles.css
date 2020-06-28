@@ -10,6 +10,7 @@
 
 .proof-line * {
     vertical-align: middle;
+    white-space: nowrap;
 }
 
 /* Enable scrollbar in bootstrap drop-down menu
