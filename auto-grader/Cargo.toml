@@ -1,0 +1,9 @@
+[package]
+name = "aris-auto-grader"
+version = "0.1.0"
+authors = ["Avi Weinstock <aweinstock314@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+aris = { path = "../aris" }
+frunk = "0.2.2"

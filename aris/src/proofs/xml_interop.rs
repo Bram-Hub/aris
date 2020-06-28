@@ -268,7 +268,7 @@ pub fn xml_from_proof_and_metadata_with_hash<P: Proof, W: Write>(prf: &P, meta: 
 
 #[test]
 fn test_xml() {
-    let data = &include_bytes!("../../propositional_logic_arguments_for_proofs_ii_problem_10.bram")[..];
+    let data = &include_bytes!("../../../example-proofs/propositional_logic_arguments_for_proofs_ii_problem_10.bram")[..];
     type P = super::proofs::pooledproof::PooledProof<Hlist![Expr]>;
     let (prf, metadata) = proof_from_xml::<P, _>(data).unwrap();
     println!("{:?} {:?}\n{}", metadata.author, metadata.hash, prf);

@@ -1,0 +1,18 @@
+[package]
+name = "aris-c"
+version = "0.1.0"
+authors = ["Avi Weinstock <aweinstock314@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+aris = { path = "../../aris" }
+
+[lib]
+crate-type = ["cdylib"]
+name = "aris"
+
+[features]
+workaround_rls_vscode_bug_586 = []
+
+[build-dependencies]
+cbindgen = "*"

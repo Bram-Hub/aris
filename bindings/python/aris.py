@@ -164,7 +164,7 @@ def freevars(expr):
     return FV().visit(expr)
 
 scriptpath = os.path.abspath(os.path.dirname(__file__))
-aris = ctypes.cdll[scriptpath+'/target/release/liblibaris_rs.so']
+aris = ctypes.cdll[scriptpath+'../../target/release/libaris.so']
 
 aris.aris_expr_parse.restype = ctypes.POINTER(Expr)
 

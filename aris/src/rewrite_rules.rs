@@ -1,5 +1,6 @@
-use expression::*;
-use combinatorics::{combinations, cartesian_product};
+use crate::expression::*;
+use crate::combinatorics::{combinations, cartesian_product};
+
 use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -12,7 +13,7 @@ impl RewriteRule {
     /// [("pattern", "replacement"), ...]
     /// Will parse strings into `Expr`s and permute all commutative binops
     pub fn from_patterns(patterns: &[(&str, &str)]) -> Self {
-        use parser::parse_unwrap as p;
+        use crate::parser::parse_unwrap as p;
         let reductions = permute_patterns(patterns.into_iter().map(|(premise, conclusion)| {
             (p(premise), p(conclusion))
         }).collect::<Vec<_>>());
@@ -40,8 +41,8 @@ impl RewriteRule {
 /// E.g. ((A & B) & C) ==> [((A & B) & C), ((B & A) & C), (C & (A & B)), (C & (B & A))]
 /// This function is extremely slow! Don't use it for large expressions or too often.
 fn permute_ops(e: Expr) -> Vec<Expr> {
-    use Expr::*;
-    use expression_builders::*;
+    use crate::Expr::*;
+    use crate::expression_builders::*;
     match e {
         // Trivial cases
         e @ Contradiction => vec![e],
@@ -117,7 +118,7 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
 
 #[test]
 fn test_permute_ops() {
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
 
     // A & B
     // B & A
@@ -160,8 +161,8 @@ fn permute_patterns(patterns: Vec<(Expr, Expr)>) -> Vec<(Expr, Expr)> {
 /// # Example
 /// ```
 /// // DeMorgan's for and/or that have only two parameters
-/// use libaris::expression::{ASymbol, expression_builders::*};
-/// use libaris::rewrite_rules::reduce_pattern;
+/// use aris::expression::{ASymbol, expression_builders::*};
+/// use aris::rewrite_rules::reduce_pattern;
 ///
 /// // ~(phi & psi) ==> ~phi | ~psi
 /// let pattern1 = not(assocbinop(ASymbol::And, &[var("phi"), var("psi")]));
@@ -232,7 +233,7 @@ fn reduce_transform_func(expr: Expr, patterns: &[(Expr, Expr, HashSet<String>)])
 ///   * `new_replace` is the old `replace` with the renames in `new_pattern`
 ///   * `pattern_vars` is the set of free variables in `new_pattern`
 fn freevarsify_pattern(e: &Expr, patterns: &[(Expr, Expr)]) -> Vec<(Expr, Expr, HashSet<String>)> {
-    use expression_builders::*;
+    use crate::expression_builders::*;
 
     let e_free = freevars(e);
 

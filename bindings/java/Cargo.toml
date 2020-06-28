@@ -1,0 +1,13 @@
+[package]
+name = "aris-java"
+version = "0.1.0"
+authors = ["Avi Weinstock <aweinstock314@gmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+aris = { path = "../../aris" }
+jni = "0.10.2"
+frunk = "0.2.2"

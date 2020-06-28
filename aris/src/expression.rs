@@ -4,14 +4,14 @@
 Parsing an expression that's statically known to be valid:
 
 ```
-use libaris::parser::parse_unwrap as p;
+use aris::parser::parse_unwrap as p;
 
 let expr1 = p("forall x, p(x) -> (Q & R)");
 ```
 
 Parsing a potentially malformed expression (e.g. user input):
 ```
-use libaris::parser;
+use aris::parser;
 
 fn handle_user_input(input: &str) -> String {
     match parser::parse(input) {
@@ -26,8 +26,8 @@ assert_eq!(&handle_user_input("bad(missing, paren"), "unsuccessful parse");
 `Expr` is an enum, and can be inspected with rust's `match` construct:
 
 ```
-use libaris::parser::parse_unwrap as p;
-use libaris::expression::*;
+use aris::parser::parse_unwrap as p;
+use aris::expression::*;
 
 fn is_it_an_and(e: &Expr) -> bool {
     match e {
@@ -45,7 +45,7 @@ assert_eq!(is_it_an_and(&expr2), false);
 assert_eq!(is_it_an_and(&expr3), false);
 
 fn does_it_have_any_ands(e: &Expr) -> bool {
-    use libaris::expression::Expr::*;
+    use aris::expression::Expr::*;
     match e {
         Contradiction | Tautology | Var { .. } => false,
         Apply { func, args } => does_it_have_any_ands(&func) || args.iter().any(|arg| does_it_have_any_ands(arg)),
@@ -86,7 +86,7 @@ pub enum ASymbol { And, Or, Bicon, Equiv }
 #[repr(C)]
 pub enum QSymbol { Forall, Exists }
 
-/// libaris::expression::Expr is the core AST (Abstract Syntax Tree) type for representing logical expressions.
+/// aris::expression::Expr is the core AST (Abstract Syntax Tree) type for representing logical expressions.
 /// For most of the recursive cases, it uses symbols so that code can work on the shape of e.g. a binary operation without worrying about which binary operation it is.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[repr(C)]
@@ -135,8 +135,8 @@ pub enum NnfExpr {
 /// polarity and name of the literal.
 ///
 /// ```rust
-/// use libaris::expression::Expr;
-/// # use libaris::expression::CnfExpr;
+/// use aris::expression::Expr;
+/// # use aris::expression::CnfExpr;
 /// assert_eq!(Expr::Tautology.into_cnf(), Some(CnfExpr::tautology()));
 /// ```
 ///
@@ -1169,9 +1169,9 @@ impl Expr {
     /// arithmetic.
     ///
     /// ```rust
-    /// use libaris::parser::parse_unwrap as p;
-    /// # use libaris::expression::Expr;
-    /// use libaris::expression::CnfExpr;
+    /// use aris::parser::parse_unwrap as p;
+    /// # use aris::expression::Expr;
+    /// use aris::expression::CnfExpr;
     ///
     /// let a = CnfExpr::var("A");
     /// let b = CnfExpr::var("B");
@@ -1190,9 +1190,9 @@ impl Expr {
     /// arithmetic.
     ///
     /// ```rust
-    /// use libaris::parser::parse_unwrap as p;
-    /// # use libaris::expression::Expr;
-    /// use libaris::expression::NnfExpr;
+    /// use aris::parser::parse_unwrap as p;
+    /// # use aris::expression::Expr;
+    /// use aris::expression::NnfExpr;
     ///
     /// let a = NnfExpr::var("A");
     /// let b = NnfExpr::var("B");
@@ -1253,8 +1253,8 @@ impl NnfExpr {
     /// Create a true NNF expression.
     ///
     /// ```rust
-    /// use libaris::parser::parse_unwrap as p;
-    /// # use libaris::expression::NnfExpr;
+    /// use aris::parser::parse_unwrap as p;
+    /// # use aris::expression::NnfExpr;
     ///
     /// assert_eq!(p("⊤").into_nnf(), Some(NnfExpr::tautology()));
     /// ```
@@ -1267,8 +1267,8 @@ impl NnfExpr {
     /// Create a false NNF expression.
     ///
     /// ```rust
-    /// use libaris::parser::parse_unwrap as p;
-    /// # use libaris::expression::NnfExpr;
+    /// use aris::parser::parse_unwrap as p;
+    /// # use aris::expression::NnfExpr;
     ///
     /// assert_eq!(p("⊥").into_nnf(), Some(NnfExpr::contradiction()));
     /// ```
@@ -1282,8 +1282,8 @@ impl NnfExpr {
     /// expressions.
     ///
     /// ```rust
-    /// use libaris::parser::parse_unwrap as p;
-    /// # use libaris::expression::NnfExpr;
+    /// use aris::parser::parse_unwrap as p;
+    /// # use aris::expression::NnfExpr;
     ///
     /// let a = NnfExpr::var("A");
     /// let b = NnfExpr::var("B");
@@ -1298,8 +1298,8 @@ impl NnfExpr {
     /// Create an NNF expression from a variable name
     ///
     /// ```rust
-    /// use libaris::parser::parse_unwrap as p;
-    /// # use libaris::expression::NnfExpr;
+    /// use aris::parser::parse_unwrap as p;
+    /// # use aris::expression::NnfExpr;
     ///
     /// assert_eq!(p("A").into_nnf(), Some(NnfExpr::var("A")));
     /// ```
@@ -1312,8 +1312,8 @@ impl NnfExpr {
     /// expressions.
     ///
     /// ```rust
-    /// use libaris::parser::parse_unwrap as p;
-    /// # use libaris::expression::NnfExpr;
+    /// use aris::parser::parse_unwrap as p;
+    /// # use aris::expression::NnfExpr;
     ///
     /// let a = NnfExpr::var("A");
     /// let b = NnfExpr::var("B");
@@ -1330,8 +1330,8 @@ impl NnfExpr {
     /// Create an NNF expression by applying logical NOT to an NNF expression.
     ///
     /// ```rust
-    /// use libaris::parser::parse_unwrap as p;
-    /// # use libaris::expression::NnfExpr;
+    /// use aris::parser::parse_unwrap as p;
+    /// # use aris::expression::NnfExpr;
     ///
     /// let a = NnfExpr::var("A");
     ///
@@ -1349,8 +1349,8 @@ impl NnfExpr {
     /// Convert from [`NnfExpr`](NnfExpr) into [`CnfExpr`](CnfExpr) by distributing ORs.
     ///
     /// ```rust
-    /// # use libaris::expression::NnfExpr;
-    /// # use libaris::expression::CnfExpr;
+    /// # use aris::expression::NnfExpr;
+    /// # use aris::expression::CnfExpr;
     /// assert_eq!(NnfExpr::var("A").into_cnf(), CnfExpr::var("A"));
     /// ```
     pub fn into_cnf(self) -> CnfExpr {
@@ -1371,8 +1371,8 @@ impl CnfExpr {
     /// Create a true CNF expression.
     ///
     /// ```rust
-    /// use libaris::parser::parse_unwrap as p;
-    /// # use libaris::expression::CnfExpr;
+    /// use aris::parser::parse_unwrap as p;
+    /// # use aris::expression::CnfExpr;
     ///
     /// assert_eq!(p("⊤").into_cnf(), Some(CnfExpr::tautology()));
     /// ```
@@ -1385,8 +1385,8 @@ impl CnfExpr {
     /// Create a false CNF expression.
     ///
     /// ```rust
-    /// use libaris::parser::parse_unwrap as p;
-    /// # use libaris::expression::CnfExpr;
+    /// use aris::parser::parse_unwrap as p;
+    /// # use aris::expression::CnfExpr;
     ///
     /// assert_eq!(p("⊥").into_cnf(), Some(CnfExpr::contradiction()));
     /// ```
@@ -1400,8 +1400,8 @@ impl CnfExpr {
     /// polarity).
     ///
     /// ```rust
-    /// use libaris::parser::parse_unwrap as p;
-    /// # use libaris::expression::CnfExpr;
+    /// use aris::parser::parse_unwrap as p;
+    /// # use aris::expression::CnfExpr;
     ///
     /// assert_eq!(p("A").into_cnf().unwrap(), CnfExpr::literal(true, "A"));
     /// assert_eq!(p("~A").into_cnf().unwrap(), CnfExpr::literal(false, "A"));
@@ -1413,8 +1413,8 @@ impl CnfExpr {
     /// Create a CNF expression from a variable.
     ///
     /// ```rust
-    /// use libaris::parser::parse_unwrap as p;
-    /// # use libaris::expression::CnfExpr;
+    /// use aris::parser::parse_unwrap as p;
+    /// # use aris::expression::CnfExpr;
     ///
     /// assert_eq!(p("A").into_cnf().unwrap(), CnfExpr::var("A"));
     /// ```
@@ -1425,8 +1425,8 @@ impl CnfExpr {
     /// Create a CNF expression by applying logical AND to many CNF expressions.
     ///
     /// ```rust
-    /// use libaris::parser::parse_unwrap as p;
-    /// # use libaris::expression::CnfExpr;
+    /// use aris::parser::parse_unwrap as p;
+    /// # use aris::expression::CnfExpr;
     ///
     /// let a = CnfExpr::var("A");
     /// let b = CnfExpr::var("B");
@@ -1442,8 +1442,8 @@ impl CnfExpr {
     /// Create a CNF expression by applying logical OR to many CNF expressions.
     ///
     /// ```rust
-    /// use libaris::parser::parse_unwrap as p;
-    /// # use libaris::expression::CnfExpr;
+    /// use aris::parser::parse_unwrap as p;
+    /// # use aris::expression::CnfExpr;
     ///
     /// let a = CnfExpr::var("A");
     /// let b = CnfExpr::var("B");
@@ -1472,7 +1472,7 @@ impl CnfExpr {
     /// model returned by `varisat` can be pretty printed.
     ///
     /// ```rust
-    /// # use libaris::expression::CnfExpr;
+    /// # use aris::expression::CnfExpr;
     /// let (sat, vars) = CnfExpr::var("A").to_varisat();
     /// ```
     ///

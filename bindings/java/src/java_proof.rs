@@ -1,6 +1,11 @@
 use super::*;
-use proofs::lined_proof::LinedProof;
-use proofs::pooledproof::PooledProof;
+
+use aris::expression::Expr;
+use aris::proofs::Proof;
+use aris::proofs::lined_proof::LinedProof;
+use aris::proofs::pooledproof::PooledProof;
+
+use frunk::Hlist;
 
 #[no_mangle]
 #[allow(non_snake_case)]
@@ -65,7 +70,7 @@ pub extern "system" fn Java_edu_rpi_aris_proof_RustProof_fromXml(env: JNIEnv, _:
     with_thrown_errors(&env, |env| {
         let xml = String::from(env.get_string(jxml)?);
         println!("{:?}", xml);
-        if let Ok((prf, _)) = xml_interop::proof_from_xml::<PooledProof<Hlist![Expr]>, _>(xml.as_bytes()) {
+        if let Ok((prf, _)) = aris::proofs::xml_interop::proof_from_xml::<PooledProof<Hlist![Expr]>, _>(xml.as_bytes()) {
             println!("{}", prf);
             let prf = Box::into_raw(Box::new(LinedProof::<PooledProof<Hlist![Expr]>>::from_proof(prf)));
             let jprf = env.new_object("edu/rpi/aris/proof/RustProof", "(J)V", &[JValue::from(prf as jni::sys::jlong)])?;

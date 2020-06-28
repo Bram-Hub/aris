@@ -39,7 +39,7 @@ Each `check` implementation usually starts off with bringing the rules of the re
 - Verify that all the structural changes compile, possibly commit the structural changes so far
     - Commit `b86de7fbe6bea3947ef864b8f253be34ec0c1306` is a good example of what the structure should look like at this point
 - Replace the `unimplemented!()` with an actual implementation
-- Add tests (both should-pass and should-fail) for the new rule to `libaris::proofs::proof_tests`
+- Add tests (both should-pass and should-fail) for the new rule to `aris::proofs::proof_tests`
 
 Adding the tests and implementing the rule can be interleaved; it's convenient to debug the implementation by iterating on `cargo test -- test_your_rule_name`, possibly with `--nocapture` if you're println-debugging.
 
@@ -245,7 +245,7 @@ impl RuleClassification {
     }
 }
 
-/// libaris::rules::RuleT contains metadata and implementations of the rules
+/// aris::rules::RuleT contains metadata and implementations of the rules
 pub trait RuleT {
     /// get_name gets the name of the rule for display in the GUI
     fn get_name(&self) -> String;

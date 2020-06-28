@@ -3,8 +3,8 @@
 This module houses different proof representations with different performance/simplicity tradeoffs.
 
 # Concrete proof types
-You probably want `type P1 = libaris::proofs::pooledproof::PooledProof<Hlist![Expr]>;` if you want to interactively mutate a proof, and
-`type P2 = libaris::proofs::lined_proof::LinedProof<P1>;` if you want to display line numbers for a finalized proof.
+You probably want `type P1 = aris::proofs::pooledproof::PooledProof<Hlist![Expr]>;` if you want to interactively mutate a proof, and
+`type P2 = aris::proofs::lined_proof::LinedProof<P1>;` if you want to display line numbers for a finalized proof.
 
 The rest of the types are either experiments that didn't pan out or are internal shims
 
@@ -28,10 +28,10 @@ The test running apparatus expects you to return the proof, a list of line refer
 
 ```
 #[macro_use] extern crate frunk;
-use libaris::expression::Expr;
-use libaris::proofs::xml_interop::proof_from_xml;
-let data = &include_bytes!("../propositional_logic_arguments_for_proofs_ii_problem_10.bram")[..];
-type P = libaris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
+use aris::expression::Expr;
+use aris::proofs::xml_interop::proof_from_xml;
+let data = &include_bytes!("../../example-proofs/propositional_logic_arguments_for_proofs_ii_problem_10.bram")[..];
+type P = aris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
 let (prf, metadata) = proof_from_xml::<P, _>(data).unwrap();
 ```
 
@@ -56,11 +56,11 @@ Code that builds the proof generically and then instantiates it:
 ```
 #[macro_use] extern crate frunk;
 use frunk::Coproduct;
-use libaris::expression::Expr;
-use libaris::proofs::{Proof, Justification, pooledproof::PooledProof};
-use libaris::rules::RuleM;
+use aris::expression::Expr;
+use aris::proofs::{Proof, Justification, pooledproof::PooledProof};
+use aris::rules::RuleM;
 fn contraposition_demo<P: Proof>() -> P {
-    use libaris::parser::parse_unwrap as p;
+    use aris::parser::parse_unwrap as p;
     let mut prf = P::new();
     let line1 = prf.add_premise(p("P -> Q"));
     let sub2to6 = prf.add_subproof();
@@ -78,7 +78,7 @@ fn contraposition_demo<P: Proof>() -> P {
     prf
 }
 
-type P = libaris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
+type P = aris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
 let concrete_proof = contraposition_demo::<P>();
 ```
 
@@ -87,10 +87,10 @@ let concrete_proof = contraposition_demo::<P>();
 ```
 #[macro_use] extern crate frunk;
 use frunk::Coproduct;
-use libaris::expression::Expr;
-use libaris::parser::parse_unwrap as p;
-use libaris::proofs::{Proof, Justification, pooledproof::PooledProof};
-use libaris::rules::RuleM;
+use aris::expression::Expr;
+use aris::parser::parse_unwrap as p;
+use aris::proofs::{Proof, Justification, pooledproof::PooledProof};
+use aris::rules::RuleM;
 
 let mut prf = PooledProof::<Hlist![Expr]>::new();
 let r1 = prf.add_premise(p("A"));
@@ -116,8 +116,8 @@ This is prevented by the fact that the lifetime parameter of the subproof refere
 
 ```compile_fail,E0495
 #[macro_use] extern crate frunk;
-use libaris::proofs::{Proof, pooledproof::PooledProof};
-use libaris::expression::Expr;
+use aris::proofs::{Proof, pooledproof::PooledProof};
+use aris::expression::Expr;
 fn should_fail_with_lifetime_error() {
     let mut p = PooledProof::<Hlist![Expr]>::new();
     let r = p.add_subproof();
@@ -200,7 +200,7 @@ pub fn pj_to_pjs<P: Proof>(pj: PJRef<P>) -> PJSRef<P> {
 
 
 
-/// libaris::proofs::Proof is the core trait for working with proofs.
+/// aris::proofs::Proof is the core trait for working with proofs.
 pub trait Proof: Sized {
     type PremiseReference: Clone + Eq + Hash;
     type JustificationReference: Clone + Eq + Hash;

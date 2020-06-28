@@ -1,9 +1,11 @@
-use expression::Expr;
-use parser::prettify_expr;
+use aris::expression::Expr;
+use aris::parser::prettify_expr;
 use frunk::Coproduct;
+use frunk::Coprod;
+use frunk::Hlist;
 use gloo::timers::callback::Timeout;
-use proofs::{Proof, Justification, pooledproof::PooledProof, PJRef, pj_to_pjs, js_to_pjs};
-use rules::{Rule, RuleM, RuleT, RuleClassification};
+use aris::proofs::{Proof, Justification, pooledproof::PooledProof, PJRef, pj_to_pjs, js_to_pjs};
+use aris::rules::{Rule, RuleM, RuleT, RuleClassification};
 use std::collections::{BTreeSet,HashMap};
 use std::{fmt, mem};
 use wasm_bindgen::{closure::Closure, JsValue, JsCast};
@@ -98,7 +100,7 @@ impl Component for ExprEntry {
 
 impl ExprEntry {
     /// Handle an edit of the expression text field by prettifying the text with
-    /// `libaris::parse::prettify_expr()`. To preserve the cursor position, the
+    /// `aris::parse::prettify_expr()`. To preserve the cursor position, the
     /// strings to the left and right of the cursor are prettified separately.
     fn handle_edit(&self) {
         // Get `<input>` element used as a text field
@@ -171,7 +173,7 @@ impl Component for ExprAstWidget {
         ret
     }
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        use parser::parse;
+        use aris::parser::parse;
         self.current_input = msg.clone();
         self.current_expr = parse(&*msg);
         if let Some(expr) = &self.current_expr {
@@ -412,7 +414,7 @@ impl ProofWidget {
         }
     }
     fn render_rule_feedback(&self, proofref: PJRef<P>, is_subproof: bool) -> Html {
-        use parser::parse;
+        use aris::parser::parse;
         let raw_line = match self.pud.ref_to_input.get(&proofref).and_then(|x| if x.len() > 0 { Some(x) } else { None }) {
             None => { return html! { <span></span> }; },
             Some(x) => x,
@@ -666,10 +668,10 @@ impl Component for ProofWidget {
         props.oncreate.emit(link.clone());
         let mut prf;
         if let Some(data) = &props.data {
-            let (prf2, _metadata) = crate::xml_interop::proof_from_xml::<P, _>(&data[..]).unwrap();
+            let (prf2, _metadata) = aris::proofs::xml_interop::proof_from_xml::<P, _>(&data[..]).unwrap();
             prf = prf2;
         } else {
-            use expression_builders::var;
+            use aris::expression::expression_builders::var;
             prf = P::new();
             prf.add_premise(var(""));
             prf.add_step(Justification(var(""), RuleM::Reit, vec![], vec![]));
@@ -698,7 +700,7 @@ impl Component for ProofWidget {
             ProofWidgetMsg::Nop => {},
             ProofWidgetMsg::LineChanged(r, input) => {
                 self.pud.ref_to_input.insert(r.clone(), input.clone());
-                if let Some(e) = crate::parser::parse(&input) {
+                if let Some(e) = aris::parser::parse(&input) {
                     match r {
                         Inl(pr) => { self.prf.with_mut_premise(&pr, |x| { *x = e }); },
                         Inr(Inl(jr)) => { self.prf.with_mut_step(&jr, |x| { x.0 = e }); },
@@ -708,7 +710,7 @@ impl Component for ProofWidget {
                 ret = true;
             },
             ProofWidgetMsg::LineAction(LineActionKind::Insert { what, after, relative_to }, orig_ref) => {
-                use expression_builders::var;
+                use aris::expression::expression_builders::var;
                 let to_select;
                 let insertion_point = match relative_to {
                     LAKItem::Line => orig_ref,
@@ -1016,7 +1018,7 @@ impl Component for MenuWidget {
             MenuWidgetMsg::FileSave => {
                 let node = self.node_ref.get().expect("MenuWidget::node_ref failed");
                 self.props.parent.send_message(AppMsg::GetProofFromCurrentTab(Box::new(move |name, prf| {
-                    use proofs::xml_interop;
+                    use aris::proofs::xml_interop;
                     let mut data = vec![];
                     let metadata = xml_interop::ProofMetaData {
                         author: Some("ARIS-YEW-UI".into()),
@@ -1173,7 +1175,7 @@ impl Component for App {
         let resolution_fname_ = resolution_fname.clone();
         let tabview = html! {
             <TabbedContainer tab_ids=vec![resolution_fname.clone(), "Parser demo".into()] oncreate=self.link.callback(|link| AppMsg::TabbedContainerInit(link))>
-                <ProofWidget verbose=true data=Some(include_bytes!("../../resolution_example.bram").to_vec()) oncreate=self.link.callback(move |link| AppMsg::RegisterProofName { name: resolution_fname_.clone(), link }) />
+                <ProofWidget verbose=true data=Some(include_bytes!("../../example-proofs/resolution_example.bram").to_vec()) oncreate=self.link.callback(move |link| AppMsg::RegisterProofName { name: resolution_fname_.clone(), link }) />
             </TabbedContainer>
         };
         html! {
