@@ -722,15 +722,18 @@ impl Component for ProofWidget {
                 match what {
                     LAKItem::Line => {
                         fn remove_line_if_allowed<P: Proof, Q: Proof<PremiseReference=<P as Proof>::PremiseReference, JustificationReference=<P as Proof>::JustificationReference>>(prf: &mut Q, pud: &mut ProofUiData<P>, proofref: PJRef<Q>) {
-                            pud.ref_to_line_depth.remove(&proofref);
-                            pud.ref_to_input.remove(&proofref);
                             if may_remove_line(prf, &proofref) {
+                                pud.ref_to_line_depth.remove(&proofref);
+                                pud.ref_to_input.remove(&proofref);
                                 prf.remove_line(&proofref);
                             }
                         }
                         match parent {
                             Some(sr) => { let pud = &mut self.pud; self.prf.with_mut_subproof(&sr, |sub| { remove_line_if_allowed(sub, pud, proofref); }); },
                             None => { remove_line_if_allowed(&mut self.prf, &mut self.pud, proofref); },
+                        }
+                        if self.selected_line == Some(proofref) {
+                            self.selected_line = None;
                         }
                     },
                     LAKItem::Subproof => {
