@@ -732,9 +732,6 @@ impl Component for ProofWidget {
                             Some(sr) => { let pud = &mut self.pud; self.prf.with_mut_subproof(&sr, |sub| { remove_line_if_allowed(sub, pud, proofref); }); },
                             None => { remove_line_if_allowed(&mut self.prf, &mut self.pud, proofref); },
                         }
-                        if self.selected_line == Some(proofref) {
-                            self.selected_line = None;
-                        }
                     },
                     LAKItem::Subproof => {
                         // TODO: recursively clean out the ProofUiData entries for lines inside a subproof before deletion
@@ -744,6 +741,11 @@ impl Component for ProofWidget {
                         }
                     },
                 }
+                // Deselect current line to prevent it from pointing to a
+                // deleted line. The selected line could be deep inside a
+                // deleted subproof, so it's easier to deselect conservatively
+                // than to figure out if the selected line is deleted.
+                self.selected_line = None;
                 ret = true;
             },
             ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule }, proofref) => {
