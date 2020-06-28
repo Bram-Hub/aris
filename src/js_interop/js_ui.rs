@@ -18,6 +18,14 @@ mod box_chars {
     pub(super) const HORIZ: char = '─';
 }
 
+/// Create a unique ID that is different each call
+fn uid() -> usize {
+    use std::sync::atomic::AtomicUsize;
+    use std::sync::atomic::Ordering;
+    static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
+    NEXT_ID.fetch_add(1, Ordering::Relaxed)
+}
+
 /// A text field for entering expressions
 pub struct ExprEntry {
     /// Link to self
@@ -287,7 +295,10 @@ impl ProofWidget {
                     ProofWidgetMsg::Nop
                 });
                 if self.prf.can_reference_dep(&selected_line, &proofref) {
-                    let id = format!("dep-box-{}", line);
+                    // We have to use a UID and not a line number here because
+                    // line numbers can conflict between tabs.
+                    let id = format!("dep-box-{}", uid());
+
                     return html! {
                         <div class="custom-control custom-checkbox checkbox-big">
                             <input
