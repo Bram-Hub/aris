@@ -1,229 +1,28 @@
-use aris::expression::Expr;
-use aris::parser::prettify_expr;
-use frunk::Coproduct;
+use crate::box_chars;
+use crate::components::expr_entry::ExprEntry;
+use crate::proof_ui_data::ProofUiData;
+use crate::util::calculate_lineinfo;
+use crate::util::P;
+use crate::util::uid;
+
+use aris::proofs::pj_to_pjs;
+use aris::proofs::Justification;
+use aris::proofs::Proof;
+use aris::proofs::PJRef;
+use aris::rules::Rule;
+use aris::rules::RuleClassification;
+use aris::rules::RuleM;
+use aris::rules::RuleT;
+
+use std::collections::BTreeSet;
+use std::fmt;
+use std::mem;
+
 use frunk::Coprod;
-use frunk::Hlist;
-use gloo::timers::callback::Timeout;
-use aris::proofs::{Proof, Justification, pooledproof::PooledProof, PJRef, pj_to_pjs, js_to_pjs};
-use aris::rules::{Rule, RuleM, RuleT, RuleClassification};
-use std::collections::{BTreeSet,HashMap};
-use std::{fmt, mem};
-use wasm_bindgen::{closure::Closure, JsValue, JsCast};
-use yew::prelude::*;
+use frunk::Coproduct;
 use strum::IntoEnumIterator;
-
-mod box_chars {
-    pub(super) const VERT: char = '│';
-    pub(super) const VERT_RIGHT: char = '├';
-    pub(super) const DOWN_RIGHT: char = '╭';
-    pub(super) const UP_RIGHT: char = '╰';
-    pub(super) const HORIZ: char = '─';
-}
-
-/// Create a unique ID that is different each call
-fn uid() -> usize {
-    use std::sync::atomic::AtomicUsize;
-    use std::sync::atomic::Ordering;
-    static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
-    NEXT_ID.fetch_add(1, Ordering::Relaxed)
-}
-
-/// A text field for entering expressions
-pub struct ExprEntry {
-    /// Link to self
-    link: ComponentLink<Self>,
-    /// Properties
-    props: ExprEntryProps,
-    /// Reference to `<input>` node
-    node_ref: NodeRef,
-}
-
-/// Message indicating text was changed
-pub enum ExprEntryMsg {
-    /// Text field was edited
-    Edit,
-    /// Text field was focused
-    Focus,
-}
-
-/// Properties for `ExprEntry`
-#[derive(Clone, Properties)]
-pub struct ExprEntryProps {
-    /// Callback to call when text field is changed, with the first parameter
-    /// being the new text
-    oninput: Callback<String>,
-    /// Callback to call when text field is focused
-    #[prop_or_default]
-    onfocus: Option<Callback<()>>,
-    /// Initial text in text field when it is loaded
-    init_value: String,
-}
-
-impl Component for ExprEntry {
-    type Message = ExprEntryMsg;
-    type Properties = ExprEntryProps;
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self {
-            link,
-            props,
-            node_ref: NodeRef::default(),
-        }
-    }
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        match msg {
-            ExprEntryMsg::Edit => self.handle_edit(),
-            ExprEntryMsg::Focus => {
-                if let Some(onfocus) = &self.props.onfocus {
-                    onfocus.emit(())
-                }
-            }
-        }
-
-        false
-    }
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        self.props = props;
-        true
-    }
-    fn view(&self) -> Html {
-        html! {
-            <input
-                ref=self.node_ref.clone()
-                type="text"
-                style="width:400px"
-                oninput=self.link.callback(|_| ExprEntryMsg::Edit)
-                onfocus=self.link.callback(|_| ExprEntryMsg::Focus)
-                value=self.props.init_value />
-        }
-    }
-}
-
-impl ExprEntry {
-    /// Handle an edit of the expression text field by prettifying the text with
-    /// `aris::parse::prettify_expr()`. To preserve the cursor position, the
-    /// strings to the left and right of the cursor are prettified separately.
-    fn handle_edit(&self) {
-        // Get `<input>` element used as a text field
-        let input_elem = self.node_ref
-            .cast::<web_sys::HtmlInputElement>()
-            .expect("failed casting node ref to input element");
-
-        // Get cursor position in text field
-        let cursor_pos = input_elem
-            .selection_start()
-            .expect("failed getting selection start")
-            .unwrap_or_default()
-            as usize;
-
-        // Get text to the left and right of cursor position
-        //
-        // NOTE: The cursor position is measured in characters, not bytes, so
-        // the `String` must be converted to `Vec<char>`.
-        let value = input_elem.value().chars().collect::<Vec<char>>();
-        let (left, right) = value.split_at(cursor_pos);
-
-        // Convert left and right text back into regular `Strings` and prettify
-        let left = left.into_iter().collect::<String>();
-        let left = prettify_expr(&left);
-        let right = right.into_iter().collect::<String>();
-        let right = prettify_expr(&right);
-
-        // Compute new cursor position
-        let cursor_pos = left.chars().count() as u32;
-
-        // Update text field value
-        let value = [left, right].concat();
-        input_elem.set_value(&value);
-
-        // Update cursor position
-        input_elem
-            .set_selection_start(Some(cursor_pos))
-            .expect("failed setting selection start");
-        input_elem
-            .set_selection_end(Some(cursor_pos))
-            .expect("failed setting selection end");
-
-        self.props.oninput.emit(value);
-    }
-}
-
-pub struct ExprAstWidget {
-    link: ComponentLink<Self>,
-    current_input: String,
-    last_good_parse: String,
-    current_expr: Option<Expr>,
-}
-
-#[derive(Clone, Properties)]
-pub struct ExprAstWidgetProps {
-    pub initial_contents: String,
-}
-
-impl Component for ExprAstWidget {
-    type Message = String;
-    type Properties = ExprAstWidgetProps;
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let mut ret = Self {
-            link,
-            current_expr: None,
-            current_input: props.initial_contents.clone(),
-            last_good_parse: "".into(),
-        };
-        ret.update(props.initial_contents);
-        ret
-    }
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        use aris::parser::parse;
-        self.current_input = msg.clone();
-        self.current_expr = parse(&*msg);
-        if let Some(expr) = &self.current_expr {
-            self.last_good_parse = format!("{}", expr);
-        }
-        true
-    }
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        self.update(props.initial_contents);
-        true
-    }
-    fn view(&self) -> Html {
-        let expr_debug = self.current_expr
-            .as_ref()
-            .map(|e| format!("{:#?}", e))
-            .unwrap_or("Error".into());
-        html! {
-            <div>
-                <h2> {"Enter Expression:"} </h2>
-                <ExprEntry
-                    oninput=self.link.callback(|value| value)
-                    init_value={ &self.current_input } />
-                <div>
-                    { &self.last_good_parse }
-                    <br/>
-                    <pre> { expr_debug } </pre>
-                </div>
-            </div>
-        }
-    }
-}
-
-// yew doesn't seem to allow Components to be generic over <P: Proof>, so fix a proof type P at the module level
-pub type P = PooledProof<Hlist![Expr]>;
-
-pub struct ProofUiData<P: Proof> {
-    ref_to_line_depth: HashMap<PJRef<P>, (usize, usize)>,
-    ref_to_input: HashMap<PJRef<P>, String>,
-}
-
-impl<P: Proof> ProofUiData<P> {
-    pub fn from_proof(prf: &P) -> ProofUiData<P> {
-        let mut ref_to_line_depth = HashMap::new();
-        calculate_lineinfo::<P>(&mut ref_to_line_depth, prf.top_level_proof(), &mut 1, &mut 0);
-        ProofUiData {
-            ref_to_line_depth,
-            ref_to_input: initialize_inputs(prf),
-        }
-    }
-}
+use wasm_bindgen::JsCast;
+use yew::prelude::*;
 
 pub struct ProofWidget {
     link: ComponentLink<Self>,
@@ -269,13 +68,13 @@ impl fmt::Debug for ProofWidgetMsg {
 
 #[derive(Clone, Properties)]
 pub struct ProofWidgetProps {
-    verbose: bool,
-    data: Option<Vec<u8>>,
-    oncreate: Callback<ComponentLink<ProofWidget>>,
+    pub verbose: bool,
+    pub data: Option<Vec<u8>>,
+    pub oncreate: Callback<ComponentLink<ProofWidget>>,
 }
 
 impl ProofWidget {
-    pub fn render_line_num_dep_checkbox(&self, line: usize, proofref: Coprod!(PJRef<P>, <P as Proof>::SubproofReference)) -> Html {
+    fn render_line_num_dep_checkbox(&self, line: usize, proofref: Coprod!(PJRef<P>, <P as Proof>::SubproofReference)) -> Html {
         if let Some(selected_line) = self.selected_line {
             use frunk::Coproduct::{Inl, Inr};
             if let Inr(Inl(_)) = selected_line {
@@ -368,7 +167,7 @@ impl ProofWidget {
             </div>
         }
     }
-    pub fn render_justification_widget(&self, proofref: PJRef<P>) -> Html {
+    fn render_justification_widget(&self, proofref: PJRef<P>) -> Html {
         use frunk::Coproduct::{Inl, Inr};
         if let Inr(Inl(_)) = proofref {
             let lookup_result = self.prf.lookup_pj(&proofref).expect("proofref should exist in self.prf");
@@ -443,7 +242,7 @@ impl ProofWidget {
             },
         }
     }
-    pub fn render_proof_line(&self, line: usize, depth: usize, proofref: PJRef<P>, edge_decoration: &str) -> Html {
+    fn render_proof_line(&self, line: usize, depth: usize, proofref: PJRef<P>, edge_decoration: &str) -> Html {
         let selection_indicator =
             if self.selected_line == Some(proofref.clone()) {
                 html! { <span style="background-color: cyan; color: blue"> { ">" } </span> }
@@ -541,7 +340,7 @@ impl ProofWidget {
         }
     }
 
-    pub fn render_proof(&self, prf: &<P as Proof>::Subproof, sref: Option<<P as Proof>::SubproofReference>, line: &mut usize, depth: &mut usize) -> Html {
+    fn render_proof(&self, prf: &<P as Proof>::Subproof, sref: Option<<P as Proof>::SubproofReference>, line: &mut usize, depth: &mut usize) -> Html {
         // output has a bool tag to prune subproof spacers with, because VNode's PartialEq doesn't do the right thing
         let mut output: Vec<(Html, bool)> = Vec::new();
         for prem in prf.premises().iter() {
@@ -603,47 +402,6 @@ impl ProofWidget {
             yew::virtual_dom::VNode::from(output)
         }
     }
-}
-
-pub fn calculate_lineinfo<P: Proof>(output: &mut HashMap<PJRef<P>, (usize, usize)>, prf: &<P as Proof>::Subproof, line: &mut usize, depth: &mut usize) {
-    for prem in prf.premises() {
-        output.insert(Coproduct::inject(prem.clone()), (*line, *depth));
-        *line += 1;
-    }
-    for lineref in prf.lines() {
-        use frunk::Coproduct::{Inl, Inr};
-        match lineref {
-            Inl(r) => { output.insert(Coproduct::inject(r), (*line, *depth)); *line += 1; },
-            Inr(Inl(sr)) => { *depth += 1; calculate_lineinfo::<P>(output, &prf.lookup_subproof(&sr).unwrap(), line, depth); *depth -= 1; },
-            Inr(Inr(void)) => { match void {} },
-        }
-    }
-}
-
-pub fn initialize_inputs<P: Proof>(prf: &P) -> HashMap<PJRef<P>, String> {
-    fn aux<P: Proof>(p: &<P as Proof>::Subproof, out: &mut HashMap<PJRef<P>, String>) {
-        use frunk::Coproduct::{Inl, Inr};
-        for line in p.premises().into_iter().map(Coproduct::inject).chain(p.lines().into_iter().map(js_to_pjs::<P>)) {
-            match line {
-                Inl(pr) => {
-                    if let Some(e) = p.lookup_expr(&Coproduct::inject(pr.clone())) {
-                        out.insert(Coproduct::inject(pr.clone()), format!("{}", e));
-                    }
-                }
-                Inr(Inl(jr)) => {
-                    if let Some(e) = p.lookup_expr(&Coproduct::inject(jr.clone())) {
-                        out.insert(Coproduct::inject(jr.clone()), format!("{}", e));
-                    }
-                },
-                Inr(Inr(Inl(sr))) => aux::<P>(&p.lookup_subproof(&sr).unwrap(), out),
-                Inr(Inr(Inr(void))) => match void {},
-            }
-        }
-    }
-
-    let mut out = HashMap::new();
-    aux::<P>(prf.top_level_proof(), &mut out);
-    out
 }
 
 fn may_remove_line<P: Proof>(prf: &P, proofref: &PJRef<P>) -> bool {
@@ -825,363 +583,6 @@ impl Component for ProofWidget {
                     <hr />
                     <pre> { self.preblob.clone() } </pre>
                 </div>
-            </div>
-        }
-    }
-}
-
-pub struct TabbedContainer {
-    link: ComponentLink<Self>,
-    tabs: Vec<(String, Html)>,
-    current_tab: usize,
-}
-pub enum TabbedContainerMsg {
-    SwitchTab(usize),
-    CreateTab { name: String, content: Html },
-    GetCurrentTab(Box<dyn FnOnce(usize, String)>),
-}
-
-#[derive(Clone,Properties)]
-pub struct TabbedContainerProps {
-    tab_ids: Vec<String>,
-    children: Children,
-    oncreate: Callback<ComponentLink<TabbedContainer>>,
-}
-
-impl Component for TabbedContainer {
-    type Message = TabbedContainerMsg;
-    type Properties = TabbedContainerProps;
-
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let tabs: Vec<(String, Html)> = props.tab_ids.into_iter().zip(props.children.to_vec().into_iter()).collect();
-        props.oncreate.emit(link.clone());
-        Self { link, tabs, current_tab: 0 }
-    }
-
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        match msg {
-            TabbedContainerMsg::SwitchTab(idx) => {
-                self.current_tab = idx;
-                true
-            },
-            TabbedContainerMsg::CreateTab { name, content } => {
-                self.tabs.push((name, content));
-                true
-            },
-            TabbedContainerMsg::GetCurrentTab(f) => {
-                f(self.current_tab, self.tabs[self.current_tab].0.clone());
-                false
-            },
-        }
-    }
-
-    fn change(&mut self, _: Self::Properties) -> ShouldRender {
-        false
-    }
-
-    fn view(&self) -> Html {
-        let mut tab_links = yew::virtual_dom::VList::new();
-        let mut out = yew::virtual_dom::VList::new();
-        for (i, (name, data)) in self.tabs.iter().enumerate() {
-            let onclick = self.link.callback(move |_| TabbedContainerMsg::SwitchTab(i));
-            let link_class = if i == self.current_tab {
-                "nav-link active"
-            } else {
-                "nav-link"
-            };
-            tab_links.add_child(html! {
-                <li class="nav-item">
-                    <a class=link_class href="#" onclick=onclick>
-                        { name }
-                    </a>
-                </li>
-            });
-            if i == self.current_tab {
-                out.add_child(html! { <div> { data.clone() } </div> });
-            } else {
-                out.add_child(html! { <div style="display:none"> { data.clone() } </div> });
-            }
-        }
-
-        html! {
-            <div>
-                <ul class="nav nav-pills"> { tab_links } </ul>
-                { out }
-            </div>
-        }
-    }
-}
-
-pub struct FileOpenHelper {
-    filepicker_visible: bool,
-    file_open_closure: Closure<dyn FnMut(JsValue)>,
-    filename_tx: std::sync::mpsc::Sender<(String, web_sys::FileReader)>,
-}
-
-impl FileOpenHelper {
-    fn new(parent: ComponentLink<App>) -> Self {
-        let (filename_tx, filename_rx) = std::sync::mpsc::channel::<(String, web_sys::FileReader)>();
-        let file_open_closure = Closure::wrap(Box::new(move |_| {
-            if let Ok((fname, reader)) = filename_rx.recv() {
-                if let Ok(contents) = reader.result() {
-                    if let Some(contents) = contents.as_string() {
-                        let fname_ = fname.clone();
-                        let oncreate = parent.callback(move |link| AppMsg::RegisterProofName { name: fname_.clone(), link });
-                        parent.send_message(AppMsg::CreateTab { name: fname, content: html! { <ProofWidget verbose=true data=Some(contents.into_bytes()) oncreate=oncreate /> }});
-                    }
-                }
-            }
-        }) as Box<dyn FnMut(JsValue)>);
-        Self {
-            filepicker_visible: false,
-            file_open_closure,
-            filename_tx,
-        }
-    }
-    fn fileopen1(&mut self) -> ShouldRender {
-        self.filepicker_visible = true;
-        true
-        // For "security reasons", you can't trigger a click event on an <input type="file" /> from javascript
-        // so the below approach that would have gotten things working without these auxillary continuation/mpsc shenanigans doesn't work
-        /*let window = web_sys::window().expect("web_sys::window failed");
-        let document = window.document().expect("window.document failed");
-        let node = self.node_ref.get().expect("MenuWidget::node_ref failed");
-        let input = document.create_element("input").expect("document.create_element(\"input\") failed");
-        let input = input.dyn_into::<web_sys::HtmlInputElement>().expect("dyn_into::HtmlInputElement failed");
-        input.set_type("file");
-        node.append_child(&input);
-        input.click();
-        Timeout::new(1, move || {
-            node.remove_child(&input);
-        }).forget();*/
-    }
-    fn fileopen2(&mut self, file_list: web_sys::FileList) -> ShouldRender {
-        self.filepicker_visible = false;
-        if let Some(file) = file_list.get(0) {
-            // MDN (https://developer.mozilla.org/en-US/docs/Web/API/Blob/text) and web-sys (https://docs.rs/web-sys/0.3.36/web_sys/struct.Blob.html#method.text)
-            // both document "Blob.text()" as being a thing, but both chrome and firefox say that "getObject(...).text is not a function"
-            /*let _ = self.filename_tx.send(file.name());
-            file.dyn_into::<web_sys::Blob>().expect("dyn_into::<web_sys::Blob> failed").text().then(&self.file_open_closure);*/
-            let reader = web_sys::FileReader::new().expect("FileReader");
-            reader.set_onload(Some(self.file_open_closure.as_ref().unchecked_ref()));
-            reader.read_as_text(&file).expect("FileReader::read_as_text");
-            let _ = self.filename_tx.send((file.name(), reader));
-        }
-        true
-    }
-}
-
-pub struct MenuWidget {
-    link: ComponentLink<Self>,
-    props: MenuWidgetProps,
-    node_ref: NodeRef,
-    next_tab_idx: usize,
-    file_open_helper: FileOpenHelper,
-}
-
-pub enum MenuWidgetMsg {
-    FileNew,
-    FileOpen1,
-    FileOpen2(web_sys::FileList),
-    FileSave,
-    NewExprTree,
-    Nop,
-}
-#[derive(Properties, Clone)]
-pub struct MenuWidgetProps {
-    parent: ComponentLink<App>,
-    oncreate: Callback<ComponentLink<MenuWidget>>,
-}
-
-impl Component for MenuWidget {
-    type Message = MenuWidgetMsg;
-    type Properties = MenuWidgetProps;
-
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        props.oncreate.emit(link.clone());
-        let file_open_helper = FileOpenHelper::new(props.parent.clone());
-        Self { link, props, node_ref: NodeRef::default(), next_tab_idx: 1, file_open_helper, }
-    }
-
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        match msg {
-            MenuWidgetMsg::FileNew => {
-                let fname = format!("Untitled proof {}", self.next_tab_idx);
-                let fname_ = fname.clone();
-                let oncreate = self.props.parent.callback(move |link| AppMsg::RegisterProofName { name: fname_.clone(), link });
-                self.props.parent.send_message(AppMsg::CreateTab { name: fname, content: html! { <ProofWidget verbose=true data=None oncreate=oncreate /> } });
-                self.next_tab_idx += 1;
-                false
-            },
-            MenuWidgetMsg::FileOpen1 => self.file_open_helper.fileopen1(),
-            MenuWidgetMsg::FileOpen2(file_list) => self.file_open_helper.fileopen2(file_list),
-            MenuWidgetMsg::FileSave => {
-                let node = self.node_ref.get().expect("MenuWidget::node_ref failed");
-                self.props.parent.send_message(AppMsg::GetProofFromCurrentTab(Box::new(move |name, prf| {
-                    use aris::proofs::xml_interop;
-                    let mut data = vec![];
-                    let metadata = xml_interop::ProofMetaData {
-                        author: Some("ARIS-YEW-UI".into()),
-                        hash: None,
-                        goals: vec![],
-                    };
-                    xml_interop::xml_from_proof_and_metadata_with_hash(prf, &metadata, &mut data).expect("xml_from_proof_and_metadata failed");
-                    let window = web_sys::window().expect("web_sys::window failed");
-                    let document = window.document().expect("window.document failed");
-                    let anchor = document.create_element("a").expect("document.create_element(\"a\") failed");
-                    let anchor = anchor.dyn_into::<web_sys::HtmlAnchorElement>().expect("dyn_into::HtmlAnchorElement failed");
-                    anchor.set_download(&name);
-                    let js_str = JsValue::from_str(&String::from_utf8_lossy(&data));
-                    let js_array = js_sys::Array::new_with_length(1);
-                    js_array.set(0, js_str);
-                    let blob = web_sys::Blob::new_with_str_sequence(&js_array).expect("Blob::new_with_str_sequence failed");
-                    let url = web_sys::Url::create_object_url_with_blob(&blob).expect("Url::create_object_url_with_blob failed");
-                    anchor.set_href(&url);
-                    node.append_child(&anchor).expect("node.append_child failed");
-                    anchor.click();
-                    let node = node.clone();
-                    Timeout::new(0, move || {
-                        node.remove_child(&anchor).expect("node.remove_child failed");
-                    }).forget();
-                })));
-                false
-            },
-            MenuWidgetMsg::NewExprTree => {
-                self.props.parent.send_message(AppMsg::CreateTab {
-                    name: format!("Expr Tree {}", self.next_tab_idx),
-                    content: html! {
-                        <ExprAstWidget initial_contents="forall A, ((exists B, A -> B) & C & f(x, y | z)) <-> Q <-> R" />
-                    }
-                });
-                self.next_tab_idx += 1;
-                false
-            },
-            MenuWidgetMsg::Nop => {
-                false
-            },
-        }
-    }
-
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        self.props = props;
-        true
-    }
-
-    fn view(&self) -> Html {
-        let handle_open_file = self.link.callback(move |e| {
-            if let ChangeData::Files(file_list) = e {
-                MenuWidgetMsg::FileOpen2(file_list)
-            } else {
-                MenuWidgetMsg::Nop
-            }
-        });
-        html! {
-            <div ref=self.node_ref.clone() class="dropdown show">
-                <a class="btn btn-secondary dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{"File"}</a>
-                <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
-                    <div>
-                        <label for="file-menu-new-proof" class="dropdown-item">{"New blank proof"}</label>
-                        <input id="file-menu-new-proof" style="display:none" type="button" onclick=self.link.callback(|_| MenuWidgetMsg::FileNew) />
-                    </div>
-                    <div>
-                        <label for="file-menu-open-proof" class="dropdown-item">{"Open proof"}</label>
-                        <input id="file-menu-open-proof" style="display:none" type="file" onchange=handle_open_file />
-                    </div>
-                    <div>
-                        <label for="file-menu-save-proof" class="dropdown-item">{"Save proof"}</label>
-                        <input id="file-menu-save-proof" style="display:none" type="button" onclick=self.link.callback(|_| MenuWidgetMsg::FileSave) />
-                    </div>
-                    <div>
-                        <label for="file-menu-new-expr-tree" class="dropdown-item">{"New expression tree"}</label>
-                        <input id="file-menu-new-expr-tree" style="display:none" type="button" onclick=self.link.callback(|_| MenuWidgetMsg::NewExprTree) />
-                    </div>
-                </div>
-            </div>
-        }
-    }
-}
-
-
-pub struct App {
-    link: ComponentLink<Self>,
-    tabcontainer_link: Option<ComponentLink<TabbedContainer>>,
-    menuwidget_link: Option<ComponentLink<MenuWidget>>,
-    proofs: HashMap<String, ComponentLink<ProofWidget>>,
-}
-
-pub enum AppMsg {
-    TabbedContainerInit(ComponentLink<TabbedContainer>),
-    MenuWidgetInit(ComponentLink<MenuWidget>),
-    CreateTab { name: String, content: Html },
-    RegisterProofName { name: String, link: ComponentLink<ProofWidget> },
-    GetProofFromCurrentTab(Box<dyn FnOnce(String, &P)>),
-}
-
-impl Component for App {
-    type Message = AppMsg;
-    type Properties = ();
-
-    fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self {
-            link,
-            tabcontainer_link: None,
-            menuwidget_link: None,
-            proofs: HashMap::new(),
-        }
-    }
-
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        match msg {
-            AppMsg::TabbedContainerInit(tabcontainer_link) => {
-                self.tabcontainer_link = Some(tabcontainer_link);
-                false
-            },
-            AppMsg::MenuWidgetInit(menuwidget_link) => {
-                // create the first blank proof tab
-                menuwidget_link.send_message(MenuWidgetMsg::FileNew);
-                self.menuwidget_link = Some(menuwidget_link);
-                false
-            },
-            AppMsg::CreateTab { name, content } => {
-                if let Some(tabcontainer_link) = &self.tabcontainer_link {
-                    tabcontainer_link.send_message(TabbedContainerMsg::CreateTab { name, content });
-                }
-                true
-            },
-            AppMsg::RegisterProofName { name, link } => {
-                self.proofs.insert(name, link);
-                false
-            }
-            AppMsg::GetProofFromCurrentTab(f) => {
-                if let Some(tabcontainer_link) = &self.tabcontainer_link {
-                    let proofs = self.proofs.clone();
-                    tabcontainer_link.send_message(TabbedContainerMsg::GetCurrentTab(Box::new(move |_, name| {
-                        if let Some(link) = proofs.get(&*name) {
-                            link.send_message(ProofWidgetMsg::CallOnProof(Box::new(move |prf| f(name, prf))));
-                        }
-                    })));
-                }
-                false
-            }
-        }
-    }
-
-    fn change(&mut self, _: Self::Properties) -> ShouldRender {
-        false
-    }
-
-    fn view(&self) -> Html {
-        let resolution_fname: String = "resolution_example.bram".into();
-        let resolution_fname_ = resolution_fname.clone();
-        let tabview = html! {
-            <TabbedContainer tab_ids=vec![resolution_fname.clone(), "Parser demo".into()] oncreate=self.link.callback(|link| AppMsg::TabbedContainerInit(link))>
-                <ProofWidget verbose=true data=Some(include_bytes!("../../example-proofs/resolution_example.bram").to_vec()) oncreate=self.link.callback(move |link| AppMsg::RegisterProofName { name: resolution_fname_.clone(), link }) />
-            </TabbedContainer>
-        };
-        html! {
-            <div>
-                <MenuWidget parent=self.link.clone() oncreate=self.link.callback(|link| AppMsg::MenuWidgetInit(link)) />
-                { tabview }
             </div>
         }
     }

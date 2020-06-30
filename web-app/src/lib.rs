@@ -1,6 +1,9 @@
-#![recursion_limit="512"]
+#![recursion_limit = "512"]
 
-mod ui;
+mod box_chars;
+mod components;
+mod proof_ui_data;
+mod util;
 
 use wasm_bindgen::prelude::*;
 
@@ -9,6 +12,6 @@ pub fn run_app() -> Result<(), JsValue> {
     #[global_allocator]
     static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-    yew::start_app::<ui::App>();
+    yew::start_app::<components::app::App>();
     Ok(())
 }
