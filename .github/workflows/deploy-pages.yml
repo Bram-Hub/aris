@@ -15,12 +15,12 @@ jobs:
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - name: Build Aris with wasm-pack
-        run: wasm-pack build --target web --out-dir static/pkg -- --features=js
-      - name: Delete static/pkg/.gitignore to prevent deployment from failing
-        run: rm -f static/pkg/.gitignore
+        run: wasm-pack build web-app --target web --out-dir static/pkg
+      - name: Delete web-app/static/pkg/.gitignore to prevent deployment from failing
+        run: rm -f web-app/static/pkg/.gitignore
       - name: Push to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@releases/v3
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH: gh-pages
-          FOLDER: static
+          FOLDER: web-app/static
