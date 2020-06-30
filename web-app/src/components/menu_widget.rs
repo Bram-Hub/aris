@@ -33,24 +33,7 @@ impl FileOpenHelper {
             filename_tx,
         }
     }
-    fn fileopen1(&mut self) -> ShouldRender {
-        self.filepicker_visible = true;
-        true
-        // For "security reasons", you can't trigger a click event on an <input type="file" /> from javascript
-        // so the below approach that would have gotten things working without these auxillary continuation/mpsc shenanigans doesn't work
-        /*let window = web_sys::window().expect("web_sys::window failed");
-        let document = window.document().expect("window.document failed");
-        let node = self.node_ref.get().expect("MenuWidget::node_ref failed");
-        let input = document.create_element("input").expect("document.create_element(\"input\") failed");
-        let input = input.dyn_into::<web_sys::HtmlInputElement>().expect("dyn_into::HtmlInputElement failed");
-        input.set_type("file");
-        node.append_child(&input);
-        input.click();
-        Timeout::new(1, move || {
-            node.remove_child(&input);
-        }).forget();*/
-    }
-    fn fileopen2(&mut self, file_list: web_sys::FileList) -> ShouldRender {
+    fn fileopen(&mut self, file_list: web_sys::FileList) -> ShouldRender {
         self.filepicker_visible = false;
         if let Some(file) = file_list.get(0) {
             // MDN (https://developer.mozilla.org/en-US/docs/Web/API/Blob/text) and web-sys (https://docs.rs/web-sys/0.3.36/web_sys/struct.Blob.html#method.text)
@@ -76,8 +59,7 @@ pub struct MenuWidget {
 
 pub enum MenuWidgetMsg {
     FileNew,
-    FileOpen1,
-    FileOpen2(web_sys::FileList),
+    FileOpen(web_sys::FileList),
     FileSave,
     NewExprTree,
     Nop,
@@ -108,8 +90,7 @@ impl Component for MenuWidget {
                 self.next_tab_idx += 1;
                 false
             },
-            MenuWidgetMsg::FileOpen1 => self.file_open_helper.fileopen1(),
-            MenuWidgetMsg::FileOpen2(file_list) => self.file_open_helper.fileopen2(file_list),
+            MenuWidgetMsg::FileOpen(file_list) => self.file_open_helper.fileopen(file_list),
             MenuWidgetMsg::FileSave => {
                 let node = self.node_ref.get().expect("MenuWidget::node_ref failed");
                 self.props.parent.send_message(AppMsg::GetProofFromCurrentTab(Box::new(move |name, prf| {
@@ -165,7 +146,7 @@ impl Component for MenuWidget {
     fn view(&self) -> Html {
         let handle_open_file = self.link.callback(move |e| {
             if let ChangeData::Files(file_list) = e {
-                MenuWidgetMsg::FileOpen2(file_list)
+                MenuWidgetMsg::FileOpen(file_list)
             } else {
                 MenuWidgetMsg::Nop
             }
