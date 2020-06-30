@@ -1,15 +1,15 @@
 {
-  "name": "libaris-rs",
+  "name": "aris-web-app",
   "collaborators": [
     "Avi Weinstock <aweinstock314@gmail.com>"
   ],
   "version": "0.1.0",
   "files": [
-    "libaris_bg.wasm",
-    "libaris.js",
-    "libaris.d.ts"
+    "aris_web_app_bg.wasm",
+    "aris_web_app.js",
+    "aris_web_app.d.ts"
   ],
-  "module": "libaris.js",
-  "types": "libaris.d.ts",
+  "module": "aris_web_app.js",
+  "types": "aris_web_app.d.ts",
   "sideEffects": false
 }
