@@ -98,8 +98,8 @@ impl<T: Clone+Default, U: Clone+Default> Proof for TreeProof<T, U> {
         //let res = vec![];
         unimplemented!();
     }
-    fn lines(&self) -> Vec<Coprod!(Self::JustificationReference, Self::SubproofReference)> { unimplemented!() }
-    fn parent_of_line(&self, _: &Coprod!(Self::PremiseReference, Self::JustificationReference, Self::SubproofReference)) -> Option<Self::SubproofReference> { unimplemented!() }
+    fn lines(&self) -> Vec<JSRef<Self>> { unimplemented!() }
+    fn parent_of_line(&self, _: &PJSRef<Self>) -> Option<Self::SubproofReference> { unimplemented!() }
     fn verify_line(&self, x: &PJRef<Self>) -> Result<(), ProofCheckError<PJRef<Self>, Self::SubproofReference>> {
         let i = x.clone().fold(hlist![|LineDep(i)| i, |LineDep(i)| i]);
         let prf = decorate_line_and_indent(self.clone()).bimap(&mut |(x,_)| x, &mut |_| ());

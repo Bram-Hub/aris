@@ -410,10 +410,10 @@ impl<Tail: Default+Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
     fn premises(&self) -> Vec<Self::PremiseReference> {
         self.premise_list.iter().cloned().collect()
     }
-    fn lines(&self) -> Vec<Coprod!(Self::JustificationReference, Self::SubproofReference)> {
+    fn lines(&self) -> Vec<JSRef<Self>> {
         self.line_list.iter().cloned().collect()
     }
-    fn parent_of_line(&self, r: &Coprod!(Self::PremiseReference, Self::JustificationReference, Self::SubproofReference)) -> Option<Self::SubproofReference> {
+    fn parent_of_line(&self, r: &PJSRef<Self>) -> Option<Self::SubproofReference> {
         let pools = unsafe { &mut *self.pools };
         pools.parent_of(r)
     }
@@ -484,8 +484,8 @@ impl<Tail: Default+Clone> Proof for PooledProof<HCons<Expr, Tail>> {
         self.proof.remove_subproof(r);
     }
     fn premises(&self) -> Vec<Self::PremiseReference> { self.proof.premises() }
-    fn lines(&self) -> Vec<Coprod!(Self::JustificationReference, Self::SubproofReference)> { self.proof.lines() }
-    fn parent_of_line(&self, r: &Coprod!(Self::PremiseReference, Self::JustificationReference, Self::SubproofReference)) -> Option<Self::SubproofReference> { self.proof.parent_of_line(r) }
+    fn lines(&self) -> Vec<JSRef<Self>> { self.proof.lines() }
+    fn parent_of_line(&self, r: &PJSRef<Self>) -> Option<Self::SubproofReference> { self.proof.parent_of_line(r) }
     fn verify_line(&self, r: &PJRef<Self>) -> Result<(), ProofCheckError<PJRef<Self>, Self::SubproofReference>> { self.proof.verify_line(r) }
 }
 

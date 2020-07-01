@@ -56,10 +56,10 @@ impl Proof for JavaShallowProof {
     fn premises(&self) -> Vec<Self::PremiseReference> {
         if !self.0.is_empty() { vec![self.0[0].clone()] } else { vec![] }
     }
-    fn lines(&self) -> Vec<Coprod!(Self::JustificationReference, Self::SubproofReference)> {
+    fn lines(&self) -> Vec<JSRef<Self>> {
         (1..self.0.len()).map(|i| Coproduct::Inl(self.0[i].clone())).collect()
     }
-    fn parent_of_line(&self, _: &Coprod!(Self::PremiseReference, Self::JustificationReference, Self::SubproofReference)) -> Option<Self::SubproofReference> { unimplemented!() }
+    fn parent_of_line(&self, _: &PJSRef<Self>) -> Option<Self::SubproofReference> { unimplemented!() }
     fn verify_line(&self, r: &PJRef<Self>) -> Result<(), ProofCheckError<PJRef<Self>, Self::SubproofReference>> {
         use self::Coproduct::{Inl, Inr};
         match self.lookup_pj(r) {
