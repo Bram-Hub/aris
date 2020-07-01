@@ -97,10 +97,10 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
                 // Gives you a list of new argument lists
                 let product = cartesian_product(ref_perms);
                 // Then just turn everything from that list into an assoc binop
-                let new_exprs = product.into_iter().map(|args| {
+                // The `collect()` is necessary to maintain the borrows from permutations
+                product.into_iter().map(|args| {
                     AssocBinop { symbol, exprs: args.into_iter().cloned().collect::<Vec<_>>() }
-                }).collect::<Vec<_>>(); // This collect is necessary to maintain the borrows from permutations
-                new_exprs
+                }).collect::<Vec<_>>()
             }).collect::<Vec<_>>()
         }
         Quantifier { symbol, name, body } => {
