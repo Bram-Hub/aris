@@ -14,7 +14,7 @@ impl RewriteRule {
     /// Will parse strings into `Expr`s and permute all commutative binops
     pub fn from_patterns(patterns: &[(&str, &str)]) -> Self {
         use crate::parser::parse_unwrap as p;
-        let reductions = permute_patterns(patterns.into_iter().map(|(premise, conclusion)| {
+        let reductions = permute_patterns(patterns.iter().map(|(premise, conclusion)| {
             (p(premise), p(conclusion))
         }).collect::<Vec<_>>());
 
@@ -50,7 +50,7 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
         e @ Var { .. } => vec![e],
         Apply { func, args } => {
             let mut to_permute: Vec<Vec<Expr>> = vec![permute_ops(*func)];
-            to_permute.extend(args.into_iter().map(|e: Expr| permute_ops(e)));
+            to_permute.extend(args.into_iter().map(permute_ops));
             let permuted = cartesian_product(to_permute);
             permuted.into_iter().map(|mut args| { let func = Box::new(args.remove(0)); Apply { func, args } }).collect()
         },
@@ -59,7 +59,7 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
             let results = permute_ops(*operand);
             results.into_iter().map(|e| {
                 Unop {
-                    symbol: symbol.clone(),
+                    symbol,
                     operand: Box::new(e)
                 }
             }).collect::<Vec<_>>()
@@ -98,7 +98,7 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
                 let product = cartesian_product(ref_perms);
                 // Then just turn everything from that list into an assoc binop
                 let new_exprs = product.into_iter().map(|args| {
-                    AssocBinop { symbol: symbol.clone(), exprs: args.into_iter().map(|arg| arg.clone()).collect::<Vec<_>>() }
+                    AssocBinop { symbol, exprs: args.into_iter().cloned().collect::<Vec<_>>() }
                 }).collect::<Vec<_>>(); // This collect is necessary to maintain the borrows from permutations
                 new_exprs
             }).collect::<Vec<_>>()
@@ -107,7 +107,7 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
             let results = permute_ops(*body);
             results.into_iter().map(|e| {
                 Quantifier {
-                    symbol: symbol.clone(),
+                    symbol,
                     name: name.clone(),
                     body: Box::new(e)
                 }

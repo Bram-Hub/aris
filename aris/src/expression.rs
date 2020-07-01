@@ -66,6 +66,7 @@ use super::*;
 use std::collections::{HashSet, HashMap};
 use std::collections::BTreeSet;
 use std::mem;
+use std::ops::Not;
 
 use itertools::Itertools;
 
@@ -200,7 +201,7 @@ impl std::fmt::Display for Expr {
             Contradiction => write!(f, "⊥"),
             Tautology => write!(f, "⊤"),
             Var { name } => write!(f, "{}", name),
-            Apply { func, args } => { write!(f, "{}", func)?; if args.len() > 0 { write!(f, "({})", args.iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join(", "))? }; Ok(()) }
+            Apply { func, args } => { write!(f, "{}", func)?; if !args.is_empty() { write!(f, "({})", args.iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join(", "))? }; Ok(()) }
             Unop { symbol, operand } => write!(f, "{}{}", symbol, operand),
             Binop { symbol, left, right } => write!(f, "({} {} {})", left, symbol, right),
             AssocBinop { symbol, exprs } => assoc_display_helper(f, symbol, exprs),
@@ -270,7 +271,7 @@ pub fn gensym(orig: &str, avoid: &HashSet<String>) -> String {
             return ret;
         }
     }
-    panic!("Somehow gensym used more than 2^{64} ids without finding anything?")
+    panic!("Somehow gensym used more than 2^64 ids without finding anything?")
 }
 
 /// `subst(e, to_replace, with)` performs capture-avoiding substitution of free variables named `to_replace` with `with` in `e`
@@ -280,9 +281,9 @@ pub fn subst(e: &Expr, to_replace: &str, with: Expr) -> Expr {
         Expr::Tautology => Expr::Tautology,
         Expr::Var { ref name } => if name == to_replace { with } else { Expr::Var { name: name.clone() } },
         Expr::Apply { ref func, ref args } => Expr::Apply { func: Box::new(subst(func, to_replace, with.clone())), args: args.iter().map(|e2| subst(e2, to_replace, with.clone())).collect() },
-        Expr::Unop { symbol, operand } => Expr::Unop { symbol: symbol.clone(), operand: Box::new(subst(operand, to_replace, with)) },
-        Expr::Binop { symbol, left, right } => Expr::Binop { symbol: symbol.clone(), left: Box::new(subst(left, to_replace, with.clone())), right: Box::new(subst(right, to_replace, with)) },
-        Expr::AssocBinop { symbol, exprs } => Expr::AssocBinop { symbol: symbol.clone(), exprs: exprs.iter().map(|e2| subst(e2, to_replace, with.clone())).collect() },
+        Expr::Unop { symbol, operand } => Expr::Unop { symbol: *symbol, operand: Box::new(subst(operand, to_replace, with)) },
+        Expr::Binop { symbol, left, right } => Expr::Binop { symbol: *symbol, left: Box::new(subst(left, to_replace, with.clone())), right: Box::new(subst(right, to_replace, with)) },
+        Expr::AssocBinop { symbol, exprs } => Expr::AssocBinop { symbol: *symbol, exprs: exprs.iter().map(|e2| subst(e2, to_replace, with.clone())).collect() },
         Expr::Quantifier { symbol, name, body } => {
             let fv_with = freevars(&with);
             let (newname, newbody) = match (name == to_replace, fv_with.contains(name)) {
@@ -292,11 +293,11 @@ pub fn subst(e: &Expr, to_replace: &str, with: Expr) -> Expr {
                     let body0 = subst(body, name, expression_builders::var(&newname[..]));
                     let body1 = subst(&body0, to_replace, with);
                     //println!("{:?}\n{:?}\n{:?}", body, body0, body1);
-                    (newname.clone(), body1)
+                    (newname, body1)
                 },
                 (false, false) => { (name.clone(), subst(body, to_replace, with)) },
             };
-            Expr::Quantifier { symbol: symbol.clone(), name: newname, body: Box::new(newbody) }
+            Expr::Quantifier { symbol: *symbol, name: newname, body: Box::new(newbody) }
         },
     }
 }
@@ -399,7 +400,7 @@ impl Expr {
             Var { name } => { arities.entry(name.clone()).or_insert(0); },
             Apply { func, args } => match &**func {
                 Var { name } => {
-                    let arity = arities.entry(name.clone()).or_insert(args.len());
+                    let arity = arities.entry(name.clone()).or_insert_with(|| args.len());
                     *arity = args.len().max(*arity);
                     for arg in args {
                         arg.infer_arities(arities);
@@ -463,7 +464,7 @@ impl Expr {
                     Bicon => (true, &|x, y| x == y),
                     Equiv => unimplemented!(),
                 };
-                for b in exprs.into_iter().map(|e| e.eval(env)) {
+                for b in exprs.iter().map(|e| e.eval(env)) {
                     ret = f(ret, b);
                 }
                 ret
@@ -529,14 +530,6 @@ impl Expr {
         })
     }
 
-    /// Like `transform_expr_inner()` but both the parameter and return types
-    /// are `Box<Expr>` instead of `Expr`
-    fn box_transform_expr_inner<Trans>(expr: Box<Expr>, trans: &Trans) -> (Box<Expr>, bool)
-    where Trans: Fn(Expr) -> (Expr, bool) {
-        let (result, status) = Self::transform_expr_inner(*expr, trans);
-        return (Box::new(result), status);
-    }
-
     /// Helper function for `tranform()`; use the `trans` function to transform
     /// `expr`, yielding a tuple of the transformed expression and a `bool`
     /// indicating whether the expression can be transformed again.
@@ -555,19 +548,23 @@ impl Expr {
             // and then construct a new instance of that compound expression with their transformed results.
             // If any transformation is successful, we return success
             Apply { func, args } => {
-                let (func, fs) = Self::box_transform_expr_inner(func, trans);
+                let (func, fs) = Self::transform_expr_inner(*func, trans);
+                let func = Box::new(func);
                 // Fancy iterator hackery to transform each sub expr and then collect all their results
                 let (args, stats) : (Vec<_>, Vec<_>) = args.into_iter().map(move |expr| Self::transform_expr_inner(expr, trans)).unzip();
                 let success = fs || stats.into_iter().any(|x| x);
                 (Apply { func, args }, success)
             },
             Unop { symbol, operand } => {
-                let (operand, success) = Self::box_transform_expr_inner(operand, trans);
+                let (operand, success) = Self::transform_expr_inner(*operand, trans);
+                let operand = Box::new(operand);
                 (Unop { symbol, operand }, success)
             },
             Binop { symbol, left, right } => {
-                let (left, ls) = Self::box_transform_expr_inner(left, trans);
-                let (right, rs) = Self::box_transform_expr_inner(right, trans);
+                let (left, ls) = Self::transform_expr_inner(*left, trans);
+                let (right, rs) = Self::transform_expr_inner(*right, trans);
+                let left = Box::new(left);
+                let right = Box::new(right);
                 let success = ls || rs;
                 (Binop { symbol, left, right }, success)
             },
@@ -577,7 +574,8 @@ impl Expr {
                 (AssocBinop { symbol, exprs }, success)
             },
             Quantifier { symbol, name, body } => {
-                let (body, success) = Self::box_transform_expr_inner(body, trans);
+                let (body, success) = Self::transform_expr_inner(*body, trans);
+                let body = Box::new(body);
                 (Quantifier { symbol, name, body }, success)
             },
         };
@@ -953,19 +951,14 @@ impl Expr {
             let mut stack = vec![];
             let mut last_quantifier = None;
 
-            loop {
-                match mod_expr {
-                    Quantifier { symbol, name, body } => {
-                        if last_quantifier.is_none() || last_quantifier == Some(symbol) {
-                            last_quantifier = Some(symbol);
-                            stack.push( name);
-                            mod_expr = *body;
-                        } else {
-                            mod_expr = Quantifier { symbol, name, body };
-                            break;
-                        }
-                    },
-                    _ => break,
+            while let Quantifier { symbol, name, body } = mod_expr {
+                if last_quantifier.is_none() || last_quantifier == Some(symbol) {
+                    last_quantifier = Some(symbol);
+                    stack.push( name);
+                    mod_expr = *body;
+                } else {
+                    mod_expr = Quantifier { symbol, name, body };
+                    break;
                 }
             }
 
@@ -1200,7 +1193,7 @@ impl Expr {
     ///
     /// assert_eq!(p("A | B").into_nnf().unwrap(), NnfExpr::Or { exprs: exprs.clone() });
     /// assert_eq!(p("A & B").into_nnf().unwrap(), NnfExpr::And { exprs });
-    /// assert_eq!(p("~A").into_nnf().unwrap(), NnfExpr::var("A").not());
+    /// assert_eq!(p("~A").into_nnf().unwrap(), !NnfExpr::var("A"));
     /// ```
     pub fn into_nnf(self) -> Option<NnfExpr> {
         use Expr::*;
@@ -1327,25 +1320,6 @@ impl NnfExpr {
         Self::And { exprs: vec![a, b] }
     }
 
-    /// Create an NNF expression by applying logical NOT to an NNF expression.
-    ///
-    /// ```rust
-    /// use aris::parser::parse_unwrap as p;
-    /// # use aris::expression::NnfExpr;
-    ///
-    /// let a = NnfExpr::var("A");
-    ///
-    /// assert_eq!(p("~A").into_nnf(), Some(a.not()));
-    /// ```
-    pub fn not(self) -> Self {
-        let map_not = |exprs: Vec<Self>| exprs.into_iter().map(Self::not).collect();
-        match self {
-            NnfExpr::Lit { polarity, name } => NnfExpr::Lit { polarity: !polarity, name },
-            NnfExpr::And { exprs } => NnfExpr::Or { exprs: map_not(exprs) },
-            NnfExpr::Or { exprs } => NnfExpr::And { exprs: map_not(exprs) },
-        }
-    }
-
     /// Convert from [`NnfExpr`](NnfExpr) into [`CnfExpr`](CnfExpr) by distributing ORs.
     ///
     /// ```rust
@@ -1363,6 +1337,34 @@ impl NnfExpr {
             NnfExpr::Lit { polarity, name } => CnfExpr::literal(polarity, name),
             NnfExpr::And { exprs } => CnfExpr::and(map_cnf(exprs)),
             NnfExpr::Or { exprs } => CnfExpr::or(map_cnf(exprs)),
+        }
+    }
+}
+
+impl Not for NnfExpr {
+    type Output = Self;
+
+    /// Create an NNF expression by applying logical NOT to an NNF expression.
+    ///
+    /// ```rust
+    /// use aris::parser::parse_unwrap as p;
+    /// # use aris::expression::NnfExpr;
+    ///
+    /// // Using `!` operator
+    /// let a = NnfExpr::var("A");
+    /// assert_eq!(p("~A").into_nnf(), Some(!a));
+    ///
+    /// // Using explicit `Not` trait method call
+    /// let b = NnfExpr::var("B");
+    /// use std::ops::Not;
+    /// assert_eq!(p("~B").into_nnf(), Some(b.not()));
+    /// ```
+    fn not(self) -> Self {
+        let map_not = |exprs: Vec<Self>| exprs.into_iter().map(Self::not).collect();
+        match self {
+            NnfExpr::Lit { polarity, name } => NnfExpr::Lit { polarity: !polarity, name },
+            NnfExpr::And { exprs } => NnfExpr::Or { exprs: map_not(exprs) },
+            NnfExpr::Or { exprs } => NnfExpr::And { exprs: map_not(exprs) },
         }
     }
 }
@@ -1501,7 +1503,7 @@ impl CnfExpr {
             .iter()
             .map(|clause| {
                 clause
-                    .into_iter()
+                    .iter()
                     .map(|(is_pos, name)| varisat::Lit::from_var(vars[name], *is_pos))
                     .collect::<Vec<varisat::Lit>>()
             });
@@ -1535,13 +1537,13 @@ pub fn test_combine_associative_ops() {
 pub mod expression_builders {
     use super::{Expr, USymbol, BSymbol, ASymbol, QSymbol};
     pub fn var(name: &str) -> Expr { Expr::Var { name: name.into() } }
-    pub fn apply(func: Expr, args: &[Expr]) -> Expr { Expr::Apply { func: Box::new(func), args: args.iter().cloned().collect() } }
+    pub fn apply(func: Expr, args: &[Expr]) -> Expr { Expr::Apply { func: Box::new(func), args: args.to_vec() } }
     pub fn predicate(name: &str, args: &[&str]) -> Expr { apply(var(name), &args.iter().map(|&x| var(x)).collect::<Vec<_>>()[..]) }
     pub fn not(expr: Expr) -> Expr { Expr::Unop { symbol: USymbol::Not, operand: Box::new(expr) } }
     pub fn binop(symbol: BSymbol, l: Expr, r: Expr) -> Expr { Expr::Binop { symbol, left: Box::new(l), right: Box::new(r) } }
     pub fn binopplaceholder(symbol: BSymbol) -> Expr { binop(symbol, var("_"), var("_")) }
     pub fn implies(l: Expr, r: Expr) -> Expr { binop(BSymbol::Implies, l, r) }
-    pub fn assocbinop(symbol: ASymbol, exprs: &[Expr]) -> Expr { Expr::AssocBinop { symbol, exprs: exprs.iter().cloned().collect() } }
+    pub fn assocbinop(symbol: ASymbol, exprs: &[Expr]) -> Expr { Expr::AssocBinop { symbol, exprs: exprs.to_vec() } }
     pub fn assocplaceholder(symbol: ASymbol) -> Expr { assocbinop(symbol, &[var("_"), var("_"), var("...")]) }
     pub fn quantifierplaceholder(symbol: QSymbol) -> Expr { Expr::Quantifier { symbol, name: "_".into(), body: Box::new(var("_")) } }
     pub fn forall(name: &str, body: Expr) -> Expr { Expr::Quantifier { symbol: QSymbol::Forall, name: name.into(), body: Box::new(body) } }
@@ -1559,7 +1561,7 @@ pub fn expressions_for_depth(depth: usize, max_assoc: usize, mut vars: BTreeSet<
         let smaller: Vec<_> = expressions_for_depth(depth-1, max_assoc, vars.clone()).into_iter().collect();
         let mut products = vec![];
         for i in 2..=max_assoc {
-            products.extend(cartesian_product((0..i).into_iter().map(|_| smaller.clone()).collect()));
+            products.extend(cartesian_product((0..i).map(|_| smaller.clone()).collect()));
         }
         for v in vars.iter() {
             for arglist in products.iter() {

@@ -54,7 +54,7 @@ impl Proof for JavaShallowProof {
     fn remove_line(&mut self, _: &PJRef<Self>) {}
     fn remove_subproof(&mut self, _: &Self::SubproofReference) {}
     fn premises(&self) -> Vec<Self::PremiseReference> {
-        if self.0.len() >= 1 { vec![self.0[0].clone()] } else { vec![] }
+        if !self.0.is_empty() { vec![self.0[0].clone()] } else { vec![] }
     }
     fn lines(&self) -> Vec<Coprod!(Self::JustificationReference, Self::SubproofReference)> {
         (1..self.0.len()).map(|i| Coproduct::Inl(self.0[i].clone())).collect()

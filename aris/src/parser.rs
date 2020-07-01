@@ -9,11 +9,11 @@ pub fn parse(input: &str) -> Option<Expr> {
 /// parser::parse_unwrap is a convenience function used in the tests, and panics if the input doesn't parse
 /// for handling user input, call parser::parse instead and handle the None case
 pub fn parse_unwrap(input: &str) -> Expr {
-    parse(input).expect(&format!("failed parsing: {}", input))
+    parse(input).unwrap_or_else(|| panic!("failed parsing: {}", input))
 }
 
 fn custom_error<A, B>(a: A, x: u32) -> nom::IResult<A, B> {
-    return Err(nom::Err::Error(nom::Context::Code(a, nom::ErrorKind::Custom(x))));
+    Err(nom::Err::Error(nom::Context::Code(a, nom::ErrorKind::Custom(x))))
 }
 
 /// variable is implemented as a function instead of via nom's macros in order to more conveniently reject keywords as variables
@@ -74,7 +74,7 @@ fn assocterm(s: &str) -> nom::IResult<&str, Expr> {
     if exprs.len() == 1 {
         return custom_error(rest, 0);
     }
-    let symbol = syms[0].clone();
+    let symbol = syms[0];
     if !syms.iter().all(|x| x == &symbol) {
         return custom_error(rest, 0);
     }

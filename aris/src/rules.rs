@@ -366,9 +366,9 @@ impl RuleT for PrepositionalInference {
             Reit => {
                 let prem = p.lookup_expr_or_die(&deps[0])?;
                 if prem == conclusion {
-                    return Ok(());
+                    Ok(())
                 } else {
-                    return Err(DoesNotOccur(conclusion, prem.clone()));
+                    Err(DoesNotOccur(conclusion, prem))
                 }
             },
             AndIntro => {
@@ -376,7 +376,7 @@ impl RuleT for PrepositionalInference {
                     // ensure each dep appears in exprs
                     for d in deps.iter() {
                         let e = p.lookup_expr_or_die(&d)?;
-                        if !exprs.iter().find(|x| x == &&e).is_some() {
+                        if exprs.iter().find(|x| x == &&e).is_none() {
                             return Err(DoesNotOccur(e, conclusion.clone()));
                         }
                     }
@@ -386,9 +386,9 @@ impl RuleT for PrepositionalInference {
                             return Err(DepDoesNotExist(e.clone(), false));
                         }
                     }
-                    return Ok(());
+                    Ok(())
                 } else {
-                    return Err(ConclusionOfWrongForm(expression_builders::assocplaceholder(ASymbol::And)));
+                    Err(ConclusionOfWrongForm(expression_builders::assocplaceholder(ASymbol::And)))
                 }
             },
             AndElim => {
@@ -400,9 +400,9 @@ impl RuleT for PrepositionalInference {
                         }
                     }
                     // TODO: allow `A /\ B /\ C |- C /\ A /\ C`, etc
-                    return Err(DoesNotOccur(conclusion, prem.clone()));
+                    Err(DoesNotOccur(conclusion, prem.clone()))
                 } else {
-                    return Err(DepDoesNotExist(expression_builders::assocplaceholder(ASymbol::And), true));
+                    Err(DepDoesNotExist(expression_builders::assocplaceholder(ASymbol::And), true))
                 }
             },
             OrIntro => {
@@ -411,9 +411,9 @@ impl RuleT for PrepositionalInference {
                     if exprs.iter().find(|e| e == &&prem).is_none() {
                         return Err(DoesNotOccur(prem, conclusion.clone()));
                     }
-                    return Ok(());
+                    Ok(())
                 } else {
-                    return Err(ConclusionOfWrongForm(expression_builders::assocplaceholder(ASymbol::Or)));
+                    Err(ConclusionOfWrongForm(expression_builders::assocplaceholder(ASymbol::Or)))
                 }
             },
             OrElim => {
@@ -421,10 +421,20 @@ impl RuleT for PrepositionalInference {
                 if let Expr::AssocBinop { symbol: ASymbol::Or, ref exprs } = prem {
                     let sproofs = sdeps.into_iter().map(|r| p.lookup_subproof_or_die(&r)).collect::<Result<Vec<_>,_>>()?;
                     // if not all the subproofs have lines whose expressions contain the conclusion, return an error
-                    if !sproofs.iter().all(|sproof| {
-                            sproof.lines().into_iter().filter_map(|x| x.get::<P::JustificationReference,_>().and_then(|y| p.lookup_step(&y)).map(|y| y.0.clone())).find(|c| *c == conclusion).is_some()
-                        }) {
-                        return Err(DepDoesNotExist(conclusion.clone(), false));
+                    let all_sproofs_have_conclusion = sproofs.iter().all(|sproof| {
+                        sproof
+                            .lines()
+                            .into_iter()
+                            .filter_map(|x| {
+                                x
+                                    .get::<P::JustificationReference,_>()
+                                    .and_then(|y| p.lookup_step(&y))
+                                    .map(|y| y.0)
+                            })
+                            .any(|c| c == conclusion)
+                    });
+                    if !all_sproofs_have_conclusion {
+                        return Err(DepDoesNotExist(conclusion, false));
                     }
                     if let Some(e) = exprs.iter().find(|&e| {
                         !sproofs.iter().any(|sproof| {
@@ -433,9 +443,9 @@ impl RuleT for PrepositionalInference {
                         }) {
                         return Err(DepDoesNotExist(e.clone(), false));
                     }
-                    return Ok(());
+                    Ok(())
                 } else {
-                    return Err(DepDoesNotExist(expression_builders::assocplaceholder(ASymbol::Or), true));
+                    Err(DepDoesNotExist(expression_builders::assocplaceholder(ASymbol::Or), true))
                 }
             },
             ImpIntro => {
@@ -447,14 +457,14 @@ impl RuleT for PrepositionalInference {
                     if **left != prem[0] {
                         return Err(DoesNotOccur(*left.clone(), prem[0].clone()));
                     }
-                    let conc = sproof.lines().into_iter().filter_map(|x| x.get::<P::JustificationReference,_>().map(|y| y.clone()))
+                    let conc = sproof.lines().into_iter().filter_map(|x| x.get::<P::JustificationReference,_>().cloned())
                         .map(|r| p.lookup_expr_or_die(&Coproduct::inject(r))).collect::<Result<Vec<Expr>,_>>()?;
                     if conc.iter().find(|c| *c == &**right).is_none() {
                         return Err(DepDoesNotExist(*right.clone(), false));
                     }
-                    return Ok(());
+                    Ok(())
                 } else {
-                    return Err(ConclusionOfWrongForm(expression_builders::binopplaceholder(BSymbol::Implies)));
+                    Err(ConclusionOfWrongForm(expression_builders::binopplaceholder(BSymbol::Implies)))
                 }
             },
             ImpElim => {
@@ -491,14 +501,14 @@ impl RuleT for PrepositionalInference {
                     if **operand != prem[0] {
                         return Err(DoesNotOccur(*operand.clone(), prem[0].clone()));
                     }
-                    let conc = sproof.lines().into_iter().filter_map(|x| x.get::<P::JustificationReference,_>().map(|y| y.clone()))
+                    let conc = sproof.lines().into_iter().filter_map(|x| x.get::<P::JustificationReference,_>().cloned())
                         .map(|r| p.lookup_expr_or_die(&Coproduct::inject(r))).collect::<Result<Vec<Expr>,_>>()?;
                     if conc.iter().find(|x| **x == Expr::Contradiction).is_none() {
                         return Err(DepDoesNotExist(Expr::Contradiction, false));
                     }
-                    return Ok(());
+                    Ok(())
                 } else {
-                    return Err(ConclusionOfWrongForm({use expression_builders::*; not(var("_")) }));
+                    Err(ConclusionOfWrongForm({use expression_builders::*; not(var("_")) }))
                 }
             },
             NotElim => {
@@ -508,12 +518,12 @@ impl RuleT for PrepositionalInference {
                         if **operand == conclusion {
                             return Ok(());
                         }
-                        return Err(ConclusionOfWrongForm({use expression_builders::*; not(not(var("_"))) }));
+                        Err(ConclusionOfWrongForm({use expression_builders::*; not(not(var("_"))) }))
                     } else {
-                        return Err(DepDoesNotExist({use expression_builders::*; not(not(var("_"))) }, true));
+                        Err(DepDoesNotExist({use expression_builders::*; not(not(var("_"))) }, true))
                     }
                 } else {
-                    return Err(DepDoesNotExist({use expression_builders::*; not(not(var("_"))) }, true));
+                    Err(DepDoesNotExist({use expression_builders::*; not(not(var("_"))) }, true))
                 }
             },
             ContradictionIntro => {
@@ -522,15 +532,15 @@ impl RuleT for PrepositionalInference {
                     let prem2 = p.lookup_expr_or_die(&deps[1])?;
                     do_expressions_contradict::<P>(&prem1, &prem2)
                 } else {
-                    return Err(ConclusionOfWrongForm(Expr::Contradiction));
+                    Err(ConclusionOfWrongForm(Expr::Contradiction))
                 }
             },
             ContradictionElim => {
                 let prem = p.lookup_expr_or_die(&deps[0])?;
                 if let Expr::Contradiction = prem {
-                    return Ok(());
+                    Ok(())
                 } else {
-                    return Err(DepOfWrongForm(prem.clone(), Expr::Contradiction));
+                    Err(DepOfWrongForm(prem, Expr::Contradiction))
                 }
             },
             BiconditionalElim => {
@@ -608,13 +618,13 @@ impl RuleT for PrepositionalInference {
                             g.add_edge(slab[&prem], slab[&e], ());
                         }
                     }
-                    let rslab = slab.clone().into_iter().map(|(k, v)| (v, k)).collect::<HashMap<_, _>>();
+                    let rslab = slab.into_iter().map(|(k, v)| (v, k)).collect::<HashMap<_, _>>();
                     let sccs = tarjan_scc(&g).iter().map(|x| x.iter().map(|i| rslab[i].clone()).collect()).collect::<Vec<HashSet<_>>>();
                     println!("sccs: {:?}", sccs);
                     if sccs.iter().any(|s| exprs.iter().all(|e| s.contains(e))) {
                         return Ok(());
                     } else {
-                        let mut errstring = format!("Not all elements of the conclusion are mutually implied by the premises.");
+                        let mut errstring = "Not all elements of the conclusion are mutually implied by the premises.".to_string();
                         if let Some(e) = exprs.iter().find(|e| !sccs.iter().any(|s| s.contains(e))) {
                             errstring += &format!("\nThe expression {} occurs in the conclusion, but not in any of the premises.", e);
                         } else {
@@ -631,7 +641,7 @@ impl RuleT for PrepositionalInference {
                         return Err(Other(errstring));
                     }}
                 }
-                return Err(ConclusionOfWrongForm(expression_builders::assocplaceholder(sym)));
+                Err(ConclusionOfWrongForm(expression_builders::assocplaceholder(sym)))
             },
             EquivalenceElim => {
                 let prem1 = p.lookup_expr_or_die(&deps[0])?;
@@ -692,22 +702,22 @@ impl RuleT for PredicateInference {
         fn unifies_wrt_var<P: Proof>(e1: &Expr, e2: &Expr, var: &str) -> Result<Expr, ProofCheckError<PJRef<P>, P::SubproofReference>> {
             let constraints = vec![Constraint::Equal(e1.clone(), e2.clone())].into_iter().collect();
             if let Some(substitutions) = unify(constraints) {
-                if substitutions.0.len() == 0 {
+                if substitutions.0.is_empty() {
                     assert_eq!(e1, e2);
-                    return Ok(expression_builders::var(var));
+                    Ok(expression_builders::var(var))
                 } else if substitutions.0.len() == 1 {
-                    if &substitutions.0[0].0 == var {
+                    if substitutions.0[0].0 == var {
                         assert_eq!(&subst(e1, &substitutions.0[0].0, substitutions.0[0].1.clone()), e2);
-                        return Ok(substitutions.0[0].1.clone());
+                        Ok(substitutions.0[0].1.clone())
                     } else {
                         // TODO: standardize non-string error messages for unification-based rules
-                        return Err(Other(format!("Attempted to substitute for a variable other than the binder: {}", substitutions.0[0].0)));
+                        Err(Other(format!("Attempted to substitute for a variable other than the binder: {}", substitutions.0[0].0)))
                     }
                 } else {
-                    return Err(Other(format!("More than one variable was substituted: {:?}", substitutions)));
+                    Err(Other(format!("More than one variable was substituted: {:?}", substitutions)))
                 }
             } else {
-                return Err(Other(format!("No substitution found between {} and {}.", e1, e2)));
+                Err(Other(format!("No substitution found between {} and {}.", e1, e2)))
             }
         }
         fn generalizable_variable_counterexample<P: Proof>(sproof: &P, line: PJRef<P>, var: &str) -> Option<Expr> {
@@ -730,18 +740,18 @@ impl RuleT for PredicateInference {
                                 return Err(Other(format!("The constant {} occurs in dependency {} that's outside the subproof.", constant, dangling)));
                             } else {
                                 let expected = subst(body, &constant, expression_builders::var(name));
-                                if &expected != &**body {
+                                if expected != **body {
                                     return Err(Other(format!("Not all free occurrences of {} are replaced with {} in {}.", constant, name, body)));
                                 }
-                                let tdeps = sproof.transitive_dependencies(r.clone());
+                                let tdeps = sproof.transitive_dependencies(r);
                                 if sproof.premises().into_iter().any(|subprem| tdeps.contains(&Coproduct::inject(subprem))) {
-                                    return Err(Other(format!("ForallIntro should not make use of the subproof's premises.")));
+                                    return Err(Other("ForallIntro should not make use of the subproof's premises.".to_string()));
                                 }
                                 return Ok(());
                             }
                         }
                     }
-                    return Err(Other(format!("Couldn't find a subproof line that unifies with the conclusion ({}).", conclusion)));
+                    Err(Other(format!("Couldn't find a subproof line that unifies with the conclusion ({}).", conclusion)))
                 } else {
                     Err(ConclusionOfWrongForm(expression_builders::quantifierplaceholder(QSymbol::Forall)))
                 }
@@ -809,7 +819,7 @@ impl RuleT for PredicateInference {
                         return Ok(());
                     }
                 }
-                return Err(Other(format!("Couldn't find a subproof line equal to the conclusion ({}).", conclusion)));
+                Err(Other(format!("Couldn't find a subproof line equal to the conclusion ({}).", conclusion)))
             },
         }
     }
@@ -1014,7 +1024,7 @@ impl RuleT for AutomationRelatedRules {
             },
             AutomationRelatedRules::TautologicalConsequence => {
                 // Closure for making CNF conversion errors
-                let cnf_error = || ProofCheckError::Other(format!("Failed converting to CNF; the propositions for this rule should not use quantifiers, arithmetic, or application."));
+                let cnf_error = || ProofCheckError::Other("Failed converting to CNF; the propositions for this rule should not use quantifiers, arithmetic, or application.".to_string());
 
                 // Closure to convert expression into CNF and change to result type
                 let into_cnf = |expr: Expr| expr.into_cnf().ok_or_else(cnf_error);
@@ -1142,8 +1152,8 @@ impl<R: std::fmt::Debug, S: std::fmt::Debug> std::fmt::Display for ProofCheckErr
             DoesNotOccur(x, y) => write!(f, "{} does not occur in {}.", x, y),
             DepDoesNotExist(x, approx) => write!(f, "{}{} is required as a dependency, but it does not exist.", if *approx { "Something of the shape " } else { "" }, x),
             OneOf(v) => {
-                write!(f, "One of the following requirements was not met:\n")?;
-                v.iter().map(|e| write!(f, "{}\n", e)).collect::<Result<_,_>>().and_then(|()| Ok(()))
+                writeln!(f, "One of the following requirements was not met:")?;
+                v.iter().map(|e| writeln!(f, "{}", e)).collect::<Result<_,_>>().and_then(|()| Ok(()))
             }
             Other(msg) => write!(f, "{}", msg),
         }

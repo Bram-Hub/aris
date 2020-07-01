@@ -131,7 +131,7 @@ impl<T> Pools<T> {
     fn subproof_to_subkey(&self, sub: &PooledSubproof<T>) -> Option<SubKey> {
         for (k, v) in self.sub_map.iter() {
             if v as *const _ as usize == sub as *const _ as usize {
-                return Some(k.clone());
+                return Some(*k);
             }
         }
         None
@@ -142,7 +142,7 @@ impl<T> Pools<T> {
         }
     }
     fn parent_of(&self, idx: &Coprod!(PremKey, JustKey, SubKey)) -> Option<SubKey> {
-        self.containing_subproof.get(idx).map(|x| x.clone())
+        self.containing_subproof.get(idx).copied()
     }
     fn transitive_parents(&self, mut idx: Coprod!(PremKey, JustKey, SubKey)) -> HashSet<SubKey> {
         let mut result = HashSet::new();
@@ -165,8 +165,8 @@ impl<T> Pools<T> {
         let just_map = std::mem::replace(&mut self.just_map, BTreeMap::new());
         self.just_map = just_map.into_iter().map(|(k, Justification(expr, rule, deps, sdeps))| {
             let (new_deps, new_sdeps) = match idx {
-                Inl(pr) => (deps.into_iter().filter(|d| d != &Coproduct::inject(pr.clone())).collect(), sdeps),
-                Inr(Inl(jr)) => (deps.into_iter().filter(|d| d != &Coproduct::inject(jr.clone())).collect(), sdeps),
+                Inl(pr) => (deps.into_iter().filter(|d| d != &Coproduct::inject(*pr)).collect(), sdeps),
+                Inr(Inl(jr)) => (deps.into_iter().filter(|d| d != &Coproduct::inject(*jr)).collect(), sdeps),
                 Inr(Inr(Inl(sr))) => (deps, sdeps.into_iter().filter(|d| d != sr).collect()),
                 Inr(Inr(Inr(void))) => match *void {},
             };
@@ -180,7 +180,7 @@ impl<T> Pools<T> {
             let premise_list = std::mem::replace(&mut v.premise_list, ZipperVec::new());
             v.premise_list = ZipperVec::from_vec(premise_list.iter().filter(|x| x != &idx).cloned().collect());
         }
-        self.remove_line_helper(&Coproduct::inject(idx.clone()));
+        self.remove_line_helper(&Coproduct::inject(*idx));
     }
     fn remove_step(&mut self, idx: &JustKey) {
         self.just_map.remove(idx);
@@ -188,7 +188,7 @@ impl<T> Pools<T> {
             let line_list = std::mem::replace(&mut v.line_list, ZipperVec::new());
             v.line_list = ZipperVec::from_vec(line_list.iter().filter(|x| x.get() != Some(idx)).cloned().collect());
         }
-        self.remove_line_helper(&Coproduct::inject(idx.clone()));
+        self.remove_line_helper(&Coproduct::inject(*idx));
     }
     fn remove_subproof(&mut self, idx: &SubKey) {
         use frunk::Coproduct::{Inl, Inr};
@@ -208,7 +208,7 @@ impl<T> Pools<T> {
             let line_list = std::mem::replace(&mut v.line_list, ZipperVec::new());
             v.line_list = ZipperVec::from_vec(line_list.iter().filter(|x| x.get() != Some(idx)).cloned().collect());
         }
-        self.remove_line_helper(&Coproduct::inject(idx.clone()));
+        self.remove_line_helper(&Coproduct::inject(*idx));
     }
 }
 
@@ -294,7 +294,7 @@ impl<Tail: Default+Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
         unsafe { &*self.pools }.just_map.get(r).map(|x| x.clone().map0(|y| y.head))
     }
     fn lookup_subproof(&self, r: &Self::SubproofReference) -> Option<Self::Subproof> {
-        unsafe { &mut *self.pools }.sub_map.get(r).map(|x| x.clone() )
+        unsafe { &mut *self.pools }.sub_map.get(r).cloned()
     }
     fn with_mut_premise<A, F: FnOnce(&mut Expr) -> A>(&mut self, r: &Self::PremiseReference, f: F) -> Option<A> {
         let pools = unsafe { &mut *self.pools };
@@ -305,7 +305,7 @@ impl<Tail: Default+Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
     fn with_mut_step<A, F: FnOnce(&mut Justification<Expr, PJRef<Self>, Self::SubproofReference>) -> A>(&mut self, r: &Self::JustificationReference, f: F) -> Option<A> {
         let pools = unsafe { &mut *self.pools };
         pools.just_map.get_mut(r).map(|j_hcons: &mut Justification<HCons<Expr, Tail>, _, _>| {
-            let mut j_expr: Justification<Expr, _, _> = Justification(j_hcons.0.get().clone(), j_hcons.1.clone(), j_hcons.2.clone(), j_hcons.3.clone());
+            let mut j_expr: Justification<Expr, _, _> = Justification(j_hcons.0.get().clone(), j_hcons.1, j_hcons.2.clone(), j_hcons.3.clone());
             let ret = f(&mut j_expr);
             *j_hcons.0.get_mut() = j_expr.0;
             j_hcons.1 = j_expr.1;
@@ -420,7 +420,7 @@ impl<Tail: Default+Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
     fn verify_line(&self, r: &PJRef<Self>) -> Result<(), ProofCheckError<PJRef<Self>, Self::SubproofReference>> {
         use self::Coproduct::{Inl, Inr};
         match self.lookup_pj(r) {
-            None => Err(ProofCheckError::LineDoesNotExist(r.clone())),
+            None => Err(ProofCheckError::LineDoesNotExist(*r)),
             Some(Inl(_)) => Ok(()), // premises are always valid
             Some(Inr(Inl(Justification(conclusion, rule, deps, sdeps)))) => {
                 // TODO: efficient caching for ReferencesLaterLine check, so this isn't potentially O(n)
@@ -430,15 +430,15 @@ impl<Tail: Default+Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
                 println!("possible_deps_for_line: {:?} {:?} {:?}", r, valid_deps, valid_sdeps);
 
                 for dep in deps.iter() {
-                    let dep_co = Coproduct::inject(dep.clone());
+                    let dep_co = Coproduct::inject(*dep);
                     if !self.can_reference_dep(r, &dep_co) {
-                        return Err(ProofCheckError::ReferencesLaterLine(r.clone(), dep_co));
+                        return Err(ProofCheckError::ReferencesLaterLine(*r, dep_co));
                     }
                 }
                 for sdep in sdeps.iter() {
-                    let sdep_co = Coproduct::inject(sdep.clone());
+                    let sdep_co = Coproduct::inject(*sdep);
                     if !self.can_reference_dep(r, &sdep_co) {
-                        return Err(ProofCheckError::ReferencesLaterLine(r.clone(), sdep_co));
+                        return Err(ProofCheckError::ReferencesLaterLine(*r, sdep_co));
                     }
                 }
                 rule.check(self, conclusion, deps, sdeps)
@@ -503,13 +503,13 @@ impl<Tail> DisplayIndented for PooledProof<HCons<Expr, Tail>> {
                 let premise = p.pools.prem_map.get(idx).unwrap();
                 write!(fmt, "{}:\t", linecount)?;
                 for _ in 0..indent { write!(fmt, "| ")?; }
-                write!(fmt, "{}\n", premise.head)?;
+                writeln!(fmt, "{}", premise.head)?;
                 *linecount += 1;
             }
             write!(fmt, "\t")?;
             for _ in 0..indent { write!(fmt, "| ")?; }
             for _ in 0..10 { write!(fmt, "-")?; }
-            write!(fmt, "\n")?;
+            writeln!(fmt)?;
             for line in sub.line_list.iter() {
                 match line.uninject() {
                     Ok(justkey) => { p.pools.just_map.get(&justkey).unwrap().display_indented(fmt, indent, linecount)? },

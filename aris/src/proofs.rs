@@ -231,19 +231,19 @@ pub trait Proof: Sized {
         r.clone().fold(hlist![|pr| self.lookup_premise(&pr), |jr| self.lookup_step(&jr).map(|x| x.0)])
     }
     fn lookup_expr_or_die(&self, r: &PJRef<Self>) -> Result<Expr, ProofCheckError<PJRef<Self>, Self::SubproofReference>> {
-        self.lookup_expr(r).ok_or(ProofCheckError::LineDoesNotExist(r.clone()))
+        self.lookup_expr(r).ok_or_else(|| ProofCheckError::LineDoesNotExist(r.clone()))
     }
     fn lookup_premise_or_die(&self, r: &Self::PremiseReference) -> Result<Expr, ProofCheckError<PJRef<Self>, Self::SubproofReference>> {
-        self.lookup_premise(r).ok_or(ProofCheckError::LineDoesNotExist(Coproduct::inject(r.clone())))
+        self.lookup_premise(r).ok_or_else(|| ProofCheckError::LineDoesNotExist(Coproduct::inject(r.clone())))
     }
     fn lookup_justification_or_die(&self, r: &Self::JustificationReference) -> Result<Justification<Expr, PJRef<Self>, Self::SubproofReference>, ProofCheckError<PJRef<Self>, Self::SubproofReference>> {
-        self.lookup_step(r).ok_or(ProofCheckError::LineDoesNotExist(Coproduct::inject(r.clone())))
+        self.lookup_step(r).ok_or_else(|| ProofCheckError::LineDoesNotExist(Coproduct::inject(r.clone())))
     }
     fn lookup_pj(&self, r: &PJRef<Self>) -> Option<Coprod!(Expr, Justification<Expr, PJRef<Self>, Self::SubproofReference>)> {
         r.clone().fold(hlist![|pr| self.lookup_premise(&pr).map(Coproduct::inject), |jr| self.lookup_step(&jr).map(Coproduct::inject)])
     }
     fn lookup_subproof_or_die(&self, r: &Self::SubproofReference) -> Result<Self::Subproof, ProofCheckError<PJRef<Self>, Self::SubproofReference>> {
-        self.lookup_subproof(r).ok_or(ProofCheckError::SubproofDoesNotExist(r.clone()))
+        self.lookup_subproof(r).ok_or_else(|| ProofCheckError::SubproofDoesNotExist(r.clone()))
     }
     fn direct_lines(&self) -> Vec<Self::JustificationReference> {
         self.lines().iter().filter_map(|x| Coproduct::uninject::<Self::JustificationReference, _>(x.clone()).ok()).collect()
@@ -272,8 +272,8 @@ pub trait Proof: Sized {
                 Inr(Inl(jr)) => {
                     result.insert(Coproduct::inject(jr.clone()));
                     if let Some(Justification(_, _, deps, sdeps)) = self.lookup_step(&jr) {
-                        stack.extend(deps.into_iter().map(|x| pj_to_pjs::<Self>(x)));
-                        stack.extend(sdeps.into_iter().map(|x| Coproduct::inject(x)));
+                        stack.extend(deps.into_iter().map(pj_to_pjs::<Self>));
+                        stack.extend(sdeps.into_iter().map(Coproduct::inject));
                     }
                 },
                 Inr(Inr(Inl(sr))) => {
@@ -379,14 +379,14 @@ impl<T: JustificationExprDisplay, R: std::fmt::Debug, S: std::fmt::Debug> Displa
             write!(fmt, "{:?}", dep)?;
             if i != deps.len()-1 { write!(fmt, ", ")?; }
         }
-        if deps.len() > 0 && sdeps.len() > 0 {
+        if !deps.is_empty() && !sdeps.is_empty() {
             write!(fmt, "; ")?;
         }
         for (i, dep) in sdeps.iter().enumerate() {
             write!(fmt, "{:?}", dep)?;
             if i != sdeps.len()-1 { write!(fmt, ", ")?; }
         }
-        write!(fmt, "\n")
+        writeln!(fmt)
     }
 }
 

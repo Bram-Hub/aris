@@ -122,8 +122,8 @@ define_rewrite_rule! { BICONDITIONAL_SUBSTITUTION_RULES; [
 pub fn for_each_truthtable<F>(n: usize, mut f: F) where F: FnMut(&[bool]) {
     let mut table = vec![false; n];
     for x in 0..(2usize.pow(n as _)) {
-        for i in 0..n {
-            table[i] = (x & (1 << i)) != 0;
+        for (i, value) in table.iter_mut().enumerate() {
+            *value = (x & (1 << i)) != 0;
         }
         f(&table[..]);
     }

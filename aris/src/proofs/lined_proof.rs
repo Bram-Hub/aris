@@ -55,6 +55,11 @@ impl<P: Proof+Debug> Debug for LinedProof<P> where PJRef<P>: Debug, P::SubproofR
     }
 }
 
+impl<P: Proof+Debug> Default for LinedProof<P> where PJRef<P>: Debug, P::SubproofReference: Debug {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl<P: Proof+Debug> LinedProof<P> where PJRef<P>: Debug, P::SubproofReference: Debug {
     pub fn new() -> Self {
@@ -65,6 +70,9 @@ impl<P: Proof+Debug> LinedProof<P> where PJRef<P>: Debug, P::SubproofReference: 
     }
     pub fn len(&self) -> usize {
         self.lines.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
     pub fn from_proof(p: P) -> Self {
         fn aux<P: Proof>(p: &P::Subproof, ret: &mut LinedProof<P>, current_sub: Option<P::SubproofReference>) {
@@ -96,7 +104,7 @@ impl<P: Proof+Debug> LinedProof<P> where PJRef<P>: Debug, P::SubproofReference: 
         use frunk::Coproduct::{Inl, Inr};
         println!("add_line {:?} {:?} {:?}", i, is_premise, subproof_level);
         let const_true = Expr::Tautology;
-        let line: Option<Line<P>> = self.lines.get(i).map(|x| x.clone());
+        let line: Option<Line<P>> = self.lines.get(i).cloned();
         match line {
             None => {
                 let r = if is_premise { Inl(self.proof.add_premise(const_true)) } else { Inr(Inl(self.proof.add_step(Justification(const_true, RuleM::Reit, vec![], vec![])))) };
@@ -151,4 +159,3 @@ fn test_from_proof() {
     f(0);
     f(1);
 }
-
