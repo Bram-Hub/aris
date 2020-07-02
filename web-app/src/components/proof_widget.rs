@@ -3,7 +3,6 @@ use crate::components::expr_entry::ExprEntry;
 use crate::proof_ui_data::ProofUiData;
 use crate::util::calculate_lineinfo;
 use crate::util::P;
-use crate::util::uid;
 
 use aris::proofs::pj_to_pjs;
 use aris::proofs::Justification;
@@ -21,7 +20,6 @@ use std::mem;
 use frunk::Coprod;
 use frunk::Coproduct;
 use strum::IntoEnumIterator;
-use wasm_bindgen::JsCast;
 use yew::prelude::*;
 
 pub struct ProofWidget {
@@ -44,7 +42,7 @@ pub enum LineActionKind {
     Delete { what: LAKItem },
     SetRule { rule: Rule },
     Select,
-    SetDependency { to: bool, dep: frunk::Coproduct<PJRef<P>, frunk::Coproduct<<P as Proof>::SubproofReference, frunk::coproduct::CNil>> },
+    ToggleDependency { dep: frunk::Coproduct<PJRef<P>, frunk::Coproduct<<P as Proof>::SubproofReference, frunk::coproduct::CNil>> },
 }
 
 pub enum ProofWidgetMsg {
@@ -74,47 +72,41 @@ pub struct ProofWidgetProps {
 }
 
 impl ProofWidget {
-    fn render_line_num_dep_checkbox(&self, line: usize, proofref: Coprod!(PJRef<P>, <P as Proof>::SubproofReference)) -> Html {
+    fn render_line_num_dep_checkbox(&self, line: Option<usize>, proofref: Coprod!(PJRef<P>, <P as Proof>::SubproofReference)) -> Html {
+        let line = match line {
+            Some(line) => line.to_string(),
+            None => "".to_string(),
+        };
         if let Some(selected_line) = self.selected_line {
             use frunk::Coproduct::{Inl, Inr};
             if let Inr(Inl(_)) = selected_line {
-                let lookup_result = self.prf.lookup_pj(&selected_line).expect("selected_line should exist in self.prf");
-                let just: &Justification<_, _, _> = lookup_result.get().expect("selected_line already is a JustificationReference");
-                let checked = match proofref {
-                    Inl(lr) => just.2.contains(&lr),
-                    Inr(Inl(sr)) => just.3.contains(&sr),
-                    Inr(Inr(void)) => match void {},
-                };
                 let dep = proofref.clone();
                 let selected_line_ = selected_line.clone();
-                let handle_dep_changed = self.link.callback(move |e: MouseEvent| {
-                    if let Some(target) = e.target() {
-                        if let Ok(checkbox) = target.dyn_into::<web_sys::HtmlInputElement>() {
-                            return ProofWidgetMsg::LineAction(LineActionKind::SetDependency { to: checkbox.checked(), dep }, selected_line_);
-                        }
-                    }
-                    ProofWidgetMsg::Nop
+                let toggle_dep = self.link.callback(move |_| {
+                    ProofWidgetMsg::LineAction(LineActionKind::ToggleDependency { dep }, selected_line_)
                 });
                 if self.prf.can_reference_dep(&selected_line, &proofref) {
-                    // We have to use a UID and not a line number here because
-                    // line numbers can conflict between tabs.
-                    let id = format!("dep-box-{}", uid());
-
                     return html! {
-                        <div class="custom-control custom-checkbox checkbox-big">
-                            <input
-                                id=id
-                                type="checkbox"
-                                class="custom-control-input"
-                                onclick=handle_dep_changed
-                                checked=checked />
-                            <label for=id class="custom-control-label"> { line } </label>
-                        </div>
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            onclick=toggle_dep>
+
+                            { line }
+                        </button>
                     };
                 }
             }
         }
-        yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new())
+        html! {
+            <button
+                type="button"
+                class="btn"
+                disabled=true>
+
+                { line }
+            </button>
+        }
     }
     /// Create a drop-down menu allowing the user to select the rule used in a
     /// justification line. This uses the [Bootstrap-submenu][lib] library.
@@ -245,7 +237,7 @@ impl ProofWidget {
         }
     }
     fn render_proof_line(&self, line: usize, depth: usize, proofref: PJRef<P>, edge_decoration: &str) -> Html {
-        let line_num_dep_checkbox = self.render_line_num_dep_checkbox(line, frunk::Coproduct::inject(proofref.clone()));
+        let line_num_dep_checkbox = self.render_line_num_dep_checkbox(Some(line), frunk::Coproduct::inject(proofref.clone()));
         let mut indentation = yew::virtual_dom::VList::new();
         for _ in 0..depth {
             //indentation.add_child(html! { <span style="background-color:black">{"-"}</span>});
@@ -319,8 +311,19 @@ impl ProofWidget {
         let init_value = self.pud.ref_to_input.get(&proofref).cloned().unwrap_or_default();
         let in_subproof = depth > 0;
         let is_selected_line = self.selected_line == Some(proofref);
+        let is_dep_line = match self.selected_line {
+            Some(Coproduct::Inr(Coproduct::Inl(selected_line))) => {
+                match self.prf.lookup_justification_or_die(&selected_line) {
+                    Ok(Justification(_, _, line_deps, _)) => line_deps.contains(&proofref),
+                    Err(_) => false,
+                }
+            }
+            _ => false,
+        };
         let class = if is_selected_line {
             "proof-line table-info"
+        } else if is_dep_line {
+            "proof-line table-secondary"
         } else {
             "proof-line"
         };
@@ -350,7 +353,7 @@ impl ProofWidget {
             *line += 1;
         }
         let dep_checkbox = match sref {
-            Some(sr) => self.render_line_num_dep_checkbox(*line, frunk::Coproduct::inject(sr)),
+            Some(sr) => self.render_line_num_dep_checkbox(None, frunk::Coproduct::inject(sr)),
             None => yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new()),
         };
         let mut spacer = yew::virtual_dom::VList::new();
@@ -538,21 +541,21 @@ impl Component for ProofWidget {
                 self.selected_line = Some(proofref);
                 ret = true;
             },
-            ProofWidgetMsg::LineAction(LineActionKind::SetDependency { to, dep }, proofref) => {
+            ProofWidgetMsg::LineAction(LineActionKind::ToggleDependency { dep }, proofref) => {
                 if let Inr(Inl(jr)) = &proofref {
                     self.prf.with_mut_step(&jr, |j| {
-                        fn toggle_dep_or_sdep<T: Ord>(dep: T, deps: &mut Vec<T>, to: bool) {
+                        fn toggle_dep_or_sdep<T: Ord>(dep: T, deps: &mut Vec<T>) {
                             let mut dep_set: BTreeSet<T> = mem::replace(deps, vec![]).into_iter().collect();
-                            if to {
-                                dep_set.insert(dep);
-                            } else {
+                            if dep_set.contains(&dep) {
                                 dep_set.remove(&dep);
+                            } else {
+                                dep_set.insert(dep);
                             }
                             deps.extend(dep_set);
                         }
                         match dep {
-                            Inl(lr) => toggle_dep_or_sdep(lr, &mut j.2, to),
-                            Inr(Inl(sr)) => toggle_dep_or_sdep(sr, &mut j.3, to),
+                            Inl(lr) => toggle_dep_or_sdep(lr, &mut j.2),
+                            Inr(Inl(sr)) => toggle_dep_or_sdep(sr, &mut j.3),
                             Inr(Inr(void)) => match void {},
                         }
                     });

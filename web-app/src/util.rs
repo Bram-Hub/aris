@@ -11,14 +11,6 @@ use frunk::Hlist;
 // yew doesn't seem to allow Components to be generic over <P: Proof>, so fix a proof type P at the module level
 pub type P = PooledProof<Hlist![Expr]>;
 
-/// Create a unique ID that is different each call
-pub fn uid() -> usize {
-    use std::sync::atomic::AtomicUsize;
-    use std::sync::atomic::Ordering;
-    static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
-    NEXT_ID.fetch_add(1, Ordering::Relaxed)
-}
-
 pub fn calculate_lineinfo<P: Proof>(
     output: &mut HashMap<PJRef<P>, (usize, usize)>,
     prf: &<P as Proof>::Subproof,
