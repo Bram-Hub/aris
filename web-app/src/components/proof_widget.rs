@@ -196,19 +196,21 @@ impl ProofWidget {
             let cur_rule_name = just.1.get_name();
             let rule_selector = self.render_rules_menu(proofref, &cur_rule_name);
             html! {
-                <div>
-                <td>
-                { rule_selector }
-                </td>
-                <td><input type="text" readonly=true value=dep_lines></input></td>
-                </div>
+                <>
+                    <td>
+                        { rule_selector }
+                    </td>
+                    <td>
+                        <input type="text" readonly=true value=dep_lines />
+                    </td>
+                </>
             }
         } else {
             html! {
-                <div>
+                <>
                     <td></td>
                     <td></td>
-                </div>
+                </>
             }
         }
     }
@@ -243,12 +245,6 @@ impl ProofWidget {
         }
     }
     fn render_proof_line(&self, line: usize, depth: usize, proofref: PJRef<P>, edge_decoration: &str) -> Html {
-        let selection_indicator =
-            if self.selected_line == Some(proofref.clone()) {
-                html! { <span style="background-color: cyan; color: blue"> { ">" } </span> }
-            } else {
-                yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new())
-            };
         let line_num_dep_checkbox = self.render_line_num_dep_checkbox(line, frunk::Coproduct::inject(proofref.clone()));
         let mut indentation = yew::virtual_dom::VList::new();
         for _ in 0..depth {
@@ -322,9 +318,14 @@ impl ProofWidget {
         let justification_widget = self.render_justification_widget(proofref.clone());
         let init_value = self.pud.ref_to_input.get(&proofref).cloned().unwrap_or_default();
         let in_subproof = depth > 0;
+        let is_selected_line = self.selected_line == Some(proofref);
+        let class = if is_selected_line {
+            "proof-line table-info"
+        } else {
+            "proof-line"
+        };
         html! {
-            <tr class="proof-line">
-                <td> { selection_indicator } </td>
+            <tr class=class>
                 <td> { line_num_dep_checkbox } </td>
                 <td>
                     { indentation }
@@ -353,7 +354,6 @@ impl ProofWidget {
             None => yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new()),
         };
         let mut spacer = yew::virtual_dom::VList::new();
-        spacer.add_child(html! { <td></td> });
         spacer.add_child(html! { <td>{ dep_checkbox }</td> });
         //spacer.add_child(html! { <td style="background-color:black"></td> });
         let mut spacer_lines = String::new();
