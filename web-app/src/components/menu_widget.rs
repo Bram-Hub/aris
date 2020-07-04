@@ -152,27 +152,32 @@ impl Component for MenuWidget {
             }
         });
         html! {
-            <div ref=self.node_ref.clone() class="dropdown show">
-                <a class="btn btn-secondary dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{"File"}</a>
-                <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
-                    <div>
-                        <label for="file-menu-new-proof" class="dropdown-item">{"New blank proof"}</label>
-                        <input id="file-menu-new-proof" style="display:none" type="button" onclick=self.link.callback(|_| MenuWidgetMsg::FileNew) />
-                    </div>
-                    <div>
-                        <label for="file-menu-open-proof" class="dropdown-item">{"Open proof"}</label>
-                        <input id="file-menu-open-proof" style="display:none" type="file" onchange=handle_open_file />
-                    </div>
-                    <div>
-                        <label for="file-menu-save-proof" class="dropdown-item">{"Save proof"}</label>
-                        <input id="file-menu-save-proof" style="display:none" type="button" onclick=self.link.callback(|_| MenuWidgetMsg::FileSave) />
-                    </div>
-                    <div>
-                        <label for="file-menu-new-expr-tree" class="dropdown-item">{"New expression tree"}</label>
-                        <input id="file-menu-new-expr-tree" style="display:none" type="button" onclick=self.link.callback(|_| MenuWidgetMsg::NewExprTree) />
-                    </div>
-                </div>
-            </div>
+            <nav class="navbar navbar-expand-lg navbar-dark bg-secondary">
+                <a class="navbar-brand" href="#"> { "Aris" } </a>
+                <ul class="navbar-nav">
+                    <li ref=self.node_ref.clone() class="nav-item dropdown show">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{"File"}</a>
+                        <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+                            <div>
+                                <label for="file-menu-new-proof" class="dropdown-item">{"New blank proof"}</label>
+                                <input id="file-menu-new-proof" style="display:none" type="button" onclick=self.link.callback(|_| MenuWidgetMsg::FileNew) />
+                            </div>
+                            <div>
+                                <label for="file-menu-open-proof" class="dropdown-item">{"Open proof"}</label>
+                                <input id="file-menu-open-proof" style="display:none" type="file" onchange=handle_open_file />
+                            </div>
+                            <div>
+                                <label for="file-menu-save-proof" class="dropdown-item">{"Save proof"}</label>
+                                <input id="file-menu-save-proof" style="display:none" type="button" onclick=self.link.callback(|_| MenuWidgetMsg::FileSave) />
+                            </div>
+                            <div>
+                                <label for="file-menu-new-expr-tree" class="dropdown-item">{"New expression tree"}</label>
+                                <input id="file-menu-new-expr-tree" style="display:none" type="button" onclick=self.link.callback(|_| MenuWidgetMsg::NewExprTree) />
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </nav>
         }
     }
 }
