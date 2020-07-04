@@ -32,6 +32,9 @@ pub struct ProofWidget {
     pud: ProofUiData<P>,
     /// The currently selected line, highlighted in the UI
     selected_line: Option<PJRef<P>>,
+    /// Error message, for if there was an error parsing the proof XML. If this
+    /// exists, it is displayed instead of the proof.
+    open_error: Option<String>,
     preblob: String,
     props: ProofWidgetProps,
 }
@@ -427,21 +430,41 @@ fn may_remove_line<P: Proof>(prf: &P, proofref: &PJRef<P>) -> bool {
     }
 }
 
+/// Render an alert for an error opening the proof
+fn render_open_error(error: &str) -> Html {
+    html! {
+        <div class="alert alert-danger m-4" role="alert">
+            <h4 class="alert-heading"> { "Error opening proof" } </h4>
+            <hr />
+            <p> { error } </p>
+        </div>
+    }
+}
+
+/// Create a new empty proof, the default proof shown in the UI
+fn new_empty_proof() -> P {
+    use aris::expression::expression_builders::var;
+    let mut proof = P::new();
+    proof.add_premise(var(""));
+    proof.add_step(Justification(var(""), RuleM::Reit, vec![], vec![]));
+    proof
+}
+
 impl Component for ProofWidget {
     type Message = ProofWidgetMsg;
     type Properties = ProofWidgetProps;
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         props.oncreate.emit(link.clone());
-        let mut prf;
-        if let Some(data) = &props.data {
-            let (prf2, _metadata) = aris::proofs::xml_interop::proof_from_xml::<P, _>(&data[..]).unwrap();
-            prf = prf2;
-        } else {
-            use aris::expression::expression_builders::var;
-            prf = P::new();
-            prf.add_premise(var(""));
-            prf.add_step(Justification(var(""), RuleM::Reit, vec![], vec![]));
-        }
+        let (prf, error) = match &props.data {
+            Some(data) => {
+                let result = aris::proofs::xml_interop::proof_from_xml::<P, _>(&data[..]);
+                match result {
+                    Ok((prf, _)) => (prf, None),
+                    Err(err) => (new_empty_proof(), Some(err)),
+                }
+            }
+            None => (new_empty_proof(), None),
+        };
 
         let pud = ProofUiData::from_proof(&prf);
         let mut tmp = Self {
@@ -449,6 +472,7 @@ impl Component for ProofWidget {
             prf,
             pud,
             selected_line: None,
+            open_error: error,
             preblob: "".into(),
             props,
         };
@@ -581,10 +605,13 @@ impl Component for ProofWidget {
         true
     }
     fn view(&self) -> Html {
-        let interactive_proof = self.render_proof(self.prf.top_level_proof(), None, &mut 1, &mut 0);
+        let widget = match &self.open_error {
+            Some(err) => render_open_error(err),
+            None => self.render_proof(self.prf.top_level_proof(), None, &mut 1, &mut 0),
+        };
         html! {
             <div>
-                { interactive_proof }
+                { widget }
                 <div style="display: none">
                     <hr />
                     <pre> { format!("{}\n{:#?}", self.prf, self.prf) } </pre>
