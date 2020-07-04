@@ -22,10 +22,15 @@ use frunk::Coproduct;
 use strum::IntoEnumIterator;
 use yew::prelude::*;
 
+/// Component for editing proofs
 pub struct ProofWidget {
     link: ComponentLink<Self>,
+    /// The proof being edited with this widget
     prf: P,
+    /// UI-specific data associated with the proof, such as intermediate text in
+    /// lines that might have parse errors
     pud: ProofUiData<P>,
+    /// The currently selected line, highlighted in the UI
     selected_line: Option<PJRef<P>>,
     preblob: String,
     props: ProofWidgetProps,
