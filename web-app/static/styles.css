@@ -33,3 +33,10 @@
     width: 1.2rem;
     height: 1.2rem;
 }
+
+/* Fixes annoyances with Bootstrap's `form-custom` on `<input type="text">` */
+.text-input-custom {
+    display: inline;
+    width: 400px;
+    color: black;
+}

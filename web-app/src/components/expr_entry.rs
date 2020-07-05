@@ -64,7 +64,7 @@ impl Component for ExprEntry {
             <input
                 ref=self.node_ref.clone()
                 type="text"
-                style="width:400px"
+                class="form-control text-input-custom"
                 oninput=self.link.callback(|_| ExprEntryMsg::Edit)
                 onfocus=self.link.callback(|_| ExprEntryMsg::Focus)
                 value=self.props.init_value />
