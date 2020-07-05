@@ -172,16 +172,26 @@ impl ProofWidget {
         if let Inr(Inl(_)) = proofref {
             let lookup_result = self.prf.lookup_pj(&proofref).expect("proofref should exist in self.prf");
             let just: &Justification<_, _, _> = lookup_result.get().expect("proofref already is a JustificationReference");
-            let mut dep_lines = String::new();
-            for (i, dep) in just.2.iter().enumerate() {
-                let (dep_line, _) = self.pud.ref_to_line_depth[&dep];
-                dep_lines += &format!("{}{}", dep_line, if i < just.2.len()-1 { ", " } else { "" })
-            }
-            if just.2.len() > 0 && just.3.len() > 0 {
-                dep_lines += "; "
-            }
-            for (i, sdep) in just.3.iter().enumerate() {
-                if let Some(sub) = self.prf.lookup_subproof(&sdep) {
+
+            // Iterator over line dependency badges, for rendering list of
+            // dependencies
+            let dep_badges = just
+                .2
+                .iter()
+                .map(|dep| {
+                    let (dep_line, _) = self.pud.ref_to_line_depth[&dep];
+                    html! {
+                        <span class="badge badge-dark m-1"> { dep_line } </span>
+                    }
+                });
+
+            // Iterator over subproof dependency badges, for rendering list of
+            // dependencies
+            let sdep_badges = just
+                .3
+                .iter()
+                .filter_map(|sdep| self.prf.lookup_subproof(&sdep))
+                .map(|sub| {
                     let (mut lo, mut hi) = (usize::max_value(), usize::min_value());
                     for line in sub.premises().into_iter().map(Coproduct::inject).chain(sub.direct_lines().into_iter().map(Coproduct::inject)) {
                         if let Some((i, _)) = self.pud.ref_to_line_depth.get(&line) {
@@ -189,19 +199,29 @@ impl ProofWidget {
                             hi = std::cmp::max(hi, *i);
                         }
                     }
-                    dep_lines += &format!("{}-{}{}", lo, hi, if i < just.3.len()-1 { ", " } else { "" });
-                }
-            }
+                    let sdep_line = format!("{}-{}", lo, hi);
+                    html! {
+                        <span class="badge badge-secondary m-1"> { sdep_line } </span>
+                    }
+                });
+
+            // Node containing all dependency badges, for rendering list of
+            // dependencies
+            let all_dep_badges = dep_badges.chain(sdep_badges).collect::<Html>();
 
             let cur_rule_name = just.1.get_name();
             let rule_selector = self.render_rules_menu(proofref, &cur_rule_name);
             html! {
                 <>
                     <td>
+                        // Drop-down menu for selecting rules
                         { rule_selector }
                     </td>
                     <td>
-                        <input type="text" readonly=true value=dep_lines />
+                        // Dependency list
+                        <span class="alert alert-secondary small-alert p-1">
+                            { all_dep_badges }
+                        </span>
                     </td>
                 </>
             }
