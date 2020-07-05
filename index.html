@@ -13,6 +13,22 @@
     <script src="vendored/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
     <script src="vendored/bootstrap.bundle.min.js" integrity="sha384-1CmrxMRARb6aLqgBO7yyAxTOQE2AKb9GfXnEo760AUcUmFx3ibVJJAzGytlQcNXd" crossorigin="anonymous"></script>
     <script src="vendored/bootstrap-submenu.min.js" integrity="sha384-p9cpfn4GxrhaxjNJV0HguYSwg/S0x5a3tLXFMyBQtrGd0zdVWRKwpqNGuNRrfLtH" crossorigin="anonymous"></script>
+    <script>
+        // Close Bootstrap popovers by clicking outside of them
+        //
+        // Adapted from:
+        //   * https://jsfiddle.net/mattdlockyer/C5GBU/72/
+        //   * https://stackoverflow.com/a/14857326
+        $('body').on('click', function (e) {
+            if ($(e.target).data('toggle') !== 'popover' && $(e.target).parents('.popover').length === 0) {
+                $('[data-toggle=\"popover\"]').popover('hide');
+                // We need to manually remove popovers from the DOM, since
+                // calling `$(...).popover('hide')` doesn't close popovers
+                // originating from deleted buttons.
+                $('.popover').remove();
+            }
+        });
+    </script>
     <script type="module">
         import init, { run_app } from './pkg/aris_web_app.js';
         async function main() {
