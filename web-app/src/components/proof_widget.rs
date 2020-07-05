@@ -274,65 +274,89 @@ impl ProofWidget {
         }
         indentation.add_child(html! { <span class="indent">{edge_decoration}</span>});
         let proofref_ = proofref.clone();
-        let handle_action = self.link.callback(move |e: ChangeData| {
-            if let ChangeData::Select(s) = e {
-                let value = s.value();
-                s.set_selected_index(0);
-                match &*value {
-                    "delete_line" => ProofWidgetMsg::LineAction(LineActionKind::Delete { what: LAKItem::Line }, proofref_.clone()),
-                    "delete_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Delete { what: LAKItem::Subproof }, proofref_.clone()),
-                    "insert_line_before_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: false, relative_to: LAKItem::Line }, proofref_.clone()),
-                    "insert_line_after_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: true, relative_to: LAKItem::Line }, proofref_.clone()),
-                    "insert_line_before_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: false, relative_to: LAKItem::Subproof }, proofref_.clone()),
-                    "insert_line_after_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: true, relative_to: LAKItem::Subproof }, proofref_.clone()),
-                    "insert_subproof_before_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: false, relative_to: LAKItem::Line }, proofref_.clone()),
-                    "insert_subproof_after_line" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: true, relative_to: LAKItem::Line }, proofref_.clone()),
-                    "insert_subproof_before_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: false, relative_to: LAKItem::Subproof }, proofref_.clone()),
-                    "insert_subproof_after_subproof" => ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: true, relative_to: LAKItem::Subproof }, proofref_.clone()),
-                    _ => ProofWidgetMsg::Nop,
-                }
-            } else {
-                ProofWidgetMsg::Nop
-            }
-        });
-        let proofref_ = proofref.clone();
         let handle_input = self.link.callback(move |value: String| ProofWidgetMsg::LineChanged(proofref_.clone(), value));
         let proofref_ = proofref.clone();
         let select_line = self.link.callback(move |()| ProofWidgetMsg::LineAction(LineActionKind::Select, proofref_.clone()));
         let action_selector = {
             use frunk::Coproduct::{Inl, Inr};
+            let new_dropdown_item = |text, onclick| {
+                html! {
+                    <a class="dropdown-item" href="#" onclick=onclick>
+                        { text }
+                    </a>
+                }
+            };
+            let callback_delete_line = self.link.callback(move |_: web_sys::MouseEvent| {
+                ProofWidgetMsg::LineAction(LineActionKind::Delete { what: LAKItem::Line }, proofref_.clone())
+            });
+            let callback_delete_subproof = self.link.callback(move |_: web_sys::MouseEvent| {
+                ProofWidgetMsg::LineAction(LineActionKind::Delete { what: LAKItem::Subproof }, proofref_.clone())
+            });
+            let callback_insert_line_before_line = self.link.callback(move |_: web_sys::MouseEvent| {
+                ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: false, relative_to: LAKItem::Line }, proofref_.clone())
+            });
+            let callback_insert_line_after_line = self.link.callback(move |_: web_sys::MouseEvent| {
+                ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: true, relative_to: LAKItem::Line }, proofref_.clone())
+            });
+            let callback_insert_line_before_subproof = self.link.callback(move |_: web_sys::MouseEvent| {
+                ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: false, relative_to: LAKItem::Subproof }, proofref_.clone())
+            });
+            let callback_insert_line_after_subproof = self.link.callback(move |_: web_sys::MouseEvent| {
+                ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: true, relative_to: LAKItem::Subproof }, proofref_.clone())
+            });
+            let callback_insert_subproof_before_line = self.link.callback(move |_: web_sys::MouseEvent| {
+                ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: false, relative_to: LAKItem::Line }, proofref_.clone())
+            });
+            let callback_insert_subproof_after_line = self.link.callback(move |_: web_sys::MouseEvent| {
+                ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: true, relative_to: LAKItem::Line }, proofref_.clone())
+            });
+            let callback_insert_subproof_before_subproof = self.link.callback(move |_: web_sys::MouseEvent| {
+                ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: false, relative_to: LAKItem::Subproof }, proofref_.clone())
+            });
+            let callback_insert_subproof_after_subproof = self.link.callback(move |_: web_sys::MouseEvent| {
+                ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: true, relative_to: LAKItem::Subproof }, proofref_.clone())
+            });
             let mut options = yew::virtual_dom::VList::new();
             if may_remove_line(&self.prf, &proofref) {
-                options.add_child(html! { <option value="delete_line">{ "Delete line" }</option> });
+                options.add_child(new_dropdown_item("Delete line", callback_delete_line));
             }
             if let Some(_) = self.prf.parent_of_line(&pj_to_pjs::<P>(proofref.clone())) {
                 // only allow deleting non-root subproofs
-                options.add_child(html! { <option value="delete_subproof">{ "Delete subproof" }</option> });
+                options.add_child(new_dropdown_item("Delete subproof", callback_delete_subproof));
             }
             match proofref {
                 Inl(_) => {
-                    options.add_child(html! { <option value="insert_line_before_line">{ "Insert premise before this premise" }</option> });
-                    options.add_child(html! { <option value="insert_line_after_line">{ "Insert premise after this premise" }</option> });
+                    options.add_child(new_dropdown_item("Insert premise before this premise", callback_insert_line_before_line));
+                    options.add_child(new_dropdown_item("Insert premise after this premise", callback_insert_line_after_line));
                 },
                 Inr(Inl(_)) => {
-                    options.add_child(html! { <option value="insert_line_before_line">{ "Insert step before this step" }</option> });
-                    options.add_child(html! { <option value="insert_line_after_line">{ "Insert step after this step" }</option> });
-                    // Only show subproof creation relative to justification lines, since it may confuse users to have subproofs appear after all the premises when they selected a premise
-                    options.add_child(html! { <option value="insert_subproof_before_line">{ "Insert subproof before this step" }</option> });
-                    options.add_child(html! { <option value="insert_subproof_after_line">{ "Insert subproof after this step" }</option> });
+                    options.add_child(new_dropdown_item("Insert step before this step", callback_insert_line_before_line));
+                    options.add_child(new_dropdown_item("Insert step after this step", callback_insert_line_after_line));
+                    // Only show subproof creation relative to justification
+                    // lines, since it may confuse users to have subproofs
+                    // appear after all the premises when they selected a
+                    // premise
+                    options.add_child(new_dropdown_item("Insert subproof before this step", callback_insert_subproof_before_line));
+                    options.add_child(new_dropdown_item("Insert subproof after this step", callback_insert_subproof_after_line));
                 },
                 Inr(Inr(void)) => match void {},
             }
             html! {
-            <select onchange=handle_action>
-                <option value="Action">{ "Action" }</option>
-                <hr />
-                { options }
-                //<option value="insert_line_before_subproof">{ "insert_line_before_subproof" }</option>
-                //<option value="insert_line_after_subproof">{ "insert_line_after_subproof" }</option>
-                //<option value="insert_subproof_before_subproof">{ "insert_subproof_before_subproof" }</option>
-                //<option value="insert_subproof_after_subproof">{ "insert_subproof_after_subproof" }</option>
-            </select>
+                <div class="dropdown">
+                    <button
+                        type="button"
+                        class="btn btn-secondary dropdown-toggle"
+                        id="dropdownMenuButton"
+                        data-toggle="dropdown"
+                        aria-haspopup="true"
+                        aria-expanded="false">
+
+                        { "Action" }
+                    </button>
+                    <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                        { options }
+                    </div>
+                </div>
             }
         };
         let justification_widget = self.render_justification_widget(proofref.clone());
