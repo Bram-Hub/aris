@@ -45,10 +45,10 @@ impl Proof for JavaShallowProof {
     fn add_premise_relative(&mut self, e: Expr, _: &Self::PremiseReference, _: bool) -> Self::PremiseReference {
         self.add_premise(e)
     }
-    fn add_subproof_relative(&mut self, _: &Self::JustificationReference, _: bool) -> Self::SubproofReference {
+    fn add_subproof_relative(&mut self, _: &JSRef<Self>, _: bool) -> Self::SubproofReference {
         self.add_subproof()
     }
-    fn add_step_relative(&mut self, just: Justification<Expr, PJRef<Self>, Self::SubproofReference>, _: &Self::JustificationReference, _: bool) -> Self::JustificationReference {
+    fn add_step_relative(&mut self, just: Justification<Expr, PJRef<Self>, Self::SubproofReference>, _: &JSRef<Self>, _: bool) -> Self::JustificationReference {
         self.add_step(just)
     }
     fn remove_line(&mut self, _: &PJRef<Self>) {}

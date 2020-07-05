@@ -81,6 +81,7 @@ impl<P: Proof> SatProofBuilder<P> {
         let r = self.proof.with_mut_subproof(&self.main_subproof, move |sub| {
             if is_premise {
                 if let Some(next_premise) = next_premise_clone {
+                    let next_premise = Coproduct::inject(next_premise);
                     sub.add_step_relative(just, &next_premise, true)
                 } else {
                     sub.add_step(just)

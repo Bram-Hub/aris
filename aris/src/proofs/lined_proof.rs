@@ -113,7 +113,7 @@ impl<P: Proof+Debug> LinedProof<P> where PJRef<P>: Debug, P::SubproofReference: 
             Some(line) => {
                 let r = match (is_premise, line.reference.clone()) {
                     (true, Inl(pr)) => Inl(self.proof.add_premise_relative(const_true, &pr, true)),
-                    (false, Inr(Inl(jr))) => Inr(Inl(self.proof.add_step_relative(Justification(const_true, RuleM::Reit, vec![], vec![]), &jr, true))),
+                    (false, Inr(Inl(jr))) => Inr(Inl(self.proof.add_step_relative(Justification(const_true, RuleM::Reit, vec![], vec![]), &Coproduct::inject(jr), true))),
                     (_, Inr(Inr(void))) => match void {},
                     (b, r) => panic!("LinedProof::add_line, is_premise was {}, but the line reference was {:?}", b, r),
                 };

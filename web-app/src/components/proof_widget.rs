@@ -8,6 +8,7 @@ use aris::proofs::pj_to_pjs;
 use aris::proofs::Justification;
 use aris::proofs::Proof;
 use aris::proofs::PJRef;
+use aris::proofs::PJSRef;
 use aris::rules::Rule;
 use aris::rules::RuleClassification;
 use aris::rules::RuleM;
@@ -320,9 +321,14 @@ impl ProofWidget {
             if may_remove_line(&self.prf, &proofref) {
                 options.add_child(new_dropdown_item("Delete line", callback_delete_line));
             }
-            if let Some(_) = self.prf.parent_of_line(&pj_to_pjs::<P>(proofref.clone())) {
-                // only allow deleting non-root subproofs
+            // Only allow subproof operations on non-root subproofs
+            let is_subproof = self.prf.parent_of_line(&pj_to_pjs::<P>(proofref.clone())).is_some();
+            if is_subproof {
                 options.add_child(new_dropdown_item("Delete subproof", callback_delete_subproof));
+                options.add_child(new_dropdown_item("Insert step before this subproof", callback_insert_line_before_subproof));
+                options.add_child(new_dropdown_item("Insert step after this subproof", callback_insert_line_after_subproof));
+                options.add_child(new_dropdown_item("Insert subproof before this subproof", callback_insert_subproof_before_subproof));
+                options.add_child(new_dropdown_item("Insert subproof after this subproof", callback_insert_subproof_after_subproof));
             }
             match proofref {
                 Inl(_) => {
@@ -546,21 +552,33 @@ impl Component for ProofWidget {
             ProofWidgetMsg::LineAction(LineActionKind::Insert { what, after, relative_to }, orig_ref) => {
                 use aris::expression::expression_builders::var;
                 let to_select;
-                let insertion_point = match relative_to {
-                    LAKItem::Line => orig_ref,
+                let insertion_point: PJSRef<P> = match relative_to {
+                    LAKItem::Line => pj_to_pjs::<P>(orig_ref),
                     LAKItem::Subproof => {
-                        // TODO: need to refactor Proof::add_*_relative to take Coprod!(Reference, SubproofReference)
-                        return ret;
-                    },
+                        let parent = self.prf.parent_of_line(&pj_to_pjs::<P>(orig_ref));
+                        match parent {
+                            Some(parent) => Coproduct::inject(parent),
+                            None => return ret,
+                        }
+                    }
                 };
                 match what {
                     LAKItem::Line => match insertion_point {
-                        Inl(pr) => { to_select = Inl(self.prf.add_premise_relative(var("__js_ui_blank_premise"), &pr, after)); },
-                        Inr(Inl(jr)) => { to_select = Inr(Inl(self.prf.add_step_relative(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]), &jr, after))); },
-                        Inr(Inr(void)) => match void {},
+                        Inl(pr) => {
+                            to_select = Inl(self.prf.add_premise_relative(var("__js_ui_blank_premise"), &pr, after));
+                        }
+                        Inr(Inl(jr)) => {
+                            let jsr = Coproduct::inject(jr);
+                            to_select = Inr(Inl(self.prf.add_step_relative(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]), &jsr, after)));
+                        }
+                        Inr(Inr(Inl(sr))) => {
+                            let jsr = Coproduct::inject(sr);
+                            to_select = Inr(Inl(self.prf.add_step_relative(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]), &jsr, after)));
+                        }
+                        Inr(Inr(Inr(void))) => match void {},
                     },
                     LAKItem::Subproof => {
-                        let sr = self.prf.add_subproof_relative(&insertion_point.get().unwrap(), after);
+                        let sr = self.prf.add_subproof_relative(&insertion_point.subset().unwrap(), after);
                         to_select = self.prf.with_mut_subproof(&sr, |sub| {
                             let to_select = Inl(sub.add_premise(var("__js_ui_blank_premise")));
                             sub.add_step(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]));

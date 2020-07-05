@@ -369,33 +369,33 @@ impl<Tail: Default+Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
         }
         idx
     }
-    fn add_subproof_relative(&mut self, r: &Self::JustificationReference, after: bool) -> Self::SubproofReference {
+    fn add_subproof_relative(&mut self, r: &JSRef<Self>, after: bool) -> Self::SubproofReference {
         let pools = unsafe { &mut *self.pools };
         let idx = pools.next_subkey();
         let sub = PooledSubproof::new(pools);
         pools.sub_map.insert(idx, sub);
-        if let Some(s) = pools.parent_of(&Coproduct::inject(*r)) {
+        if let Some(s) = pools.parent_of(&js_to_pjs::<Self>(*r)) {
             self.with_mut_subproof(&s, |sub| {
                 pools.set_parent(Coproduct::inject(idx), sub);
-                sub.line_list.insert_relative(Coproduct::inject(idx), &Coproduct::inject(*r), after);
+                sub.line_list.insert_relative(Coproduct::inject(idx), r, after);
             });
         } else {
-            self.line_list.insert_relative(Coproduct::inject(idx), &Coproduct::inject(*r), after);
+            self.line_list.insert_relative(Coproduct::inject(idx), r, after);
         }
         idx
     }
-    fn add_step_relative(&mut self, just: Justification<Expr, PJRef<Self>, Self::SubproofReference>, r: &Self::JustificationReference, after: bool) -> Self::JustificationReference {
+    fn add_step_relative(&mut self, just: Justification<Expr, PJRef<Self>, Self::SubproofReference>, r: &JSRef<Self>, after: bool) -> Self::JustificationReference {
         let pools = unsafe { &mut *self.pools };
         let idx = pools.next_justkey();
         // TODO: occurs-before check
         pools.just_map.insert(idx, Justification(HCons { head: just.0, tail: Tail::default() }, just.1, just.2, just.3));
-        if let Some(s) = pools.parent_of(&Coproduct::inject(*r)) {
+        if let Some(s) = pools.parent_of(&js_to_pjs::<Self>(*r)) {
             self.with_mut_subproof(&s, |sub| {
                 pools.set_parent(Coproduct::inject(idx), sub);
-                sub.line_list.insert_relative(Coproduct::inject(idx), &Coproduct::inject(*r), after);
+                sub.line_list.insert_relative(Coproduct::inject(idx), r, after);
             });
         } else {
-            self.line_list.insert_relative(Coproduct::inject(idx), &Coproduct::inject(*r), after);
+            self.line_list.insert_relative(Coproduct::inject(idx), r, after);
         }
         idx
     }
@@ -468,8 +468,8 @@ impl<Tail: Default+Clone> Proof for PooledProof<HCons<Expr, Tail>> {
     fn add_premise(&mut self, e: Expr) -> Self::PremiseReference { self.proof.add_premise(e) }
     fn add_subproof(&mut self) -> Self::SubproofReference { self.proof.add_subproof() }
     fn add_premise_relative(&mut self, e: Expr, r: &Self::PremiseReference, after: bool) -> Self::PremiseReference { self.proof.add_premise_relative(e, r, after) }
-    fn add_subproof_relative(&mut self, r: &Self::JustificationReference, after: bool) -> Self::SubproofReference { self.proof.add_subproof_relative(r, after) }
-    fn add_step_relative(&mut self, just: Justification<Expr, PJRef<Self>, Self::SubproofReference>, r: &Self::JustificationReference, after: bool) -> Self::JustificationReference { self.proof.add_step_relative(just, r, after) }
+    fn add_subproof_relative(&mut self, r: &JSRef<Self>, after: bool) -> Self::SubproofReference { self.proof.add_subproof_relative(r, after) }
+    fn add_step_relative(&mut self, just: Justification<Expr, PJRef<Self>, Self::SubproofReference>, r: &JSRef<Self>, after: bool) -> Self::JustificationReference { self.proof.add_step_relative(just, r, after) }
     fn add_step(&mut self, just: Justification<Expr, PJRef<Self>, Self::SubproofReference>) -> Self::JustificationReference { self.proof.add_step(just) }
     fn remove_line(&mut self, r: &PJRef<Self>) {
         let premise_list = std::mem::replace(&mut self.proof.premise_list, ZipperVec::new());

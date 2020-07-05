@@ -89,8 +89,8 @@ impl<T: Clone+Default, U: Clone+Default> Proof for TreeProof<T, U> {
     fn add_subproof(&mut self) -> Self::SubproofReference { let i = self.0.count_lines(); self.0.lines.push(Line::Subproof(Default::default(), TreeSubproof { premises: vec![], lines: vec![] })); let j = self.0.count_lines(); SubproofDep((i+1)..j) }
     fn add_step(&mut self, just: Justification<Expr, PJRef<Self>, Self::SubproofReference>) -> Self::JustificationReference { self.0.lines.push(Line::Direct(Default::default(), just)); let i = self.0.count_lines(); LineDep(i) }
     fn add_premise_relative(&mut self, _: Expr, _: &Self::PremiseReference, _: bool) -> Self::PremiseReference { unimplemented!() }
-    fn add_subproof_relative(&mut self, _: &Self::JustificationReference, _: bool) -> Self::SubproofReference { unimplemented!() }
-    fn add_step_relative(&mut self, _: Justification<Expr, PJRef<Self>, Self::SubproofReference>, _: &Self::JustificationReference, _: bool) -> Self::JustificationReference { unimplemented!() }
+    fn add_subproof_relative(&mut self, _: &JSRef<Self>, _: bool) -> Self::SubproofReference { unimplemented!() }
+    fn add_step_relative(&mut self, _: Justification<Expr, PJRef<Self>, Self::SubproofReference>, _: &JSRef<Self>, _: bool) -> Self::JustificationReference { unimplemented!() }
     fn remove_line(&mut self, _: &PJRef<Self>) { unimplemented!() }
     fn remove_subproof(&mut self, _: &Self::SubproofReference) { unimplemented!() }
     fn premises(&self) -> Vec<Self::PremiseReference> {
