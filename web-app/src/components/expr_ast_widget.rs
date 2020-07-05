@@ -38,9 +38,8 @@ impl Component for ExprAstWidget {
         }
         true
     }
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        self.update(props.initial_contents);
-        true
+    fn change(&mut self, _: Self::Properties) -> ShouldRender {
+        false
     }
     fn view(&self) -> Html {
         // Convert expression to debug string
