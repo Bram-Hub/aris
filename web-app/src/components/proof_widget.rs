@@ -225,7 +225,7 @@ impl ProofWidget {
             </>
         }
     }
-    fn render_rule_feedback(&self, proofref: PJRef<P>, is_subproof: bool) -> Html {
+    fn render_line_feedback(&self, proofref: PJRef<P>, is_subproof: bool) -> Html {
         use aris::parser::parse;
         let raw_line = match self.pud.ref_to_input.get(&proofref).and_then(|x| if x.len() > 0 { Some(x) } else { None }) {
             None => { return html! { <span></span> }; },
@@ -357,7 +357,7 @@ impl ProofWidget {
         };
         let init_value = self.pud.ref_to_input.get(&proofref).cloned().unwrap_or_default();
         let in_subproof = depth > 0;
-        let rule_feedback = self.render_rule_feedback(proofref, in_subproof);
+        let rule_feedback = self.render_line_feedback(proofref, in_subproof);
         let is_selected_line = self.selected_line == Some(proofref);
         let is_dep_line = match self.selected_line {
             Some(Inr(Inl(selected_line))) => {
