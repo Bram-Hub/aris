@@ -37,6 +37,8 @@ impl Component for TabbedContainer {
             },
             TabbedContainerMsg::CreateTab { name, content } => {
                 self.tabs.push((name, content));
+                // Switch to new tab
+                self.current_tab = self.tabs.len() - 1;
                 true
             },
             TabbedContainerMsg::GetCurrentTab(f) => {
