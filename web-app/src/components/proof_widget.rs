@@ -121,11 +121,11 @@ impl ProofWidget {
     /// justification line. This uses the [Bootstrap-submenu][lib] library.
     ///
     /// ## Parameters:
-    ///   + `pjref` - reference to the justification line containing this menu
+    ///   + `jref` - reference to the justification line containing this menu
     ///   + `cur_rule_name` - name of the current selected rule
     ///
     /// [lib]: https://github.com/vsn4ik/bootstrap-submenu
-    fn render_rules_menu(&self, pjref: PJRef<P>, cur_rule_name: &str) -> Html {
+    fn render_rules_menu(&self, jref: <P as Proof>::JustificationReference, cur_rule_name: &str) -> Html {
         // Create menu items for rule classes
         let menu = RuleClassification::iter()
             .map(|rule_class| {
@@ -133,6 +133,7 @@ impl ProofWidget {
                 let rules = rule_class
                     .rules()
                     .map(|rule| {
+                        let pjref = Coproduct::inject(jref);
                         // Create menu item for rule
                         html! {
                             <button class="dropdown-item" type="button" onclick=self.link.callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule }, pjref))>
@@ -168,71 +169,60 @@ impl ProofWidget {
             </div>
         }
     }
-    fn render_justification_widget(&self, proofref: PJRef<P>) -> Html {
-        use frunk::Coproduct::{Inl, Inr};
-        if let Inr(Inl(_)) = proofref {
-            let lookup_result = self.prf.lookup_pj(&proofref).expect("proofref should exist in self.prf");
-            let just: &Justification<_, _, _> = lookup_result.get().expect("proofref already is a JustificationReference");
+    fn render_justification_widget(&self, jref: <P as Proof>::JustificationReference) -> Html {
+        let just = self.prf.lookup_justification_or_die(&jref).expect("proofref should exist in self.prf");
 
-            // Iterator over line dependency badges, for rendering list of
-            // dependencies
-            let dep_badges = just
-                .2
-                .iter()
-                .map(|dep| {
-                    let (dep_line, _) = self.pud.ref_to_line_depth[&dep];
-                    html! {
-                        <span class="badge badge-dark m-1"> { dep_line } </span>
+        // Iterator over line dependency badges, for rendering list of
+        // dependencies
+        let dep_badges = just
+            .2
+            .iter()
+            .map(|dep| {
+                let (dep_line, _) = self.pud.ref_to_line_depth[&dep];
+                html! {
+                    <span class="badge badge-dark m-1"> { dep_line } </span>
+                }
+            });
+
+        // Iterator over subproof dependency badges, for rendering list of
+        // dependencies
+        let sdep_badges = just
+            .3
+            .iter()
+            .filter_map(|sdep| self.prf.lookup_subproof(&sdep))
+            .map(|sub| {
+                let (mut lo, mut hi) = (usize::max_value(), usize::min_value());
+                for line in sub.premises().into_iter().map(Coproduct::inject).chain(sub.direct_lines().into_iter().map(Coproduct::inject)) {
+                    if let Some((i, _)) = self.pud.ref_to_line_depth.get(&line) {
+                        lo = std::cmp::min(lo, *i);
+                        hi = std::cmp::max(hi, *i);
                     }
-                });
+                }
+                let sdep_line = format!("{}-{}", lo, hi);
+                html! {
+                    <span class="badge badge-secondary m-1"> { sdep_line } </span>
+                }
+            });
 
-            // Iterator over subproof dependency badges, for rendering list of
-            // dependencies
-            let sdep_badges = just
-                .3
-                .iter()
-                .filter_map(|sdep| self.prf.lookup_subproof(&sdep))
-                .map(|sub| {
-                    let (mut lo, mut hi) = (usize::max_value(), usize::min_value());
-                    for line in sub.premises().into_iter().map(Coproduct::inject).chain(sub.direct_lines().into_iter().map(Coproduct::inject)) {
-                        if let Some((i, _)) = self.pud.ref_to_line_depth.get(&line) {
-                            lo = std::cmp::min(lo, *i);
-                            hi = std::cmp::max(hi, *i);
-                        }
-                    }
-                    let sdep_line = format!("{}-{}", lo, hi);
-                    html! {
-                        <span class="badge badge-secondary m-1"> { sdep_line } </span>
-                    }
-                });
+        // Node containing all dependency badges, for rendering list of
+        // dependencies
+        let all_dep_badges = dep_badges.chain(sdep_badges).collect::<Html>();
 
-            // Node containing all dependency badges, for rendering list of
-            // dependencies
-            let all_dep_badges = dep_badges.chain(sdep_badges).collect::<Html>();
-
-            let cur_rule_name = just.1.get_name();
-            let rule_selector = self.render_rules_menu(proofref, &cur_rule_name);
-            html! {
-                <>
-                    <td>
-                        // Drop-down menu for selecting rules
-                        { rule_selector }
-                    </td>
-                    <td>
-                        // Dependency list
-                        <span class="alert alert-secondary small-alert p-1">
-                            { all_dep_badges }
-                        </span>
-                    </td>
-                </>
-            }
-        } else {
-            html! {
-                <>
-                    <td></td>
-                    <td></td>
-                </>
-            }
+        let cur_rule_name = just.1.get_name();
+        let rule_selector = self.render_rules_menu(jref, &cur_rule_name);
+        html! {
+            <>
+                <td>
+                    // Drop-down menu for selecting rules
+                    { rule_selector }
+                </td>
+                <td>
+                    // Dependency list
+                    <span class="alert alert-secondary small-alert p-1">
+                        { all_dep_badges }
+                    </span>
+                </td>
+            </>
         }
     }
     fn render_rule_feedback(&self, proofref: PJRef<P>, is_subproof: bool) -> Html {
@@ -266,6 +256,7 @@ impl ProofWidget {
         }
     }
     fn render_proof_line(&self, line: usize, depth: usize, proofref: PJRef<P>, edge_decoration: &str) -> Html {
+        use frunk::Coproduct::{Inl, Inr};
         let line_num_dep_checkbox = self.render_line_num_dep_checkbox(Some(line), frunk::Coproduct::inject(proofref.clone()));
         let mut indentation = yew::virtual_dom::VList::new();
         for _ in 0..depth {
@@ -279,7 +270,6 @@ impl ProofWidget {
         let proofref_ = proofref.clone();
         let select_line = self.link.callback(move |()| ProofWidgetMsg::LineAction(LineActionKind::Select, proofref_.clone()));
         let action_selector = {
-            use frunk::Coproduct::{Inl, Inr};
             let new_dropdown_item = |text, onclick| {
                 html! {
                     <a class="dropdown-item" href="#" onclick=onclick>
@@ -365,12 +355,12 @@ impl ProofWidget {
                 </div>
             }
         };
-        let justification_widget = self.render_justification_widget(proofref.clone());
         let init_value = self.pud.ref_to_input.get(&proofref).cloned().unwrap_or_default();
         let in_subproof = depth > 0;
+        let rule_feedback = self.render_rule_feedback(proofref, in_subproof);
         let is_selected_line = self.selected_line == Some(proofref);
         let is_dep_line = match self.selected_line {
-            Some(Coproduct::Inr(Coproduct::Inl(selected_line))) => {
+            Some(Inr(Inl(selected_line))) => {
                 match self.prf.lookup_justification_or_die(&selected_line) {
                     Ok(Justification(_, _, line_deps, _)) => line_deps.contains(&proofref),
                     Err(_) => false,
@@ -385,6 +375,28 @@ impl ProofWidget {
         } else {
             "proof-line"
         };
+        let feedback_and_just_widgets = match proofref {
+            Inl(_) => {
+                // Premise
+                html! {
+                    <>
+                        <td></td>
+                        <td> { rule_feedback } </td>
+                        <td></td>
+                    </>
+                }
+            }
+            Inr(Inl(jref)) => {
+                // Justification
+                html! {
+                    <>
+                        <td> { rule_feedback } </td>
+                        { self.render_justification_widget(jref) }
+                    </>
+                }
+            }
+            Inr(Inr(void)) => match void {},
+        };
         html! {
             <tr class=class>
                 <td> { line_num_dep_checkbox } </td>
@@ -395,8 +407,7 @@ impl ProofWidget {
                         onfocus=select_line
                         init_value=init_value />
                 </td>
-                <td> { self.render_rule_feedback(proofref, in_subproof) } </td>
-                { justification_widget }
+                { feedback_and_just_widgets }
                 <td>{ action_selector }</td>
             </tr>
         }
