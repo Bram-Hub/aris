@@ -1,3 +1,9 @@
+/* Make <body> fill the entire window. The code in `index.html` to dismiss
+   Bootstrap popovers requires this. */
+html, body {
+    height: 100%;
+}
+
 .indent {
     padding-right: 0px;
     line-height: 1;
