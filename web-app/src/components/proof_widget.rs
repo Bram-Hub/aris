@@ -18,8 +18,8 @@ use std::collections::BTreeSet;
 use std::fmt;
 use std::mem;
 
-use frunk::Coprod;
-use frunk::Coproduct;
+use frunk_core::Coprod;
+use frunk_core::coproduct::Coproduct;
 use strum::IntoEnumIterator;
 use yew::prelude::*;
 
@@ -51,7 +51,7 @@ pub enum LineActionKind {
     Delete { what: LAKItem },
     SetRule { rule: Rule },
     Select,
-    ToggleDependency { dep: frunk::Coproduct<PJRef<P>, frunk::Coproduct<<P as Proof>::SubproofReference, frunk::coproduct::CNil>> },
+    ToggleDependency { dep: Coprod![PJRef<P>, <P as Proof>::SubproofReference] },
 }
 
 pub enum ProofWidgetMsg {
@@ -87,7 +87,7 @@ impl ProofWidget {
             None => "".to_string(),
         };
         if let Some(selected_line) = self.selected_line {
-            use frunk::Coproduct::{Inl, Inr};
+            use Coproduct::{Inl, Inr};
             if let Inr(Inl(_)) = selected_line {
                 let dep = proofref.clone();
                 let selected_line_ = selected_line.clone();
@@ -256,8 +256,8 @@ impl ProofWidget {
         }
     }
     fn render_proof_line(&self, line: usize, depth: usize, proofref: PJRef<P>, edge_decoration: &str) -> Html {
-        use frunk::Coproduct::{Inl, Inr};
-        let line_num_dep_checkbox = self.render_line_num_dep_checkbox(Some(line), frunk::Coproduct::inject(proofref.clone()));
+        use Coproduct::{Inl, Inr};
+        let line_num_dep_checkbox = self.render_line_num_dep_checkbox(Some(line), Coproduct::inject(proofref.clone()));
         let mut indentation = yew::virtual_dom::VList::new();
         for _ in 0..depth {
             //indentation.add_child(html! { <span style="background-color:black">{"-"}</span>});
@@ -422,7 +422,7 @@ impl ProofWidget {
             *line += 1;
         }
         let dep_checkbox = match sref {
-            Some(sr) => self.render_line_num_dep_checkbox(None, frunk::Coproduct::inject(sr)),
+            Some(sr) => self.render_line_num_dep_checkbox(None, Coproduct::inject(sr)),
             None => yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new()),
         };
         let mut spacer = yew::virtual_dom::VList::new();
@@ -440,7 +440,7 @@ impl ProofWidget {
         output.push((spacer, false));
         let prf_lines = prf.lines();
         for (i, lineref) in prf_lines.iter().enumerate() {
-            use frunk::Coproduct::{Inl, Inr};
+            use Coproduct::{Inl, Inr};
             let edge_decoration = if i == prf_lines.len()-1 { box_chars::UP_RIGHT } else { box_chars::VERT }.to_string();
             match lineref {
                 Inl(r) => { output.push((self.render_proof_line(*line, *depth, Coproduct::inject(r.clone()), &edge_decoration), false)); *line += 1; },
@@ -477,7 +477,7 @@ impl ProofWidget {
 }
 
 fn may_remove_line<P: Proof>(prf: &P, proofref: &PJRef<P>) -> bool {
-    use frunk::Coproduct::{Inl, Inr};
+    use Coproduct::{Inl, Inr};
     let is_premise = match prf.lookup_pj(proofref) {
         Some(Inl(_)) => true,
         Some(Inr(Inl(_))) => false,
@@ -546,7 +546,7 @@ impl Component for ProofWidget {
             self.preblob += &format!("{:?}\n", msg);
             ret = true;
         }
-        use frunk::Coproduct::{Inl, Inr};
+        use Coproduct::{Inl, Inr};
         match msg {
             ProofWidgetMsg::Nop => {},
             ProofWidgetMsg::LineChanged(r, input) => {

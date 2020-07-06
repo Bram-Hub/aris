@@ -3,7 +3,7 @@ use super::treeproof::*;
 
 #[test]
 fn demo_prettyprinting() {
-    use frunk::Coproduct::Inl;
+    use frunk_core::coproduct::Coproduct::Inl;
     use parser::parse_unwrap as p;
     let proof1 = TreeProof(TreeSubproof {
         premises: vec![((),p("A")), ((),p("B"))],

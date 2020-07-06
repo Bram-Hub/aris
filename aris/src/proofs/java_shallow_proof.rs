@@ -1,5 +1,5 @@
 use super::*;
-use frunk::Coproduct;
+use frunk_core::coproduct::Coproduct;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct JavaShallowProof(pub Vec<Expr>);
@@ -61,7 +61,7 @@ impl Proof for JavaShallowProof {
     }
     fn parent_of_line(&self, _: &PJSRef<Self>) -> Option<Self::SubproofReference> { unimplemented!() }
     fn verify_line(&self, r: &PJRef<Self>) -> Result<(), ProofCheckError<PJRef<Self>, Self::SubproofReference>> {
-        use self::Coproduct::{Inl, Inr};
+        use frunk_core::coproduct::Coproduct::{Inl, Inr};
         match self.lookup_pj(r) {
             None => Err(ProofCheckError::LineDoesNotExist(r.clone())),
             Some(Inl(_)) => Ok(()), // premises are always valid

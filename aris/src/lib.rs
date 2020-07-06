@@ -1,4 +1,4 @@
-#[macro_use] extern crate frunk;
+#[macro_use] extern crate frunk_core;
 #[macro_use] extern crate nom;
 #[macro_use] extern crate lazy_static;
 

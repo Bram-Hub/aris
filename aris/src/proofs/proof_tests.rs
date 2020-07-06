@@ -1,10 +1,14 @@
 #![deny(unused_variables, dead_code)]
 use super::*;
+
 use std::fmt::Debug;
 
-fn coproduct_inject<T, Index, Head, Tail>(to_insert: T) -> frunk::Coproduct<Head, Tail>
-    where frunk::Coproduct<Head, Tail>: frunk::coproduct::CoprodInjector<T, Index> {
-    frunk::Coproduct::inject(to_insert)
+use frunk_core::coproduct::Coproduct;
+use frunk_core::coproduct::CoprodInjector;
+
+fn coproduct_inject<T, Index, Head, Tail>(to_insert: T) -> Coproduct<Head, Tail>
+    where Coproduct<Head, Tail>: CoprodInjector<T, Index> {
+    Coproduct::inject(to_insert)
 }
 
 fn run_test<P: Proof+Display+Debug, F: FnOnce() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>)>(f: F) where PJRef<P>: Debug, P::SubproofReference: Debug {

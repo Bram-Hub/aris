@@ -5,7 +5,7 @@ use aris::proofs::Proof;
 use aris::proofs::lined_proof::LinedProof;
 use aris::proofs::pooledproof::PooledProof;
 
-use frunk::Hlist;
+use frunk_core::Hlist;
 
 #[no_mangle]
 #[allow(non_snake_case)]

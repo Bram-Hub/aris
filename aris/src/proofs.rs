@@ -27,7 +27,7 @@ The test running apparatus expects you to return the proof, a list of line refer
 ## Parsing XML into a PooledProof
 
 ```
-#[macro_use] extern crate frunk;
+#[macro_use] extern crate frunk_core;
 use aris::expression::Expr;
 use aris::proofs::xml_interop::proof_from_xml;
 let data = &include_bytes!("../../example-proofs/propositional_logic_arguments_for_proofs_ii_problem_10.bram")[..];
@@ -54,8 +54,8 @@ ASCII art proof:
 
 Code that builds the proof generically and then instantiates it:
 ```
-#[macro_use] extern crate frunk;
-use frunk::Coproduct;
+#[macro_use] extern crate frunk_core;
+use frunk_core::coproduct::Coproduct;
 use aris::expression::Expr;
 use aris::proofs::{Proof, Justification, pooledproof::PooledProof};
 use aris::rules::RuleM;
@@ -85,8 +85,8 @@ let concrete_proof = contraposition_demo::<P>();
 # Mutating existing lines of a proof
 
 ```
-#[macro_use] extern crate frunk;
-use frunk::Coproduct;
+#[macro_use] extern crate frunk_core;
+use frunk_core::coproduct::Coproduct;
 use aris::expression::Expr;
 use aris::parser::parse_unwrap as p;
 use aris::proofs::{Proof, Justification, pooledproof::PooledProof};
@@ -115,7 +115,7 @@ The subproof pointer in `with_mut_subproof`, if returned directly, could be inva
 This is prevented by the fact that the lifetime parameter of the subproof reference cannot occur in A:
 
 ```compile_fail,E0495
-#[macro_use] extern crate frunk;
+#[macro_use] extern crate frunk_core;
 use aris::proofs::{Proof, pooledproof::PooledProof};
 use aris::expression::Expr;
 fn should_fail_with_lifetime_error() {
@@ -129,11 +129,15 @@ This is a similar trick to the rank-2 type of `runST` in Haskell used to prevent
 */
 
 use super::*;
-use frunk::coproduct::*;
+
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use std::hash::Hash;
 use std::ops::Range;
+
+use frunk_core::coproduct::*;
+use serde::Deserialize;
+use serde::Serialize;
 
 #[cfg(test)]
 mod proof_tests;
@@ -262,7 +266,7 @@ pub trait Proof: Sized {
         ret
     }
     fn transitive_dependencies(&self, line: PJRef<Self>) -> HashSet<PJRef<Self>> {
-        use frunk::Coproduct::{Inl, Inr};
+        use frunk_core::coproduct::Coproduct::{Inl, Inr};
         // TODO: cycle detection
         let mut stack: Vec<PJSRef<Self>> = vec![pj_to_pjs::<Self>(line)];
         let mut result = HashSet::new();
@@ -303,7 +307,7 @@ pub trait Proof: Sized {
         // 3) if r2 is a subproof reference, r1 must be outside r2's subproof
         // we compute the set of lines satisfying these properties by walking backwards starting from the subproof that r1 is in, adding lines that respect these rules
         fn aux<P: Proof>(top: &P, sr: Option<P::SubproofReference>, r: &PJSRef<P>, deps: &mut HashSet<PJRef<P>>, sdeps: &mut HashSet<P::SubproofReference>) {
-            use frunk::Coproduct::{Inl, Inr};
+            use frunk_core::coproduct::Coproduct::{Inl, Inr};
             let prf = sr.and_then(|sr| Some((sr.clone(), top.lookup_subproof(&sr)?)));
             match prf {
                 Some((sr, sub)) => {
@@ -354,7 +358,7 @@ pub trait Proof: Sized {
 
 /// A Justification struct represents a step in the proof.
 /// It contains an expression, a rule indicating why that expression is justified, and references to previous lines/subproofs for validating the rule.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Justification<T, R, S>(pub T, pub Rule, pub Vec<R>, pub Vec<S>);
 
 impl<T, R, S> Justification<T, R, S> {
@@ -365,7 +369,7 @@ impl<T, R, S> Justification<T, R, S> {
 
 pub trait JustificationExprDisplay { fn fmt_expr(&self, fmt: &mut Formatter) -> std::fmt::Result; }
 impl JustificationExprDisplay for Expr { fn fmt_expr(&self, fmt: &mut Formatter) -> std::fmt::Result { write!(fmt, "{}", self) } }
-impl<Tail> JustificationExprDisplay for frunk::HCons<Expr, Tail> { fn fmt_expr(&self, fmt: &mut Formatter) -> std::fmt::Result { write!(fmt, "{}", self.head) } }
+impl<Tail> JustificationExprDisplay for frunk_core::hlist::HCons<Expr, Tail> { fn fmt_expr(&self, fmt: &mut Formatter) -> std::fmt::Result { write!(fmt, "{}", self.head) } }
 
 impl<T: JustificationExprDisplay, R: std::fmt::Debug, S: std::fmt::Debug> DisplayIndented for Justification<T, R, S> {
     fn display_indented(&self, fmt: &mut Formatter, indent: usize, linecount: &mut usize) -> std::result::Result<(), std::fmt::Error> {

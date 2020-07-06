@@ -1,4 +1,4 @@
-use frunk::Coproduct;
+use frunk_core::coproduct::Coproduct;
 use varisat::{Lit, checker::{ProofProcessor, CheckedProofStep}};
 use crate::proofs::{Proof, Justification, PJRef};
 use crate::expression::{Expr, ASymbol, USymbol};

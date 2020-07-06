@@ -1,5 +1,5 @@
 use super::*;
-use frunk::coproduct::{Coproduct, CNil};
+use frunk_core::coproduct::{Coproduct, CNil};
 //use std::rc::{Rc, Weak};
 
 #[derive(Clone, PartialEq, Eq, Hash)]

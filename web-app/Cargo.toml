@@ -12,7 +12,7 @@ wasm-bindgen = "^0.2"
 wee_alloc = "0.4"
 js-sys = "0.3"
 web-sys = { version = "0.3", features = ["HtmlAnchorElement"] }
-frunk = "0.2.2"
+frunk_core = "0.2.2"
 strum = "0.18.0"
 
 [lib]
