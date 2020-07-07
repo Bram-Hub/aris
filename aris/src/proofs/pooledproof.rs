@@ -101,18 +101,23 @@ These illustrations are less verbose than the `Debug` rendering of an actual `Po
 ### Parse trees
 `AST("forall x, p(x)")` will be rendered as the actual AST `Quantifier { symbol: Forall, name: "x", body: Apply { func: Var { name: "p" }, args: [Var { name: "x" }] } }`.
 ### Coproducts
-Various parts of `PooledProof` use `frunk::Coproduct` to create subtypes of the union of `{PremKey, JustKey, SubKey}` to get more precise typing guarantees. This manifests as occurrences of `{Inl,Inr}`.
+Various parts of `PooledProof` use `frunk_core::coproduct::Coproduct` to create subtypes of the union of `{PremKey, JustKey, SubKey}` to get more precise typing guarantees. This manifests as occurrences of `{Inl,Inr}`.
 ### Vec vs ZipperVec
 While the `[]`s in the `Justification`s are actually `Vec`s and will be that simple in the `Debug` rendering, `premise_list` and `line_list` are `ZipperVec`s for performance, and so the `Debug` rendering reveals where the cursor (roughly, last insertion point) is.
 */
 
 use super::*;
-use frunk::hlist::HCons;
+use frunk_core::hlist::HCons;
 use std::collections::BTreeMap;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)] pub struct PremKey(usize);
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)] pub struct JustKey(usize);
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)] pub struct SubKey(usize);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct PremKey(usize);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct JustKey(usize);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct SubKey(usize);
 
 type PooledRef = Coprod!(PremKey, JustKey);
 
@@ -121,7 +126,7 @@ pub struct Pools<T> {
     prem_map: BTreeMap<PremKey, T>,
     just_map: BTreeMap<JustKey, Justification<T, PooledRef, SubKey>>,
     sub_map: BTreeMap<SubKey, PooledSubproof<T>>,
-    containing_subproof: BTreeMap<Coproduct<PremKey, Coproduct<JustKey, Coproduct<SubKey, frunk::coproduct::CNil>>>, SubKey>,
+    containing_subproof: BTreeMap<Coproduct<PremKey, Coproduct<JustKey, Coproduct<SubKey, frunk_core::coproduct::CNil>>>, SubKey>,
 }
 
 impl<T> Pools<T> {
@@ -153,7 +158,7 @@ impl<T> Pools<T> {
         result
     }
     fn remove_line(&mut self, idx: &Coprod!(PremKey, JustKey)) {
-        use frunk::Coproduct::{Inl, Inr};
+        use frunk_core::coproduct::Coproduct::{Inl, Inr};
         match idx {
             Inl(prem) => self.remove_premise(prem),
             Inr(Inl(just)) => self.remove_step(just),
@@ -161,7 +166,7 @@ impl<T> Pools<T> {
         }
     }
     fn remove_line_helper(&mut self, idx: &Coprod!(PremKey, JustKey, SubKey)) {
-        use frunk::Coproduct::{Inl, Inr};
+        use frunk_core::coproduct::Coproduct::{Inl, Inr};
         let just_map = std::mem::replace(&mut self.just_map, BTreeMap::new());
         self.just_map = just_map.into_iter().map(|(k, Justification(expr, rule, deps, sdeps))| {
             let (new_deps, new_sdeps) = match idx {
@@ -191,7 +196,7 @@ impl<T> Pools<T> {
         self.remove_line_helper(&Coproduct::inject(*idx));
     }
     fn remove_subproof(&mut self, idx: &SubKey) {
-        use frunk::Coproduct::{Inl, Inr};
+        use frunk_core::coproduct::Coproduct::{Inl, Inr};
         if let Some(sub) = self.sub_map.remove(idx) {
             for prem in sub.premise_list.iter() {
                 self.remove_premise(prem);
@@ -222,7 +227,7 @@ pub struct PooledProof<T> {
 pub struct PooledSubproof<T> {
     pools: *mut Pools<T>,
     premise_list: ZipperVec<PremKey>,
-    line_list: ZipperVec<Coproduct<JustKey, Coproduct<SubKey, frunk::coproduct::CNil>>>,
+    line_list: ZipperVec<Coproduct<JustKey, Coproduct<SubKey, frunk_core::coproduct::CNil>>>,
 }
 
 impl<T> PooledSubproof<T> {

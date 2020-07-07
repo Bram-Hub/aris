@@ -5,6 +5,8 @@ use aris::rules::RuleClassification;
 use aris::rules::RuleM;
 use aris::rules::RuleT;
 
+use frunk_core::coproduct::Coproduct;
+
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern "system" fn Java_edu_rpi_aris_rules_Rule_fromRule(env: JNIEnv, _: JObject, rule: JObject) -> jobject {
@@ -130,7 +132,7 @@ pub extern "system" fn Java_edu_rpi_aris_rules_Rule_verifyClaim(env: JNIEnv, rul
                 }
                 sdeps.push(sdep);
             } else {
-                deps.push(frunk::Coproduct::Inl(jobject_to_expr(env, env.call_method(prem, "getPremise", "()Ledu/rpi/aris/ast/Expression;", &[])?.l()?)?));
+                deps.push(Coproduct::Inl(jobject_to_expr(env, env.call_method(prem, "getPremise", "()Ledu/rpi/aris/ast/Expression;", &[])?.l()?)?));
             }
         }
         println!("Rule::verifyClaim deps: {:?} {:?}", deps, sdeps);

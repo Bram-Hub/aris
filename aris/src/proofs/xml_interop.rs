@@ -174,7 +174,7 @@ pub fn xml_from_proof_and_metadata<P: Proof, W: Write>(prf: &P, meta: &ProofMeta
             state.linenum += 1;
         }
         for step in prf.lines() {
-            use frunk::Coproduct::{Inl, Inr};
+            use frunk_core::coproduct::Coproduct::{Inl, Inr};
             match step {
                 Inl(jr) => {
                     state.deps_map.insert(Coproduct::inject(jr), state.linenum);
@@ -201,7 +201,7 @@ pub fn xml_from_proof_and_metadata<P: Proof, W: Write>(prf: &P, meta: &ProofMeta
             ew.write(XmlEvent::end_element())?;
         }
         for step in prf.lines() {
-            use frunk::Coproduct::{Inl, Inr};
+            use frunk_core::coproduct::Coproduct::{Inl, Inr};
             match step {
                 Inl(jr) => {
                     let just = prf.lookup_step(&jr).unwrap();

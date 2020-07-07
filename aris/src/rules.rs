@@ -7,7 +7,7 @@ Rules are split into different enums both for based on what type of rule they ar
 
 This allows metadata to be defined only once for certain classes of rules (e.g. `Equivalence`s always take 1 plain dep and 0 subdeps).
 
-The `SharedChecks` wrapper and `frunk::Coproduct` tie the different enums together into `Rule`.
+The `SharedChecks` wrapper and `frunk_core::coproduct::Coproduct` tie the different enums together into `Rule`.
 
 `SharedChecks`'s `RuleT` instance enforces common requirements based on the inner type's metadata (mostly number of dependencies.
 
@@ -51,15 +51,20 @@ Adding the tests and implementing the rule can be interleaved; it's convenient t
     - if default metadata applies to all rules of the type, add those (e.g. `Equivalence`)
     - if default metadata doesn't apply to all rules of the type, add an empty match block (e.g. `PrepositionalInference`)
 */
+
 use super::*;
 use proofs::PJRef;
+
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
-use frunk::Coproduct::{self, Inl, Inr};
+
+use frunk_core::coproduct::Coproduct::{self, Inl, Inr};
 use petgraph::algo::tarjan_scc;
 use petgraph::graphmap::DiGraphMap;
+use serde::Deserialize;
+use serde::Serialize;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PrepositionalInference {
     Reit,
     AndIntro, AndElim,
@@ -71,48 +76,47 @@ pub enum PrepositionalInference {
     EquivalenceIntro, EquivalenceElim,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PredicateInference {
     ForallIntro, ForallElim,
     ExistsIntro, ExistsElim,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Equivalence {
     DeMorgan, Association, Commutation, Idempotence, Distribution,
     DoubleNegation, Complement, Identity, Annihilation, Inverse, Absorption,
     Reduction, Adjacency
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConditionalEquivalence {
     Complement, Identity, Annihilation, Implication, BiImplication, Contraposition,
     Currying, ConditionalDistribution, ConditionalReduction, KnightsAndKnaves, ConditionalIdempotence,
     BiconditionalNegation, BiconditionalSubstitution
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RedundantPrepositionalInference {
     ModusTollens, HypotheticalSyllogism, ExcludedMiddle, ConstructiveDilemma
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AutomationRelatedRules {
     AsymmetricTautology,
     Resolution,
     TautologicalConsequence,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QuantifierEquivalence {
     QuantifierNegation, NullQuantification, ReplacingBoundVars, SwappingQuantifiers,
     AristoteleanSquare, QuantifierDistribution, PrenexLaws
 }
 
-
 /// The RuleT instance for SharedChecks does checking that is common to all the rules;
 ///  it should always be the outermost constructor of the Rule type alias.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SharedChecks<T>(T);
 
 pub type Rule = SharedChecks<Coprod!(PrepositionalInference, PredicateInference,
@@ -268,7 +272,7 @@ impl<A: RuleT, B: RuleT> RuleT for Coproduct<A, B> {
         match self { Inl(x) => x.check(p, expr, deps, sdeps), Inr(x) => x.check(p, expr, deps, sdeps), }
     }
 }
-impl RuleT for frunk::coproduct::CNil {
+impl RuleT for frunk_core::coproduct::CNil {
     fn get_name(&self) -> String { match *self {} }
     fn get_classifications(&self) -> HashSet<RuleClassification> { match *self {} }
     fn num_deps(&self) -> Option<usize> { match *self {} }
@@ -1127,7 +1131,7 @@ fn either_order<A, T, R: Eq, S: Eq, F: FnMut(&A, &A)->Result<Option<T>, ProofChe
 pub enum ProofCheckError<R, S> {
     LineDoesNotExist(R),
     SubproofDoesNotExist(S),
-    ReferencesLaterLine(R, Coproduct<R, Coproduct<S, frunk::coproduct::CNil>>),
+    ReferencesLaterLine(R, Coproduct<R, Coproduct<S, frunk_core::coproduct::CNil>>),
     IncorrectDepCount(Vec<R>, usize),
     IncorrectSubDepCount(Vec<S>, usize),
     DepOfWrongForm(Expr, Expr),

@@ -62,34 +62,38 @@ assert_eq!(does_it_have_any_ands(&expr2), true);
 assert_eq!(does_it_have_any_ands(&expr3), false);
 ```
 */
+
 use super::*;
+
 use std::collections::{HashSet, HashMap};
 use std::collections::BTreeSet;
 use std::mem;
 use std::ops::Not;
 
 use itertools::Itertools;
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Symbol for unary operations
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 #[repr(C)]
 pub enum USymbol { Not }
 /// Symbol for binary operations
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 #[repr(C)]
 pub enum BSymbol { Implies, Plus, Mult }
 /// Symbol for associative binary operations
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 #[repr(C)]
 pub enum ASymbol { And, Or, Bicon, Equiv }
 /// Symbol for quantifiers
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 #[repr(C)]
 pub enum QSymbol { Forall, Exists }
 
 /// aris::expression::Expr is the core AST (Abstract Syntax Tree) type for representing logical expressions.
 /// For most of the recursive cases, it uses symbols so that code can work on the shape of e.g. a binary operation without worrying about which binary operation it is.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 #[repr(C)]
 pub enum Expr {
     Contradiction,

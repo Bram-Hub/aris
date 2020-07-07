@@ -6,7 +6,7 @@ use aris::proofs::Proof;
 
 use std::collections::HashMap;
 
-use frunk::Coproduct;
+use frunk_core::coproduct::Coproduct;
 
 pub struct ProofUiData<P: Proof> {
     pub ref_to_line_depth: HashMap<PJRef<P>, (usize, usize)>,
@@ -31,7 +31,7 @@ impl<P: Proof> ProofUiData<P> {
 
 fn initialize_inputs<P: Proof>(prf: &P) -> HashMap<PJRef<P>, String> {
     fn aux<P: Proof>(p: &<P as Proof>::Subproof, out: &mut HashMap<PJRef<P>, String>) {
-        use frunk::Coproduct::{Inl, Inr};
+        use Coproduct::{Inl, Inr};
         for line in p
             .premises()
             .into_iter()

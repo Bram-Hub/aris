@@ -6,4 +6,5 @@ members = [
     "auto-grader",
     "bindings/c",
     "bindings/java",
+    "bindings/js",
 ]

@@ -2,8 +2,8 @@ extern crate aris;
 
 // This file builds the headless version of Aris,
 // meant for verifying proofs submitted on Submitty.
-#[macro_use] extern crate frunk;
-use frunk::Coproduct;
+#[macro_use] extern crate frunk_core;
+use frunk_core::coproduct::Coproduct;
 
 use std::env;
 use std::path::Path;
@@ -20,7 +20,7 @@ use aris::proofs::lined_proof::LinedProof;
 fn validate_recursive<P: Proof>(proof: &P, line: PJRef<P>) -> Result<(), (PJRef<P>, ProofCheckError<PJRef<P>, P::SubproofReference>)>
 where PJRef<P>:Debug, P::SubproofReference:Debug {
     use ProofCheckError::*;
-    use frunk::Coproduct::{Inl, Inr};
+    use Coproduct::{Inl, Inr};
     let mut q = vec![line];
 
     // lookup returns either expr or Justification. if it returns the expr, it's done.

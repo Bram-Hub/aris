@@ -76,7 +76,7 @@ impl<P: Proof+Debug> LinedProof<P> where PJRef<P>: Debug, P::SubproofReference: 
     }
     pub fn from_proof(p: P) -> Self {
         fn aux<P: Proof>(p: &P::Subproof, ret: &mut LinedProof<P>, current_sub: Option<P::SubproofReference>) {
-            use frunk::Coproduct::{Inl, Inr};
+            use frunk_core::coproduct::Coproduct::{Inl, Inr};
             for prem in p.premises() {
                 let e = p.lookup_premise(&prem).unwrap();
                 ret.lines.push(Line::new(format!("{}", e), true, Inl(prem), current_sub.clone()));
@@ -101,7 +101,7 @@ impl<P: Proof+Debug> LinedProof<P> where PJRef<P>: Debug, P::SubproofReference: 
         ret
     }
     pub fn add_line(&mut self, i: usize, is_premise: bool, subproof_level: usize) {
-        use frunk::Coproduct::{Inl, Inr};
+        use frunk_core::coproduct::Coproduct::{Inl, Inr};
         println!("add_line {:?} {:?} {:?}", i, is_premise, subproof_level);
         let const_true = Expr::Tautology;
         let line: Option<Line<P>> = self.lines.get(i).cloned();

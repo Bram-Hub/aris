@@ -5,8 +5,8 @@ use aris::proofs::Proof;
 
 use std::collections::HashMap;
 
-use frunk::Coproduct;
-use frunk::Hlist;
+use frunk_core::coproduct::Coproduct;
+use frunk_core::Hlist;
 
 // yew doesn't seem to allow Components to be generic over <P: Proof>, so fix a proof type P at the module level
 pub type P = PooledProof<Hlist![Expr]>;
@@ -22,7 +22,7 @@ pub fn calculate_lineinfo<P: Proof>(
         *line += 1;
     }
     for lineref in prf.lines() {
-        use frunk::Coproduct::{Inl, Inr};
+        use Coproduct::{Inl, Inr};
         match lineref {
             Inl(r) => {
                 output.insert(Coproduct::inject(r), (*line, *depth));
