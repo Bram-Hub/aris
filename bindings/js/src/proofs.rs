@@ -26,6 +26,7 @@ pub struct Proof(P);
 
 #[wasm_bindgen]
 impl Proof {
+    #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self(P::new())
     }
