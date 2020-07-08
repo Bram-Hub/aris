@@ -33,25 +33,9 @@ html, body {
     margin-bottom: 0;
 }
 
-/* Used for the "Correct", "Parse Error", and "Error" alert */
-.s1 {
-    width: 106px;
-    text-align: center;
-}
-
-/* Used for the "Premise" and "Assumption" alert */
-.s2 {
-    width: 112px;
-    text-align: center;
-}
-
 /* Fixes annoyances with Bootstrap's `form-custom` on `<input type="text">` */
 .text-input-custom {
     display: inline;
     width: 400px;
     color: black;
-}
-
-.rule-dropdown {
-
 }
