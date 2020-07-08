@@ -157,7 +157,7 @@ impl ProofWidget {
         // Create top-level menu button
         html! {
             <div class="dropright">
-                <button class="btn btn-primary dropdown-toggle rule-dropdown" type="button" data-toggle="dropdown" data-submenu="">
+                <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown" data-submenu="">
                     { cur_rule_name }
                 </button>
                 <div class="dropdown-menu">
@@ -232,19 +232,19 @@ impl ProofWidget {
             Some(x) => x,
         };
         match parse(&raw_line).map(|_| self.prf.verify_line(&proofref)) {
-            None => html! { <span class="alert alert-warning small-alert s1">{ "Parse error" }</span> },
+            None => html! { <span class="alert alert-warning small-alert">{ "Parse error" }</span> },
             Some(Ok(())) => match proofref {
                 Coproduct::Inl(_) => html! {
-                    <span class="alert alert-success small-alert s2">
+                    <span class="alert alert-success small-alert">
                         { if is_subproof { "Assumption" } else { "Premise" } }
                     </span>
                 },
-                _ => html! { <span class="alert small-alert bg-success text-white s1">{ "Correct" }</span> },
+                _ => html! { <span class="alert small-alert bg-success text-white">{ "Correct" }</span> },
             },
             Some(Err(err)) => {
                 html! {
                     <>
-                        <button type="button" class="btn btn-danger small-alert s1" data-toggle="popover" data-content=err>
+                        <button type="button" class="btn btn-danger" data-toggle="popover" data-content=err>
                             { "Error" }
                         </button>
                         <script>
