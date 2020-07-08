@@ -23,10 +23,10 @@ pub fn gensym(orig: &str, avoid: JsValue) -> JsResult<String> {
 }
 
 #[wasm_bindgen]
-pub fn subst(expr: JsValue, to_replace: &str, with: JsValue) -> JsResult<JsValue> {
+pub fn subst(expr: JsValue, to_replace: &str, replacement: JsValue) -> JsResult<JsValue> {
     let expr: Expr = from_value(expr)?;
-    let with: Expr = from_value(with)?;
-    let ret = aris::expression::subst(&expr, to_replace, with);
+    let replacement: Expr = from_value(replacement)?;
+    let ret = aris::expression::subst(&expr, to_replace, replacement);
     let ret = to_value(&ret)?;
     Ok(ret)
 }
