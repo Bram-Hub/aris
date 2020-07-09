@@ -39,3 +39,15 @@ html, body {
     width: 400px;
     color: black;
 }
+
+/* Used to make "Correct", "Error", and "Parse Error" the same size. */
+.s1 {
+    width: 106px;
+    text-align: center;
+}
+
+/* Used to make "Premise" and "Assumption" the same size. */
+.s2 {
+    width: 112px;
+    text-align: center;
+}
