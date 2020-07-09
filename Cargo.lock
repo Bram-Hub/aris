@@ -379,9 +379,6 @@ name = "frunk_core"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26c09b4b25ef220d9b6ac31dc0bb3479fccdf539598893f1cbf27d5a5bc324b5"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "futures"

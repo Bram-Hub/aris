@@ -15,8 +15,14 @@ pub fn rule_names() -> JsResult<Vec<JsValue>> {
 }
 
 #[wasm_bindgen]
-pub fn rule_from_name(name: &str) -> JsResult<JsValue> {
-    let ret = RuleM::from_serialized_name(name);
-    let ret = to_value(&ret)?;
-    Ok(ret)
+pub struct Rule(aris::rules::Rule);
+
+#[wasm_bindgen]
+impl Rule {
+    #[wasm_bindgen(constructor)]
+    pub fn new(name: &str) -> JsResult<Rule> {
+        Ok(Rule(
+            RuleM::from_serialized_name(name).ok_or("aris: invalid rule name")?,
+        ))
+    }
 }

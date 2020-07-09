@@ -61,10 +61,8 @@ use std::iter::FromIterator;
 use frunk_core::coproduct::Coproduct::{self, Inl, Inr};
 use petgraph::algo::tarjan_scc;
 use petgraph::graphmap::DiGraphMap;
-use serde::Deserialize;
-use serde::Serialize;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PrepositionalInference {
     Reit,
     AndIntro, AndElim,
@@ -76,39 +74,39 @@ pub enum PrepositionalInference {
     EquivalenceIntro, EquivalenceElim,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PredicateInference {
     ForallIntro, ForallElim,
     ExistsIntro, ExistsElim,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Equivalence {
     DeMorgan, Association, Commutation, Idempotence, Distribution,
     DoubleNegation, Complement, Identity, Annihilation, Inverse, Absorption,
     Reduction, Adjacency
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ConditionalEquivalence {
     Complement, Identity, Annihilation, Implication, BiImplication, Contraposition,
     Currying, ConditionalDistribution, ConditionalReduction, KnightsAndKnaves, ConditionalIdempotence,
     BiconditionalNegation, BiconditionalSubstitution
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RedundantPrepositionalInference {
     ModusTollens, HypotheticalSyllogism, ExcludedMiddle, ConstructiveDilemma
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AutomationRelatedRules {
     AsymmetricTautology,
     Resolution,
     TautologicalConsequence,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum QuantifierEquivalence {
     QuantifierNegation, NullQuantification, ReplacingBoundVars, SwappingQuantifiers,
     AristoteleanSquare, QuantifierDistribution, PrenexLaws
@@ -116,7 +114,7 @@ pub enum QuantifierEquivalence {
 
 /// The RuleT instance for SharedChecks does checking that is common to all the rules;
 ///  it should always be the outermost constructor of the Rule type alias.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SharedChecks<T>(T);
 
 pub type Rule = SharedChecks<Coprod!(PrepositionalInference, PredicateInference,

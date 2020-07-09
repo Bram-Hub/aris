@@ -136,8 +136,6 @@ use std::hash::Hash;
 use std::ops::Range;
 
 use frunk_core::coproduct::*;
-use serde::Deserialize;
-use serde::Serialize;
 
 #[cfg(test)]
 mod proof_tests;
@@ -358,7 +356,7 @@ pub trait Proof: Sized {
 
 /// A Justification struct represents a step in the proof.
 /// It contains an expression, a rule indicating why that expression is justified, and references to previous lines/subproofs for validating the rule.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Justification<T, R, S>(pub T, pub Rule, pub Vec<R>, pub Vec<S>);
 
 impl<T, R, S> Justification<T, R, S> {
