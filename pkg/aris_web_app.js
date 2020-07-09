@@ -586,16 +586,16 @@ async function init(input) {
     imports.wbg.__wbindgen_throw = function(arg0, arg1) {
         throw new Error(getStringFromWasm0(arg0, arg1));
     };
-    imports.wbg.__wbindgen_closure_wrapper712 = function(arg0, arg1, arg2) {
-        var ret = makeMutClosure(arg0, arg1, 236, __wbg_adapter_20);
+    imports.wbg.__wbindgen_closure_wrapper711 = function(arg0, arg1, arg2) {
+        var ret = makeMutClosure(arg0, arg1, 236, __wbg_adapter_26);
         return addHeapObject(ret);
     };
     imports.wbg.__wbindgen_closure_wrapper1726 = function(arg0, arg1, arg2) {
         var ret = makeMutClosure(arg0, arg1, 520, __wbg_adapter_23);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper711 = function(arg0, arg1, arg2) {
-        var ret = makeMutClosure(arg0, arg1, 236, __wbg_adapter_26);
+    imports.wbg.__wbindgen_closure_wrapper712 = function(arg0, arg1, arg2) {
+        var ret = makeMutClosure(arg0, arg1, 236, __wbg_adapter_20);
         return addHeapObject(ret);
     };
 
