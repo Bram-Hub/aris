@@ -341,13 +341,13 @@ impl ProofWidget {
                 <div class="dropdown">
                     <button
                         type="button"
-                        class="btn btn-secondary dropdown-toggle"
+                        class="btn btn-secondary"
                         id="dropdownMenuButton"
                         data-toggle="dropdown"
                         aria-haspopup="true"
                         aria-expanded="false">
 
-                        { "Action" }
+                        { "\u{22EE}" }
                     </button>
                     <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
                         { options }
