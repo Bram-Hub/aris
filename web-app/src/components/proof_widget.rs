@@ -232,19 +232,19 @@ impl ProofWidget {
             Some(x) => x,
         };
         match parse(&raw_line).map(|_| self.prf.verify_line(&proofref)) {
-            None => html! { <span class="alert alert-warning small-alert">{ "Parse error" }</span> },
+            None => html! { <span class="alert alert-warning small-alert s1">{ "Parse error" }</span> },
             Some(Ok(())) => match proofref {
                 Coproduct::Inl(_) => html! {
-                    <span class="alert alert-success small-alert">
+                    <span class="alert alert-success small-alert s2">
                         { if is_subproof { "Assumption" } else { "Premise" } }
                     </span>
                 },
-                _ => html! { <span class="alert small-alert bg-success text-white">{ "Correct" }</span> },
+                _ => html! { <span class="alert small-alert bg-success text-white s1">{ "Correct" }</span> },
             },
             Some(Err(err)) => {
                 html! {
                     <>
-                        <button type="button" class="btn btn-danger" data-toggle="popover" data-content=err>
+                        <button type="button" class="btn btn-danger s1" data-toggle="popover" data-content=err>
                             { "Error" }
                         </button>
                         <script>
@@ -341,13 +341,13 @@ impl ProofWidget {
                 <div class="dropdown">
                     <button
                         type="button"
-                        class="btn btn-secondary dropdown-toggle"
+                        class="btn btn-secondary"
                         id="dropdownMenuButton"
                         data-toggle="dropdown"
                         aria-haspopup="true"
                         aria-expanded="false">
 
-                        { "Action" }
+                        { "\u{22EE}" }
                     </button>
                     <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
                         { options }
