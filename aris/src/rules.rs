@@ -5,7 +5,7 @@
 ## Different enums for different types of rule
 Rules are split into different enums both for based on what type of rule they are.
 
-This allows metadata to be defined only once for certain classes of rules (e.g. `Equivalence`s always take 1 plain dep and 0 subdeps).
+This allows metadata to be defined only once for certain classes of rules (e.g. `BooleanEquivalence`s always take 1 plain dep and 0 subdeps).
 
 The `SharedChecks` wrapper and `frunk_core::coproduct::Coproduct` tie the different enums together into `Rule`.
 
@@ -48,7 +48,7 @@ Adding the tests and implementing the rule can be interleaved; it's convenient t
 - Create the new enum, preferably right after all the existing ones
 - Add the new enum to the `Rule` type alias, inside the `SharedChecks` and `Coprod!` wrappers
 - Add a `RuleT` impl block for the new enum
-    - if default metadata applies to all rules of the type, add those (e.g. `Equivalence`)
+    - if default metadata applies to all rules of the type, add those (e.g. `BooleanEquivalence`)
     - if default metadata doesn't apply to all rules of the type, add an empty match block (e.g. `PrepositionalInference`)
 */
 
@@ -81,7 +81,7 @@ pub enum PredicateInference {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Equivalence {
+pub enum BooleanEquivalence {
     DeMorgan, Association, Commutation, Idempotence, Distribution,
     DoubleNegation, Complement, Identity, Annihilation, Inverse, Absorption,
     Reduction, Adjacency
@@ -118,7 +118,7 @@ pub enum QuantifierEquivalence {
 pub struct SharedChecks<T>(T);
 
 pub type Rule = SharedChecks<Coprod!(PrepositionalInference, PredicateInference,
-    Equivalence, ConditionalEquivalence, RedundantPrepositionalInference,
+    BooleanEquivalence, ConditionalEquivalence, RedundantPrepositionalInference,
     AutomationRelatedRules, QuantifierEquivalence)>;
 
 /// Conveniences for constructing rules of the appropriate type, primarily for testing.
@@ -189,19 +189,19 @@ pub mod RuleM {
         [ExcludedMiddle, "EXCLUDED_MIDDLE", (SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ExcludedMiddle)))))))],
         [ConstructiveDilemma, "CONSTRUCTIVE_DILEMMA", (SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ConstructiveDilemma)))))))],
 
-        [Association, "ASSOCIATION", (SharedChecks(Inr(Inr(Inl(Equivalence::Association)))))],
-        [Commutation, "COMMUTATION", (SharedChecks(Inr(Inr(Inl(Equivalence::Commutation)))))],
-        [Idempotence, "IDEMPOTENCE", (SharedChecks(Inr(Inr(Inl(Equivalence::Idempotence)))))],
-        [DeMorgan, "DE_MORGAN", (SharedChecks(Inr(Inr(Inl(Equivalence::DeMorgan)))))],
-        [Distribution, "DISTRIBUTION", (SharedChecks(Inr(Inr(Inl(Equivalence::Distribution)))))],
-        [DoubleNegation, "DOUBLENEGATION_EQUIV", (SharedChecks(Inr(Inr(Inl(Equivalence::DoubleNegation)))))],
-        [Complement, "COMPLEMENT", (SharedChecks(Inr(Inr(Inl(Equivalence::Complement)))))],
-        [Identity, "IDENTITY", (SharedChecks(Inr(Inr(Inl(Equivalence::Identity)))))],
-        [Annihilation, "ANNIHILATION", (SharedChecks(Inr(Inr(Inl(Equivalence::Annihilation)))))],
-        [Inverse, "INVERSE", (SharedChecks(Inr(Inr(Inl(Equivalence::Inverse)))))],
-        [Absorption, "ABSORPTION", (SharedChecks(Inr(Inr(Inl(Equivalence::Absorption)))))],
-        [Reduction, "REDUCTION", (SharedChecks(Inr(Inr(Inl(Equivalence::Reduction)))))],
-        [Adjacency, "ADJACENCY", (SharedChecks(Inr(Inr(Inl(Equivalence::Adjacency)))))],
+        [Association, "ASSOCIATION", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Association)))))],
+        [Commutation, "COMMUTATION", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Commutation)))))],
+        [Idempotence, "IDEMPOTENCE", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Idempotence)))))],
+        [DeMorgan, "DE_MORGAN", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::DeMorgan)))))],
+        [Distribution, "DISTRIBUTION", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Distribution)))))],
+        [DoubleNegation, "DOUBLENEGATION_EQUIV", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::DoubleNegation)))))],
+        [Complement, "COMPLEMENT", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Complement)))))],
+        [Identity, "IDENTITY", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Identity)))))],
+        [Annihilation, "ANNIHILATION", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Annihilation)))))],
+        [Inverse, "INVERSE", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Inverse)))))],
+        [Absorption, "ABSORPTION", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Absorption)))))],
+        [Reduction, "REDUCTION", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Reduction)))))],
+        [Adjacency, "ADJACENCY", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Adjacency)))))],
 
         [CondComplement, "CONDITIONAL_COMPLEMENT", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Complement))))))],
         [CondIdentity, "CONDITIONAL_IDENTITY", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Identity))))))],
@@ -236,7 +236,12 @@ pub mod RuleM {
 pub enum RuleClassification {
     Introduction,
     Elimination,
-    Equivalence,
+    #[strum(to_string = "Boolean Equivalence")]
+    BooleanEquivalence,
+    #[strum(to_string = "Conditional Equivalence")]
+    ConditionalEquivalence,
+    #[strum(to_string = "Quantifier Equivalence")]
+    QuantifierEquivalence,
     #[strum(to_string = "Misc. Inference")]
     MiscInference,
 }
@@ -867,9 +872,9 @@ fn check_by_rewrite_rule_non_confl<P: Proof>(p: &P, deps: Vec<PJRef<P>>, conclus
     }
 }
 
-impl RuleT for Equivalence {
+impl RuleT for BooleanEquivalence {
     fn get_name(&self) -> String {
-        use Equivalence::*;
+        use BooleanEquivalence::*;
         match self {
             DeMorgan => "DeMorgan",
             Association => "Association",
@@ -887,12 +892,12 @@ impl RuleT for Equivalence {
         }.into()
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
-        [RuleClassification::Equivalence].iter().cloned().collect()
+        [RuleClassification::BooleanEquivalence].iter().cloned().collect()
     }
     fn num_deps(&self) -> Option<usize> { Some(1) } // all equivalence rules rewrite a single statement
     fn num_subdeps(&self) -> Option<usize> { Some(0) }
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PJRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
-        use Equivalence::*;
+        use BooleanEquivalence::*;
         match self {
             DeMorgan => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.normalize_demorgans()),
             Association => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.combine_associative_ops()),
@@ -934,7 +939,7 @@ impl RuleT for ConditionalEquivalence {
         }.into()
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
-        [RuleClassification::Equivalence].iter().cloned().collect()
+        [RuleClassification::ConditionalEquivalence].iter().cloned().collect()
     }
     fn num_deps(&self) -> Option<usize> { Some(1) } // all equivalence rules rewrite a single statement
     fn num_subdeps(&self) -> Option<usize> { Some(0) }
@@ -1093,7 +1098,7 @@ impl RuleT for QuantifierEquivalence {
         }.into()
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
-        [RuleClassification::Equivalence].iter().cloned().collect()
+        [RuleClassification::QuantifierEquivalence].iter().cloned().collect()
     }
     fn num_deps(&self) -> Option<usize> { Some(1) } // all equivalence rules rewrite a single statement
     fn num_subdeps(&self) -> Option<usize> { Some(0) }
