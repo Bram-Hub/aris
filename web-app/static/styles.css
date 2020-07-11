@@ -19,13 +19,6 @@ html, body {
     white-space: nowrap;
 }
 
-/* Enable scrollbar in bootstrap drop-down menu
-   https://github.com/davidstutz/bootstrap-multiselect/issues/1#issuecomment-12063820 */
-.dropdown-scrollbar {
-    max-height: 400px;
-    overflow-y: auto;
-}
-
 /* Apply this to a bootstrap alert on a <span> tag and it will be button-sized */
 .small-alert {
     display: inline-block;

@@ -147,7 +147,7 @@ impl ProofWidget {
                 html! {
                     <div class="dropdown dropright dropdown-submenu">
                         <button class="dropdown-item dropdown-toggle" type="button" data-toggle="dropdown"> { rule_class } </button>
-                        <div class="dropdown-menu dropdown-scrollbar"> { rules } </div>
+                        <div class="dropdown-menu"> { rules } </div>
                     </div>
                 }
             })
