@@ -234,7 +234,7 @@ pub mod RuleM {
 /// Classifications of rules for displaying in a nested drop-down menu in the GUI
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Display, EnumIter)]
 pub enum RuleClassification {
-    Introduction, Elimination, Equivalence, Inference, Predicate
+    Introduction, Elimination, Equivalence, Inference
 }
 
 impl RuleClassification {
@@ -678,7 +678,7 @@ impl RuleT for PredicateInference {
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
         use RuleClassification::*; use PredicateInference::*;
-        let mut ret = [Inference, RuleClassification::Predicate].iter().cloned().collect::<HashSet<_>>();
+        let mut ret = [Inference].iter().cloned().collect::<HashSet<_>>();
         match self {
             ForallIntro | ExistsIntro => ret.insert(Introduction),
             ForallElim | ExistsElim => ret.insert(Elimination),
