@@ -234,7 +234,11 @@ pub mod RuleM {
 /// Classifications of rules for displaying in a nested drop-down menu in the GUI
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Display, EnumIter)]
 pub enum RuleClassification {
-    Introduction, Elimination, Equivalence, Inference
+    Introduction,
+    Elimination,
+    Equivalence,
+    #[strum(to_string = "Misc. Inference")]
+    MiscInference,
 }
 
 impl RuleClassification {
@@ -337,11 +341,11 @@ impl RuleT for PrepositionalInference {
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
         use RuleClassification::*; use PrepositionalInference::*;
-        let mut ret = [Inference].iter().cloned().collect::<HashSet<_>>();
+        let mut ret = HashSet::new();
         match self {
-            Reit => (),
-            AndIntro | OrIntro | ImpIntro | NotIntro | ContradictionIntro | BiconditionalIntro | EquivalenceIntro => { ret.insert(Introduction); },
-            AndElim | OrElim | ImpElim | NotElim | ContradictionElim | BiconditionalElim | EquivalenceElim => { ret.insert(Elimination); },
+            Reit => { ret.insert(MiscInference); }
+            AndIntro | OrIntro | ImpIntro | NotIntro | ContradictionIntro | BiconditionalIntro | EquivalenceIntro => { ret.insert(Introduction); }
+            AndElim | OrElim | ImpElim | NotElim | ContradictionElim | BiconditionalElim | EquivalenceElim => { ret.insert(Elimination); }
         }
         ret
     }
@@ -678,7 +682,7 @@ impl RuleT for PredicateInference {
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
         use RuleClassification::*; use PredicateInference::*;
-        let mut ret = [Inference].iter().cloned().collect::<HashSet<_>>();
+        let mut ret = HashSet::new();
         match self {
             ForallIntro | ExistsIntro => ret.insert(Introduction),
             ForallElim | ExistsElim => ret.insert(Elimination),
@@ -965,7 +969,7 @@ impl RuleT for RedundantPrepositionalInference {
         }.into()
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
-        [RuleClassification::Inference].iter().cloned().collect()
+        [RuleClassification::MiscInference].iter().cloned().collect()
     }
     fn num_deps(&self) -> Option<usize> { unimplemented!() }
     fn num_subdeps(&self) -> Option<usize> { unimplemented!() }
@@ -981,7 +985,7 @@ impl RuleT for AutomationRelatedRules {
         }.into()
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
-        [RuleClassification::Inference].iter().cloned().collect()
+        [RuleClassification::MiscInference].iter().cloned().collect()
     }
     fn num_deps(&self) -> Option<usize> {
         match self {
