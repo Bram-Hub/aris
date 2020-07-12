@@ -51,7 +51,7 @@ macro_rules! enumerate_subproofless_tests {
             test_association, test_demorgan, test_idempotence, test_doublenegation,
             test_distribution, test_complement, test_identity, test_annihilation,
             test_inverse, test_absorption, test_reduction, test_adjacency, test_resolution,
-            test_tautcon,
+            test_tautcon, test_empty_rule,
         }
     }
 }
@@ -906,4 +906,13 @@ pub fn test_tautcon<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     let r17 = prf.add_step(Justification(p("B"), RuleM::TautologicalConsequence, vec![i(p1.clone()), i(p4.clone())], vec![]));
 
     (prf, vec![i(r1), i(r2), i(r3), i(r4), i(r6), i(r9), i(r11), i(r13), i(r15), i(r17)], vec![i(r5), i(r7), i(r8), i(r10), i(r12), i(r14), i(r16)])
+}
+
+pub fn test_empty_rule<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+    use parser::parse_unwrap as p; use self::coproduct_inject as i;
+    let mut prf = P::new();
+    let p1 = prf.add_premise(p("A"));
+    let r1 = prf.add_step(Justification(p("A"), RuleM::EmptyRule, vec![i(p1.clone())], vec![]));
+
+    (prf, vec![], vec![i(r1)])
 }

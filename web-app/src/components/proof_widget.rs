@@ -4,11 +4,13 @@ use crate::proof_ui_data::ProofUiData;
 use crate::util::calculate_lineinfo;
 use crate::util::P;
 
-use aris::proofs::pj_to_pjs;
+use aris::expression::Expr;
+use aris::expression::expression_builders::var;
 use aris::proofs::Justification;
-use aris::proofs::Proof;
 use aris::proofs::PJRef;
 use aris::proofs::PJSRef;
+use aris::proofs::Proof;
+use aris::proofs::pj_to_pjs;
 use aris::rules::Rule;
 use aris::rules::RuleClassification;
 use aris::rules::RuleM;
@@ -502,13 +504,30 @@ fn render_open_error(error: &str) -> Html {
     }
 }
 
+/// Create a new empty premise, the default premise when creating a new one in
+/// the UI. The `ProofUiData` is supposed to be modified so this appears blank.
+fn new_empty_premise() -> Expr {
+    var("__js_ui_blank_premise")
+}
+
+/// Create a new empty step, the default step when creating a new one in the UI.
+/// The `ProofUiData` is supposed to be modified so this appears blank.
+fn new_empty_step() -> Justification<Expr, PJRef<P>, <P as Proof>::SubproofReference> {
+    Justification(var("__js_ui_blank_step"), RuleM::EmptyRule, vec![], vec![])
+}
+
 /// Create a new empty proof, the default proof shown in the UI
-fn new_empty_proof() -> P {
-    use aris::expression::expression_builders::var;
+fn new_empty_proof() -> (P, ProofUiData<P>) {
     let mut proof = P::new();
-    proof.add_premise(var(""));
-    proof.add_step(Justification(var(""), RuleM::Reit, vec![], vec![]));
-    proof
+    proof.add_premise(new_empty_premise());
+    proof.add_step(new_empty_step());
+
+    let mut pud = ProofUiData::from_proof(&proof);
+    for input in pud.ref_to_input.values_mut() {
+        *input = "".to_string();
+    }
+
+    (proof, pud)
 }
 
 impl Component for ProofWidget {
@@ -516,18 +535,26 @@ impl Component for ProofWidget {
     type Properties = ProofWidgetProps;
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         props.oncreate.emit(link.clone());
-        let (prf, error) = match &props.data {
+        let (prf, pud, error) = match &props.data {
             Some(data) => {
                 let result = aris::proofs::xml_interop::proof_from_xml::<P, _>(&data[..]);
                 match result {
-                    Ok((prf, _)) => (prf, None),
-                    Err(err) => (new_empty_proof(), Some(err)),
+                    Ok((prf, _)) => {
+                        let pud = ProofUiData::from_proof(&prf);
+                        (prf, pud, None)
+                    }
+                    Err(err) => {
+                        let (prf, pud) = new_empty_proof();
+                        (prf, pud, Some(err))
+                    }
                 }
             }
-            None => (new_empty_proof(), None),
+            None => {
+                let (prf, pud) = new_empty_proof();
+                (prf, pud, None)
+            }
         };
 
-        let pud = ProofUiData::from_proof(&prf);
         let mut tmp = Self {
             link,
             prf,
@@ -561,7 +588,6 @@ impl Component for ProofWidget {
                 ret = true;
             },
             ProofWidgetMsg::LineAction(LineActionKind::Insert { what, after, relative_to }, orig_ref) => {
-                use aris::expression::expression_builders::var;
                 let to_select;
                 let insertion_point: PJSRef<P> = match relative_to {
                     LAKItem::Line => pj_to_pjs::<P>(orig_ref),
@@ -576,23 +602,23 @@ impl Component for ProofWidget {
                 match what {
                     LAKItem::Line => match insertion_point {
                         Inl(pr) => {
-                            to_select = Inl(self.prf.add_premise_relative(var("__js_ui_blank_premise"), &pr, after));
+                            to_select = Inl(self.prf.add_premise_relative(new_empty_premise(), &pr, after));
                         }
                         Inr(Inl(jr)) => {
                             let jsr = Coproduct::inject(jr);
-                            to_select = Inr(Inl(self.prf.add_step_relative(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]), &jsr, after)));
+                            to_select = Inr(Inl(self.prf.add_step_relative(new_empty_step(), &jsr, after)));
                         }
                         Inr(Inr(Inl(sr))) => {
                             let jsr = Coproduct::inject(sr);
-                            to_select = Inr(Inl(self.prf.add_step_relative(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]), &jsr, after)));
+                            to_select = Inr(Inl(self.prf.add_step_relative(new_empty_step(), &jsr, after)));
                         }
                         Inr(Inr(Inr(void))) => match void {},
                     },
                     LAKItem::Subproof => {
                         let sr = self.prf.add_subproof_relative(&insertion_point.subset().unwrap(), after);
                         to_select = self.prf.with_mut_subproof(&sr, |sub| {
-                            let to_select = Inl(sub.add_premise(var("__js_ui_blank_premise")));
-                            sub.add_step(Justification(var("__js_ui_blank_step"), RuleM::Reit, vec![], vec![]));
+                            let to_select = Inl(sub.add_premise(new_empty_premise()));
+                            sub.add_step(new_empty_step());
                             to_select
                         }).unwrap();
                     },

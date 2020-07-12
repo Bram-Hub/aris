@@ -112,6 +112,18 @@ pub enum QuantifierEquivalence {
     AristoteleanSquare, QuantifierDistribution, PrenexLaws
 }
 
+/// This should be the default rule when creating a new step in a UI. It
+/// always fails, and isn't part of any `RuleClassification`s.
+///
+/// ```rust
+/// use aris::rules::EmptyRule;
+/// use aris::rules::RuleT;
+///
+/// assert_eq!(EmptyRule.get_classifications().len(), 0);
+/// ```
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EmptyRule;
+
 /// The RuleT instance for SharedChecks does checking that is common to all the rules;
 ///  it should always be the outermost constructor of the Rule type alias.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -119,7 +131,7 @@ pub struct SharedChecks<T>(T);
 
 pub type Rule = SharedChecks<Coprod!(PrepositionalInference, PredicateInference,
     BooleanEquivalence, ConditionalEquivalence, RedundantPrepositionalInference,
-    AutomationRelatedRules, QuantifierEquivalence)>;
+    AutomationRelatedRules, QuantifierEquivalence, EmptyRule)>;
 
 /// Conveniences for constructing rules of the appropriate type, primarily for testing.
 /// The non-standard naming conventions here are because a module is being used to pretend to be an enum.
@@ -227,7 +239,8 @@ pub mod RuleM {
         [SwappingQuantifiers, "SWAPPING_QUANTIFIERS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::SwappingQuantifiers)))))))))],
         [AristoteleanSquare, "ARISTOTELEAN_SQUARE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::AristoteleanSquare)))))))))],
         [QuantifierDistribution, "QUANTIFIER_DISTRIBUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::QuantifierDistribution)))))))))],
-        [PrenexLaws, "PRENEX_LAWS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::PrenexLaws)))))))))]
+        [PrenexLaws, "PRENEX_LAWS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::PrenexLaws)))))))))],
+        [EmptyRule, "EMPTY_RULE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(super::EmptyRule))))))))))]
     }
 }
 
@@ -1113,6 +1126,30 @@ impl RuleT for QuantifierEquivalence {
             QuantifierDistribution => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::quantifier_distribution),
             PrenexLaws => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::normalize_prenex_laws),
         }
+    }
+}
+
+impl RuleT for EmptyRule {
+    fn get_name(&self) -> String {
+        "Rule".to_string()
+    }
+    fn get_classifications(&self) -> HashSet<RuleClassification> {
+        HashSet::new()
+    }
+    fn num_deps(&self) -> Option<usize> {
+        None
+    }
+    fn num_subdeps(&self) -> Option<usize> {
+        None
+    }
+    fn check<P: Proof>(
+        self,
+        _: &P,
+        _: Expr,
+        _: Vec<PJRef<P>>,
+        _: Vec<P::SubproofReference>,
+    ) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
+        Err(ProofCheckError::Other("No rule selected".to_string()))
     }
 }
 
