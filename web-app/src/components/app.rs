@@ -1,9 +1,9 @@
-use crate::components::tabbed_container::TabbedContainer;
-use crate::components::tabbed_container::TabbedContainerMsg;
+use crate::components::nav_bar::NavBarWidget;
+use crate::components::nav_bar::NavBarMsg;
 use crate::components::proof_widget::ProofWidget;
 use crate::components::proof_widget::ProofWidgetMsg;
-use crate::components::menu_widget::MenuWidget;
-use crate::components::menu_widget::MenuWidgetMsg;
+use crate::components::tabbed_container::TabbedContainer;
+use crate::components::tabbed_container::TabbedContainerMsg;
 use crate::util::P;
 
 use std::collections::HashMap;
@@ -13,15 +13,21 @@ use yew::prelude::*;
 pub struct App {
     link: ComponentLink<Self>,
     tabcontainer_link: Option<ComponentLink<TabbedContainer>>,
-    menuwidget_link: Option<ComponentLink<MenuWidget>>,
+    menuwidget_link: Option<ComponentLink<NavBarWidget>>,
     proofs: HashMap<String, ComponentLink<ProofWidget>>,
 }
 
 pub enum AppMsg {
     TabbedContainerInit(ComponentLink<TabbedContainer>),
-    MenuWidgetInit(ComponentLink<MenuWidget>),
-    CreateTab { name: String, content: Html },
-    RegisterProofName { name: String, link: ComponentLink<ProofWidget> },
+    NavBarInit(ComponentLink<NavBarWidget>),
+    CreateTab {
+        name: String,
+        content: Html,
+    },
+    RegisterProofName {
+        name: String,
+        link: ComponentLink<ProofWidget>,
+    },
     GetProofFromCurrentTab(Box<dyn FnOnce(String, &P)>),
 }
 
@@ -43,19 +49,19 @@ impl Component for App {
             AppMsg::TabbedContainerInit(tabcontainer_link) => {
                 self.tabcontainer_link = Some(tabcontainer_link);
                 false
-            },
-            AppMsg::MenuWidgetInit(menuwidget_link) => {
+            }
+            AppMsg::NavBarInit(menuwidget_link) => {
                 // create the first blank proof tab
-                menuwidget_link.send_message(MenuWidgetMsg::FileNew);
+                menuwidget_link.send_message(NavBarMsg::FileNew);
                 self.menuwidget_link = Some(menuwidget_link);
                 false
-            },
+            }
             AppMsg::CreateTab { name, content } => {
                 if let Some(tabcontainer_link) = &self.tabcontainer_link {
                     tabcontainer_link.send_message(TabbedContainerMsg::CreateTab { name, content });
                 }
                 true
-            },
+            }
             AppMsg::RegisterProofName { name, link } => {
                 self.proofs.insert(name, link);
                 false
@@ -63,11 +69,15 @@ impl Component for App {
             AppMsg::GetProofFromCurrentTab(f) => {
                 if let Some(tabcontainer_link) = &self.tabcontainer_link {
                     let proofs = self.proofs.clone();
-                    tabcontainer_link.send_message(TabbedContainerMsg::GetCurrentTab(Box::new(move |_, name| {
-                        if let Some(link) = proofs.get(&*name) {
-                            link.send_message(ProofWidgetMsg::CallOnProof(Box::new(move |prf| f(name, prf))));
-                        }
-                    })));
+                    tabcontainer_link.send_message(TabbedContainerMsg::GetCurrentTab(Box::new(
+                        move |_, name| {
+                            if let Some(link) = proofs.get(&*name) {
+                                link.send_message(ProofWidgetMsg::CallOnProof(Box::new(
+                                    move |prf| f(name, prf),
+                                )));
+                            }
+                        },
+                    )));
                 }
                 false
             }
@@ -88,7 +98,7 @@ impl Component for App {
         };
         html! {
             <div>
-                <MenuWidget parent=self.link.clone() oncreate=self.link.callback(|link| AppMsg::MenuWidgetInit(link)) />
+                <NavBarWidget parent=self.link.clone() oncreate=self.link.callback(|link| AppMsg::NavBarInit(link)) />
                 { tabview }
             </div>
         }

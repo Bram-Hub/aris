@@ -49,15 +49,15 @@ impl FileOpenHelper {
     }
 }
 
-pub struct MenuWidget {
+pub struct NavBarWidget {
     link: ComponentLink<Self>,
-    props: MenuWidgetProps,
+    props: NavBarProps,
     node_ref: NodeRef,
     next_tab_idx: usize,
     file_open_helper: FileOpenHelper,
 }
 
-pub enum MenuWidgetMsg {
+pub enum NavBarMsg {
     FileNew,
     FileOpen(web_sys::FileList),
     FileSave,
@@ -65,14 +65,14 @@ pub enum MenuWidgetMsg {
     Nop,
 }
 #[derive(Properties, Clone)]
-pub struct MenuWidgetProps {
+pub struct NavBarProps {
     pub parent: ComponentLink<App>,
-    pub oncreate: Callback<ComponentLink<MenuWidget>>,
+    pub oncreate: Callback<ComponentLink<NavBarWidget>>,
 }
 
-impl Component for MenuWidget {
-    type Message = MenuWidgetMsg;
-    type Properties = MenuWidgetProps;
+impl Component for NavBarWidget {
+    type Message = NavBarMsg;
+    type Properties = NavBarProps;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         props.oncreate.emit(link.clone());
@@ -82,7 +82,7 @@ impl Component for MenuWidget {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            MenuWidgetMsg::FileNew => {
+            NavBarMsg::FileNew => {
                 let fname = format!("Untitled proof {}", self.next_tab_idx);
                 let fname_ = fname.clone();
                 let oncreate = self.props.parent.callback(move |link| AppMsg::RegisterProofName { name: fname_.clone(), link });
@@ -90,9 +90,9 @@ impl Component for MenuWidget {
                 self.next_tab_idx += 1;
                 false
             },
-            MenuWidgetMsg::FileOpen(file_list) => self.file_open_helper.fileopen(file_list),
-            MenuWidgetMsg::FileSave => {
-                let node = self.node_ref.get().expect("MenuWidget::node_ref failed");
+            NavBarMsg::FileOpen(file_list) => self.file_open_helper.fileopen(file_list),
+            NavBarMsg::FileSave => {
+                let node = self.node_ref.get().expect("NavBarWidget::node_ref failed");
                 self.props.parent.send_message(AppMsg::GetProofFromCurrentTab(Box::new(move |name, prf| {
                     use aris::proofs::xml_interop;
                     let mut data = vec![];
@@ -122,7 +122,7 @@ impl Component for MenuWidget {
                 })));
                 false
             },
-            MenuWidgetMsg::NewExprTree => {
+            NavBarMsg::NewExprTree => {
                 self.props.parent.send_message(AppMsg::CreateTab {
                     name: format!("Expr Tree {}", self.next_tab_idx),
                     content: html! {
@@ -132,7 +132,7 @@ impl Component for MenuWidget {
                 self.next_tab_idx += 1;
                 false
             },
-            MenuWidgetMsg::Nop => {
+            NavBarMsg::Nop => {
                 false
             },
         }
@@ -146,9 +146,9 @@ impl Component for MenuWidget {
     fn view(&self) -> Html {
         let handle_open_file = self.link.callback(move |e| {
             if let ChangeData::Files(file_list) = e {
-                MenuWidgetMsg::FileOpen(file_list)
+                NavBarMsg::FileOpen(file_list)
             } else {
-                MenuWidgetMsg::Nop
+                NavBarMsg::Nop
             }
         });
         html! {
@@ -160,7 +160,7 @@ impl Component for MenuWidget {
                         <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
                             <div>
                                 <label for="file-menu-new-proof" class="dropdown-item">{"New blank proof"}</label>
-                                <input id="file-menu-new-proof" style="display:none" type="button" onclick=self.link.callback(|_| MenuWidgetMsg::FileNew) />
+                                <input id="file-menu-new-proof" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::FileNew) />
                             </div>
                             <div>
                                 <label for="file-menu-open-proof" class="dropdown-item">{"Open proof"}</label>
@@ -168,11 +168,11 @@ impl Component for MenuWidget {
                             </div>
                             <div>
                                 <label for="file-menu-save-proof" class="dropdown-item">{"Save proof"}</label>
-                                <input id="file-menu-save-proof" style="display:none" type="button" onclick=self.link.callback(|_| MenuWidgetMsg::FileSave) />
+                                <input id="file-menu-save-proof" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::FileSave) />
                             </div>
                             <div>
                                 <label for="file-menu-new-expr-tree" class="dropdown-item">{"New expression tree"}</label>
-                                <input id="file-menu-new-expr-tree" style="display:none" type="button" onclick=self.link.callback(|_| MenuWidgetMsg::NewExprTree) />
+                                <input id="file-menu-new-expr-tree" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::NewExprTree) />
                             </div>
                         </div>
                     </li>
