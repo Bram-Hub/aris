@@ -24,7 +24,7 @@ impl Component for TabbedContainer {
     type Properties = TabbedContainerProps;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let tabs: Vec<(String, Html)> = props.tab_ids.into_iter().zip(props.children.to_vec().into_iter()).collect();
+        let tabs: Vec<(String, Html)> = props.tab_ids.into_iter().zip(props.children.into_iter()).collect();
         props.oncreate.emit(link.clone());
         Self { link, tabs, current_tab: 0 }
     }
