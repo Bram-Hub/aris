@@ -154,24 +154,6 @@ impl Component for NavBarWidget {
             }
         });
 
-        let help_modal = html! {
-            <div class="modal fade" id="help-modal" tabindex="-1" role="dialog" aria-labelledby="help-modal-label" aria-hidden="true">
-                <div class="modal-dialog" role="document">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="help-modal-label"> { "Aris Help" } </h5>
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                <span aria-hidden="true"> { '×' } </span>
-                            </button>
-                        </div>
-                        <div class="modal-body">
-                            { "Hello world" }
-                        </div>
-                    </div>
-                </div>
-            </div>
-        };
-
         let file_menu = html! {
             <ul class="navbar-nav">
                 <li ref=self.node_ref.clone() class="nav-item dropdown show">
@@ -221,8 +203,59 @@ impl Component for NavBarWidget {
         html! {
             <>
                 { navbar }
-                { help_modal }
+                { render_help_modal() }
             </>
         }
+    }
+}
+
+fn render_help_modal() -> Html {
+    html! {
+        <div class="modal fade" id="help-modal" tabindex="-1" role="dialog" aria-labelledby="help-modal-label" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="help-modal-label"> { "Aris Help" } </h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true"> { '×' } </span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        { render_help_body() }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+fn render_help_body() -> Html {
+    let table_rows = aris::macros::TABLE
+        .iter()
+        .map(|(macro_, symbol)| {
+            html! {
+                <tr>
+                    <td> { macro_ } </td>
+                    <td> { symbol } </td>
+                </tr>
+            }
+        })
+        .collect::<Vec<Html>>();
+
+    html! {
+        <>
+            <h5> { "Logic symbol macros" } </h5>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th> { "Macro" } </th>
+                        <th> { "Symbol" } </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    { table_rows }
+                </tbody>
+            </table>
+        </>
     }
 }
