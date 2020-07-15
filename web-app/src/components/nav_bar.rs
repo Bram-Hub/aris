@@ -6,6 +6,8 @@ use crate::components::proof_widget::ProofWidget;
 use gloo::timers::callback::Timeout;
 use wasm_bindgen::{closure::Closure, JsValue, JsCast};
 use yew::prelude::*;
+use yew_octicons::Icon;
+use yew_octicons::IconKind;
 
 pub struct FileOpenHelper {
     filepicker_visible: bool,
@@ -151,33 +153,76 @@ impl Component for NavBarWidget {
                 NavBarMsg::Nop
             }
         });
-        html! {
-            <nav class="navbar navbar-expand-lg navbar-dark bg-secondary">
-                <a class="navbar-brand" href="#"> { "Aris" } </a>
-                <ul class="navbar-nav">
-                    <li ref=self.node_ref.clone() class="nav-item dropdown show">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{"File"}</a>
-                        <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
-                            <div>
-                                <label for="file-menu-new-proof" class="dropdown-item">{"New blank proof"}</label>
-                                <input id="file-menu-new-proof" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::FileNew) />
-                            </div>
-                            <div>
-                                <label for="file-menu-open-proof" class="dropdown-item">{"Open proof"}</label>
-                                <input id="file-menu-open-proof" style="display:none" type="file" onchange=handle_open_file />
-                            </div>
-                            <div>
-                                <label for="file-menu-save-proof" class="dropdown-item">{"Save proof"}</label>
-                                <input id="file-menu-save-proof" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::FileSave) />
-                            </div>
-                            <div>
-                                <label for="file-menu-new-expr-tree" class="dropdown-item">{"New expression tree"}</label>
-                                <input id="file-menu-new-expr-tree" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::NewExprTree) />
-                            </div>
+
+        let help_modal = html! {
+            <div class="modal fade" id="help-modal" tabindex="-1" role="dialog" aria-labelledby="help-modal-label" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="help-modal-label"> { "Aris Help" } </h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true"> { '×' } </span>
+                            </button>
                         </div>
+                        <div class="modal-body">
+                            { "Hello world" }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        };
+
+        let file_menu = html! {
+            <ul class="navbar-nav">
+                <li ref=self.node_ref.clone() class="nav-item dropdown show">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{"File"}</a>
+                    <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+                        <div>
+                            <label for="file-menu-new-proof" class="dropdown-item">{"New blank proof"}</label>
+                            <input id="file-menu-new-proof" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::FileNew) />
+                        </div>
+                        <div>
+                            <label for="file-menu-open-proof" class="dropdown-item">{"Open proof"}</label>
+                            <input id="file-menu-open-proof" style="display:none" type="file" onchange=handle_open_file />
+                        </div>
+                        <div>
+                            <label for="file-menu-save-proof" class="dropdown-item">{"Save proof"}</label>
+                            <input id="file-menu-save-proof" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::FileSave) />
+                        </div>
+                        <div>
+                            <label for="file-menu-new-expr-tree" class="dropdown-item">{"New expression tree"}</label>
+                            <input id="file-menu-new-expr-tree" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::NewExprTree) />
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        };
+
+        let navbar = html! {
+            // Bootstrap navbar
+            // https://getbootstrap.com/docs/4.5/components/navbar/
+            <nav class="navbar navbar-expand-lg navbar-dark bg-secondary">
+                // Navbar brand
+                <a class="navbar-brand" href="#"> { "Aris" } </a>
+
+                { file_menu }
+
+                // Help menu
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" data-toggle="modal" data-target="#help-modal">
+                            { Icon::new_big(IconKind::Question) }
+                        </a>
                     </li>
                 </ul>
             </nav>
+        };
+
+        html! {
+            <>
+                { navbar }
+                { help_modal }
+            </>
         }
     }
 }
