@@ -43,6 +43,9 @@ use equivalences::*;
 pub mod combinatorics;
 use combinatorics::*;
 
+/// Utilities for macro expansion in UI frontends
+pub mod macros;
+
 pub mod solver_integration {
     pub mod solver;
 }

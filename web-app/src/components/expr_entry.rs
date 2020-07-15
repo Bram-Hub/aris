@@ -1,5 +1,3 @@
-use aris::parser::prettify_expr;
-
 use yew::prelude::*;
 
 /// A text field for entering expressions
@@ -73,9 +71,9 @@ impl Component for ExprEntry {
 }
 
 impl ExprEntry {
-    /// Handle an edit of the expression text field by prettifying the text with
-    /// `aris::parse::prettify_expr()`. To preserve the cursor position, the
-    /// strings to the left and right of the cursor are prettified separately.
+    /// Handle an edit of the expression text field by expanding macros with
+    /// `aris::macros::expand()`. To preserve the cursor position, the strings
+    /// to the left and right of the cursor are expanded separately.
     fn handle_edit(&self) {
         // Get `<input>` element used as a text field
         let input_elem = self
@@ -96,11 +94,12 @@ impl ExprEntry {
         let value = input_elem.value().chars().collect::<Vec<char>>();
         let (left, right) = value.split_at(cursor_pos);
 
-        // Convert left and right text back into regular `Strings` and prettify
+        // Convert left and right text back into regular `Strings` and expand
+        // macros
         let left = left.into_iter().collect::<String>();
-        let left = prettify_expr(&left);
+        let left = aris::macros::expand(&left);
         let right = right.into_iter().collect::<String>();
-        let right = prettify_expr(&right);
+        let right = aris::macros::expand(&right);
 
         // Compute new cursor position
         let cursor_pos = left.chars().count() as u32;

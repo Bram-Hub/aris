@@ -104,33 +104,3 @@ fn test_parser() {
     named!(f<&str, Vec<&str>>, many1!(tag!("a")));
     println!("{:?}", f("aa\n"));
 }
-
-/// Convert ASCII characters and macros to logic symbols.
-///
-/// ```rust
-/// # use aris::parser::prettify_expr;
-/// assert_eq!(prettify_expr("_|_ -> (^|^ .bicon ~P)"), "⊥ → (⊤ ↔ ¬P)");
-/// ```
-pub fn prettify_expr(s: &str) -> String {
-    s
-        .replace("_|_", "⊥")
-        .replace(".con", "⊥")
-        .replace("^|^", "⊤")
-        .replace(".taut", "⊤")
-        .replace("~", "¬")
-        .replace(".not", "¬")
-        .replace("forall", "∀")
-        .replace("exists", "∃")
-        .replace("&", "∧")
-        .replace(r#"/\"#, "∧")
-        .replace(".and", "∧")
-        .replace("|", "∨")
-        .replace(r#"\/"#, "∨")
-        .replace(".or", "∨")
-        .replace("<->", "↔")
-        .replace(".bicon", "↔")
-        .replace("->", "→")
-        .replace(".impl", "→")
-        .replace("===", "≡")
-        .replace(".equiv", "≡")
-}
