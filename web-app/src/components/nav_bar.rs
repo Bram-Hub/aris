@@ -230,13 +230,30 @@ fn render_help_modal() -> Html {
 }
 
 fn render_help_body() -> Html {
+    // Maximum amount of macros for any symbol
+    let max_col_span = aris::macros::TABLE
+        .iter()
+        .map(|(_, macros)| macros.len())
+        .max()
+        .unwrap_or_default();
     let table_rows = aris::macros::TABLE
         .iter()
-        .map(|(macro_, symbol)| {
+        .map(|(symbol, macros)| {
+            // Convert row to HTML
+            let macros = macros
+                .iter()
+                .chain(std::iter::repeat(&""))
+                .take(max_col_span)
+                .map(|macro_| {
+                    html! {
+                        <td> { macro_ } </td>
+                    }
+                })
+                .collect::<Vec<Html>>();
             html! {
                 <tr>
-                    <td> { macro_ } </td>
                     <td> { symbol } </td>
+                    { macros }
                 </tr>
             }
         })
@@ -248,8 +265,8 @@ fn render_help_body() -> Html {
             <table class="table table-bordered">
                 <thead>
                     <tr>
-                        <th> { "Macro" } </th>
                         <th> { "Symbol" } </th>
+                        <th colspan=max_col_span> { "Macros" } </th>
                     </tr>
                 </thead>
                 <tbody>

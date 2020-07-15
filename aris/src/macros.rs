@@ -1,26 +1,16 @@
 /// Table of ASCII characters, macros, and their corresponding logic symbols.
-/// The format of each row is `(macro, symbol)`.
-pub static TABLE: [(&str, &str); 20] = [
-    ("_|_", "⊥"),
-    (".con", "⊥"),
-    ("^|^", "⊤"),
-    (".taut", "⊤"),
-    ("~", "¬"),
-    (".not", "¬"),
-    ("forall", "∀"),
-    ("exists", "∃"),
-    ("&", "∧"),
-    (r#"/\"#, "∧"),
-    (".and", "∧"),
-    ("|", "∨"),
-    (r#"\/"#, "∨"),
-    (".or", "∨"),
-    ("<->", "↔"),
-    (".bicon", "↔"),
-    ("->", "→"),
-    (".impl", "→"),
-    ("===", "≡"),
-    (".equiv", "≡"),
+/// The format of each row is `(symbol, macros)`.
+pub static TABLE: [(&str, &[&str]); 10] = [
+    ("⊥", &["_|_", ".con"]),
+    ("⊤", &["^|^", ".taut"]),
+    ("¬", &["~", ".not"]),
+    ("∀", &["forall"]),
+    ("∃", &["exists"]),
+    ("∧", &["&", r#"/\"#, ".and"]),
+    ("∨", &["|", r#"\/"#, ".or"]),
+    ("↔", &["<->", ".bicon"]),
+    ("→", &["->", ".impl"]),
+    ("≡", &["===", ".equiv"]),
 ];
 
 /// Convert ASCII characters and macros to logic symbols.
@@ -29,7 +19,7 @@ pub static TABLE: [(&str, &str); 20] = [
 /// assert_eq!(aris::macros::expand("_|_ -> (^|^ .bicon ~P)"), "⊥ → (⊤ ↔ ¬P)");
 /// ```
 pub fn expand(s: &str) -> String {
-    TABLE.iter().fold(s.to_string(), |s, (macro_, symbol)| {
-        s.replace(macro_, symbol)
+    TABLE.iter().fold(s.to_string(), |s, (symbol, macros)| {
+        macros.iter().fold(s, |s, macro_| s.replace(macro_, symbol))
     })
 }
