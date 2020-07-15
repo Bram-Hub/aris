@@ -1,16 +1,16 @@
 /// Table of ASCII characters, macros, and their corresponding logic symbols.
 /// The format of each row is `(symbol, macros)`.
 pub static TABLE: [(&str, &[&str]); 10] = [
-    ("⊥", &["_|_", ".con"]),
-    ("⊤", &["^|^", ".taut"]),
-    ("¬", &["~", ".not"]),
+    ("⊥", &[".con", "_|_"]),
+    ("⊤", &[".taut", "^|^"]),
+    ("¬", &[".not", "~"]),
     ("∀", &["forall"]),
     ("∃", &["exists"]),
-    ("∧", &["&", r#"/\"#, ".and"]),
-    ("∨", &["|", r#"\/"#, ".or"]),
-    ("↔", &["<->", ".bicon"]),
-    ("→", &["->", ".impl"]),
-    ("≡", &["===", ".equiv"]),
+    ("∧", &[".and", "&", r#"/\"#]),
+    ("∨", &[".or", "|", r#"\/"#]),
+    ("↔", &[".bicon", "<->"]),
+    ("→", &[".impl", "->"]),
+    ("≡", &[".equiv", "==="]),
 ];
 
 /// Convert ASCII characters and macros to logic symbols.
