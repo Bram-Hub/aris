@@ -1,11 +1,14 @@
+mod actions;
+
 use crate::box_chars;
 use crate::components::expr_entry::ExprEntry;
 use crate::proof_ui_data::ProofUiData;
-use crate::util::calculate_lineinfo;
 use crate::util::P;
+use crate::util::calculate_lineinfo;
 
 use aris::expression::Expr;
 use aris::expression::expression_builders::var;
+use aris::proofs::JSRef;
 use aris::proofs::Justification;
 use aris::proofs::PJRef;
 use aris::proofs::PJSRef;
@@ -25,29 +28,45 @@ use frunk_core::coproduct::Coproduct;
 use strum::IntoEnumIterator;
 use yew::prelude::*;
 
+/// Data stored for the currently selected line
+struct SelectedLine {
+    /// Reference to line in proof
+    line_ref: PJRef<P>,
+
+    /// Handle for listening for keyboard shortcuts
+    #[used]
+    key_listener: yew::services::keyboard::KeyListenerHandle,
+}
+
 /// Component for editing proofs
 pub struct ProofWidget {
     link: ComponentLink<Self>,
+
     /// The proof being edited with this widget
     prf: P,
+
     /// UI-specific data associated with the proof, such as intermediate text in
     /// lines that might have parse errors
     pud: ProofUiData<P>,
+
     /// The currently selected line, highlighted in the UI
-    selected_line: Option<PJRef<P>>,
+    selected_line: Option<SelectedLine>,
+
     /// Error message, for if there was an error parsing the proof XML. If this
     /// exists, it is displayed instead of the proof.
     open_error: Option<String>,
+
     preblob: String,
+
     props: ProofWidgetProps,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum LAKItem {
     Line, Subproof
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum LineActionKind {
     Insert { what: LAKItem, after: bool, relative_to: LAKItem, },
     Delete { what: LAKItem },
@@ -56,11 +75,15 @@ pub enum LineActionKind {
     ToggleDependency { dep: Coprod![PJRef<P>, <P as Proof>::SubproofReference] },
 }
 
+/// Message for `ProofWidget`
 pub enum ProofWidgetMsg {
+    /// Do nothing
     Nop,
     LineChanged(PJRef<P>, String),
     LineAction(LineActionKind, PJRef<P>),
     CallOnProof(Box<dyn FnOnce(&P)>),
+    /// Process keypress, handling any keyboard shortcuts
+    Keypress(web_sys::KeyboardEvent),
 }
 
 impl fmt::Debug for ProofWidgetMsg {
@@ -71,6 +94,7 @@ impl fmt::Debug for ProofWidgetMsg {
             LineChanged(r, s) => f.debug_tuple("LineChanged").field(&r).field(&s).finish(),
             LineAction(lak, r) => f.debug_tuple("LineAction").field(&lak).field(&r).finish(),
             CallOnProof(_) => f.debug_struct("CallOnProof").finish(),
+            Keypress(key_event) => f.debug_tuple("Keypress").field(&key_event).finish(),
         }
     }
 }
@@ -88,15 +112,15 @@ impl ProofWidget {
             Some(line) => line.to_string(),
             None => "".to_string(),
         };
-        if let Some(selected_line) = self.selected_line {
+        if let Some(selected_line) = &self.selected_line {
             use Coproduct::{Inl, Inr};
-            if let Inr(Inl(_)) = selected_line {
+            if let Inr(Inl(_)) = selected_line.line_ref {
                 let dep = proofref.clone();
-                let selected_line_ = selected_line.clone();
+                let line_ref = selected_line.line_ref.clone();
                 let toggle_dep = self.link.callback(move |_| {
-                    ProofWidgetMsg::LineAction(LineActionKind::ToggleDependency { dep }, selected_line_)
+                    ProofWidgetMsg::LineAction(LineActionKind::ToggleDependency { dep }, line_ref)
                 });
-                if self.prf.can_reference_dep(&selected_line, &proofref) {
+                if self.prf.can_reference_dep(&line_ref, &proofref) {
                     return html! {
                         <button
                             type="button"
@@ -271,74 +295,51 @@ impl ProofWidget {
         let handle_input = self.link.callback(move |value: String| ProofWidgetMsg::LineChanged(proofref_.clone(), value));
         let proofref_ = proofref.clone();
         let select_line = self.link.callback(move |()| ProofWidgetMsg::LineAction(LineActionKind::Select, proofref_.clone()));
+
+        // Menu for selecting a line action
         let action_selector = {
-            let new_dropdown_item = |text, onclick| {
-                html! {
-                    <a class="dropdown-item" href="#" onclick=onclick>
-                        { text }
-                    </a>
-                }
-            };
-            let callback_delete_line = self.link.callback(move |_: web_sys::MouseEvent| {
-                ProofWidgetMsg::LineAction(LineActionKind::Delete { what: LAKItem::Line }, proofref_.clone())
-            });
-            let callback_delete_subproof = self.link.callback(move |_: web_sys::MouseEvent| {
-                ProofWidgetMsg::LineAction(LineActionKind::Delete { what: LAKItem::Subproof }, proofref_.clone())
-            });
-            let callback_insert_line_before_line = self.link.callback(move |_: web_sys::MouseEvent| {
-                ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: false, relative_to: LAKItem::Line }, proofref_.clone())
-            });
-            let callback_insert_line_after_line = self.link.callback(move |_: web_sys::MouseEvent| {
-                ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: true, relative_to: LAKItem::Line }, proofref_.clone())
-            });
-            let callback_insert_line_before_subproof = self.link.callback(move |_: web_sys::MouseEvent| {
-                ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: false, relative_to: LAKItem::Subproof }, proofref_.clone())
-            });
-            let callback_insert_line_after_subproof = self.link.callback(move |_: web_sys::MouseEvent| {
-                ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Line, after: true, relative_to: LAKItem::Subproof }, proofref_.clone())
-            });
-            let callback_insert_subproof_before_line = self.link.callback(move |_: web_sys::MouseEvent| {
-                ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: false, relative_to: LAKItem::Line }, proofref_.clone())
-            });
-            let callback_insert_subproof_after_line = self.link.callback(move |_: web_sys::MouseEvent| {
-                ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: true, relative_to: LAKItem::Line }, proofref_.clone())
-            });
-            let callback_insert_subproof_before_subproof = self.link.callback(move |_: web_sys::MouseEvent| {
-                ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: false, relative_to: LAKItem::Subproof }, proofref_.clone())
-            });
-            let callback_insert_subproof_after_subproof = self.link.callback(move |_: web_sys::MouseEvent| {
-                ProofWidgetMsg::LineAction(LineActionKind::Insert { what: LAKItem::Subproof, after: true, relative_to: LAKItem::Subproof }, proofref_.clone())
-            });
-            let mut options = yew::virtual_dom::VList::new();
-            if may_remove_line(&self.prf, &proofref) {
-                options.add_child(new_dropdown_item("Delete line", callback_delete_line));
-            }
-            // Only allow subproof operations on non-root subproofs
-            let is_subproof = self.prf.parent_of_line(&pj_to_pjs::<P>(proofref.clone())).is_some();
-            if is_subproof {
-                options.add_child(new_dropdown_item("Delete subproof", callback_delete_subproof));
-                options.add_child(new_dropdown_item("Insert step before this subproof", callback_insert_line_before_subproof));
-                options.add_child(new_dropdown_item("Insert step after this subproof", callback_insert_line_after_subproof));
-                options.add_child(new_dropdown_item("Insert subproof before this subproof", callback_insert_subproof_before_subproof));
-                options.add_child(new_dropdown_item("Insert subproof after this subproof", callback_insert_subproof_after_subproof));
-            }
-            match proofref {
-                Inl(_) => {
-                    options.add_child(new_dropdown_item("Insert premise before this premise", callback_insert_line_before_line));
-                    options.add_child(new_dropdown_item("Insert premise after this premise", callback_insert_line_after_line));
-                },
-                Inr(Inl(_)) => {
-                    options.add_child(new_dropdown_item("Insert step before this step", callback_insert_line_before_line));
-                    options.add_child(new_dropdown_item("Insert step after this step", callback_insert_line_after_line));
-                    // Only show subproof creation relative to justification
-                    // lines, since it may confuse users to have subproofs
-                    // appear after all the premises when they selected a
-                    // premise
-                    options.add_child(new_dropdown_item("Insert subproof before this step", callback_insert_subproof_before_line));
-                    options.add_child(new_dropdown_item("Insert subproof after this step", callback_insert_subproof_after_line));
-                },
-                Inr(Inr(void)) => match void {},
-            }
+            // List of menu items
+            let options = actions::valid_actions(&self.prf, proofref)
+                .map(|action_info| {
+                    let proofref_ = proofref.clone();
+                    let lak = action_info.line_action_kind.clone();
+
+                    // Callback triggering line action
+                    let onclick = self.link.callback(move |_| {
+                        ProofWidgetMsg::LineAction(
+                            lak.clone(),
+                            proofref_.clone(),
+                        )
+                    });
+
+                    // Badge showing keyboard shortcut of action, if any
+                    let keyboard_shortcut = match action_info.keyboard_shortcut {
+                        Some(key) => {
+                            html! {
+                                <span>
+                                    <kbd>
+                                        <kbd> { "Ctrl" } </kbd>
+                                        { '-' }
+                                        <kbd> { key.to_uppercase() } </kbd>
+                                    </kbd>
+                                </span>
+                            }
+                        }
+                        None => html!(),
+                    };
+
+                    // Item in line actions menu
+                    html! {
+                        <a class="dropdown-item" href="#" onclick=onclick>
+                            { action_info.description }
+                            { ' ' }
+                            { keyboard_shortcut }
+                        </a>
+                    }
+                })
+                .collect::<Vec<Html>>();
+
+            // Menu for selecting a line action
             html! {
                 <div class="dropdown">
                     <button
@@ -360,9 +361,12 @@ impl ProofWidget {
         let init_value = self.pud.ref_to_input.get(&proofref).cloned().unwrap_or_default();
         let in_subproof = depth > 0;
         let rule_feedback = self.render_line_feedback(proofref, in_subproof);
-        let is_selected_line = self.selected_line == Some(proofref);
+        let is_selected_line = self.selected_line
+            .as_ref()
+            .map(|line| line.line_ref == proofref)
+            .unwrap_or(false);
         let is_dep_line = match self.selected_line {
-            Some(Inr(Inl(selected_line))) => {
+            Some(SelectedLine { line_ref: Inr(Inl(selected_line)), .. }) => {
                 match self.prf.lookup_justification_or_die(&selected_line) {
                     Ok(Justification(_, _, line_deps, _)) => line_deps.contains(&proofref),
                     Err(_) => false,
@@ -407,6 +411,7 @@ impl ProofWidget {
                     <ExprEntry
                         oninput=handle_input
                         onfocus=select_line
+                        focus=is_selected_line
                         init_value=init_value />
                 </td>
                 { feedback_and_just_widgets }
@@ -476,6 +481,60 @@ impl ProofWidget {
             yew::virtual_dom::VNode::from(output)
         }
     }
+
+    /// Select the line referenced in `line_ref`. Also, set up a listener for
+    /// line action keyboard shortcuts
+    fn select_line(&mut self, line_ref: PJRef<P>) {
+        let key_listener =
+            yew::services::keyboard::KeyboardService::register_key_down(
+                &yew::utils::window(),
+                self.link.callback(|key_event| ProofWidgetMsg::Keypress(key_event)),
+            );
+
+        self.selected_line = Some(SelectedLine {
+            line_ref,
+            key_listener,
+        });
+    }
+
+    /// Convert a keyboard shortcut into a `ProofWidgetMsg` that performs the
+    /// action.
+    ///
+    /// NOTE: This overrides the behavior of built-in web browser shortcuts,
+    /// such as <kbd>Ctrl-A</kbd> and <kbd>Ctrl-P</kbd>.
+    fn process_key_shortcut(&self, key_event: web_sys::KeyboardEvent) -> ProofWidgetMsg {
+        // Get the selected line, or do nothing if there is none
+        let selected_line =
+            match &self.selected_line {
+                Some(selected_line) => selected_line.line_ref,
+                None => return ProofWidgetMsg::Nop,
+            };
+
+        // All keyboard shortcuts have the control key held. Do nothing if the
+        // control key isn't pressed.
+        if !key_event.ctrl_key() {
+            return ProofWidgetMsg::Nop;
+        }
+
+        // Some keyboard shortcuts (like Ctrl-A, Ctrl-P) conflict with typical
+        // web browser keyboard shortcuts. This overrides their behavior.
+        key_event.prevent_default();
+
+        // Look up the triggered action
+        let action = actions::valid_actions(&self.prf, selected_line)
+            .find(|action_info| {
+                action_info.keyboard_shortcut == key_event.key().chars().next()
+            });
+
+        if let Some(action) = action {
+            // Return action message
+            let lak = action.line_action_kind.clone();
+            ProofWidgetMsg::LineAction(lak, selected_line)
+        } else {
+            ProofWidgetMsg::Nop
+        }
+    }
+
 }
 
 fn may_remove_line<P: Proof>(prf: &P, proofref: &PJRef<P>) -> bool {
@@ -615,15 +674,24 @@ impl Component for ProofWidget {
                         Inr(Inr(Inr(void))) => match void {},
                     },
                     LAKItem::Subproof => {
-                        let sr = self.prf.add_subproof_relative(&insertion_point.subset().unwrap(), after);
-                        to_select = self.prf.with_mut_subproof(&sr, |sub| {
-                            let to_select = Inl(sub.add_premise(new_empty_premise()));
-                            sub.add_step(new_empty_step());
-                            to_select
-                        }).unwrap();
+                        // Convert insertion point from `PJSRef` to `JSRef`,
+                        // returning silently on failure
+                        let insertion_point: JSRef<P> = match insertion_point.subset() {
+                            Ok(insertion_point) => insertion_point,
+                            // Insertion point is a premise, return silently
+                            Err(_) => return ret,
+                        };
+                        let sr = self.prf.add_subproof_relative(&insertion_point, after);
+                        to_select = self.prf
+                            .with_mut_subproof(&sr, |sub| {
+                                let to_select = Inl(sub.add_premise(new_empty_premise()));
+                                sub.add_step(new_empty_step());
+                                to_select
+                            })
+                            .expect("Subproof doesn't exist after creating it");
                     },
                 }
-                self.selected_line = Some(to_select);
+                self.select_line(to_select);
                 self.preblob += &format!("{:?}\n", self.prf.premises());
                 ret = true;
             },
@@ -662,11 +730,11 @@ impl Component for ProofWidget {
                 if let Inr(Inl(jr)) = &proofref {
                     self.prf.with_mut_step(&jr, |j| { j.1 = rule });
                 }
-                self.selected_line = Some(proofref);
+                self.select_line(proofref);
                 ret = true;
             },
             ProofWidgetMsg::LineAction(LineActionKind::Select, proofref) => {
-                self.selected_line = Some(proofref);
+                self.select_line(proofref);
                 ret = true;
             },
             ProofWidgetMsg::LineAction(LineActionKind::ToggleDependency { dep }, proofref) => {
@@ -692,6 +760,10 @@ impl Component for ProofWidget {
             },
             ProofWidgetMsg::CallOnProof(f) => {
                 f(&self.prf);
+            },
+            ProofWidgetMsg::Keypress(key_event) => {
+                let msg = self.process_key_shortcut(key_event);
+                ret = self.update(msg);
             },
         }
         if ret {
