@@ -180,6 +180,56 @@ impl Component for NavBarWidget {
             </ul>
         };
 
+        let symbol_menu = html! {
+            <ul class="navbar-nav">
+                <li ref=self.node_ref.clone() class="nav-item dropdown show">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{"Symbol"}</a>
+                    <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+                        <div>
+                            <label for="symbol-menu-and" class="dropdown-item">{"And (∧)"}</label>
+                            //<input id="symbol menu-and" style="display:none" type="button" />
+                        </div>
+                        <div>
+                            <label for="symbol-menu-or" class="dropdown-item">{"Or(∨)"}</label>
+                            //<input id="symbol-menu-or" style="display:none" type="button" />
+                        </div>
+                        <div>
+                            <label for="symbol-menu-not" class="dropdown-item">{"Not(¬)"}</label>
+                            //<input id="symbol-menu-not" style="display:none" type="button" />
+                        </div>
+                        <div>
+                            <label for="symbol-menu-equivalence" class="dropdown-item">{"Equivalence(≡)"}</label>
+                            //<input id="symbol-menu-equivalence" style="display:none" type="button" />
+                        </div>
+                        <div>
+                            <label for="symbol-menu-conditional" class="dropdown-item">{"Conditional(→)"}</label>
+                            //<input id="symbol-menu-conditional" style="display:none" type="button" />
+                        </div>
+                        <div>
+                            <label for="symbol-menu-biconditional" class="dropdown-item">{"Biconditional(↔)"}</label>
+                            //<input id="symbol-menu-biconditional" style="display:none" type="button" />
+                        </div>
+                        <div>
+                            <label for="symbol-menu-tautology" class="dropdown-item">{"Tautology(⊤)"}</label>
+                            //<input id="symbol-menu-tautology" style="display:none" type="button" />
+                        </div>
+                        <div>
+                            <label for="symbol-menu-contradiction" class="dropdown-item">{"Contradiction(⊥)"}</label>
+                            //<input id="symbol-menu-contradiction" style="display:none" type="button" />
+                        </div>
+                        <div>
+                            <label for="symbol-menu-forall" class="dropdown-item">{"Forall(∀)"}</label>
+                            //<input id="symbol-menu-forall" style="display:none" type="button" />
+                        </div>
+                        <div>
+                            <label for="symbol-menu-exists" class="dropdown-item">{"Exists(∃)"}</label>
+                            //<input id="symbol-menu-exists" style="display:none" type="button" />
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        };
+
         let navbar = html! {
             // Bootstrap navbar
             // https://getbootstrap.com/docs/4.5/components/navbar/
@@ -188,6 +238,7 @@ impl Component for NavBarWidget {
                 <a class="navbar-brand" href="#"> { "Aris" } </a>
 
                 { file_menu }
+                { symbol_menu }
 
                 // Help menu
                 <ul class="navbar-nav ml-auto">
