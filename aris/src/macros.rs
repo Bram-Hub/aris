@@ -1,15 +1,15 @@
 /// Table of ASCII characters, macros, and their corresponding logic symbols.
 /// The format of each row is `(symbol, macros)`.
 pub static TABLE: [(&str, &[&str]); 10] = [
-    ("⊥", &[".con"]),
+    ("⊥", &[".con", "^"]),
     ("⊤", &[".taut"]),
     ("¬", &[".not", "~"]),
-    ("∀", &["forall"]),
-    ("∃", &["exists"]),
+    ("∀", &["forall", "@"]),
+    ("∃", &["exists", "?"]),
     ("∧", &[".and", "&", r#"/\"#]),
     ("∨", &[".or", "|", r#"\/"#]),
-    ("↔", &[".bicon", "<->"]),
-    ("→", &[".impl", "->"]),
+    ("↔", &[".bicon", "%", "<->"]),
+    ("→", &[".impl", "$", "->"]),
     ("≡", &[".equiv", "==="]),
 ];
 
@@ -22,9 +22,9 @@ pub static TABLE: [(&str, &[&str]); 10] = [
 /// );
 /// assert_eq!(
 ///     aris::macros::expand(
-///         r#".con .taut .not ~ forall exists .and & /\ .or | \/ .bicon <-> .impl -> .equiv ==="#
+///         r#".con ^ .taut .not ~ forall @ exists ? .and & /\ .or | \/ .bicon % <-> .impl $ -> .equiv ==="#
 ///     ),
-///     "⊥ ⊤ ¬ ¬ ∀ ∃ ∧ ∧ ∧ ∨ ∨ ∨ ↔ ↔ → → ≡ ≡"
+///     "⊥ ⊥ ⊤ ¬ ¬ ∀ ∀ ∃ ∃ ∧ ∧ ∧ ∨ ∨ ∨ ↔ ↔ ↔ → → → ≡ ≡"
 /// );
 /// ```
 pub fn expand(s: &str) -> String {
