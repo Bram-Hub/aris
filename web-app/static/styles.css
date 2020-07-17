@@ -8,6 +8,7 @@ html, body {
     padding-right: 0px;
     line-height: 1;
     font-size: 35px;
+    user-select: none;
 
     /* On Windows, the default monospaced font isn't monospaced for box drawing
        characters, so we need to use Consolas instead. */
