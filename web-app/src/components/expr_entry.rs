@@ -18,7 +18,6 @@ pub enum ExprEntryMsg {
     Focus,
     /// Inserts a string into the text field for the user
     Insert(String),
-
 }
 
 /// Properties for `ExprEntry`
@@ -51,8 +50,8 @@ impl Component for ExprEntry {
                 if let Some(onfocus) = &self.props.onfocus {
                     onfocus.emit(())
                 }
-            },
-            ExprEntryMsg::Insert(character) => self.handle_insert(),
+            }
+            ExprEntryMsg::Insert(character) => self.handle_insert(character),
         }
 
         false
@@ -123,7 +122,10 @@ impl ExprEntry {
         self.props.oninput.emit(value);
     }
 
-    fn handle_insert(&self) {
-
+    fn handle_insert(&mut self, character: String) {
+        let input_elem = self
+            .node_ref
+            .cast::<web_sys::HtmlInputElement>()
+            .expect("failed casting node ref to input element");
     }
 }
