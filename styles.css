@@ -10,9 +10,10 @@ html, body {
     font-size: 35px;
     user-select: none;
 
-    /* On Windows, the default monospaced font isn't monospaced for box drawing
-       characters, so we need to use Consolas instead. */
-    font-family: Consolas, monospace;
+    /* On Firefox on Windows and macOS, the default monospaced font isn't
+       monospaced for box drawing characters, so instead we need to use Consolas
+       on Windows and Menlo on macOS. */
+    font-family: Consolas, Menlo, monospace;
 }
 
 .proof-line * {
