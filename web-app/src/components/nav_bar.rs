@@ -2,6 +2,7 @@ use crate::components::app::App;
 use crate::components::app::AppMsg;
 use crate::components::expr_ast_widget::ExprAstWidget;
 use crate::components::proof_widget::ProofWidget;
+use crate::components::expr_entry::ExprEntryMsg;
 
 use gloo::timers::callback::Timeout;
 use wasm_bindgen::{closure::Closure, JsValue, JsCast};
@@ -65,6 +66,7 @@ pub enum NavBarMsg {
     FileSave,
     NewExprTree,
     Nop,
+    Insert(String),
 }
 #[derive(Properties, Clone)]
 pub struct NavBarProps {
@@ -138,8 +140,9 @@ impl Component for NavBarWidget {
                 false
             },
             NavBarMsg::Insert(character) => {
-                let foo = self.activeElement;
-                ExprEntryMsg::Insert(character);
+                self.props.parent.send_message(ExprEntryMsg::Insert(character) {
+
+                });
                 false
             }
         }
@@ -192,7 +195,7 @@ impl Component for NavBarWidget {
                     <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
                         <div>
                             <label for="symbol-menu-and" class="dropdown-item">{"And (∧)"}</label>
-                            <input id="symbol menu-and" style="display:none" type="button" onclick=handle_insert() />
+                            <input id="symbol menu-and" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::Insert(String::from("∧"))) />
                         </div>
                         <div>
                             <label for="symbol-menu-or" class="dropdown-item">{"Or(∨)"}</label>

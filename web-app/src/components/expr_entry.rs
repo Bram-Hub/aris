@@ -18,10 +18,10 @@ pub enum ExprEntryMsg {
     OnEdit,
 
     /// Text field was focused
-    Focus,
+    OnFocus,
+
     /// Inserts a string into the text field for the user
     Insert(String),
-    OnFocus,
 }
 
 /// Properties for `ExprEntry`
@@ -70,7 +70,10 @@ impl Component for ExprEntry {
                 }
                 false
             }
-            ExprEntryMsg::Insert(character) => self.handle_insert(character),
+            ExprEntryMsg::Insert(character) => {
+                self.handle_insert(character);
+                false
+            }
         }
     }
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
@@ -157,9 +160,6 @@ impl ExprEntry {
     }
 
     fn handle_insert(&mut self, character: String) {
-        let input_elem = self
-            .node_ref
-            .cast::<web_sys::HtmlInputElement>()
-            .expect("failed casting node ref to input element");
+
     }
 }
