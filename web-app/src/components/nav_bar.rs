@@ -139,12 +139,13 @@ impl Component for NavBarWidget {
             NavBarMsg::Nop => {
                 false
             },
-            NavBarMsg::Insert(character) => {
-                self.props.parent.send_message(ExprEntryMsg::Insert(character) {
-
+            NavBarMsg::Insert(name) => {
+                self.props.parent.send_message(ExprEntryMsg::Insert {
+                    character: name,
+                    link: self.link,
                 });
                 false
-            }
+            },
         }
     }
 
