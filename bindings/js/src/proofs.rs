@@ -1,4 +1,3 @@
-use crate::rules::Rule;
 use crate::JsResult;
 
 use aris::expression::Expr;
@@ -13,7 +12,6 @@ use frunk_core::Hlist;
 use serde_wasm_bindgen::from_value;
 use serde_wasm_bindgen::to_value;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
 
 type P = aris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
 type SP = aris::proofs::pooledproof::PooledSubproof<Hlist![Expr]>;
