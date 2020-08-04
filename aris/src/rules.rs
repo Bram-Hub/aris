@@ -1066,7 +1066,45 @@ impl RuleT for RedundantPrepositionalInference {
                 })
             }
             HypotheticalSyllogism => {
-                todo!()
+                // P -> Q, Q -> R
+                // --------------
+                // P -> R
+                let dep_0 = proof.lookup_expr_or_die(&deps[0])?;
+                let dep_1 = proof.lookup_expr_or_die(&deps[1])?;
+                either_order(&dep_0, &dep_1, |dep_0, dep_1| {
+                    if let (
+                        Expr::Binop {
+                            symbol: BSymbol::Implies,
+                            left: p_0,
+                            right: q_0,
+                        },
+                        Expr::Binop {
+                            symbol: BSymbol::Implies,
+                            left: q_1,
+                            right: r_0,
+                        },
+                        Expr::Binop {
+                            symbol: BSymbol::Implies,
+                            left: p_1,
+                            right: r_1,
+                        },
+                    ) = (dep_0, dep_1, &conclusion) {
+                        if p_0 != p_1 {
+                            Err(DoesNotOccur(*p_0.clone(), *p_1.clone()))
+                        } else if q_0 != q_1 {
+                            Err(DoesNotOccur(*q_0.clone(), *q_1.clone()))
+                        } else if r_0 != r_1 {
+                            Err(DoesNotOccur(*r_0.clone(), *r_1.clone()))
+                        } else {
+                            Ok(())
+                        }
+                    } else {
+                        Err(DepDoesNotExist(
+                            binopplaceholder(BSymbol::Implies),
+                            true
+                        ))
+                    }
+                })
             }
             ExcludedMiddle => {
                 todo!()
