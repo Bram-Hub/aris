@@ -1025,23 +1025,56 @@ impl RuleT for RedundantPrepositionalInference {
     }
     fn check<P: Proof>(
         self,
-        _proof: &P,
-        _conclusion: Expr,
-        _deps: Vec<PJRef<P>>,
-        _sdeps: Vec<P::SubproofReference>
+        proof: &P,
+        conclusion: Expr,
+        deps: Vec<PJRef<P>>,
+        sdeps: Vec<P::SubproofReference>
     ) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
-        unimplemented!()
-        /*match self {
-            use RedundantPrepositionalInference::*;
-            match self {
-                ModusTollens => {
-                    let
-                }
-                HypotheticalSyllogism => {}
-                ExcludedMiddle => {}
-                ConstructiveDilemma => {}
+        use RedundantPrepositionalInference::*;
+        use ProofCheckError::*;
+        use expression_builders::*;
+
+        assert!(sdeps.is_empty());
+        match self {
+            ModusTollens => {
+                // P -> Q, ~Q
+                // ----------
+                // ~P
+                let dep_0 = proof.lookup_expr_or_die(&deps[0])?;
+                let dep_1 = proof.lookup_expr_or_die(&deps[1])?;
+                either_order(&dep_0, &dep_1, |dep_0, dep_1| {
+                    if let Expr::Binop {
+                        symbol: BSymbol::Implies,
+                        left: p,
+                        right: q,
+                    } = dep_0 {
+                        let not_p = not(*p.clone());
+                        let not_q = not(*q.clone());
+                        if not_q != *dep_1 {
+                            Err(DoesNotOccur(not_q, dep_1.clone()))
+                        } else if not_p != conclusion {
+                            Err(DoesNotOccur(not_p, conclusion.clone()))
+                        } else {
+                            Ok(())
+                        }
+                    } else {
+                        Err(DepDoesNotExist(
+                            binopplaceholder(BSymbol::Implies),
+                            true
+                        ))
+                    }
+                })
             }
-        }*/
+            HypotheticalSyllogism => {
+                todo!()
+            }
+            ExcludedMiddle => {
+                todo!()
+            }
+            ConstructiveDilemma => {
+                todo!()
+            }
+        }
     }
 }
 
@@ -1214,6 +1247,8 @@ where
     S: Ord,
     F: FnMut(&Expr, &Expr) -> Result<(), ProofCheckError<R, S>>,
 {
+    use ProofCheckError::DepDoesNotExist;
+
     macro_rules! h {
         ($i:expr, $j:expr) => {
             match check_func($i, $j) {
@@ -1225,7 +1260,11 @@ where
 
     let err_1 = h!(expr_1, expr_2);
     let err_2 = h!(expr_2, expr_1);
-    Err(ProofCheckError::OneOf(btreeset![err_1, err_2]))
+    match (err_1, err_2) {
+        (DepDoesNotExist(_, _), err) => Err(err),
+        (err, DepDoesNotExist(_, _)) => Err(err),
+        (err_1, err_2) => Err(ProofCheckError::OneOf(btreeset![err_1, err_2])),
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

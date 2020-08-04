@@ -51,7 +51,7 @@ macro_rules! enumerate_subproofless_tests {
             test_association, test_demorgan, test_idempotence, test_doublenegation,
             test_distribution, test_complement, test_identity, test_annihilation,
             test_inverse, test_absorption, test_reduction, test_adjacency, test_resolution,
-            test_tautcon, test_empty_rule,
+            test_tautcon, test_empty_rule, test_modus_tollens,
         }
     }
 }
@@ -915,4 +915,24 @@ pub fn test_empty_rule<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     let r1 = prf.add_step(Justification(p("A"), RuleM::EmptyRule, vec![i(p1.clone())], vec![]));
 
     (prf, vec![], vec![i(r1)])
+}
+
+pub fn test_modus_tollens<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+    use parser::parse_unwrap as p; use self::coproduct_inject as i;
+    let mut prf = P::new();
+    let r1 = prf.add_premise(p("~Q"));
+    let r2 = prf.add_premise(p("P -> Q"));
+    let r3 = prf.add_premise(p("P"));
+    let r4 = prf.add_premise(p("~A"));
+    let r5 = prf.add_premise(p("A -> A"));
+    let r6 = prf.add_step(Justification(p("~P"), RuleM::ModusTollens, vec![i(r1.clone()), i(r2.clone())], vec![]));
+    let r7 = prf.add_step(Justification(p("~P"), RuleM::ModusTollens, vec![i(r2.clone()), i(r1.clone())], vec![]));
+    let r8 = prf.add_step(Justification(p("~B"), RuleM::ModusTollens, vec![i(r1.clone()), i(r2.clone())],vec![]));
+    let r9 = prf.add_step(Justification(p("P"), RuleM::ModusTollens, vec![i(r3.clone()), i(r2.clone())], vec![]));
+    let r10 = prf.add_step(Justification(p("P"), RuleM::ModusTollens, vec![i(r2.clone()), i(r3.clone())], vec![]));
+    let r11 = prf.add_step(Justification(p("B"), RuleM::ModusTollens, vec![i(r3.clone()), i(r4.clone())], vec![]));
+    let r12 = prf.add_step(Justification(p("Q"), RuleM::ModusTollens, vec![i(r2.clone()), i(r4.clone())], vec![]));
+    let r13 = prf.add_step(Justification(p("~A"), RuleM::ModusTollens, vec![i(r4.clone()), i(r5.clone())], vec![]));
+    let r14 = prf.add_step(Justification(p("~P"), RuleM::ModusTollens, vec![i(r2.clone()), i(r1.clone())], vec![]));
+    (prf, vec![i(r6), i(r7), i(r13), i(r14)], vec![i(r8), i(r9), i(r10), i(r11), i(r12)])
 }
