@@ -133,7 +133,6 @@ use super::*;
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use std::hash::Hash;
-use std::ops::Range;
 
 use frunk_core::coproduct::*;
 
@@ -204,9 +203,9 @@ pub fn pj_to_pjs<P: Proof>(pj: PJRef<P>) -> PJSRef<P> {
 
 /// aris::proofs::Proof is the core trait for working with proofs.
 pub trait Proof: Sized {
-    type PremiseReference: Clone + Eq + Hash;
-    type JustificationReference: Clone + Eq + Hash;
-    type SubproofReference: Clone + Eq + Hash;
+    type PremiseReference: Clone + Eq + Ord + Hash;
+    type JustificationReference: Clone + Eq + Ord + Hash;
+    type SubproofReference: Clone + Eq + Ord + Hash;
     type Subproof: Proof<PremiseReference=Self::PremiseReference, JustificationReference=Self::JustificationReference, SubproofReference=Self::SubproofReference, Subproof=Self::Subproof>;
     fn new() -> Self;
     fn top_level_proof(&self) -> &Self::Subproof;

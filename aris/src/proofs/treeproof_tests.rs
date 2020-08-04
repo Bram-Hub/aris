@@ -13,7 +13,7 @@ fn demo_prettyprinting() {
                 premises: vec![((),p("C"))],
                 lines: vec![Line::Direct((), Justification(p("A & B"), RuleM::Reit, vec![Inl(LineDep(3))], vec![]))],
             }),
-            Line::Direct((), Justification(p("C -> (A & B)"), RuleM::ImpIntro, vec![], vec![SubproofDep(4..5)])),
+            Line::Direct((), Justification(p("C -> (A & B)"), RuleM::ImpIntro, vec![], vec![SubproofDep { start: 4, end: 5 } ])),
         ],
     });
     //let proof1_: TreeProof<(), ()> = demo_proof_1();

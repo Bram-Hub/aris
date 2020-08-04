@@ -53,12 +53,16 @@ Adding the tests and implementing the rule can be interleaved; it's convenient t
 */
 
 use super::*;
+
 use proofs::PJRef;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::BTreeSet;
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::iter::FromIterator;
 
 use frunk_core::coproduct::Coproduct::{self, Inl, Inr};
+use maplit::btreeset;
 use petgraph::algo::tarjan_scc;
 use petgraph::graphmap::DiGraphMap;
 
@@ -326,13 +330,22 @@ impl<T: RuleT> RuleT for SharedChecks<T> {
 
 pub fn do_expressions_contradict<P: Proof>(prem1: &Expr, prem2: &Expr) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
     either_order(prem1, prem2, |i, j| {
-        if let Expr::Unop { symbol: USymbol::Not, ref operand } = i {
-            if **operand == *j {
-                return Ok(Some(()));
+        match i {
+            Expr::Unop {
+                symbol: USymbol::Not,
+                ref operand
+            } if **operand == *j => {
+                Ok(())
+            }
+            _ => {
+                Err(ProofCheckError::Other(format!(
+                    "Expected one of {{{}, {}}} to be the negation of the other.",
+                    prem1,
+                    prem2,
+                )))
             }
         }
-       Ok(None)
-    }, || Err(ProofCheckError::Other(format!("Expected one of {{{}, {}}} to be the negation of the other.", prem1, prem2))))
+    })
 }
 
 
@@ -495,7 +508,7 @@ impl RuleT for PrepositionalInference {
                 let prem1 =p.lookup_expr_or_die(&deps[0])?;
                 let prem2 =p.lookup_expr_or_die(&deps[1])?;
                 either_order(&prem1, &prem2, |i, j| {
-                    if let Expr::Binop{symbol: BSymbol::Implies, ref left, ref right} = i{
+                    if let Expr::Binop{ symbol: BSymbol::Implies, ref left, ref right } = i {
                         //bad case, p -> q, a therefore --doesn't matter, nothing can be said
                         //with a
                         if **left != *j {
@@ -509,11 +522,14 @@ impl RuleT for PrepositionalInference {
 
                         //good case, p -> q, p therefore q
                         if **left == *j && **right == conclusion{
-                            return Ok(Some(()));
+                            return Ok(());
                         }
                     }
-                    Ok(None)
-                }, || Err(DepDoesNotExist(expression_builders::binopplaceholder(BSymbol::Implies), true)))
+                    Err(DepDoesNotExist(
+                        expression_builders::binopplaceholder(BSymbol::Implies),
+                        true
+                    ))
+                })
 
             },
             NotIntro => {
@@ -589,10 +605,13 @@ impl RuleT for PrepositionalInference {
                         if conclusion != expected {
                             return Err(DoesNotOccur(conclusion.clone(), expected));
                         }
-                        return Ok(Some(()));
+                        return Ok(());
                     }
-                  Ok(None)
-                }, || Err(DepDoesNotExist(expression_builders::assocplaceholder(ASymbol::Bicon), true)))
+                    Err(DepDoesNotExist(
+                        expression_builders::assocplaceholder(ASymbol::Bicon),
+                        true,
+                    ))
+                })
             },
             EquivalenceIntro | BiconditionalIntro => {
                 let sym = if let EquivalenceIntro = self { ASymbol::Equiv } else { ASymbol::Bicon };
@@ -626,7 +645,7 @@ impl RuleT for PrepositionalInference {
                                 slab.entry(*right.clone()).or_insert_with(|| next());
                                 g.add_edge(slab[left], slab[right], ());
                             },
-                            _ => return Err(OneOf(vec![
+                            _ => return Err(OneOf(btreeset![
                                 DepOfWrongForm(prem.clone(), expression_builders::assocplaceholder(sym)),
                                 DepOfWrongForm(prem.clone(), expression_builders::binopplaceholder(BSymbol::Implies)),
                             ])),
@@ -679,10 +698,14 @@ impl RuleT for PrepositionalInference {
                         if exprs.iter().find(|x| x == &&conclusion).is_none() {
                             return Err(DoesNotOccur(conclusion.clone(), i.clone()));
                         }
-                        return Ok(Some(()));
+                        Ok(())
+                    } else {
+                        Err(DepDoesNotExist(
+                            expression_builders::assocplaceholder(ASymbol::Equiv),
+                            true,
+                        ))
                     }
-                  Ok(None)
-                }, || Err(DepDoesNotExist(expression_builders::assocplaceholder(ASymbol::Equiv), true)))
+                })
             },
         }
     }
@@ -989,9 +1012,37 @@ impl RuleT for RedundantPrepositionalInference {
     fn get_classifications(&self) -> HashSet<RuleClassification> {
         [RuleClassification::MiscInference].iter().cloned().collect()
     }
-    fn num_deps(&self) -> Option<usize> { unimplemented!() }
-    fn num_subdeps(&self) -> Option<usize> { unimplemented!() }
-    fn check<P: Proof>(self, _p: &P, _expr: Expr, _deps: Vec<PJRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> { unimplemented!() }
+    fn num_deps(&self) -> Option<usize> {
+        use RedundantPrepositionalInference::*;
+        match self {
+            ModusTollens | HypotheticalSyllogism => Some(2),
+            ExcludedMiddle => Some(0),
+            ConstructiveDilemma => Some(3),
+        }
+    }
+    fn num_subdeps(&self) -> Option<usize> {
+        Some(0)
+    }
+    fn check<P: Proof>(
+        self,
+        _proof: &P,
+        _conclusion: Expr,
+        _deps: Vec<PJRef<P>>,
+        _sdeps: Vec<P::SubproofReference>
+    ) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
+        unimplemented!()
+        /*match self {
+            use RedundantPrepositionalInference::*;
+            match self {
+                ModusTollens => {
+                    let
+                }
+                HypotheticalSyllogism => {}
+                ExcludedMiddle => {}
+                ConstructiveDilemma => {}
+            }
+        }*/
+    }
 }
 
 impl RuleT for AutomationRelatedRules {
@@ -1153,25 +1204,31 @@ impl RuleT for EmptyRule {
     }
 }
 
-fn either_order<A, T, R: Eq, S: Eq, F: FnMut(&A, &A)->Result<Option<T>, ProofCheckError<R, S>>, G: FnOnce()->Result<T, ProofCheckError<R, S>>>(a1: &A, a2: &A, mut f: F, g: G) -> Result<T, ProofCheckError<R, S>> {
-  macro_rules! h {
-    ($i:expr, $j:expr) => (
-      match f($i, $j) {
-        Ok(Some(x)) => return Ok(x),
-        Ok(None) => None,
-        Err(e) => Some(e),
-      }
-    );
-  };
-  match (h!(a1, a2), h!(a2, a1)) {
-    (None, None) => g(),
-    (Some(e), None) => Err(e),
-    (None, Some(e)) => Err(e),
-    (Some(e1), Some(e2)) => { if e1 == e2 { Err(e1) } else { Err(ProofCheckError::OneOf(vec![e1, e2]))} },
-  }
+fn either_order<R, S, F>(
+    expr_1: &Expr,
+    expr_2: &Expr,
+    mut check_func: F,
+) -> Result<(), ProofCheckError<R, S>>
+where
+    R: Ord,
+    S: Ord,
+    F: FnMut(&Expr, &Expr) -> Result<(), ProofCheckError<R, S>>,
+{
+    macro_rules! h {
+        ($i:expr, $j:expr) => {
+            match check_func($i, $j) {
+                Ok(()) => return Ok(()),
+                Err(e) => e,
+            }
+        };
+    };
+
+    let err_1 = h!(expr_1, expr_2);
+    let err_2 = h!(expr_2, expr_1);
+    Err(ProofCheckError::OneOf(btreeset![err_1, err_2]))
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ProofCheckError<R, S> {
     LineDoesNotExist(R),
     SubproofDoesNotExist(S),
@@ -1182,7 +1239,7 @@ pub enum ProofCheckError<R, S> {
     ConclusionOfWrongForm(Expr),
     DoesNotOccur(Expr, Expr),
     DepDoesNotExist(Expr, bool),
-    OneOf(Vec<ProofCheckError<R, S>>),
+    OneOf(BTreeSet<ProofCheckError<R, S>>),
     Other(String),
 }
 
@@ -1199,9 +1256,12 @@ impl<R: std::fmt::Debug, S: std::fmt::Debug> std::fmt::Display for ProofCheckErr
             ConclusionOfWrongForm(kind) => write!(f, "The conclusion is of the wrong form, expected {}.", kind),
             DoesNotOccur(x, y) => write!(f, "{} does not occur in {}.", x, y),
             DepDoesNotExist(x, approx) => write!(f, "{}{} is required as a dependency, but it does not exist.", if *approx { "Something of the shape " } else { "" }, x),
-            OneOf(v) => {
+            OneOf(errs) => {
                 writeln!(f, "One of the following requirements was not met:")?;
-                v.iter().map(|e| writeln!(f, "{}", e)).collect::<Result<_,_>>().and_then(|()| Ok(()))
+                for err in errs {
+                    writeln!(f, "{}", err)?;
+                }
+                Ok(())
             }
             Other(msg) => write!(f, "{}", msg),
         }
