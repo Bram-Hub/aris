@@ -62,6 +62,7 @@ use std::collections::HashSet;
 use std::iter::FromIterator;
 
 use frunk_core::coproduct::Coproduct::{self, Inl, Inr};
+use itertools::Itertools;
 use maplit::btreeset;
 use petgraph::algo::tarjan_scc;
 use petgraph::graphmap::DiGraphMap;
@@ -329,20 +330,19 @@ impl<T: RuleT> RuleT for SharedChecks<T> {
 }
 
 pub fn do_expressions_contradict<P: Proof>(prem1: &Expr, prem2: &Expr) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
-    use EOResult::*;
     either_order(prem1, prem2, |i, j| {
         if let Expr::Unop { symbol: USymbol::Not, ref operand } = i {
             if **operand == *j {
-                return DefiniteOk(())
+                return AnyOrderResult::Ok
             }
         }
-        Fallthrough 
+        AnyOrderResult::WrongOrder
     }, || {
-        Err(ProofCheckError::Other(format!(
+        ProofCheckError::Other(format!(
             "Expected one of {{{}, {}}} to be the negation of the other.",
             prem1,
             prem2,
-        )))
+        ))
     })
 }
 
@@ -396,7 +396,9 @@ impl RuleT for PrepositionalInference {
         }
     }
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PJRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
-        use EOResult::*; use ProofCheckError::*; use PrepositionalInference::*;
+        use ProofCheckError::*;
+        use PrepositionalInference::*;
+
         match self {
             Reit => {
                 let prem = p.lookup_expr_or_die(&deps[0])?;
@@ -510,27 +512,25 @@ impl RuleT for PrepositionalInference {
                             //bad case, p -> q, a therefore --doesn't matter, nothing can be said
                             //with a
                             if **left != *j {
-                                return TentativeErr(DoesNotOccur(i.clone(), j.clone()));
+                                return AnyOrderResult::Err(DoesNotOccur(i.clone(), j.clone()));
                             }
 
                             //bad case, p -> q, p therefore a which does not follow
                             if **right != conclusion {
-                                return TentativeErr(DoesNotOccur(conclusion.clone(), *right.clone()));
+                                return AnyOrderResult::Err(DoesNotOccur(conclusion.clone(), *right.clone()));
                             }
 
                             //good case, p -> q, p therefore q
                             if **left == *j && **right == conclusion {
-                                return DefiniteOk(());
+                                return AnyOrderResult::Ok;
                             }
                         }
-                        Fallthrough
+                        AnyOrderResult::WrongOrder
                     },
-                    || {
-                        Err(DepDoesNotExist(
-                            expression_builders::binopplaceholder(BSymbol::Implies),
-                            true
-                        ))
-                    }
+                    || DepDoesNotExist(
+                        expression_builders::binopplaceholder(BSymbol::Implies),
+                        true
+                    )
                 )
 
             },
@@ -598,25 +598,25 @@ impl RuleT for PrepositionalInference {
                             }
                             for prem in s.iter() {
                                 if exprs.iter().find(|x| x == &prem).is_none() {
-                                    return TentativeErr(DoesNotOccur(prem.clone(), i.clone()));
+                                    return AnyOrderResult::Err(DoesNotOccur(prem.clone(), i.clone()));
                                 }
                             }
                             let terms = exprs.iter().filter(|x| !s.contains(x)).cloned().collect::<Vec<_>>();
                             let expected = if terms.len() == 1 { terms[0].clone() } else { expression_builders::assocbinop(ASymbol::Bicon, &terms[..]) };
                             // TODO: maybe commutativity
                             if conclusion != expected {
-                                return TentativeErr(DoesNotOccur(conclusion.clone(), expected));
+                                return AnyOrderResult::Err(DoesNotOccur(conclusion.clone(), expected));
                             }
-                            return DefiniteOk(());
+                            return AnyOrderResult::Ok;
                         } else {
-                            Fallthrough
+                            AnyOrderResult::WrongOrder
                         }
                     },
                     || {
-                        Err(DepDoesNotExist(
+                        DepDoesNotExist(
                             expression_builders::assocplaceholder(ASymbol::Bicon),
                             true,
-                        ))
+                        )
                     }
                 )
             },
@@ -700,21 +700,21 @@ impl RuleT for PrepositionalInference {
                         if let Expr::AssocBinop { symbol: ASymbol::Equiv, ref exprs } = i {
                             // TODO: Negation?
                             if exprs.iter().find(|x| x == &j).is_none() {
-                                return TentativeErr(DoesNotOccur(j.clone(), i.clone()));
+                                return AnyOrderResult::Err(DoesNotOccur(j.clone(), i.clone()));
                             }
                             if exprs.iter().find(|x| x == &&conclusion).is_none() {
-                                return TentativeErr(DoesNotOccur(conclusion.clone(), i.clone()));
+                                return AnyOrderResult::Err(DoesNotOccur(conclusion.clone(), i.clone()));
                             }
-                            DefiniteOk(())
+                            AnyOrderResult::Ok
                         } else {
-                            Fallthrough
+                            AnyOrderResult::WrongOrder
                         }
                     },
                     || {
-                        Err(DepDoesNotExist(
+                        DepDoesNotExist(
                             expression_builders::assocplaceholder(ASymbol::Equiv),
                             true,
-                        ))
+                        )
                     }
                 )
             },
@@ -1041,7 +1041,6 @@ impl RuleT for RedundantPrepositionalInference {
         deps: Vec<PJRef<P>>,
         sdeps: Vec<P::SubproofReference>
     ) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
-        use EOResult::*;
         use RedundantPrepositionalInference::*;
         use ProofCheckError::*;
         use expression_builders::*;
@@ -1063,21 +1062,21 @@ impl RuleT for RedundantPrepositionalInference {
                             let not_p = not(*p.clone());
                             let not_q = not(*q.clone());
                             if not_q != *dep_1 {
-                                TentativeErr(DoesNotOccur(not_q, dep_1.clone()))
+                                AnyOrderResult::Err(DoesNotOccur(not_q, dep_1.clone()))
                             } else if not_p != conclusion {
-                                TentativeErr(DoesNotOccur(not_p, conclusion.clone()))
+                                AnyOrderResult::Err(DoesNotOccur(not_p, conclusion.clone()))
                             } else {
-                                DefiniteOk(())
+                                AnyOrderResult::Ok
                             }
                         } else {
-                            Fallthrough
+                            AnyOrderResult::WrongOrder
                         }
                     },
                     || {
-                        Err(DepDoesNotExist(
+                        DepDoesNotExist(
                             binopplaceholder(BSymbol::Implies),
                             true
-                        ))
+                        )
                     }
                 )
             }
@@ -1106,23 +1105,23 @@ impl RuleT for RedundantPrepositionalInference {
                         },
                     ) = (dep_0, dep_1, &conclusion) {
                             if p_0 != p_1 {
-                                TentativeErr(DoesNotOccur(*p_0.clone(), *p_1.clone()))
+                                AnyOrderResult::Err(DoesNotOccur(*p_0.clone(), *p_1.clone()))
                             } else if q_0 != q_1 {
-                                TentativeErr(DoesNotOccur(*q_0.clone(), *q_1.clone()))
+                                AnyOrderResult::Err(DoesNotOccur(*q_0.clone(), *q_1.clone()))
                             } else if r_0 != r_1 {
-                                TentativeErr(DoesNotOccur(*r_0.clone(), *r_1.clone()))
+                                AnyOrderResult::Err(DoesNotOccur(*r_0.clone(), *r_1.clone()))
                             } else {
-                                DefiniteOk(())
+                                AnyOrderResult::Ok
                             }
                         } else {
-                            Fallthrough
+                            AnyOrderResult::WrongOrder
                         }
                     },
                     || {
-                        Err(DepDoesNotExist(
+                        DepDoesNotExist(
                             binopplaceholder(BSymbol::Implies),
                             true
-                        ))
+                        )
                     }
                 )
             }
@@ -1295,100 +1294,152 @@ impl RuleT for EmptyRule {
     }
 }
 
-/// Result helper for `either_order` that adds a fallthrough case, and makes explicit the handling of Ok vs Err
-enum EOResult<T, E> {
-    DefiniteOk(T),
-    Fallthrough,
-    TentativeErr(E),
+/// Helper type for `any_order()`. The `check_func` parameter of `any_order()`
+/// returns this.
+enum AnyOrderResult<R, S> {
+    /// The rule checked successfully
+    Ok,
+
+    /// The rule check failed with an error
+    Err(ProofCheckError<R, S>),
+
+    /// The rule check reports that the dependencies are probably in the wrong
+    /// order
+    WrongOrder,
 }
 
-/// Helper for rules that accept two dependencies, where order of them doesn't matter
+/// Helper for rules that accept multiple dependencies, where order of them
+/// doesn't matter
 ///
 /// ## Parameters
-///   * `a1` - first dependency
-///   * `a2` - second dependency
-///   * `check_func` - function checking a rule with a given ordering of the
-///                    dependencies
+///   * `deps` - the dependencies to check
+///   * `check_func` - function checking a rule and assuming a given ordering of
+///                    the dependencies
+///   * `fallthrough_handler` - function to obtain an error that occurs when all
+///                             orderings have dependencies that are in the
+///                             wrong form.
 ///
 /// ## `check_func`
 ///
-/// `check_func`'s two arguments are the dependencies that it expects to be in a
-/// given order. For example, for implication elimination, which takes the form:
+/// `check_func`'s argument is the list of dependencies that it expects to be in
+/// a given order. For example, for a constructive dilemma, which takes the
+/// form:
 ///
 /// ```text
-/// P -> Q, P
-/// ---------
-/// Q
+/// P -> Q, R -> S, P | R
+/// ---------------------
+/// Q | S
 /// ```
 ///
 /// The `check_func` might assume that the first argument takes the form
-/// `P -> Q`, and `either_order()` will handle trying both orderings to find the
-/// correct one.
-///
-/// ## `fallthrough_handler`
-/// `fallthrough_handler` is called if both directions of `check_func` return `EOResult::Fallthrough`.
-fn either_order<A, T, R, S, F, G>(a1: &A, a2: &A, mut check_func: F, fallthrough_handler: G) -> Result<T, ProofCheckError<R, S>> where
-    R: Ord, S: Ord, 
-    F: FnMut(&A, &A) -> EOResult<T, ProofCheckError<R, S>>,
-    G: FnOnce() -> Result<T, ProofCheckError<R, S>> {
-    use EOResult::*;
-    macro_rules! h {
-        ($i:expr, $j:expr) => (
-          match check_func($i, $j) {
-            DefiniteOk(x) => return Ok(x),
-            Fallthrough => None,
-            TentativeErr(e) => Some(e),
-          }
-        );
-    };
-    match (h!(a1, a2), h!(a2, a1)) {
-        (None, None) => fallthrough_handler(),
-        (Some(e), None) => Err(e),
-        (None, Some(e)) => Err(e),
-        (Some(e1), Some(e2)) => { if e1 == e2 { Err(e1) } else { Err(ProofCheckError::OneOf(btreeset![e1, e2]))} },
+/// `P -> Q`, the second `R -> S`, and the third `P | R`. `any_order()` will
+/// handle trying all orderings to find the correct one.
+fn any_order<F, E, R, S>(
+    deps: &[Expr],
+    check_func: F,
+    fallthrough_error: E
+) -> Result<(), ProofCheckError<R, S>>
+where
+    R: Ord,
+    S: Ord,
+    F: Fn(&[&Expr]) -> AnyOrderResult<R, S>,
+    E: FnOnce() -> ProofCheckError<R, S>,
+{
+    // Iterator over the check results of all the permutations that weren't
+    // `AnyOrderResult::WrongOrder`
+    let mut results = deps
+        .into_iter()
+        .permutations(deps.len())
+        .map(|deps| check_func(&deps))
+        .filter_map(|result: AnyOrderResult<R, S>| {
+            match result {
+                AnyOrderResult::Ok => Some(Ok(())),
+                AnyOrderResult::Err(err) => Some(Err(err)),
+                AnyOrderResult::WrongOrder => None,
+            }
+        });
+
+    if results.any(|result| result.is_ok()) {
+        // At least one succeeded, so the rule check succeeds
+        Ok(())
+    } else {
+        // Set of rule check errors
+        let errors = results
+            .filter_map(|result| result.err())
+            .collect::<BTreeSet<ProofCheckError<R, S>>>();
+        match errors.len() {
+            // All the orderings returned `AnyOrderResult::WrongOrder`
+            0 => Err(fallthrough_error()),
+            // One error
+            1 => Err(errors.into_iter().next().unwrap()),
+            // Multiple errors
+            _ => Err(ProofCheckError::OneOf(errors))
+        }
     }
+}
+
+/// Helper for rules that accept two dependencies, where order of them doesn't
+/// matter. This is a special case wrapper around `any_order()`.
+fn either_order<R, S, F, E>(
+    dep_1: &Expr,
+    dep_2: &Expr,
+    check_func: F,
+    fallthrough_error: E,
+) -> Result<(), ProofCheckError<R, S>>
+where
+    R: Ord,
+    S: Ord,
+    F: Fn(&Expr, &Expr) -> AnyOrderResult<R, S>,
+    E: FnOnce() -> ProofCheckError<R, S>
+{
+    let deps = &[dep_1.clone(), dep_2.clone()];
+    // Convert `check_func` so it takes `&[&Expr]` instead of `&Expr, &Expr`
+    let check_func = |deps: &[&Expr]| {
+        let (dep_1, dep_2) = deps.into_iter().collect_tuple().unwrap();
+        check_func(dep_1, dep_2)
+    };
+    any_order(deps, check_func, fallthrough_error)
 }
 
 #[test]
 fn test_either_order() {
     use ProofCheckError::*;
-    use EOResult::*;
     use crate::parser::parse_unwrap as p;
 
     type P = crate::proofs::pooledproof::PooledProof<Hlist![Expr]>;
     type SRef = <P as Proof>::SubproofReference;
 
-    let prem1 = p("(A & B) -> C");
-    let prem2 = p("(A & B)");
+    let dep_1 = p("(A & B) -> C");
+    let dep_2 = p("(A & B)");
     let conclusion = p("C");
 
-    let result = either_order::<_, _, PJRef<P>, SRef, _, _>(
-        &prem1,
-        &prem2,
+    let result = either_order::<PJRef<P>, SRef, _, _>(
+        &dep_1,
+        &dep_2,
         |i, j| {
             if let Expr::Binop{ symbol: BSymbol::Implies, ref left, ref right } = i {
                 //bad case, p -> q, a therefore --doesn't matter, nothing can be said
                 //with a
                 if **left != *j {
-                    return TentativeErr(DoesNotOccur(i.clone(), j.clone()));
+                    return AnyOrderResult::Err(DoesNotOccur(i.clone(), j.clone()));
                 }
 
                 //bad case, p -> q, p therefore a which does not follow
                 if **right != conclusion{
-                    return TentativeErr(DoesNotOccur(conclusion.clone(), *right.clone()));
+                    return AnyOrderResult::Err(DoesNotOccur(conclusion.clone(), *right.clone()));
                 }
 
                 //good case, p -> q, p therefore q
                 if **left == *j && **right == conclusion{
-                    return DefiniteOk(());
+                    return AnyOrderResult::Ok;
                 }
             }
-            Fallthrough
+            AnyOrderResult::WrongOrder
         }, || {
-            Err(DepDoesNotExist(
+            DepDoesNotExist(
                 expression_builders::binopplaceholder(BSymbol::Implies),
                 true
-            ))
+            )
         }
     );
 
@@ -1424,6 +1475,7 @@ impl<R: std::fmt::Debug, S: std::fmt::Debug> std::fmt::Display for ProofCheckErr
             DoesNotOccur(x, y) => write!(f, "{} does not occur in {}.", x, y),
             DepDoesNotExist(x, approx) => write!(f, "{}{} is required as a dependency, but it does not exist.", if *approx { "Something of the shape " } else { "" }, x),
             OneOf(errs) => {
+                assert!(errs.len() > 1);
                 writeln!(f, "One of the following requirements was not met:")?;
                 for err in errs {
                     writeln!(f, "{}", err)?;
