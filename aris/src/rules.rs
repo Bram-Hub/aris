@@ -1237,6 +1237,29 @@ impl RuleT for EmptyRule {
     }
 }
 
+/// Helper for rules that accept two dependencies, where order of them doesn't
+/// matter
+///
+/// ## Parameters
+///   * `expr_1` - first dependency
+///   * `expr_2` - second dependency
+///   * `check_func` - function checking a rule with a given ordering of the
+///                    dependencies
+///
+/// ## `check_func`
+///
+/// `check_func`'s two arguments are the dependencies that it expects to be in a
+/// given order. For example, for implication elimination, which takes the form:
+///
+/// ```text
+/// P -> Q, P
+/// ---------
+/// Q
+/// ```
+///
+/// The `check_func` might assume that the first argument takes the form
+/// `P -> Q`, and `either_order()` will handle trying both orderings to find the
+/// correct one.
 fn either_order<R, S, F>(
     expr_1: &Expr,
     expr_2: &Expr,
@@ -1265,6 +1288,49 @@ where
         (err, DepDoesNotExist(_, _)) => Err(err),
         (err_1, err_2) => Err(ProofCheckError::OneOf(btreeset![err_1, err_2])),
     }
+}
+
+#[test]
+fn test_either_order() {
+    use ProofCheckError::*;
+    use crate::parser::parse_unwrap as p;
+
+    type P = crate::proofs::pooledproof::PooledProof<Hlist![Expr]>;
+    type SRef = <P as Proof>::SubproofReference;
+
+    let prem1 = p("(A & B) -> C");
+    let prem2 = p("(A & B)");
+    let conclusion = p("C");
+
+    let result = either_order::<PJRef<P>, SRef, _>(
+        &prem1,
+        &prem2,
+        |i, j| {
+            if let Expr::Binop{ symbol: BSymbol::Implies, ref left, ref right } = i {
+                //bad case, p -> q, a therefore --doesn't matter, nothing can be said
+                //with a
+                if **left != *j {
+                    return Err(DoesNotOccur(i.clone(), j.clone()));
+                }
+
+                //bad case, p -> q, p therefore a which does not follow
+                if **right != conclusion{
+                    return Err(DoesNotOccur(conclusion.clone(), *right.clone()));
+                }
+
+                //good case, p -> q, p therefore q
+                if **left == *j && **right == conclusion{
+                    return Ok(());
+                }
+            }
+            Err(DepDoesNotExist(
+                expression_builders::binopplaceholder(BSymbol::Implies),
+                true
+            ))
+        }
+    );
+
+    assert!(result.is_ok());
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
