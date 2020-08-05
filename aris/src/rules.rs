@@ -1129,7 +1129,82 @@ impl RuleT for RedundantPrepositionalInference {
                 todo!()
             }
             ConstructiveDilemma => {
-                todo!()
+                // P -> Q, R -> S, P | R
+                // ---------------------
+                // Q | S
+                let deps = deps
+                    .into_iter()
+                    .map(|dep| proof.lookup_expr_or_die(&dep))
+                    .collect::<Result<Vec<Expr>, _>>()?;
+                any_order(&deps, |deps| {
+                    let (dep_0, dep_1, dep_2) = deps
+                        .into_iter()
+                        .collect_tuple()
+                        .unwrap();
+                    if let (
+                        Expr::Binop {
+                            symbol: BSymbol::Implies,
+                            left: p_0,
+                            right: q_0,
+                        },
+                        Expr::Binop {
+                            symbol: BSymbol::Implies,
+                            left: r_0,
+                            right: s_0,
+                        },
+                        Expr::AssocBinop {
+                            symbol: ASymbol::Or,
+                            exprs: p_r,
+                        },
+                        Expr::AssocBinop {
+                            symbol: ASymbol::Or,
+                            exprs: q_s,
+                        },
+                    ) = (dep_0, dep_1, dep_2, &conclusion) {
+
+                        let p_0 = *p_0.clone();
+                        let q_0 = *q_0.clone();
+                        let r_0 = *r_0.clone();
+                        let s_0 = *s_0.clone();
+                        let dep_2 = dep_2.clone().clone();
+                        let conclusion = conclusion.clone();
+
+                        let (p_1, r_1) = match p_r.into_iter().collect_tuple() {
+                            Some((p_1, r_1)) => (p_1, r_1),
+                            None => return AnyOrderResult::Err(DoesNotOccur(or(p_0, r_0), dep_2)),
+                        };
+                        let (q_1, s_1) = match q_s.into_iter().collect_tuple() {
+                            Some((q_1, s_1)) => (q_1, s_1),
+                            None => return AnyOrderResult::Err(DoesNotOccur(or(q_0, s_0), conclusion)),
+                        };
+
+                        let p_1 = p_1.clone();
+                        let q_1 = q_1.clone();
+                        let r_1 = r_1.clone();
+                        let s_1 = s_1.clone();
+
+                        if p_0 != p_1 {
+                            AnyOrderResult::Err(DoesNotOccur(p_0, p_1))
+                        } else if q_0 != q_1 {
+                            AnyOrderResult::Err(DoesNotOccur(q_0, q_1))
+                        } else if r_0 != r_1 {
+                            AnyOrderResult::Err(DoesNotOccur(r_0, r_1))
+                        } else if s_0 != s_1 {
+                            AnyOrderResult::Err(DoesNotOccur(s_0, s_1))
+                        } else {
+                            AnyOrderResult::Ok
+                        }
+                    } else {
+                        AnyOrderResult::WrongOrder
+                    }
+                },
+                    || {
+                        OneOf(btreeset![
+                            DepDoesNotExist(binopplaceholder(BSymbol::Implies), true),
+                            DepDoesNotExist(assocplaceholder(ASymbol::Or), true),
+                        ])
+                    }
+                )
             }
         }
     }

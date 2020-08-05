@@ -52,6 +52,7 @@ macro_rules! enumerate_subproofless_tests {
             test_distribution, test_complement, test_identity, test_annihilation,
             test_inverse, test_absorption, test_reduction, test_adjacency, test_resolution,
             test_tautcon, test_empty_rule, test_modus_tollens, test_hypothetical_syllogism,
+            test_constructive_dilemma,
         }
     }
 }
@@ -955,4 +956,23 @@ pub fn test_hypothetical_syllogism<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P
     let r13 = prf.add_step(Justification(p("R -> T"), RuleM::HypotheticalSyllogism, vec![i(r3.clone()), i(r4.clone())], vec![]));
     let r14 = prf.add_step(Justification(p("P -> T"), RuleM::HypotheticalSyllogism, vec![i(r6.clone()), i(r13.clone())], vec![]));
     (prf, vec![i(r6), i(r7), i(r13), i(r14)], vec![i(r8), i(r9), i(r10), i(r11), i(r12)])
+}
+
+pub fn test_constructive_dilemma<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+    use parser::parse_unwrap as p; use self::coproduct_inject as i;
+    let mut prf = P::new();
+    let r1 = prf.add_premise(p("P -> Q"));
+    let r2 = prf.add_premise(p("R -> S"));
+    let r3 = prf.add_premise(p("S -> T"));
+    let r4 = prf.add_premise(p("P | R"));
+    let r5 = prf.add_premise(p("R | S"));
+    let r6 = prf.add_step(Justification(p("Q | S"), RuleM::ConstructiveDilemma, vec![i(r1.clone()), i(r2.clone()), i(r4.clone())], vec![]));
+    let r7 = prf.add_step(Justification(p("Q | S"), RuleM::ConstructiveDilemma, vec![i(r2.clone()), i(r4.clone()), i(r1.clone())], vec![]));
+    let r8 = prf.add_step(Justification(p("S | T"), RuleM::ConstructiveDilemma, vec![i(r3.clone()), i(r2.clone()), i(r4.clone())], vec![]));
+    let r9 = prf.add_step(Justification(p("P"), RuleM::ConstructiveDilemma, vec![i(r3.clone()), i(r2.clone())], vec![]));
+    let r10 = prf.add_step(Justification(p("P"), RuleM::ConstructiveDilemma, vec![i(r2.clone()), i(r5.clone())], vec![]));
+    let r11 = prf.add_step(Justification(p("B"), RuleM::ConstructiveDilemma, vec![i(r3.clone()), i(r4.clone())], vec![]));
+    let r12 = prf.add_step(Justification(p("R -> P"), RuleM::ConstructiveDilemma, vec![i(r2.clone()), i(r4.clone())], vec![]));
+    let r13 = prf.add_step(Justification(p("R -> T"), RuleM::ConstructiveDilemma, vec![i(r3.clone()), i(r4.clone())], vec![]));
+    (prf, vec![i(r6), i(r7)], vec![i(r8), i(r9), i(r10), i(r11), i(r12), i(r13)])
 }
