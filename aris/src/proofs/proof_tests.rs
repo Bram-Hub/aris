@@ -52,7 +52,7 @@ macro_rules! enumerate_subproofless_tests {
             test_distribution, test_complement, test_identity, test_annihilation,
             test_inverse, test_absorption, test_reduction, test_adjacency, test_resolution,
             test_tautcon, test_empty_rule, test_modus_tollens, test_hypothetical_syllogism,
-            test_constructive_dilemma,
+            test_constructive_dilemma, test_excluded_middle,
         }
     }
 }
@@ -975,4 +975,21 @@ pub fn test_constructive_dilemma<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>
     let r12 = prf.add_step(Justification(p("R -> P"), RuleM::ConstructiveDilemma, vec![i(r2.clone()), i(r4.clone())], vec![]));
     let r13 = prf.add_step(Justification(p("R -> T"), RuleM::ConstructiveDilemma, vec![i(r3.clone()), i(r4.clone())], vec![]));
     (prf, vec![i(r6), i(r7)], vec![i(r8), i(r9), i(r10), i(r11), i(r12), i(r13)])
+}
+
+pub fn test_excluded_middle<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+    use parser::parse_unwrap as p; use self::coproduct_inject as i;
+    let mut prf = P::new();
+    let r1 = prf.add_step(Justification(p("A | ~A"), RuleM::ExcludedMiddle, vec![], vec![]));
+    let r2 = prf.add_step(Justification(p("A | ~A"), RuleM::ExcludedMiddle, vec![i(r1.clone())], vec![]));
+    let r3 = prf.add_step(Justification(p("A & ~A"), RuleM::ExcludedMiddle, vec![], vec![]));
+    let r4 = prf.add_step(Justification(p("_|_ | ~_|_"), RuleM::ExcludedMiddle, vec![], vec![]));
+    let r5 = prf.add_step(Justification(p("^|^ | ~^|^"), RuleM::ExcludedMiddle, vec![], vec![]));
+    let r6 = prf.add_step(Justification(p("^|^ | ~_|_"), RuleM::ExcludedMiddle, vec![], vec![]));
+    let r7 = prf.add_step(Justification(p("P"), RuleM::ExcludedMiddle, vec![], vec![]));
+    let r8 = prf.add_step(Justification(p("B"), RuleM::ExcludedMiddle, vec![], vec![]));
+    let r9 = prf.add_step(Justification(p("R -> P"), RuleM::ExcludedMiddle, vec![], vec![]));
+    let r10 = prf.add_step(Justification(p("R -> T"), RuleM::ExcludedMiddle, vec![], vec![]));
+    let r11 = prf.add_step(Justification(p("(A & B & C & forall P, P) | ~(A & B & C & forall P, P)"), RuleM::ExcludedMiddle, vec![], vec![]));
+    (prf, vec![i(r1), i(r4), i(r5), i(r11)], vec![i(r2), i(r3), i(r6), i(r7), i(r8), i(r9), i(r10)])
 }

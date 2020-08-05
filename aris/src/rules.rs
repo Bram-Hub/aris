@@ -1126,7 +1126,26 @@ impl RuleT for RedundantPrepositionalInference {
                 )
             }
             ExcludedMiddle => {
-                todo!()
+                // A | ~A
+                let wrong_form_err = ConclusionOfWrongForm(or(var("_"), not(var("_"))));
+                let operands = match conclusion {
+                    Expr::AssocBinop { symbol: ASymbol::Or, exprs } => exprs,
+                    _ => return Err(wrong_form_err),
+                };
+
+                let (a, not_a) = match operands.as_slice() {
+                    [a, not_a] => (a, not_a),
+                    _ => return Err(wrong_form_err),
+                };
+
+                let not_a_0 = not_a.clone();
+                let not_a_1 = not(a.clone());
+
+                if not_a_0 == not_a_1 {
+                    Ok(())
+                } else {
+                    Err(DoesNotOccur(not_a_0, not_a_1))
+                }
             }
             ConstructiveDilemma => {
                 // P -> Q, R -> S, P | R
