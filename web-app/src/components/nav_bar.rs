@@ -136,14 +136,14 @@ impl Component for NavBarWidget {
                 self.next_tab_idx += 1;
                 false
             },
-            NavBarMsg::Nop => {
+            NavBarMsg::Insert(name) => {
+                //Need to send message to currently selected ExprEntry.
+                self.send_message(ExprEntryMsg::Insert {
+                    character: name,
+                });
                 false
             },
-            NavBarMsg::Insert(name) => {
-                self.props.parent.send_message(ExprEntryMsg::Insert {
-                    character: name,
-                    link: self.link,
-                });
+            NavBarMsg::Nop => {
                 false
             },
         }
@@ -196,7 +196,7 @@ impl Component for NavBarWidget {
                     <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
                         <div>
                             <label for="symbol-menu-and" class="dropdown-item">{"And (∧)"}</label>
-                            <input id="symbol menu-and" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::Insert(String::from("∧"))) />
+                            //<input id="symbol menu-and" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::Insert(String::from("∧"))) />
                         </div>
                         <div>
                             <label for="symbol-menu-or" class="dropdown-item">{"Or(∨)"}</label>

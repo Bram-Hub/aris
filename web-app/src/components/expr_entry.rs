@@ -23,7 +23,6 @@ pub enum ExprEntryMsg {
     /// Inserts a string into the linked text field for the user
     Insert {
         character: String,
-        link: ComponentLink<ExprEntry>,
     }
 }
 
@@ -73,8 +72,8 @@ impl Component for ExprEntry {
                 }
                 false
             }
-            ExprEntryMsg::Insert { character, link } => {
-                self.handle_insert(character, link);
+            ExprEntryMsg::Insert { character } => {
+                self.handle_insert(character);
                 false
             }
         }
@@ -162,7 +161,7 @@ impl ExprEntry {
         self.props.oninput.emit(value);
     }
 
-    fn handle_insert(&mut self, character: String, link: ComponentLink<Self>) {
+    fn handle_insert(&mut self, character: String) {
 
     }
 }
