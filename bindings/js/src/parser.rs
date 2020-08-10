@@ -16,8 +16,3 @@ pub fn parse(input: &str) -> JsResult<JsValue> {
     let ret = to_value(&ret)?;
     Ok(ret)
 }
-
-#[wasm_bindgen]
-pub fn prettify_expr(s: &str) -> String {
-    aris::parser::prettify_expr(s)
-}

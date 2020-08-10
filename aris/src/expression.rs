@@ -1547,6 +1547,7 @@ pub mod expression_builders {
     pub fn binop(symbol: BSymbol, l: Expr, r: Expr) -> Expr { Expr::Binop { symbol, left: Box::new(l), right: Box::new(r) } }
     pub fn binopplaceholder(symbol: BSymbol) -> Expr { binop(symbol, var("_"), var("_")) }
     pub fn implies(l: Expr, r: Expr) -> Expr { binop(BSymbol::Implies, l, r) }
+    pub fn or(l: Expr, r: Expr) -> Expr { assocbinop(ASymbol::Or, &[l, r]) }
     pub fn assocbinop(symbol: ASymbol, exprs: &[Expr]) -> Expr { Expr::AssocBinop { symbol, exprs: exprs.to_vec() } }
     pub fn assocplaceholder(symbol: ASymbol) -> Expr { assocbinop(symbol, &[var("_"), var("_"), var("...")]) }
     pub fn quantifierplaceholder(symbol: QSymbol) -> Expr { Expr::Quantifier { symbol, name: "_".into(), body: Box::new(var("_")) } }

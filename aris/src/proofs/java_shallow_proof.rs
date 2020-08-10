@@ -1,7 +1,7 @@
 use super::*;
 use frunk_core::coproduct::Coproduct;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct JavaShallowProof(pub Vec<Expr>);
 
 impl Proof for JavaShallowProof {

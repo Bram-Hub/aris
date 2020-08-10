@@ -67,9 +67,10 @@ pub extern "system" fn Java_edu_rpi_aris_rules_Rule_getRuleType(env: JNIEnv, obj
             let ty = match classification {
                 Introduction => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("INTRO")?])?,
                 Elimination => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("ELIM")?])?,
-                Equivalence => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("EQUIVALENCE")?])?,
-                Inference => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("INFERENCE")?])?,
-                Predicate => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("PREDICATE")?])?,
+                BooleanEquivalence => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("BOOL_EQUIVALENCE")?])?,
+                ConditionalEquivalence => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("CONDITIONAL_EQUIVALENCE")?])?,
+                QuantifierEquivalence => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("QUANTIFIER_EQUIVALENCE")?])?,
+                MiscInference => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("MISC_INFERENCE")?])?,
             };
             env.set_object_array_element(types, i as _, ty.l()?)?;
         }

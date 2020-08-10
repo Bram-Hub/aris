@@ -1,4 +1,4 @@
-name: deploy-pages
+name: Deploy pages
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   deploy-pages:
-    name: Build Aris WASM and deploy to GitHub Pages
+    name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
     steps:
       - name: Pull source

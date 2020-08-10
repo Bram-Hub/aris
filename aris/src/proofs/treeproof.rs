@@ -2,10 +2,14 @@ use super::*;
 use frunk_core::coproduct::{Coproduct, CNil};
 //use std::rc::{Rc, Weak};
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct LineDep(pub usize);
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub struct SubproofDep(pub Range<usize>);
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SubproofDep {
+    pub start: usize,
+    pub end: usize,
+}
 
 impl std::fmt::Debug for LineDep {
     fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> {
@@ -15,7 +19,7 @@ impl std::fmt::Debug for LineDep {
 }
 impl std::fmt::Debug for SubproofDep {
     fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> {
-        let &SubproofDep(Range { start, end }) = self;
+        let &SubproofDep { start, end } = self;
         write!(fmt, "{}-{}", start, end)
     }
 }
@@ -70,7 +74,7 @@ impl<T: Clone+Default, U: Clone+Default> Proof for TreeProof<T, U> {
     fn lookup_step(&self, LineDep(line): &Self::JustificationReference) -> Option<Justification<Expr, PJRef<Self>, Self::SubproofReference>> {
         self.0.lookup_line(line-1).and_then(|x| x.fold(hlist![|_| None, |j| Some(j)]))
     }
-    fn lookup_subproof(&self, SubproofDep(_): &Self::SubproofReference) -> Option<Self::Subproof> {
+    fn lookup_subproof(&self, SubproofDep { .. }: &Self::SubproofReference) -> Option<Self::Subproof> {
         None // TODO: implement
     }
     /*unsafe fn lookup_subproof_mut(&mut self, _: Self::SubproofReference) -> Option<&mut Self::Subproof> {
@@ -86,7 +90,15 @@ impl<T: Clone+Default, U: Clone+Default> Proof for TreeProof<T, U> {
         unimplemented!();
     }
     fn add_premise(&mut self, e: Expr) -> Self::PremiseReference { self.0.premises.push((Default::default(), e)); let i = self.0.premises.len(); LineDep(i) }
-    fn add_subproof(&mut self) -> Self::SubproofReference { let i = self.0.count_lines(); self.0.lines.push(Line::Subproof(Default::default(), TreeSubproof { premises: vec![], lines: vec![] })); let j = self.0.count_lines(); SubproofDep((i+1)..j) }
+    fn add_subproof(&mut self) -> Self::SubproofReference {
+        let i = self.0.count_lines();
+        self.0.lines.push(Line::Subproof(Default::default(), TreeSubproof { premises: vec![], lines: vec![] }));
+        let j = self.0.count_lines();
+        SubproofDep {
+            start: i + 1,
+            end: j,
+        }
+    }
     fn add_step(&mut self, just: Justification<Expr, PJRef<Self>, Self::SubproofReference>) -> Self::JustificationReference { self.0.lines.push(Line::Direct(Default::default(), just)); let i = self.0.count_lines(); LineDep(i) }
     fn add_premise_relative(&mut self, _: Expr, _: &Self::PremiseReference, _: bool) -> Self::PremiseReference { unimplemented!() }
     fn add_subproof_relative(&mut self, _: &JSRef<Self>, _: bool) -> Self::SubproofReference { unimplemented!() }
@@ -246,10 +258,10 @@ fn check_rule(prf: &TreeProof<LineAndIndent, ()>, li: LineAndIndent, Justificati
             return Err(ReferencesLaterLine(Coproduct::Inr(Coproduct::Inl(LineDep(li.line))), Coproduct::Inl(x.clone())))
         }
     }
-    for &SubproofDep(Range { start, end }) in sdeps.iter() {
+    for &SubproofDep { start, end } in sdeps.iter() {
         assert!(start <= end); // this should be enforced by the GUI, and hence not a user-facing error message
         if end >= li.line {
-            return Err(ReferencesLaterLine(Coproduct::Inr(Coproduct::Inl(LineDep(li.line))), Coproduct::inject(SubproofDep(Range { start, end }))))
+            return Err(ReferencesLaterLine(Coproduct::Inr(Coproduct::Inl(LineDep(li.line))), Coproduct::inject(SubproofDep { start, end })))
         }
     }
     rule.check(&prf.clone().bimap(&mut |_| (), &mut |_| ()), expr, deps, sdeps)
