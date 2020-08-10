@@ -29,6 +29,7 @@ pub enum AppMsg {
         link: ComponentLink<ProofWidget>,
     },
     GetProofFromCurrentTab(Box<dyn FnOnce(String, &P)>),
+    GetProofWidgetFromCurrentTab(),
 }
 
 impl Component for App {
@@ -80,6 +81,9 @@ impl Component for App {
                     )));
                 }
                 false
+            }
+            AppMsg::GetProofWidgetFromCurrentTab() => {
+                
             }
         }
     }

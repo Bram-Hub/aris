@@ -19,11 +19,6 @@ pub enum ExprEntryMsg {
 
     /// Text field was focused
     OnFocus,
-
-    /// Inserts a string into the linked text field for the user
-    Insert {
-        character: String,
-    }
 }
 
 /// Properties for `ExprEntry`
@@ -70,10 +65,6 @@ impl Component for ExprEntry {
                 if let Some(onfocus) = &self.props.onfocus {
                     onfocus.emit(())
                 }
-                false
-            }
-            ExprEntryMsg::Insert { character } => {
-                self.handle_insert(character);
                 false
             }
         }
@@ -159,9 +150,5 @@ impl ExprEntry {
             .expect("failed setting selection end");
 
         self.props.oninput.emit(value);
-    }
-
-    fn handle_insert(&mut self, character: String) {
-
     }
 }
