@@ -29,7 +29,7 @@ pub enum AppMsg {
         link: ComponentLink<ProofWidget>,
     },
     GetProofFromCurrentTab(Box<dyn FnOnce(String, &P)>),
-    GetProofWidgetFromCurrentTab(),
+    GetProofWidgetFromCurrentTab(Box<dyn FnOnce(String, ComponentLink<ProofWidget>)>),
 }
 
 impl Component for App {

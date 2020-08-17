@@ -84,6 +84,7 @@ pub enum ProofWidgetMsg {
     CallOnProof(Box<dyn FnOnce(&P)>),
     /// Process keypress, handling any keyboard shortcuts
     Keypress(web_sys::KeyboardEvent),
+    GetCurrentWidget(),
 }
 
 impl fmt::Debug for ProofWidgetMsg {
@@ -765,6 +766,9 @@ impl Component for ProofWidget {
                 let msg = self.process_key_shortcut(key_event);
                 ret = self.update(msg);
             },
+            ProofWidgetMsg::GetCurrentWidget() => {
+                
+            }
         }
         if ret {
             calculate_lineinfo::<P>(&mut self.pud.ref_to_line_depth, self.prf.top_level_proof(), &mut 1, &mut 0);

@@ -66,7 +66,7 @@ pub enum NavBarMsg {
     FileSave,
     NewExprTree,
     Nop,
-    InsertSymbol(String),
+    InsertSymbolCurrentLine(String),
 }
 #[derive(Properties, Clone)]
 pub struct NavBarProps {
@@ -136,7 +136,7 @@ impl Component for NavBarWidget {
                 self.next_tab_idx += 1;
                 false
             },
-            NavBarMsg::InsertSymbol(symb) => {
+            NavBarMsg::InsertSymbolCurrentLine(character) => {
 
                 false
             }
@@ -193,43 +193,43 @@ impl Component for NavBarWidget {
                     <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
                         <div>
                             <label for="symbol-menu-and" class="dropdown-item">{"And (∧)"}</label>
-                            <input id="symbol menu-and" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::InsertSymbol(String::from("∧"))) />
+                            <input id="symbol menu-and" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::InsertSymbolCurrentLine(String::from("∧"))) />
                         </div>
                         <div>
                             <label for="symbol-menu-or" class="dropdown-item">{"Or(∨)"}</label>
-                            <input id="symbol menu-or" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::InsertSymbol(String::from("∨"))) />
+                            <input id="symbol menu-or" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::InsertSymbolCurrentLine(String::from("∨"))) />
                         </div>
                         <div>
                             <label for="symbol-menu-not" class="dropdown-item">{"Not(¬)"}</label>
-                            <input id="symbol menu-not" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::InsertSymbol(String::from("¬"))) />
+                            <input id="symbol menu-not" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::InsertSymbolCurrentLine(String::from("¬"))) />
                         </div>
                         <div>
                             <label for="symbol-menu-equivalence" class="dropdown-item">{"Equivalence(≡)"}</label>
-                            <input id="symbol menu-equivalence" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::InsertSymbol(String::from("≡"))) />
+                            <input id="symbol menu-equivalence" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::InsertSymbolCurrentLine(String::from("≡"))) />
                         </div>
                         <div>
                             <label for="symbol-menu-conditional" class="dropdown-item">{"Conditional(→)"}</label>
-                            <input id="symbol menu-conditional" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::InsertSymbol(String::from("→"))) />
+                            <input id="symbol menu-conditional" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::InsertSymbolCurrentLine(String::from("→"))) />
                         </div>
                         <div>
                             <label for="symbol-menu-biconditional" class="dropdown-item">{"Biconditional(↔)"}</label>
-                            <input id="symbol menu-biconditional" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::InsertSymbol(String::from("↔"))) />
+                            <input id="symbol menu-biconditional" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::InsertSymbolCurrentLine(String::from("↔"))) />
                         </div>
                         <div>
                             <label for="symbol-menu-tautology" class="dropdown-item">{"Tautology(⊤)"}</label>
-                            <input id="symbol menu-tautology" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::InsertSymbol(String::from("⊤"))) />
+                            <input id="symbol menu-tautology" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::InsertSymbolCurrentLine(String::from("⊤"))) />
                         </div>
                         <div>
                             <label for="symbol-menu-contradiction" class="dropdown-item">{"Contradiction(⊥)"}</label>
-                            <input id="symbol menu-contradiction" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::InsertSymbol(String::from("⊥"))) />
+                            <input id="symbol menu-contradiction" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::InsertSymbolCurrentLine(String::from("⊥"))) />
                         </div>
                         <div>
                             <label for="symbol-menu-forall" class="dropdown-item">{"Forall(∀)"}</label>
-                            <input id="symbol menu-forall" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::InsertSymbol(String::from("∀"))) />
+                            <input id="symbol menu-forall" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::InsertSymbolCurrentLine(String::from("∀"))) />
                         </div>
                         <div>
                             <label for="symbol-menu-exists" class="dropdown-item">{"Exists(∃)"}</label>
-                            <input id="symbol menu-exists" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::InsertSymbol(String::from("∃"))) />
+                            <input id="symbol menu-exists" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::InsertSymbolCurrentLine(String::from("∃"))) />
                         </div>
                     </div>
                 </li>
