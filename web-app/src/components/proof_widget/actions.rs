@@ -57,16 +57,18 @@ pub fn valid_actions(proof: &P, line_ref: PJRef<P>) -> impl Iterator<Item = &Act
     use frunk_core::coproduct::Coproduct::{Inl, Inr};
 
     let can_delete = may_remove_line(proof, &line_ref);
+    let is_premise = matches!(line_ref, Inl(_));
+    let is_step = matches!(line_ref, Inr(Inl(_)));
+    let in_subproof = proof.parent_of_line(&pj_to_pjs::<P>(line_ref)).is_some();
 
     ACTIONS.iter().filter(move |action_info| {
         match action_info.class {
             ActionClass::DeleteLine => can_delete,
-            ActionClass::SubproofRelative => {
-                // Only allow subproof operations on non-root subproofs
-                proof.parent_of_line(&pj_to_pjs::<P>(line_ref)).is_some()
-            }
-            ActionClass::PremiseRelative => matches!(line_ref, Inl(_)),
-            ActionClass::StepRelative => matches!(line_ref, Inr(Inl(_))),
+            // Only allow subproof operations on non-root subproofs
+            ActionClass::SubproofRelative => in_subproof,
+            // Subproofs should only have one assumption
+            ActionClass::PremiseRelative => is_premise && !in_subproof,
+            ActionClass::StepRelative => is_step,
         }
     })
 }
