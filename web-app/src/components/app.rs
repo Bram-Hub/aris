@@ -29,6 +29,7 @@ pub enum AppMsg {
         link: ComponentLink<ProofWidget>,
     },
     GetProofFromCurrentTab(Box<dyn FnOnce(String, &P)>),
+    // Message for NavBarWidget to call to find the current widget the user is on
     GetProofWidgetFromCurrentTab(Box<dyn FnOnce(String, ComponentLink<ProofWidget>)>),
 }
 

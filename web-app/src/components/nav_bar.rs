@@ -66,6 +66,7 @@ pub enum NavBarMsg {
     FileSave,
     NewExprTree,
     Nop,
+    // Inserts a logic symbol onto the line the user is on at the cursor position
     InsertSymbolCurrentLine(String),
 }
 #[derive(Properties, Clone)]
