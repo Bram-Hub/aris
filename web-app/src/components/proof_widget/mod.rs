@@ -84,7 +84,8 @@ pub enum ProofWidgetMsg {
     CallOnProof(Box<dyn FnOnce(&P)>),
     /// Process keypress, handling any keyboard shortcuts
     Keypress(web_sys::KeyboardEvent),
-    GetCurrentWidget(),
+    /// Get the current widget that is selected in the tab
+    GetCurrentWidget(Box<dyn FnOnce(usize, String)>),
 }
 
 impl fmt::Debug for ProofWidgetMsg {
@@ -766,7 +767,7 @@ impl Component for ProofWidget {
                 let msg = self.process_key_shortcut(key_event);
                 ret = self.update(msg);
             },
-            ProofWidgetMsg::GetCurrentWidget() => {
+            ProofWidgetMsg::GetCurrentWidget(f) => {
                 
             }
         }

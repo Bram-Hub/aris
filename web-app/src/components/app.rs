@@ -82,8 +82,9 @@ impl Component for App {
                 }
                 false
             }
-            AppMsg::GetProofWidgetFromCurrentTab() => {
+            AppMsg::GetProofWidgetFromCurrentTab(f) => {
                 
+                false
             }
         }
     }
