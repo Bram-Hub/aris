@@ -145,7 +145,7 @@ static ACTIONS: [ActionInfo; 12] = [
         class: ActionClass::PremiseRelative,
     },
     ActionInfo {
-        keyboard_shortcut: Some('a'),
+        keyboard_shortcut: Some('r'),
         description: "Insert premise after this premise",
         line_action_kind: LineActionKind::Insert {
             what: LAKItem::Line,
