@@ -156,7 +156,7 @@ static ACTIONS: [ActionInfo; 12] = [
     },
     // Step-relative actions
     ActionInfo {
-        keyboard_shortcut: None,
+        keyboard_shortcut: Some('b'),
         description: "Insert step before this step",
         line_action_kind: LineActionKind::Insert {
             what: LAKItem::Line,
