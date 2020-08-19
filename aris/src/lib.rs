@@ -1,15 +1,18 @@
-#[macro_use] extern crate frunk_core;
-#[macro_use] extern crate nom;
-#[macro_use] extern crate lazy_static;
+#[macro_use]
+extern crate frunk_core;
+#[macro_use]
+extern crate nom;
+#[macro_use]
+extern crate lazy_static;
 
 extern crate base64;
 extern crate failure;
+extern crate itertools;
 extern crate petgraph;
 extern crate sha2;
+extern crate strum;
 extern crate varisat;
 extern crate xml;
-extern crate itertools;
-extern crate strum;
 #[macro_use]
 extern crate strum_macros;
 

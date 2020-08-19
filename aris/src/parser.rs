@@ -1,4 +1,4 @@
-use super::{Expr, USymbol, BSymbol, ASymbol, QSymbol};
+use super::{ASymbol, BSymbol, Expr, QSymbol, USymbol};
 
 /// parser::parse parses a string slice into an Expr AST, returning None if there's an error
 pub fn parse(input: &str) -> Option<Expr> {
@@ -13,7 +13,10 @@ pub fn parse_unwrap(input: &str) -> Expr {
 }
 
 fn custom_error<A, B>(a: A, x: u32) -> nom::IResult<A, B> {
-    Err(nom::Err::Error(nom::Context::Code(a, nom::ErrorKind::Custom(x))))
+    Err(nom::Err::Error(nom::Context::Code(
+        a,
+        nom::ErrorKind::Custom(x),
+    )))
 }
 
 /// variable is implemented as a function instead of via nom's macros in order to more conveniently reject keywords as variables
@@ -43,9 +46,9 @@ named!(tautology<&str, Expr>, do_parse!(alt!(tag!("^|^") | tag!("⊤")) >> (Expr
 named!(notterm<&str, Expr>, do_parse!(alt!(tag!("~") | tag!("¬")) >> e: paren_expr >> (Expr::Unop { symbol: USymbol::Not, operand: Box::new(e) })));
 
 named!(predicate<&str, Expr>, alt!(
-    do_parse!(space >> name: variable >> space >> tag!("(") >> space >> args: separated_list!(do_parse!(space >> tag!(",") >> space >> (())), expr) >> tag!(")") >> (Expr::Apply { func: Box::new(Expr::Var { name }), args })) |
-    do_parse!(space >> name: variable >> space >> (Expr::Var { name }))
-    ));
+do_parse!(space >> name: variable >> space >> tag!("(") >> space >> args: separated_list!(do_parse!(space >> tag!(",") >> space >> (())), expr) >> tag!(")") >> (Expr::Apply { func: Box::new(Expr::Var { name }), args })) |
+do_parse!(space >> name: variable >> space >> (Expr::Var { name }))
+));
 
 named!(forall_quantifier<&str, QSymbol>, do_parse!(alt!(tag!("forall ") | tag!("∀")) >> (QSymbol::Forall)));
 named!(exists_quantifier<&str, QSymbol>, do_parse!(alt!(tag!("exists ") | tag!("∃")) >> (QSymbol::Exists)));
@@ -61,16 +64,16 @@ named!(biconrepr<&str, ASymbol>, do_parse!(alt!(tag!("<->") | tag!("↔")) >> (A
 named!(equivrepr<&str, ASymbol>, do_parse!(alt!(tag!("===") | tag!("≡")) >> (ASymbol::Equiv)));
 
 named!(assoctermaux<&str, (Vec<Expr>, Vec<ASymbol>)>, alt!(
-    do_parse!(space >> e: paren_expr >> space >> sym: alt!(andrepr | orrepr | biconrepr | equivrepr) >> space >> rec: assoctermaux >> ({ let (mut es, mut syms) = rec; es.push(e); syms.push(sym); (es, syms) })) |
-    do_parse!(e: paren_expr >> (vec![e], vec![]))
-    ));
+do_parse!(space >> e: paren_expr >> space >> sym: alt!(andrepr | orrepr | biconrepr | equivrepr) >> space >> rec: assoctermaux >> ({ let (mut es, mut syms) = rec; es.push(e); syms.push(sym); (es, syms) })) |
+do_parse!(e: paren_expr >> (vec![e], vec![]))
+));
 
 /// assocterm is implemented as a function instead of using nom's macros because
 /// enforcing that all the symbols are the same is more easily done with iterators.
 /// This check is what rules out `(a /\ b \/ c)` without further parenthesization.
 fn assocterm(s: &str) -> nom::IResult<&str, Expr> {
     let (rest, (mut exprs, syms)) = assoctermaux(s)?;
-    assert_eq!(exprs.len(), syms.len()+1);
+    assert_eq!(exprs.len(), syms.len() + 1);
     if exprs.len() == 1 {
         return custom_error(rest, 0);
     }
@@ -99,7 +102,10 @@ fn test_parser() {
     println!("{:?} {:?}", e, fv);
     let e = expr("forall a, forall b, ((forall x, in(x,a) <-> in(x,b)) -> eq(a,b))\n");
     let fv = e.clone().map(|x| freevars(&x.1));
-    assert_eq!(fv, Ok(["eq", "in"].iter().map(|x| String::from(*x)).collect()));
+    assert_eq!(
+        fv,
+        Ok(["eq", "in"].iter().map(|x| String::from(*x)).collect())
+    );
     println!("{:?} {:?}", e, fv);
     named!(f<&str, Vec<&str>>, many1!(tag!("a")));
     println!("{:?}", f("aa\n"));

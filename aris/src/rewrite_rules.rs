@@ -1,11 +1,11 @@
+use crate::combinatorics::{cartesian_product, combinations};
 use crate::expression::*;
-use crate::combinatorics::{combinations, cartesian_product};
 
 use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct RewriteRule {
-    pub reductions: Vec<(Expr, Expr)>
+    pub reductions: Vec<(Expr, Expr)>,
 }
 
 impl RewriteRule {
@@ -14,13 +14,14 @@ impl RewriteRule {
     /// Will parse strings into `Expr`s and permute all commutative binops
     pub fn from_patterns(patterns: &[(&str, &str)]) -> Self {
         use crate::parser::parse_unwrap as p;
-        let reductions = permute_patterns(patterns.iter().map(|(premise, conclusion)| {
-            (p(premise), p(conclusion))
-        }).collect::<Vec<_>>());
+        let reductions = permute_patterns(
+            patterns
+                .iter()
+                .map(|(premise, conclusion)| (p(premise), p(conclusion)))
+                .collect::<Vec<_>>(),
+        );
 
-        RewriteRule {
-            reductions
-        }
+        RewriteRule { reductions }
     }
 
     /// Reduce an expression with the rewrite rule's reductions
@@ -35,14 +36,13 @@ impl RewriteRule {
     }
 }
 
-
 /// Permute all binary and associative operations in an expression, resulting in a list of
 /// expressions of all permutations
 /// E.g. ((A & B) & C) ==> [((A & B) & C), ((B & A) & C), (C & (A & B)), (C & (B & A))]
 /// This function is extremely slow! Don't use it for large expressions or too often.
 fn permute_ops(e: Expr) -> Vec<Expr> {
-    use crate::Expr::*;
     use crate::expression_builders::*;
+    use crate::Expr::*;
     match e {
         // Trivial cases
         e @ Contradiction => vec![e],
@@ -52,21 +52,32 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
             let mut to_permute: Vec<Vec<Expr>> = vec![permute_ops(*func)];
             to_permute.extend(args.into_iter().map(permute_ops));
             let permuted = cartesian_product(to_permute);
-            permuted.into_iter().map(|mut args| { let func = Box::new(args.remove(0)); Apply { func, args } }).collect()
-        },
+            permuted
+                .into_iter()
+                .map(|mut args| {
+                    let func = Box::new(args.remove(0));
+                    Apply { func, args }
+                })
+                .collect()
+        }
         Unop { symbol, operand } => {
             // Just permute the operands and return them
             let results = permute_ops(*operand);
-            results.into_iter().map(|e| {
-                Unop {
+            results
+                .into_iter()
+                .map(|e| Unop {
                     symbol,
-                    operand: Box::new(e)
-                }
-            }).collect::<Vec<_>>()
+                    operand: Box::new(e),
+                })
+                .collect::<Vec<_>>()
         }
-        Binop { symbol, left, right } => {
-            let permute_left = permute_ops( *left);
-            let permute_right = permute_ops( *right);
+        Binop {
+            symbol,
+            left,
+            right,
+        } => {
+            let permute_left = permute_ops(*left);
+            let permute_right = permute_ops(*right);
 
             let mut results = vec![];
             for left in &permute_left {
@@ -83,35 +94,49 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
             // For every combination of the args, add the cartesian product of the permutations of their parameters
 
             // All orderings of arguments
-            let arg_combinations = if symbol.is_commutative()  {
+            let arg_combinations = if symbol.is_commutative() {
                 combinations(exprs.iter().collect::<Vec<_>>())
             } else {
                 vec![exprs.iter().collect::<Vec<_>>()]
             };
-            arg_combinations.into_iter().flat_map(|args| {
-                // Permuting every expression in the current list of args
-                let permutations = args.into_iter().map(|arg| permute_ops(arg.clone())).collect::<Vec<_>>();
-                // Convert the Vec<Vec<Expr>> to a Vec<Vec<&Expr>>
-                let ref_perms = permutations.iter().map(|l| l.iter().collect::<Vec<_>>()).collect::<Vec<_>>();
-                // Then get a cartesian product of all permutations (this is the slow part)
-                // Gives you a list of new argument lists
-                let product = cartesian_product(ref_perms);
-                // Then just turn everything from that list into an assoc binop
-                // The `collect()` is necessary to maintain the borrows from permutations
-                product.into_iter().map(|args| {
-                    AssocBinop { symbol, exprs: args.into_iter().cloned().collect::<Vec<_>>() }
-                }).collect::<Vec<_>>()
-            }).collect::<Vec<_>>()
+            arg_combinations
+                .into_iter()
+                .flat_map(|args| {
+                    // Permuting every expression in the current list of args
+                    let permutations = args
+                        .into_iter()
+                        .map(|arg| permute_ops(arg.clone()))
+                        .collect::<Vec<_>>();
+                    // Convert the Vec<Vec<Expr>> to a Vec<Vec<&Expr>>
+                    let ref_perms = permutations
+                        .iter()
+                        .map(|l| l.iter().collect::<Vec<_>>())
+                        .collect::<Vec<_>>();
+                    // Then get a cartesian product of all permutations (this is the slow part)
+                    // Gives you a list of new argument lists
+                    let product = cartesian_product(ref_perms);
+                    // Then just turn everything from that list into an assoc binop
+                    // The `collect()` is necessary to maintain the borrows from permutations
+                    product
+                        .into_iter()
+                        .map(|args| AssocBinop {
+                            symbol,
+                            exprs: args.into_iter().cloned().collect::<Vec<_>>(),
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>()
         }
         Quantifier { symbol, name, body } => {
             let results = permute_ops(*body);
-            results.into_iter().map(|e| {
-                Quantifier {
+            results
+                .into_iter()
+                .map(|e| Quantifier {
                     symbol,
                     name: name.clone(),
-                    body: Box::new(e)
-                }
-            }).collect::<Vec<_>>()
+                    body: Box::new(e),
+                })
+                .collect::<Vec<_>>()
         }
     }
 }
@@ -135,16 +160,24 @@ fn test_permute_ops() {
     assert_eq!(p1.len(), 2);
     println!("{} {}", p1[0], p1[1]);
     assert_eq!(p2.len(), 8);
-    println!("{} {} {} {} {} {} {} {}", p2[0], p2[1], p2[2], p2[3], p2[4], p2[5], p2[6], p2[7]);
+    println!(
+        "{} {} {} {} {} {} {} {}",
+        p2[0], p2[1], p2[2], p2[3], p2[4], p2[5], p2[6], p2[7]
+    );
 }
 
 /// Permute the search expression of every pattern, all mapping to the same replacement
 /// E.g. [(A & B) -> C, (A | B) -> C] ==> [(A & B) -> C, (B & A) -> C, (A | B) -> C, (B | A) -> C]
 fn permute_patterns(patterns: Vec<(Expr, Expr)>) -> Vec<(Expr, Expr)> {
     // Permute_ops of all input patterns
-    patterns.into_iter().flat_map(|(find, replace)| {
-        permute_ops(find).into_iter().map(move |find| (find, replace.clone()))
-    }).collect::<Vec<_>>()
+    patterns
+        .into_iter()
+        .flat_map(|(find, replace)| {
+            permute_ops(find)
+                .into_iter()
+                .map(move |find| (find, replace.clone()))
+        })
+        .collect::<Vec<_>>()
 }
 
 /// Reduce an expression by a pattern with a set of variables
@@ -199,7 +232,11 @@ fn reduce_transform_func(expr: Expr, patterns: &[(Expr, Expr, HashSet<String>)])
     // Try all our patterns at every level of the tree
     for (pattern, replace, pattern_vars) in patterns {
         // Unify3D
-        let ret = unify(vec![Constraint::Equal(pattern.clone(), expr.clone())].into_iter().collect());
+        let ret = unify(
+            vec![Constraint::Equal(pattern.clone(), expr.clone())]
+                .into_iter()
+                .collect(),
+        );
         if let Some(ret) = ret {
             // Collect all unification results and make sure we actually match exactly
             let mut subs = HashMap::new();
@@ -217,7 +254,9 @@ fn reduce_transform_func(expr: Expr, patterns: &[(Expr, Expr, HashSet<String>)])
 
             // Make sure we have a substitution for every variable in the pattern set (and only for them)
             if !any_bad && subs.len() == pattern_vars.len() {
-                let subst_replace = subs.into_iter().fold(replace.clone(), |z, (x, y)| subst(&z, &x, y));
+                let subst_replace = subs
+                    .into_iter()
+                    .fold(replace.clone(), |z, (x, y)| subst(&z, &x, y));
                 return (subst_replace, true);
             }
         }
@@ -238,24 +277,27 @@ fn freevarsify_pattern(e: &Expr, patterns: &[(Expr, Expr)]) -> Vec<(Expr, Expr, 
     let e_free = freevars(e);
 
     // Find all free variables in the patterns and map them to generated names free for e
-    patterns.iter().map(|(pattern, replace)| {
-        let mut pattern = pattern.clone();
-        let mut replace = replace.clone();
-        let free_pattern = freevars(&pattern);
+    patterns
+        .iter()
+        .map(|(pattern, replace)| {
+            let mut pattern = pattern.clone();
+            let mut replace = replace.clone();
+            let free_pattern = freevars(&pattern);
 
-        // Make sure our replacement doesn't have any new vars
-        let free_replace = freevars(&replace);
-        assert!(free_replace.is_subset(&free_pattern));
+            // Make sure our replacement doesn't have any new vars
+            let free_replace = freevars(&replace);
+            assert!(free_replace.is_subset(&free_pattern));
 
-        // Replace all the free vars in the pattern with a known fresh variable in e
-        let mut pattern_vars = HashSet::new();
-        for free_var in free_pattern {
-            let new_sym = gensym(&*free_var, &e_free);
-            pattern = subst(&pattern, &*free_var, var(&*new_sym));
-            replace = subst(&replace, &*free_var, var(&*new_sym));
-            pattern_vars.insert(new_sym);
-        }
+            // Replace all the free vars in the pattern with a known fresh variable in e
+            let mut pattern_vars = HashSet::new();
+            for free_var in free_pattern {
+                let new_sym = gensym(&*free_var, &e_free);
+                pattern = subst(&pattern, &*free_var, var(&*new_sym));
+                replace = subst(&replace, &*free_var, var(&*new_sym));
+                pattern_vars.insert(new_sym);
+            }
 
-        (pattern, replace, pattern_vars)
-    }).collect::<Vec<_>>()
+            (pattern, replace, pattern_vars)
+        })
+        .collect::<Vec<_>>()
 }

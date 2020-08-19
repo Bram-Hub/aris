@@ -1,5 +1,5 @@
-use crate::components::nav_bar::NavBarWidget;
 use crate::components::nav_bar::NavBarMsg;
+use crate::components::nav_bar::NavBarWidget;
 use crate::components::proof_widget::ProofWidget;
 use crate::components::proof_widget::ProofWidgetMsg;
 use crate::components::tabbed_container::TabbedContainer;

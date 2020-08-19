@@ -20,17 +20,45 @@ impl<T> std::fmt::Debug for ZipperVec<T> {
 */
 
 impl<T> ZipperVec<T> {
-    pub fn new() -> Self { ZipperVec { prefix: Vec::new(), suffix_r: Vec::new() } }
-    pub fn from_vec(v: Vec<T>) -> Self { ZipperVec { prefix: v, suffix_r: Vec::new() } }
-    pub fn cursor_pos(&self) -> usize { self.prefix.len() }
-    pub fn len(&self) -> usize { self.prefix.len() + self.suffix_r.len() }
-    pub fn is_empty(&self) -> bool { self.len() == 0 }
-    pub fn dec_cursor(&mut self) { if let Some(x) = self.prefix.pop() { self.suffix_r.push(x); } }
-    pub fn inc_cursor(&mut self) { if let Some(x) = self.suffix_r.pop() { self.prefix.push(x); } }
+    pub fn new() -> Self {
+        ZipperVec {
+            prefix: Vec::new(),
+            suffix_r: Vec::new(),
+        }
+    }
+    pub fn from_vec(v: Vec<T>) -> Self {
+        ZipperVec {
+            prefix: v,
+            suffix_r: Vec::new(),
+        }
+    }
+    pub fn cursor_pos(&self) -> usize {
+        self.prefix.len()
+    }
+    pub fn len(&self) -> usize {
+        self.prefix.len() + self.suffix_r.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+    pub fn dec_cursor(&mut self) {
+        if let Some(x) = self.prefix.pop() {
+            self.suffix_r.push(x);
+        }
+    }
+    pub fn inc_cursor(&mut self) {
+        if let Some(x) = self.suffix_r.pop() {
+            self.prefix.push(x);
+        }
+    }
     pub fn move_cursor(&mut self, to: usize) {
         assert!(to <= self.len());
-        while to > self.cursor_pos() { self.inc_cursor(); }
-        while to < self.cursor_pos() { self.dec_cursor(); }
+        while to > self.cursor_pos() {
+            self.inc_cursor();
+        }
+        while to < self.cursor_pos() {
+            self.dec_cursor();
+        }
     }
     pub fn push(&mut self, x: T) {
         let len = self.len();
@@ -41,7 +69,7 @@ impl<T> ZipperVec<T> {
         self.move_cursor(0);
         self.prefix.push(x);
     }
-    pub fn iter(&self) -> impl Iterator<Item=&T> {
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.prefix.iter().chain(self.suffix_r.iter().rev())
     }
     pub fn get(&self, i: usize) -> Option<&T> {
@@ -74,7 +102,15 @@ impl<T> Default for ZipperVec<T> {
 #[test]
 fn test_zippervec_pop() {
     let a = ZipperVec::from_vec((0usize..10).into_iter().collect());
-    let pop_spec = |i| -> (Option<usize>, Vec<usize>) { (Some(a.iter().cloned().collect::<Vec<usize>>()[i]), a.iter().enumerate().filter_map(|(j, y)| if i == j { None } else { Some(*y) }).collect::<Vec<_>>()) };
+    let pop_spec = |i| -> (Option<usize>, Vec<usize>) {
+        (
+            Some(a.iter().cloned().collect::<Vec<usize>>()[i]),
+            a.iter()
+                .enumerate()
+                .filter_map(|(j, y)| if i == j { None } else { Some(*y) })
+                .collect::<Vec<_>>(),
+        )
+    };
     for i in 0..10 {
         for j in 0..10 {
             let mut b = a.clone();
@@ -94,26 +130,42 @@ impl<T: PartialEq> ZipperVec<T> {
             self.prefix.push(val);
         } else {
             self.move_cursor(0); // TODO: try to insert while backwards sweeping to 0 for more efficiency
-            while !self.suffix_r.is_empty() && &self.suffix_r[self.suffix_r.len()-1] != rel {
+            while !self.suffix_r.is_empty() && &self.suffix_r[self.suffix_r.len() - 1] != rel {
                 self.inc_cursor();
             }
-            if after { self.inc_cursor(); }
-            (if after { &mut self.suffix_r } else { &mut self.prefix }).push(val);
+            if after {
+                self.inc_cursor();
+            }
+            (if after {
+                &mut self.suffix_r
+            } else {
+                &mut self.prefix
+            })
+            .push(val);
         }
     }
 }
 
 #[test]
 fn test_zippervec_insert_relative() {
-    let mut z = ZipperVec::from_vec(vec![0,10,20,30,40]);
+    let mut z = ZipperVec::from_vec(vec![0, 10, 20, 30, 40]);
     println!("{:?}", z);
     z.insert_relative(25, &20, true);
     println!("{:?}", z);
-    assert_eq!(z.iter().cloned().collect::<Vec<usize>>(), vec![0,10,20,25,30,40]);
+    assert_eq!(
+        z.iter().cloned().collect::<Vec<usize>>(),
+        vec![0, 10, 20, 25, 30, 40]
+    );
     z.insert_relative(26, &30, false);
     println!("{:?}", z);
-    assert_eq!(z.iter().cloned().collect::<Vec<usize>>(), vec![0,10,20,25,26,30,40]);
+    assert_eq!(
+        z.iter().cloned().collect::<Vec<usize>>(),
+        vec![0, 10, 20, 25, 26, 30, 40]
+    );
     z.insert_relative(15, &10, true);
     println!("{:?}", z);
-    assert_eq!(z.iter().cloned().collect::<Vec<usize>>(), vec![0,10,15,20,25,26,30,40]);
+    assert_eq!(
+        z.iter().cloned().collect::<Vec<usize>>(),
+        vec![0, 10, 15, 20, 25, 26, 30, 40]
+    );
 }

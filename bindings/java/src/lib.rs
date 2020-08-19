@@ -1,12 +1,12 @@
-pub mod java_rule;
 pub mod java_expression;
+pub mod java_rule;
 use java_expression::*;
 pub mod java_proof;
 
-use jni::JNIEnv;
+use jni::objects::{JClass, JObject, JString, JValue};
 use jni::strings::JavaStr;
-use jni::objects::{JClass, JString, JValue, JObject};
-use jni::sys::{jobject, jstring, jarray};
+use jni::sys::{jarray, jobject, jstring};
+use jni::JNIEnv;
 
 use std::panic::{catch_unwind, UnwindSafe};
 
@@ -15,10 +15,18 @@ fn jobject_to_string(env: &JNIEnv, obj: JObject) -> jni::errors::Result<String> 
 }
 
 /// Calls a Rust function on each Java object of a Java Iterator
-pub fn java_iterator_for_each<F: FnMut(JObject) -> jni::errors::Result<()>>(env: &JNIEnv, iterable: JObject, mut f: F) -> jni::errors::Result<()> {
-    let iter = env.call_method(iterable, "iterator", "()Ljava/util/Iterator;", &[])?.l()?;
+pub fn java_iterator_for_each<F: FnMut(JObject) -> jni::errors::Result<()>>(
+    env: &JNIEnv,
+    iterable: JObject,
+    mut f: F,
+) -> jni::errors::Result<()> {
+    let iter = env
+        .call_method(iterable, "iterator", "()Ljava/util/Iterator;", &[])?
+        .l()?;
     while env.call_method(iter, "hasNext", "()Z", &[])?.z()? {
-        let obj = env.call_method(iter, "next", "()Ljava/lang/Object;", &[])?.l()?;
+        let obj = env
+            .call_method(iter, "next", "()Ljava/lang/Object;", &[])?
+            .l()?;
         f(obj)?
     }
     Ok(())
@@ -26,8 +34,11 @@ pub fn java_iterator_for_each<F: FnMut(JObject) -> jni::errors::Result<()>>(env:
 
 /// Wraps a Rust function, converting both Result::Err and panic into instances of Java's RuntimeException.
 /// Please use this on all native methods, otherwise a Rust panic/unwrap will crash the Java UI instead of popping a dialog box with the message.
-pub fn with_thrown_errors<A, F: FnOnce(&JNIEnv) -> jni::errors::Result<A> + UnwindSafe>(env: &JNIEnv, f: F) -> A {
-    use std::panic::{take_hook, set_hook, PanicInfo};
+pub fn with_thrown_errors<A, F: FnOnce(&JNIEnv) -> jni::errors::Result<A> + UnwindSafe>(
+    env: &JNIEnv,
+    f: F,
+) -> A {
+    use std::panic::{set_hook, take_hook, PanicInfo};
     let old_hook = take_hook();
     let (tx, rx) = std::sync::mpsc::channel::<String>();
     let mtx = std::sync::Mutex::new(tx);
@@ -44,10 +55,16 @@ pub fn with_thrown_errors<A, F: FnOnce(&JNIEnv) -> jni::errors::Result<A> + Unwi
         }
     }));
     let ret = catch_unwind(|| {
-        f(env).unwrap_or_else(|e| { let _ = env.throw_new("java/lang/RuntimeException", &*format!("{:?}", e)); unsafe { std::mem::zeroed() } }) // handle Result::Err
-    }).unwrap_or_else(|_| {
+        f(env).unwrap_or_else(|e| {
+            let _ = env.throw_new("java/lang/RuntimeException", &*format!("{:?}", e));
+            unsafe { std::mem::zeroed() }
+        }) // handle Result::Err
+    })
+    .unwrap_or_else(|_| {
         // handle panic
-        let msg = rx.recv().unwrap_or(format!("with_thrown_errors: recv failed"));
+        let msg = rx
+            .recv()
+            .unwrap_or(format!("with_thrown_errors: recv failed"));
         let _ = env.throw_new("java/lang/RuntimeException", &*msg);
         unsafe { std::mem::zeroed() }
     });

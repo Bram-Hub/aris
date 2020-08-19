@@ -43,10 +43,7 @@ impl Component for ExprAstWidget {
     }
     fn view(&self) -> Html {
         // Convert expression to debug string
-        let expr_debug = self
-            .current_expr
-            .as_ref()
-            .map(|e| format!("{:#?}", e));
+        let expr_debug = self.current_expr.as_ref().map(|e| format!("{:#?}", e));
 
         // Convert debug expression to HTML or parse error
         let expr_debug = match expr_debug {

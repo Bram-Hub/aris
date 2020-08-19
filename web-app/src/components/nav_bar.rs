@@ -4,7 +4,7 @@ use crate::components::expr_ast_widget::ExprAstWidget;
 use crate::components::proof_widget::ProofWidget;
 
 use gloo::timers::callback::Timeout;
-use wasm_bindgen::{closure::Closure, JsValue, JsCast};
+use wasm_bindgen::{closure::Closure, JsCast, JsValue};
 use yew::prelude::*;
 use yew_octicons::Icon;
 use yew_octicons::IconKind;
@@ -17,13 +17,17 @@ pub struct FileOpenHelper {
 
 impl FileOpenHelper {
     fn new(parent: ComponentLink<App>) -> Self {
-        let (filename_tx, filename_rx) = std::sync::mpsc::channel::<(String, web_sys::FileReader)>();
+        let (filename_tx, filename_rx) =
+            std::sync::mpsc::channel::<(String, web_sys::FileReader)>();
         let file_open_closure = Closure::wrap(Box::new(move |_| {
             if let Ok((fname, reader)) = filename_rx.recv() {
                 if let Ok(contents) = reader.result() {
                     if let Some(contents) = contents.as_string() {
                         let fname_ = fname.clone();
-                        let oncreate = parent.callback(move |link| AppMsg::RegisterProofName { name: fname_.clone(), link });
+                        let oncreate = parent.callback(move |link| AppMsg::RegisterProofName {
+                            name: fname_.clone(),
+                            link,
+                        });
                         parent.send_message(AppMsg::CreateTab { name: fname, content: html! { <ProofWidget verbose=true data=Some(contents.into_bytes()) oncreate=oncreate /> }});
                     }
                 }
@@ -44,7 +48,9 @@ impl FileOpenHelper {
             file.dyn_into::<web_sys::Blob>().expect("dyn_into::<web_sys::Blob> failed").text().then(&self.file_open_closure);*/
             let reader = web_sys::FileReader::new().expect("FileReader");
             reader.set_onload(Some(self.file_open_closure.as_ref().unchecked_ref()));
-            reader.read_as_text(&file).expect("FileReader::read_as_text");
+            reader
+                .read_as_text(&file)
+                .expect("FileReader::read_as_text");
             let _ = self.filename_tx.send((file.name(), reader));
         }
         true
@@ -79,7 +85,13 @@ impl Component for NavBarWidget {
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         props.oncreate.emit(link.clone());
         let file_open_helper = FileOpenHelper::new(props.parent.clone());
-        Self { link, props, node_ref: NodeRef::default(), next_tab_idx: 1, file_open_helper, }
+        Self {
+            link,
+            props,
+            node_ref: NodeRef::default(),
+            next_tab_idx: 1,
+            file_open_helper,
+        }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -87,43 +99,68 @@ impl Component for NavBarWidget {
             NavBarMsg::FileNew => {
                 let fname = format!("Untitled proof {}", self.next_tab_idx);
                 let fname_ = fname.clone();
-                let oncreate = self.props.parent.callback(move |link| AppMsg::RegisterProofName { name: fname_.clone(), link });
-                self.props.parent.send_message(AppMsg::CreateTab { name: fname, content: html! { <ProofWidget verbose=true data=None oncreate=oncreate /> } });
+                let oncreate = self
+                    .props
+                    .parent
+                    .callback(move |link| AppMsg::RegisterProofName {
+                        name: fname_.clone(),
+                        link,
+                    });
+                self.props.parent.send_message(AppMsg::CreateTab {
+                    name: fname,
+                    content: html! { <ProofWidget verbose=true data=None oncreate=oncreate /> },
+                });
                 self.next_tab_idx += 1;
                 false
-            },
+            }
             NavBarMsg::FileOpen(file_list) => self.file_open_helper.fileopen(file_list),
             NavBarMsg::FileSave => {
                 let node = self.node_ref.get().expect("NavBarWidget::node_ref failed");
-                self.props.parent.send_message(AppMsg::GetProofFromCurrentTab(Box::new(move |name, prf| {
-                    use aris::proofs::xml_interop;
-                    let mut data = vec![];
-                    let metadata = xml_interop::ProofMetaData {
-                        author: Some("ARIS-YEW-UI".into()),
-                        hash: None,
-                        goals: vec![],
-                    };
-                    xml_interop::xml_from_proof_and_metadata_with_hash(prf, &metadata, &mut data).expect("xml_from_proof_and_metadata failed");
-                    let window = web_sys::window().expect("web_sys::window failed");
-                    let document = window.document().expect("window.document failed");
-                    let anchor = document.create_element("a").expect("document.create_element(\"a\") failed");
-                    let anchor = anchor.dyn_into::<web_sys::HtmlAnchorElement>().expect("dyn_into::HtmlAnchorElement failed");
-                    anchor.set_download(&name);
-                    let js_str = JsValue::from_str(&String::from_utf8_lossy(&data));
-                    let js_array = js_sys::Array::new_with_length(1);
-                    js_array.set(0, js_str);
-                    let blob = web_sys::Blob::new_with_str_sequence(&js_array).expect("Blob::new_with_str_sequence failed");
-                    let url = web_sys::Url::create_object_url_with_blob(&blob).expect("Url::create_object_url_with_blob failed");
-                    anchor.set_href(&url);
-                    node.append_child(&anchor).expect("node.append_child failed");
-                    anchor.click();
-                    let node = node.clone();
-                    Timeout::new(0, move || {
-                        node.remove_child(&anchor).expect("node.remove_child failed");
-                    }).forget();
-                })));
+                self.props
+                    .parent
+                    .send_message(AppMsg::GetProofFromCurrentTab(Box::new(
+                        move |name, prf| {
+                            use aris::proofs::xml_interop;
+                            let mut data = vec![];
+                            let metadata = xml_interop::ProofMetaData {
+                                author: Some("ARIS-YEW-UI".into()),
+                                hash: None,
+                                goals: vec![],
+                            };
+                            xml_interop::xml_from_proof_and_metadata_with_hash(
+                                prf, &metadata, &mut data,
+                            )
+                            .expect("xml_from_proof_and_metadata failed");
+                            let window = web_sys::window().expect("web_sys::window failed");
+                            let document = window.document().expect("window.document failed");
+                            let anchor = document
+                                .create_element("a")
+                                .expect("document.create_element(\"a\") failed");
+                            let anchor = anchor
+                                .dyn_into::<web_sys::HtmlAnchorElement>()
+                                .expect("dyn_into::HtmlAnchorElement failed");
+                            anchor.set_download(&name);
+                            let js_str = JsValue::from_str(&String::from_utf8_lossy(&data));
+                            let js_array = js_sys::Array::new_with_length(1);
+                            js_array.set(0, js_str);
+                            let blob = web_sys::Blob::new_with_str_sequence(&js_array)
+                                .expect("Blob::new_with_str_sequence failed");
+                            let url = web_sys::Url::create_object_url_with_blob(&blob)
+                                .expect("Url::create_object_url_with_blob failed");
+                            anchor.set_href(&url);
+                            node.append_child(&anchor)
+                                .expect("node.append_child failed");
+                            anchor.click();
+                            let node = node.clone();
+                            Timeout::new(0, move || {
+                                node.remove_child(&anchor)
+                                    .expect("node.remove_child failed");
+                            })
+                            .forget();
+                        },
+                    )));
                 false
-            },
+            }
             NavBarMsg::NewExprTree => {
                 self.props.parent.send_message(AppMsg::CreateTab {
                     name: format!("Expr Tree {}", self.next_tab_idx),
@@ -133,10 +170,8 @@ impl Component for NavBarWidget {
                 });
                 self.next_tab_idx += 1;
                 false
-            },
-            NavBarMsg::Nop => {
-                false
-            },
+            }
+            NavBarMsg::Nop => false,
         }
     }
 
