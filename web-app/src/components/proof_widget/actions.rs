@@ -104,7 +104,7 @@ static ACTIONS: [ActionInfo; 12] = [
         class: ActionClass::SubproofRelative,
     },
     ActionInfo {
-        keyboard_shortcut: None,
+        keyboard_shortcut: Some('e'),
         description: "Insert step after this subproof",
         line_action_kind: LineActionKind::Insert {
             what: LAKItem::Line,
