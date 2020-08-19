@@ -2068,7 +2068,9 @@ pub fn expressions_for_depth(
             .collect();
         let mut products = vec![];
         for i in 2..=max_assoc {
-            products.extend(cartesian_product((0..i).map(|_| smaller.clone()).collect()));
+            products.extend(multi_cartesian_product(
+                (0..i).map(|_| smaller.clone()).collect(),
+            ));
         }
         for v in vars.iter() {
             for arglist in products.iter() {

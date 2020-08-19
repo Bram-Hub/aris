@@ -1,4 +1,4 @@
-use crate::combinatorics::{cartesian_product, permutations};
+use crate::combinatorics::{multi_cartesian_product, permutations};
 use crate::expression::*;
 
 use std::collections::{HashMap, HashSet};
@@ -51,7 +51,7 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
         Apply { func, args } => {
             let mut to_permute: Vec<Vec<Expr>> = vec![permute_ops(*func)];
             to_permute.extend(args.into_iter().map(permute_ops));
-            let permuted = cartesian_product(to_permute);
+            let permuted = multi_cartesian_product(to_permute);
             permuted
                 .into_iter()
                 .map(|mut args| {
@@ -114,7 +114,7 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
                         .collect::<Vec<_>>();
                     // Then get a cartesian product of all permutations (this is the slow part)
                     // Gives you a list of new argument lists
-                    let product = cartesian_product(ref_perms);
+                    let product = multi_cartesian_product(ref_perms);
                     // Then just turn everything from that list into an assoc binop
                     // The `collect()` is necessary to maintain the borrows from permutations
                     product

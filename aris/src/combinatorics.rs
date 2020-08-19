@@ -41,63 +41,31 @@ fn test_permutations() {
 }
 
 /// Cartesian product of two vectors:
+///
 /// E.g. [1, 2] x [3, 4] ==> [[1, 3], [1, 4], [2, 3], [2, 4]]
+///
 /// Guaranteed ordered by position in the list
-pub fn cartesian_product_pair<T1, T2>(list1: Vec<T1>, list2: Vec<T2>) -> Vec<(T1, T2)>
-where
-    T1: Clone + Sized,
-    T2: Clone + Sized,
-{
-    list1
-        .into_iter()
-        .flat_map(|left| list2.iter().map(move |right| (left.clone(), right.clone())))
-        .collect::<Vec<_>>()
+pub fn cartesian_product<T1: Clone, T2: Clone>(list_1: Vec<T1>, list_2: Vec<T2>) -> Vec<(T1, T2)> {
+    list_1.into_iter().cartesian_product(list_2).collect()
 }
 
 /// Cartesian product of many vectors:
+///
 /// E.g. [1, 2] x [3, 4] x [5, 6] ==> [[1, 3, 5], [1, 3, 6], [1, 4, 5], [1, 4, 6], [2, 3, 5], [2, 3, 6], [2, 4, 5], [2, 4, 6]]
+///
 /// Guaranteed ordered by position in the list
-pub fn cartesian_product<T>(mut lists: Vec<Vec<T>>) -> Vec<Vec<T>>
-where
-    T: Clone + Sized,
-{
-    // Base case
-    if lists.len() <= 1 {
-        return lists;
-    }
-    // Fallback on the pairwise when we can
-    if lists.len() == 2 {
-        let first = lists.remove(0);
-        let second = lists.remove(0);
-        return cartesian_product_pair(first, second)
-            .into_iter()
-            .map(|(a, b)| vec![a, b])
-            .collect::<Vec<_>>();
-    }
-
-    let firsts = lists.remove(0);
-    let prod_rests = cartesian_product(lists);
-
-    firsts
-        .into_iter()
-        .flat_map(|first| {
-            prod_rests.iter().map(move |prod| {
-                let mut result = vec![first.clone()];
-                result.extend(prod.clone());
-                result
-            })
-        })
-        .collect::<Vec<_>>()
+pub fn multi_cartesian_product<T: Clone>(lists: Vec<Vec<T>>) -> Vec<Vec<T>> {
+    lists.into_iter().multi_cartesian_product().collect()
 }
 
 #[test]
 fn test_cartesian_product() {
     assert_eq!(
-        cartesian_product_pair(vec![1, 2], vec![3, 4]),
+        cartesian_product(vec![1, 2], vec![3, 4]),
         vec![(1, 3), (1, 4), (2, 3), (2, 4)]
     );
     assert_eq!(
-        cartesian_product(vec![vec![1, 2], vec![3, 4], vec![5, 6]]),
+        multi_cartesian_product(vec![vec![1, 2], vec![3, 4], vec![5, 6]]),
         vec![
             vec![1, 3, 5],
             vec![1, 3, 6],
