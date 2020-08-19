@@ -1,38 +1,19 @@
-/// Generate all combinations of a list of items
-/// E.g. [1, 2, 3] => [[1, 2, 3], [1, 3, 2], [2, 1, 3], [2, 3, 1], [3, 1, 2], [3, 2, 1]]
-/// Guaranteed ordered by position in the list
-/// Generic over Copy+Sized T (because doing this with clone would do a heinous amount of cloning)
-pub fn combinations<T>(list: Vec<T>) -> Vec<Vec<T>>
-where
-    T: Copy + Sized,
-{
-    // Base case
-    if list.len() <= 1 {
-        return vec![list];
-    }
+use itertools::Itertools;
 
-    let mut results = vec![];
-    for cur in 0..list.len() {
-        // List of all items that are not the current one
-        let mut sublist: Vec<T> = vec![];
-        sublist.extend_from_slice(&list[..cur]);
-        sublist.extend_from_slice(&list[cur + 1..]);
-
-        let sub_combinations = combinations(sublist);
-        for sub_combination in sub_combinations {
-            let mut combination = vec![list[cur]];
-            combination.extend(sub_combination);
-            results.push(combination);
-        }
-    }
-
-    results
+/// Generate all permutations of a list of items.
+///
+/// E.g. `[1, 2, 3] => [[1, 2, 3], [1, 3, 2], [2, 1, 3], [2, 3, 1], [3, 1, 2], [3, 2, 1]]`
+///
+/// Generic over `Copy` (because doing this with clone would do a heinous amount of cloning)
+pub fn permutations<T: Copy>(list: Vec<T>) -> Vec<Vec<T>> {
+    let len = list.len();
+    list.into_iter().permutations(len).collect()
 }
 
 #[test]
-fn test_combinate() {
+fn test_permutations() {
     assert_eq!(
-        combinations(vec![1, 2, 3]),
+        permutations(vec![1, 2, 3]),
         vec![
             vec![1, 2, 3],
             vec![1, 3, 2],
@@ -47,7 +28,7 @@ fn test_combinate() {
     let b = 2;
     let c = 3;
     assert_eq!(
-        combinations(vec![&a, &b, &c]),
+        permutations(vec![&a, &b, &c]),
         vec![
             vec![&a, &b, &c],
             vec![&a, &c, &b],

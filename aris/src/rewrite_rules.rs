@@ -1,4 +1,4 @@
-use crate::combinatorics::{cartesian_product, combinations};
+use crate::combinatorics::{cartesian_product, permutations};
 use crate::expression::*;
 
 use std::collections::{HashMap, HashSet};
@@ -95,7 +95,7 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
 
             // All orderings of arguments
             let arg_combinations = if symbol.is_commutative() {
-                combinations(exprs.iter().collect::<Vec<_>>())
+                permutations(exprs.iter().collect::<Vec<_>>())
             } else {
                 vec![exprs.iter().collect::<Vec<_>>()]
             };
