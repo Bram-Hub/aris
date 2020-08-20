@@ -1,7 +1,7 @@
 //! Parse infix logical expressions into an AST
 
-use crate::expr::BinOp;
 use crate::expr::Expr;
+use crate::expr::Op;
 use crate::expr::QuantKind;
 
 use nom::*;
@@ -63,23 +63,23 @@ named!(binder<&str, Expr>, do_parse!(space >> kind: quantifier >> space >> name:
 
 named!(impl_term<&str, Expr>, do_parse!(left: paren_expr >> space >> alt!(tag!("->") | tag!("→")) >> space >> right: paren_expr >> (Expr::Impl { left: Box::new(left), right: Box::new(right) })));
 
-named!(andrepr<&str, BinOp>, do_parse!(alt!(tag!("&") | tag!("∧") | tag!("/\\")) >> (BinOp::And)));
-named!(orrepr<&str, BinOp>, do_parse!(alt!(tag!("|") | tag!("∨") | tag!("\\/")) >> (BinOp::Or)));
-named!(biconrepr<&str, BinOp>, do_parse!(alt!(tag!("<->") | tag!("↔")) >> (BinOp::Bicon)));
-named!(equivrepr<&str, BinOp>, do_parse!(alt!(tag!("===") | tag!("≡")) >> (BinOp::Equiv)));
-named!(plusrepr<&str, BinOp>, do_parse!(tag!("+") >> (BinOp::Add)));
-named!(multrepr<&str, BinOp>, do_parse!(tag!("*") >> (BinOp::Mult)));
+named!(andrepr<&str, Op>, do_parse!(alt!(tag!("&") | tag!("∧") | tag!("/\\")) >> (Op::And)));
+named!(orrepr<&str, Op>, do_parse!(alt!(tag!("|") | tag!("∨") | tag!("\\/")) >> (Op::Or)));
+named!(biconrepr<&str, Op>, do_parse!(alt!(tag!("<->") | tag!("↔")) >> (Op::Bicon)));
+named!(equivrepr<&str, Op>, do_parse!(alt!(tag!("===") | tag!("≡")) >> (Op::Equiv)));
+named!(plusrepr<&str, Op>, do_parse!(tag!("+") >> (Op::Add)));
+named!(multrepr<&str, Op>, do_parse!(tag!("*") >> (Op::Mult)));
 
-named!(binary_term_aux<&str, (Vec<Expr>, Vec<BinOp>)>, alt!(
-do_parse!(space >> e: paren_expr >> space >> sym: alt!(andrepr | orrepr | biconrepr | equivrepr | plusrepr | multrepr) >> space >> rec: binary_term_aux >> ({ let (mut es, mut syms) = rec; es.push(e); syms.push(sym); (es, syms) })) |
+named!(assoc_term_aux<&str, (Vec<Expr>, Vec<Op>)>, alt!(
+do_parse!(space >> e: paren_expr >> space >> sym: alt!(andrepr | orrepr | biconrepr | equivrepr | plusrepr | multrepr) >> space >> rec: assoc_term_aux >> ({ let (mut es, mut syms) = rec; es.push(e); syms.push(sym); (es, syms) })) |
 do_parse!(e: paren_expr >> (vec![e], vec![]))
 ));
 
 /// assocterm is implemented as a function instead of using nom's macros because
 /// enforcing that all the symbols are the same is more easily done with iterators.
 /// This check is what rules out `(a /\ b \/ c)` without further parenthesization.
-fn binary_term(s: &str) -> nom::IResult<&str, Expr> {
-    let (rest, (mut exprs, syms)) = binary_term_aux(s)?;
+fn assoc_term(s: &str) -> nom::IResult<&str, Expr> {
+    let (rest, (mut exprs, syms)) = assoc_term_aux(s)?;
     assert_eq!(exprs.len(), syms.len() + 1);
     if exprs.len() == 1 {
         return custom_error(rest, 0);
@@ -89,12 +89,12 @@ fn binary_term(s: &str) -> nom::IResult<&str, Expr> {
         return custom_error(rest, 0);
     }
     exprs.reverse();
-    Ok((rest, Expr::Binary { op, exprs }))
+    Ok((rest, Expr::Assoc { op, exprs }))
 }
 
 // paren_expr is a factoring of expr that eliminates left-recursion, which parser combinators have trouble with
 named!(paren_expr<&str, Expr>, alt!(contradiction | tautology | predicate | notterm | binder | do_parse!(space >> tag!("(") >> space >> e: expr >> space >> tag!(")") >> space >> (e))));
-named!(expr<&str, Expr>, alt!(binary_term | impl_term | paren_expr));
+named!(expr<&str, Expr>, alt!(assoc_term | impl_term | paren_expr));
 named!(main<&str, Expr>, do_parse!(e: expr >> tag!("\n") >> (e)));
 
 #[test]

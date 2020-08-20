@@ -1,4 +1,4 @@
-use crate::expr::{BinOp, Expr};
+use crate::expr::{Expr, Op};
 use crate::proofs::{Justification, PJRef, Proof};
 use crate::rules::{Rule, RuleM};
 
@@ -45,8 +45,8 @@ impl<P: Proof> SatProofBuilder<P> {
     #[cfg(test)]
     fn new() -> SatProofBuilder<P> {
         let mut proof = P::new();
-        let empty_and = Expr::Binary {
-            op: BinOp::And,
+        let empty_and = Expr::Assoc {
+            op: Op::And,
             exprs: vec![],
         };
         let main_subproof = proof.add_subproof();
@@ -92,10 +92,7 @@ impl<P: Proof> SatProofBuilder<P> {
         }
         // TODO: Expr::from_disjuncts is semantically the right thing, but the current code may handle the len=1 case differently
         if !exprs.is_empty() {
-            Expr::Binary {
-                op: BinOp::Or,
-                exprs,
-            }
+            Expr::Assoc { op: Op::Or, exprs }
         } else {
             Expr::Contra
         }

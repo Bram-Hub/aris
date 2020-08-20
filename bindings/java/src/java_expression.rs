@@ -1,7 +1,7 @@
 use super::*;
 
-use aris::expr::BinOp;
 use aris::expr::Expr;
+use aris::expr::Op;
 use aris::expr::QuantKind;
 
 #[no_mangle]
@@ -65,14 +65,14 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
             jobject_to_expr(env, right)?,
         ))
     };
-    let handle_binary = |op: BinOp| -> jni::errors::Result<Expr> {
+    let handle_assoc = |op: Op| -> jni::errors::Result<Expr> {
         let mut exprs = vec![];
         java_iterator_for_each(
             env,
             env.get_field(obj, "exprs", "Ljava/util/ArrayList;")?.l()?,
             |expr| Ok(exprs.push(jobject_to_expr(env, expr)?)),
         )?;
-        Ok(Expr::Binary { op, exprs })
+        Ok(Expr::Assoc { op, exprs })
     };
     let handle_quantifier = |kind: QuantKind| -> jni::errors::Result<Expr> {
         let name = jobject_to_string(
@@ -101,12 +101,12 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
             Ok(Expr::var(&name))
         }
         "edu.rpi.aris.ast.Expression$ImplicationExpression" => handle_impl(),
-        "edu.rpi.aris.ast.Expression$AddExpression" => handle_binary(BinOp::Add),
-        "edu.rpi.aris.ast.Expression$MultExpression" => handle_binary(BinOp::Mult),
-        "edu.rpi.aris.ast.Expression$AndExpression" => handle_binary(BinOp::And),
-        "edu.rpi.aris.ast.Expression$OrExpression" => handle_binary(BinOp::Or),
-        "edu.rpi.aris.ast.Expression$BiconExpression" => handle_binary(BinOp::Bicon),
-        "edu.rpi.aris.ast.Expression$EquivExpression" => handle_binary(BinOp::Equiv),
+        "edu.rpi.aris.ast.Expression$AddExpression" => handle_assoc(Op::Add),
+        "edu.rpi.aris.ast.Expression$MultExpression" => handle_assoc(Op::Mult),
+        "edu.rpi.aris.ast.Expression$AndExpression" => handle_assoc(Op::And),
+        "edu.rpi.aris.ast.Expression$OrExpression" => handle_assoc(Op::Or),
+        "edu.rpi.aris.ast.Expression$BiconExpression" => handle_assoc(Op::Bicon),
+        "edu.rpi.aris.ast.Expression$EquivExpression" => handle_assoc(Op::Equiv),
         "edu.rpi.aris.ast.Expression$ForallExpression" => handle_quantifier(QuantKind::Forall),
         "edu.rpi.aris.ast.Expression$ExistsExpression" => handle_quantifier(QuantKind::Exists),
         "edu.rpi.aris.ast.Expression$ContradictionExpression" => Ok(Expr::Contra),
@@ -185,7 +185,7 @@ pub fn expr_to_jobject<'a>(env: &'a JNIEnv, e: Expr) -> jni::errors::Result<JObj
             env.set_field(obj, "l", "Ledu/rpi/aris/ast/Expression;", rec(*left)?)?;
             env.set_field(obj, "r", "Ledu/rpi/aris/ast/Expression;", rec(*right)?)?;
         }
-        Expr::Binary { op: _, exprs } => {
+        Expr::Assoc { op: _, exprs } => {
             let list = env.get_field(obj, "exprs", "Ljava/util/ArrayList;")?.l()?;
             for expr in exprs {
                 env.call_method(list, "add", "(Ljava/lang/Object;)Z", &[rec(expr)?])?;
@@ -206,15 +206,15 @@ pub fn expr_to_jobject<'a>(env: &'a JNIEnv, e: Expr) -> jni::errors::Result<JObj
 trait HasClass {
     fn get_class(&self) -> &'static str;
 }
-impl HasClass for BinOp {
+impl HasClass for Op {
     fn get_class(&self) -> &'static str {
         match self {
-            BinOp::And => "Ledu/rpi/aris/ast/Expression$AndExpression;",
-            BinOp::Or => "Ledu/rpi/aris/ast/Expression$OrExpression;",
-            BinOp::Bicon => "Ledu/rpi/aris/ast/Expression$BiconExpression;",
-            BinOp::Equiv => "Ledu/rpi/aris/ast/Expression$EquivExpression;",
-            BinOp::Add => "Ledu/rpi/aris/ast/Expression$AddExpression;",
-            BinOp::Mult => "Ledu/rpi/aris/ast/Expression$MultExpression;",
+            Op::And => "Ledu/rpi/aris/ast/Expression$AndExpression;",
+            Op::Or => "Ledu/rpi/aris/ast/Expression$OrExpression;",
+            Op::Bicon => "Ledu/rpi/aris/ast/Expression$BiconExpression;",
+            Op::Equiv => "Ledu/rpi/aris/ast/Expression$EquivExpression;",
+            Op::Add => "Ledu/rpi/aris/ast/Expression$AddExpression;",
+            Op::Mult => "Ledu/rpi/aris/ast/Expression$MultExpression;",
         }
     }
 }
@@ -235,7 +235,7 @@ impl HasClass for Expr {
             Expr::Apply { .. } => "Ledu/rpi/aris/ast/Expression$ApplyExpression;",
             Expr::Not { .. } => "Ledu/rpi/aris/ast/Expression$NotExpression;",
             Expr::Impl { .. } => "Ledu/rpi/aris/ast/Expression$ImplicationExpression;",
-            Expr::Binary { op, .. } => op.get_class(),
+            Expr::Assoc { op, .. } => op.get_class(),
             Expr::Quant { kind, .. } => kind.get_class(),
         }
     }

@@ -85,7 +85,7 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
             }
             results
         }
-        Expr::Binary { op, exprs } => {
+        Expr::Assoc { op, exprs } => {
             // For every combination of the args, add the cartesian product of the permutations of their parameters
 
             let len = exprs.len();
@@ -112,7 +112,7 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
                     // The `collect()` is necessary to maintain the borrows from permutations
                     product
                         .into_iter()
-                        .map(|args| Expr::Binary {
+                        .map(|args| Expr::Assoc {
                             op,
                             exprs: args.into_iter().cloned().collect::<Vec<_>>(),
                         })
@@ -257,7 +257,7 @@ fn freevarsify_pattern(e: &Expr, patterns: &[(Expr, Expr)]) -> Vec<(Expr, Expr, 
 mod tests {
     use super::*;
 
-    use crate::expr::BinOp;
+    use crate::expr::Op;
 
     #[test]
     fn test_permute_ops() {
@@ -289,22 +289,16 @@ mod tests {
         // DeMorgan's for and/or that have only two parameters
 
         // ~(phi & psi) ==> ~phi | ~psi
-        let pattern1 = Expr::not(Expr::binary(
-            BinOp::And,
-            &[Expr::var("phi"), Expr::var("psi")],
-        ));
-        let replace1 = Expr::binary(
-            BinOp::Or,
+        let pattern1 = Expr::not(Expr::assoc(Op::And, &[Expr::var("phi"), Expr::var("psi")]));
+        let replace1 = Expr::assoc(
+            Op::Or,
             &[Expr::not(Expr::var("phi")), Expr::not(Expr::var("psi"))],
         );
 
         // ~(phi | psi) ==> ~phi & ~psi
-        let pattern2 = Expr::not(Expr::binary(
-            BinOp::Or,
-            &[Expr::var("phi"), Expr::var("psi")],
-        ));
-        let replace2 = Expr::binary(
-            BinOp::And,
+        let pattern2 = Expr::not(Expr::assoc(Op::Or, &[Expr::var("phi"), Expr::var("psi")]));
+        let replace2 = Expr::assoc(
+            Op::And,
             &[Expr::not(Expr::var("phi")), Expr::not(Expr::var("psi"))],
         );
 

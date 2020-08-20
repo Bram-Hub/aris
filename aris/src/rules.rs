@@ -55,9 +55,9 @@ Adding the tests and implementing the rule can be interleaved; it's convenient t
 */
 
 use crate::equivs;
-use crate::expr::BinOp;
 use crate::expr::Equal;
 use crate::expr::Expr;
+use crate::expr::Op;
 use crate::expr::QuantKind;
 use crate::proofs::PJRef;
 use crate::proofs::Proof;
@@ -553,8 +553,8 @@ impl RuleT for PrepositionalInference {
                 }
             }
             AndIntro => {
-                if let Expr::Binary {
-                    op: BinOp::And,
+                if let Expr::Assoc {
+                    op: Op::And,
                     ref exprs,
                 } = conclusion
                 {
@@ -577,13 +577,13 @@ impl RuleT for PrepositionalInference {
                     }
                     Ok(())
                 } else {
-                    Err(ConclusionOfWrongForm(Expr::assocplaceholder(BinOp::And)))
+                    Err(ConclusionOfWrongForm(Expr::assocplaceholder(Op::And)))
                 }
             }
             AndElim => {
                 let prem = p.lookup_expr_or_die(&deps[0])?;
-                if let Expr::Binary {
-                    op: BinOp::And,
+                if let Expr::Assoc {
+                    op: Op::And,
                     ref exprs,
                 } = prem
                 {
@@ -595,13 +595,13 @@ impl RuleT for PrepositionalInference {
                     // TODO: allow `A /\ B /\ C |- C /\ A /\ C`, etc
                     Err(DoesNotOccur(conclusion, prem.clone()))
                 } else {
-                    Err(DepDoesNotExist(Expr::assocplaceholder(BinOp::And), true))
+                    Err(DepDoesNotExist(Expr::assocplaceholder(Op::And), true))
                 }
             }
             OrIntro => {
                 let prem = p.lookup_expr_or_die(&deps[0])?;
-                if let Expr::Binary {
-                    op: BinOp::Or,
+                if let Expr::Assoc {
+                    op: Op::Or,
                     ref exprs,
                 } = conclusion
                 {
@@ -610,13 +610,13 @@ impl RuleT for PrepositionalInference {
                     }
                     Ok(())
                 } else {
-                    Err(ConclusionOfWrongForm(Expr::assocplaceholder(BinOp::Or)))
+                    Err(ConclusionOfWrongForm(Expr::assocplaceholder(Op::Or)))
                 }
             }
             OrElim => {
                 let prem = p.lookup_expr_or_die(&deps[0])?;
-                if let Expr::Binary {
-                    op: BinOp::Or,
+                if let Expr::Assoc {
+                    op: Op::Or,
                     ref exprs,
                 } = prem
                 {
@@ -654,7 +654,7 @@ impl RuleT for PrepositionalInference {
                     }
                     Ok(())
                 } else {
-                    Err(DepDoesNotExist(Expr::assocplaceholder(BinOp::Or), true))
+                    Err(DepDoesNotExist(Expr::assocplaceholder(Op::Or), true))
                 }
             }
             ImpIntro => {
@@ -792,14 +792,14 @@ impl RuleT for PrepositionalInference {
                     &prem1,
                     &prem2,
                     |i, j| {
-                        if let Expr::Binary {
-                            op: BinOp::Bicon,
+                        if let Expr::Assoc {
+                            op: Op::Bicon,
                             ref exprs,
                         } = i
                         {
                             let mut s = HashSet::new();
-                            if let Expr::Binary {
-                                op: BinOp::Bicon,
+                            if let Expr::Assoc {
+                                op: Op::Bicon,
                                 ref exprs,
                             } = j
                             {
@@ -823,7 +823,7 @@ impl RuleT for PrepositionalInference {
                             let expected = if terms.len() == 1 {
                                 terms[0].clone()
                             } else {
-                                Expr::binary(BinOp::Bicon, &terms[..])
+                                Expr::assoc(Op::Bicon, &terms[..])
                             };
                             // TODO: maybe commutativity
                             if conclusion != expected {
@@ -837,21 +837,21 @@ impl RuleT for PrepositionalInference {
                             AnyOrderResult::WrongOrder
                         }
                     },
-                    || DepDoesNotExist(Expr::assocplaceholder(BinOp::Bicon), true),
+                    || DepDoesNotExist(Expr::assocplaceholder(Op::Bicon), true),
                 )
             }
             EquivalenceIntro | BiconditionalIntro => {
                 let oper = if let EquivalenceIntro = self {
-                    BinOp::Equiv
+                    Op::Equiv
                 } else {
-                    BinOp::Bicon
+                    Op::Bicon
                 };
-                if let Expr::Binary { op, ref exprs } = conclusion {
+                if let Expr::Assoc { op, ref exprs } = conclusion {
                     if oper == op {
                         if let BiconditionalIntro = self {
                             if exprs.len() != 2 {
-                                return Err(ConclusionOfWrongForm(Expr::Binary {
-                                    op: BinOp::Bicon,
+                                return Err(ConclusionOfWrongForm(Expr::Assoc {
+                                    op: Op::Bicon,
                                     exprs: vec![Expr::var("_"), Expr::var("_")],
                                 }));
                             }
@@ -873,7 +873,7 @@ impl RuleT for PrepositionalInference {
                         let mut g = DiGraphMap::new();
                         for prem in prems.iter() {
                             match prem {
-                                Expr::Binary { op, ref exprs } if &oper == op => {
+                                Expr::Assoc { op, ref exprs } if &oper == op => {
                                     for e1 in exprs.iter() {
                                         for e2 in exprs.iter() {
                                             slab.entry(e1.clone()).or_insert_with(|| next());
@@ -949,8 +949,8 @@ impl RuleT for PrepositionalInference {
                     &prem1,
                     &prem2,
                     |i, j| {
-                        if let Expr::Binary {
-                            op: BinOp::Equiv,
+                        if let Expr::Assoc {
+                            op: Op::Equiv,
                             ref exprs,
                         } = i
                         {
@@ -969,7 +969,7 @@ impl RuleT for PrepositionalInference {
                             AnyOrderResult::WrongOrder
                         }
                     },
-                    || DepDoesNotExist(Expr::assocplaceholder(BinOp::Equiv), true),
+                    || DepDoesNotExist(Expr::assocplaceholder(Op::Equiv), true),
                 )
             }
         }
@@ -1641,10 +1641,7 @@ impl RuleT for RedundantPrepositionalInference {
                 let wrong_form_err =
                     ConclusionOfWrongForm(Expr::or(Expr::var("_"), Expr::not(Expr::var("_"))));
                 let operands = match conclusion {
-                    Expr::Binary {
-                        op: BinOp::Or,
-                        exprs,
-                    } => exprs,
+                    Expr::Assoc { op: Op::Or, exprs } => exprs,
                     _ => return Err(wrong_form_err),
                 };
 
@@ -1683,12 +1680,12 @@ impl RuleT for RedundantPrepositionalInference {
                                 left: r_0,
                                 right: s_0,
                             },
-                            Expr::Binary {
-                                op: BinOp::Or,
+                            Expr::Assoc {
+                                op: Op::Or,
                                 exprs: p_r,
                             },
-                            Expr::Binary {
-                                op: BinOp::Or,
+                            Expr::Assoc {
+                                op: Op::Or,
                                 exprs: q_s,
                             },
                         ) = (dep_0, dep_1, dep_2, &conclusion)
@@ -1742,7 +1739,7 @@ impl RuleT for RedundantPrepositionalInference {
                     || {
                         OneOf(btreeset![
                             DepDoesNotExist(Expr::impl_place_holder(), true),
-                            DepDoesNotExist(Expr::assocplaceholder(BinOp::Or), true),
+                            DepDoesNotExist(Expr::assocplaceholder(Op::Or), true),
                         ])
                     },
                 )
@@ -1832,8 +1829,8 @@ impl RuleT for AutomationRelatedRules {
                     .into_iter()
                     .map(|dep| p.lookup_expr_or_die(&dep))
                     .collect::<Result<Vec<Expr>, _>>()?;
-                let premise = Expr::Binary {
-                    op: BinOp::And,
+                let premise = Expr::Assoc {
+                    op: Op::And,
                     exprs: premises,
                 };
 

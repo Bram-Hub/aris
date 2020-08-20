@@ -28,6 +28,7 @@ assert_eq!(&handle_user_input("bad(missing, paren"), "unsuccessful parse");
 
 use std::collections::BTreeSet;
 use std::collections::{HashMap, HashSet};
+use std::fmt;
 use std::mem;
 use std::ops::Not;
 
@@ -35,10 +36,10 @@ use itertools::Itertools;
 use serde::Deserialize;
 use serde::Serialize;
 
-/// Associative binary operators. All of these operations are associative.
+/// Associative operators. All of these operations are associative.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 #[repr(C)]
-pub enum BinOp {
+pub enum Op {
     /// Logical and `∧`
     And,
     /// Logical or `∨`
@@ -100,10 +101,10 @@ pub enum Expr {
         right: Box<Expr>,
     },
 
-    /// An associative binary operation `P <OP> Q <OP> R`
-    Binary {
+    /// An associative operation `P <OP> Q <OP> R`
+    Assoc {
         /// The operator `<OP>`
-        op: BinOp,
+        op: Op,
 
         /// The expressions `P, Q, R`
         exprs: Vec<Expr>,
@@ -163,21 +164,21 @@ pub enum NnfExpr {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct CnfExpr(Vec<Vec<(bool, String)>>);
 
-impl std::fmt::Display for BinOp {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl fmt::Display for Op {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            BinOp::And => write!(f, "∧"),
-            BinOp::Or => write!(f, "∨"),
-            BinOp::Bicon => write!(f, "↔"),
-            BinOp::Equiv => write!(f, "≡"),
-            BinOp::Add => write!(f, "+"),
-            BinOp::Mult => write!(f, "*"),
+            Op::And => write!(f, "∧"),
+            Op::Or => write!(f, "∨"),
+            Op::Bicon => write!(f, "↔"),
+            Op::Equiv => write!(f, "≡"),
+            Op::Add => write!(f, "+"),
+            Op::Mult => write!(f, "*"),
         }
     }
 }
 
-impl std::fmt::Display for QuantKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl fmt::Display for QuantKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             QuantKind::Forall => write!(f, "∀"),
             QuantKind::Exists => write!(f, "∃"),
@@ -185,53 +186,49 @@ impl std::fmt::Display for QuantKind {
     }
 }
 
-fn assoc_display_helper<S, E>(
-    f: &mut std::fmt::Formatter,
-    symbol: S,
-    exprs: &[E],
-) -> std::fmt::Result
+/// Format associative operator expression
+///
+/// ## Parameters
+///   * `op` - associative operator
+///   * `exprs` - operands to operator
+fn assoc_display_helper<O, E>(f: &mut fmt::Formatter, op: O, exprs: &[E]) -> fmt::Result
 where
-    S: std::fmt::Display,
-    E: std::fmt::Display,
+    O: fmt::Display,
+    E: fmt::Display,
 {
     let s = exprs
         .iter()
         .map(E::to_string)
-        .collect::<Vec<_>>()
-        .join(&format!(" {} ", symbol));
+        .collect::<Vec<String>>()
+        .join(&format!(" {} ", op));
     write!(f, "({})", s)
 }
 
-impl std::fmt::Display for Expr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl fmt::Display for Expr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Expr::Contra => write!(f, "⊥"),
             Expr::Taut => write!(f, "⊤"),
             Expr::Var { name } => write!(f, "{}", name),
-            Expr::Apply { func, args } => {
-                write!(f, "{}", func)?;
-                if !args.is_empty() {
-                    write!(
-                        f,
-                        "({})",
-                        args.iter()
-                            .map(|x| format!("{}", x))
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    )?
-                };
-                Ok(())
-            }
+            Expr::Apply { func, args } => write!(
+                f,
+                "{}({})",
+                func,
+                args.iter()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
             Expr::Not { operand } => write!(f, "¬{}", operand),
             Expr::Impl { left, right } => write!(f, "({} → {})", left, right),
-            Expr::Binary { op, exprs } => assoc_display_helper(f, op, exprs),
+            Expr::Assoc { op, exprs } => assoc_display_helper(f, op, exprs),
             Expr::Quant { kind, name, body } => write!(f, "({} {}, {})", kind, name, body),
         }
     }
 }
 
-impl std::fmt::Display for NnfExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl fmt::Display for NnfExpr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             NnfExpr::Lit { polarity, name } => {
                 let neg = if *polarity { "" } else { "¬" };
@@ -265,7 +262,7 @@ pub fn freevars(e: &Expr) -> HashSet<String> {
             r.extend(freevars(left));
             r.extend(freevars(right));
         }
-        Expr::Binary { exprs, .. } => {
+        Expr::Assoc { exprs, .. } => {
             for expr in exprs.iter() {
                 r.extend(freevars(expr));
             }
@@ -315,7 +312,7 @@ pub fn subst(e: &Expr, to_replace: &str, with: Expr) -> Expr {
             left: Box::new(subst(left, to_replace, with.clone())),
             right: Box::new(subst(right, to_replace, with)),
         },
-        Expr::Binary { op, exprs } => Expr::Binary {
+        Expr::Assoc { op, exprs } => Expr::Assoc {
             op: *op,
             exprs: exprs
                 .iter()
@@ -457,7 +454,7 @@ pub fn unify(mut c: HashSet<Equal>) -> Option<Substitution<String, Expr>> {
             }));
             unify(c)
         }
-        (Expr::Binary { op: so, exprs: se }, Expr::Binary { op: to, exprs: te })
+        (Expr::Assoc { op: so, exprs: se }, Expr::Assoc { op: to, exprs: te })
             if so == to && se.len() == te.len() =>
         {
             c.extend(se.iter().zip(te.iter()).map(|(x, y)| Equal {
@@ -580,16 +577,16 @@ impl Expr {
         }
     }
     pub fn or(l: Expr, r: Expr) -> Expr {
-        Expr::binary(BinOp::Or, &[l, r])
+        Expr::assoc(Op::Or, &[l, r])
     }
-    pub fn binary(op: BinOp, exprs: &[Expr]) -> Expr {
-        Expr::Binary {
+    pub fn assoc(op: Op, exprs: &[Expr]) -> Expr {
+        Expr::Assoc {
             op,
             exprs: exprs.to_vec(),
         }
     }
-    pub fn assocplaceholder(op: BinOp) -> Expr {
-        Expr::binary(op, &[Expr::var("_"), Expr::var("_"), Expr::var("...")])
+    pub fn assocplaceholder(op: Op) -> Expr {
+        Expr::assoc(op, &[Expr::var("_"), Expr::var("_"), Expr::var("...")])
     }
     pub fn quantifierplaceholder(kind: QuantKind) -> Expr {
         Expr::Quant {
@@ -635,7 +632,7 @@ impl Expr {
                 left.infer_arities(arities);
                 right.infer_arities(arities)
             }
-            Expr::Binary { op: _, exprs } => {
+            Expr::Assoc { op: _, exprs } => {
                 for e in exprs {
                     e.infer_arities(arities);
                 }
@@ -679,12 +676,12 @@ impl Expr {
                 let (x, y) = (left.eval(env), right.eval(env));
                 !x || y
             }
-            Expr::Binary { op, exprs } => {
+            Expr::Assoc { op, exprs } => {
                 let (mut ret, f): (bool, &dyn Fn(bool, bool) -> bool) = match op {
-                    BinOp::And => (true, &|x, y| x && y),
-                    BinOp::Or => (false, &|x, y| x || y),
-                    BinOp::Bicon => (true, &|x, y| x == y),
-                    BinOp::Equiv | BinOp::Add | BinOp::Mult => unimplemented!(),
+                    Op::And => (true, &|x, y| x && y),
+                    Op::Or => (false, &|x, y| x || y),
+                    Op::Bicon => (true, &|x, y| x == y),
+                    Op::Equiv | Op::Add | Op::Mult => unimplemented!(),
                 };
                 for b in exprs.iter().map(|e| e.eval(env)) {
                     ret = f(ret, b);
@@ -698,13 +695,13 @@ impl Expr {
     /// Eg (B & A) ==> (A & B)
     pub fn sort_commutative_ops(self) -> Expr {
         self.transform(&|e| match e {
-            Expr::Binary { op, mut exprs } => {
+            Expr::Assoc { op, mut exprs } => {
                 let is_sorted = exprs.windows(2).all(|xy| xy[0] <= xy[1]);
                 if !is_sorted {
                     exprs.sort();
-                    (Expr::Binary { op, exprs }, true)
+                    (Expr::Assoc { op, exprs }, true)
                 } else {
-                    (Expr::Binary { op, exprs }, false)
+                    (Expr::Assoc { op, exprs }, false)
                 }
             }
             _ => (e, false),
@@ -715,14 +712,14 @@ impl Expr {
     /// Eg (A & (B & C)) ==> (A & B & C)
     pub fn combine_associative_ops(self) -> Expr {
         self.transform(&|e| match e {
-            Expr::Binary {
+            Expr::Assoc {
                 op: op_1,
                 exprs: exprs_1,
             } => {
                 let mut result = vec![];
                 let mut combined = false;
                 for expr in exprs_1 {
-                    if let Expr::Binary {
+                    if let Expr::Assoc {
                         op: op_2,
                         exprs: exprs_2,
                     } = expr
@@ -731,7 +728,7 @@ impl Expr {
                             result.extend(exprs_2);
                             combined = true;
                         } else {
-                            result.push(Expr::Binary {
+                            result.push(Expr::Assoc {
                                 op: op_2,
                                 exprs: exprs_2,
                             });
@@ -741,7 +738,7 @@ impl Expr {
                     }
                 }
                 (
-                    Expr::Binary {
+                    Expr::Assoc {
                         op: op_1,
                         exprs: result,
                     },
@@ -793,13 +790,13 @@ impl Expr {
                 let success = ls || rs;
                 (Expr::Impl { left, right }, success)
             }
-            Expr::Binary { op, exprs } => {
+            Expr::Assoc { op, exprs } => {
                 let (exprs, stats): (Vec<_>, Vec<_>) = exprs
                     .into_iter()
                     .map(move |expr| Self::transform_expr_inner(expr, trans))
                     .unzip();
                 let success = stats.into_iter().any(|x| x);
-                (Expr::Binary { op, exprs }, success)
+                (Expr::Assoc { op, exprs }, success)
             }
             Expr::Quant { kind, name, body } => {
                 let (body, success) = Self::transform_expr_inner(*body, trans);
@@ -925,13 +922,13 @@ impl Expr {
 
                 // Add the Cartesian product of the transformation sets of the
                 // sub-nodes in `exprs`
-                Expr::Binary { op, exprs } => {
+                Expr::Assoc { op, exprs } => {
                     set.extend(
                         exprs
                             .into_iter()
                             .map(|expr| expr.transform_set_vec(trans_fn))
                             .multi_cartesian_product()
-                            .map(|exprs| Expr::Binary { op, exprs }),
+                            .map(|exprs| Expr::Assoc { op, exprs }),
                     );
                 }
 
@@ -958,7 +955,7 @@ impl Expr {
     /// With no ~(A ^ B) / ~(A v B) expressions
     pub fn normalize_demorgans(self) -> Expr {
         self.transform(&|expr| {
-            let demorgans = |op, exprs: Vec<Expr>| Expr::Binary {
+            let demorgans = |op, exprs: Vec<Expr>| Expr::Assoc {
                 op,
                 exprs: exprs
                     .into_iter()
@@ -970,14 +967,8 @@ impl Expr {
 
             match expr {
                 Expr::Not { operand } => match *operand {
-                    Expr::Binary {
-                        op: BinOp::And,
-                        exprs,
-                    } => (demorgans(BinOp::Or, exprs), true),
-                    Expr::Binary {
-                        op: BinOp::Or,
-                        exprs,
-                    } => (demorgans(BinOp::And, exprs), true),
+                    Expr::Assoc { op: Op::And, exprs } => (demorgans(Op::Or, exprs), true),
+                    Expr::Assoc { op: Op::Or, exprs } => (demorgans(Op::And, exprs), true),
                     _ => (Expr::not(*operand), false),
                 },
                 _ => (expr, false),
@@ -992,12 +983,12 @@ impl Expr {
     pub fn normalize_idempotence(self) -> Expr {
         self.transform(&|expr| {
             match expr {
-                Expr::Binary {
-                    op: op @ BinOp::And,
+                Expr::Assoc {
+                    op: op @ Op::And,
                     exprs,
                 }
-                | Expr::Binary {
-                    op: op @ BinOp::Or,
+                | Expr::Assoc {
+                    op: op @ Op::Or,
                     exprs,
                 } => {
                     let mut unifies = true;
@@ -1015,7 +1006,7 @@ impl Expr {
                         // Just use the first one
                         (exprs.into_iter().next().unwrap(), true)
                     } else {
-                        (Expr::Binary { op, exprs }, false)
+                        (Expr::Assoc { op, exprs }, false)
                     }
                 }
                 _ => (expr, false),
@@ -1026,10 +1017,7 @@ impl Expr {
     pub fn disjuncts(&self) -> Vec<Expr> {
         match self {
             Expr::Contra => vec![],
-            Expr::Binary {
-                op: BinOp::Or,
-                exprs,
-            } => exprs.clone(),
+            Expr::Assoc { op: Op::Or, exprs } => exprs.clone(),
             _ => vec![self.clone()],
         }
     }
@@ -1037,8 +1025,8 @@ impl Expr {
         match disjuncts.len() {
             0 => Expr::Contra,
             1 => disjuncts.pop().unwrap(),
-            _ => Expr::Binary {
-                op: BinOp::Or,
+            _ => Expr::Assoc {
+                op: Op::Or,
                 exprs: disjuncts,
             },
         }
@@ -1046,10 +1034,7 @@ impl Expr {
     pub fn conjuncts(&self) -> Vec<Expr> {
         match self {
             Expr::Taut => vec![],
-            Expr::Binary {
-                op: BinOp::And,
-                exprs,
-            } => exprs.clone(),
+            Expr::Assoc { op: Op::And, exprs } => exprs.clone(),
             _ => vec![self.clone()],
         }
     }
@@ -1057,8 +1042,8 @@ impl Expr {
         match conjuncts.len() {
             0 => Expr::Taut,
             1 => conjuncts.pop().unwrap(),
-            _ => Expr::Binary {
-                op: BinOp::And,
+            _ => Expr::Assoc {
+                op: Op::And,
                 exprs: conjuncts,
             },
         }
@@ -1147,9 +1132,9 @@ impl Expr {
                     let right = Box::new(aux(*right, gamma));
                     Expr::Impl { left, right }
                 }
-                Expr::Binary { op, exprs } => {
+                Expr::Assoc { op, exprs } => {
                     let exprs = exprs.into_iter().map(|e| aux(e, gamma.clone())).collect();
-                    Expr::Binary { op, exprs }
+                    Expr::Assoc { op, exprs }
                 }
             }
         }
@@ -1215,7 +1200,7 @@ impl Expr {
     /// 7d1. forall x, (psi → phi(x)) == psi → (forall x, phi(x))
     /// 7d2. exists x, (psi → phi(x)) == psi → (exists x, phi(x))
     pub fn normalize_prenex_laws(self) -> Expr {
-        let transform_7ab = |op: BinOp, exprs: Vec<Expr>| {
+        let transform_7ab = |op: Op, exprs: Vec<Expr>| {
             // hoist a forall out of an and/or when the binder won't capture any of the other arms
             // if the binder doesn't occur in `all_free` (the union of all the arms freevars), it won't induce capturing
             let mut all_free = HashSet::new();
@@ -1238,11 +1223,11 @@ impl Expr {
                 }
             }
             if let Some((kind, name)) = found {
-                let body = Box::new(Expr::Binary { op, exprs: others });
+                let body = Box::new(Expr::Assoc { op, exprs: others });
                 (Expr::Quant { kind, name, body }, true)
             } else {
                 // if none of the subexpressions were quantifiers whose binder was free, `others` should be in the same as `exprs`
-                (Expr::Binary { op, exprs: others }, false)
+                (Expr::Assoc { op, exprs: others }, false)
             }
         };
         let reconstruct_7cd = |kind: QuantKind, name: String, left, right| {
@@ -1251,10 +1236,10 @@ impl Expr {
         };
         self.transform(&|expr| {
             match expr {
-                Expr::Binary { op, exprs } => match op {
-                    BinOp::And => transform_7ab(BinOp::And, exprs),
-                    BinOp::Or => transform_7ab(BinOp::Or, exprs),
-                    _ => (Expr::Binary { op, exprs }, false),
+                Expr::Assoc { op, exprs } => match op {
+                    Op::And => transform_7ab(Op::And, exprs),
+                    Op::Or => transform_7ab(Op::Or, exprs),
+                    _ => (Expr::Assoc { op, exprs }, false),
                 },
                 Expr::Impl {
                     mut left,
@@ -1330,18 +1315,15 @@ impl Expr {
                                 Expr::Impl { left, right } => {
                                     let new_exprs = vec![*left, Expr::not(*right)];
 
-                                    let new_body = Expr::Binary {
-                                        op: BinOp::And,
+                                    let new_body = Expr::Assoc {
+                                        op: Op::And,
                                         exprs: new_exprs,
                                     };
                                     gen_opposite(kind, name, Box::new(new_body))
                                 }
 
                                 // find and with exactly 2 exprs
-                                Expr::Binary {
-                                    op: BinOp::And,
-                                    exprs,
-                                } => {
+                                Expr::Assoc { op: Op::And, exprs } => {
                                     if exprs.len() != 2 {
                                         (orig_expr, false)
                                     } else {
@@ -1389,16 +1371,16 @@ impl Expr {
             match expr {
                 Expr::Quant { kind, name, body } => {
                     match *body {
-                        Expr::Binary { op, mut exprs } => {
+                        Expr::Assoc { op, mut exprs } => {
                             // continue only if op is And or Or
                             match op {
-                                BinOp::And | BinOp::Or => {}
+                                Op::And | Op::Or => {}
                                 _ => return (orig_expr, false),
                             };
 
                             // inline push_quantifier_inside here
                             push_quantifier_inside(kind, name, &mut exprs);
-                            (Expr::binary(op, &exprs), true)
+                            (Expr::assoc(op, &exprs), true)
                         }
                         _ => (orig_expr, false),
                     }
@@ -1467,16 +1449,16 @@ impl Expr {
                 let right = right.into_nnf()?;
                 Some(left.implies(right))
             }
-            Expr::Binary { op, exprs } => match op {
-                BinOp::And => map_nnf(exprs).map(|exprs| NnfExpr::And { exprs }),
-                BinOp::Or => map_nnf(exprs).map(|exprs| NnfExpr::Or { exprs }),
-                BinOp::Bicon => exprs
+            Expr::Assoc { op, exprs } => match op {
+                Op::And => map_nnf(exprs).map(|exprs| NnfExpr::And { exprs }),
+                Op::Or => map_nnf(exprs).map(|exprs| NnfExpr::Or { exprs }),
+                Op::Bicon => exprs
                     .into_iter()
                     .map(Self::into_nnf)
                     .collect::<Option<Vec<NnfExpr>>>()?
                     .into_iter()
                     .fold1(NnfExpr::bicon),
-                BinOp::Equiv | BinOp::Add | BinOp::Mult => None,
+                Op::Equiv | Op::Add | Op::Mult => None,
             },
         }
     }
@@ -1819,16 +1801,9 @@ pub fn expressions_for_depth(
                 ret.insert(Expr::implies(lhs.clone(), rhs.clone()));
             }
         }
-        for op in &[
-            BinOp::And,
-            BinOp::Or,
-            BinOp::Bicon,
-            BinOp::Equiv,
-            BinOp::Add,
-            BinOp::Mult,
-        ] {
+        for op in &[Op::And, Op::Or, Op::Bicon, Op::Equiv, Op::Add, Op::Mult] {
             for arglist in products.iter() {
-                ret.insert(Expr::binary(*op, &arglist));
+                ret.insert(Expr::assoc(*op, &arglist));
             }
         }
         let x = format!("x{}", depth);
