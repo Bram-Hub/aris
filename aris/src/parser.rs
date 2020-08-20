@@ -99,16 +99,16 @@ named!(main<&str, Expr>, do_parse!(e: expr >> tag!("\n") >> (e)));
 
 #[test]
 fn test_parser() {
-    use crate::expr::freevars;
+    use crate::expr::free_vars;
     println!("{:?}", predicate("a(   b, c)"));
     println!("{:?}", predicate("s(s(s(s(s(z)))))"));
     println!("{:?}", expr("a & b & c(x,y)\n"));
     println!("{:?}", expr("forall a, (b & c)\n"));
     let e = expr("exists x, (Tet(x) & SameCol(x, b)) -> ~forall x, (Tet(x) -> LeftOf(x, b))\n");
-    let fv = e.clone().map(|x| freevars(&x.1));
+    let fv = e.clone().map(|x| free_vars(&x.1));
     println!("{:?} {:?}", e, fv);
     let e = expr("forall a, forall b, ((forall x, in(x,a) <-> in(x,b)) -> eq(a,b))\n");
-    let fv = e.clone().map(|x| freevars(&x.1));
+    let fv = e.clone().map(|x| free_vars(&x.1));
     assert_eq!(
         fv,
         Ok(["eq", "in"].iter().map(|x| String::from(*x)).collect())

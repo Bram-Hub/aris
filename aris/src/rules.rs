@@ -1079,7 +1079,7 @@ impl RuleT for PredicateInference {
             //println!("gvc outside {:?}", outside.clone().map(|x| sproof.lookup_expr(&x)).collect::<Vec<_>>());
             outside
                 .filter_map(|x| sproof.lookup_expr(&x))
-                .find(|e| crate::expr::freevars(e).contains(var))
+                .find(|e| crate::expr::free_vars(e).contains(var))
         }
         match self {
             ForallIntro => {
@@ -1229,7 +1229,7 @@ impl RuleT for PredicateInference {
                         {
                             return Err(Other(format!("The skolem constant {} occurs in dependency {} that's outside the subproof.", skolemname, dangling)));
                         }
-                        if crate::expr::freevars(&conclusion).contains(&skolemname) {
+                        if crate::expr::free_vars(&conclusion).contains(&skolemname) {
                             return Err(Other(format!(
                                 "The skolem constant {} escapes to the conclusion {}.",
                                 skolemname, conclusion

@@ -1,7 +1,7 @@
 //! Fixpoint engine for applying transformations to a formula in a loop until
 //! they stop applying
 
-use crate::expr::freevars;
+use crate::expr::free_vars;
 use crate::expr::gensym;
 use crate::expr::subst;
 use crate::expr::Equal;
@@ -225,7 +225,7 @@ fn reduce_transform_func(expr: Expr, patterns: &[(Expr, Expr, HashSet<String>)])
 ///   * `new_replace` is the old `replace` with the renames in `new_pattern`
 ///   * `pattern_vars` is the set of free variables in `new_pattern`
 fn freevarsify_pattern(e: &Expr, patterns: &[(Expr, Expr)]) -> Vec<(Expr, Expr, HashSet<String>)> {
-    let e_free = freevars(e);
+    let e_free = free_vars(e);
 
     // Find all free variables in the patterns and map them to generated names free for e
     patterns
@@ -233,10 +233,10 @@ fn freevarsify_pattern(e: &Expr, patterns: &[(Expr, Expr)]) -> Vec<(Expr, Expr, 
         .map(|(pattern, replace)| {
             let mut pattern = pattern.clone();
             let mut replace = replace.clone();
-            let free_pattern = freevars(&pattern);
+            let free_pattern = free_vars(&pattern);
 
             // Make sure our replacement doesn't have any new vars
-            let free_replace = freevars(&replace);
+            let free_replace = free_vars(&replace);
             assert!(free_replace.is_subset(&free_pattern));
 
             // Replace all the free vars in the pattern with a known fresh variable in e

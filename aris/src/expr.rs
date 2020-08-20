@@ -33,6 +33,7 @@ use std::mem;
 use std::ops::Not;
 
 use itertools::Itertools;
+use maplit::hashset;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -240,39 +241,29 @@ impl fmt::Display for NnfExpr {
     }
 }
 
-/// Calculates the set of variables that occur free in some logical expression
-pub fn freevars(e: &Expr) -> HashSet<String> {
-    let mut r = HashSet::new();
-    match e {
-        Expr::Contra => (),
-        Expr::Taut => (),
-        Expr::Var { name } => {
-            r.insert(name.clone());
-        }
+/// Calculates the set of [free variables][1] in an expression
+///
+/// 1: https://en.wikipedia.org/wiki/Free_variables_and_bound_variables
+pub fn free_vars(expr: &Expr) -> HashSet<String> {
+    match expr {
+        Expr::Contra => hashset![],
+        Expr::Taut => hashset![],
+        Expr::Var { name } => hashset![name.clone()],
         Expr::Apply { func, args } => {
-            r.extend(freevars(func));
-            for s in args.iter().map(|x| freevars(x)) {
-                r.extend(s);
-            }
+            // Iterator over free vars in arguments
+            let arg_free_vars = args.iter().flat_map(free_vars);
+
+            free_vars(func).into_iter().chain(arg_free_vars).collect()
         }
-        Expr::Not { operand } => {
-            r.extend(freevars(operand));
-        }
-        Expr::Impl { left, right, .. } => {
-            r.extend(freevars(left));
-            r.extend(freevars(right));
-        }
-        Expr::Assoc { exprs, .. } => {
-            for expr in exprs.iter() {
-                r.extend(freevars(expr));
-            }
-        }
+        Expr::Not { operand } => free_vars(operand),
+        Expr::Impl { left, right, .. } => &free_vars(left) | &free_vars(right),
+        Expr::Assoc { exprs, .. } => exprs.iter().flat_map(free_vars).collect(),
         Expr::Quant { name, body, .. } => {
-            r.extend(freevars(body));
-            r.remove(name);
+            let mut ret = free_vars(body);
+            ret.remove(name);
+            ret
         }
     }
-    r
 }
 
 /// Generate a fresh symbol/variable name, using "orig" as a prefix, and avoiding collisions with the specified set
@@ -320,7 +311,7 @@ pub fn subst(e: &Expr, to_replace: &str, with: Expr) -> Expr {
                 .collect(),
         },
         Expr::Quant { kind, name, body } => {
-            let fv_with = freevars(&with);
+            let fv_with = free_vars(&with);
             let (newname, newbody) = match (name == to_replace, fv_with.contains(name)) {
                 (true, _) => (name.clone(), *body.clone()),
                 (false, true) => {
@@ -399,7 +390,7 @@ pub fn unify(mut c: HashSet<Equal>) -> Option<Substitution<String, Expr>> {
             )
             .collect::<_>()
     };
-    let (fvs, fvt) = (freevars(&left), freevars(&right));
+    let (fvs, fvt) = (free_vars(&left), free_vars(&right));
     match (&left, &right) {
         (_, _) if left == right => unify(c),
         (Expr::Var { name: ref sname }, _) if !fvt.contains(sname) => {
@@ -486,7 +477,7 @@ pub fn unify(mut c: HashSet<Equal>) -> Option<Substitution<String, Expr>> {
                 if sub
                     .0
                     .iter()
-                    .any(|(x, y)| x == &uv || freevars(y).contains(&uv))
+                    .any(|(x, y)| x == &uv || free_vars(y).contains(&uv))
                 {
                     None
                 } else {
@@ -1072,7 +1063,7 @@ impl Expr {
         self.transform(&|expr| {
             match expr {
                 Expr::Quant { kind, name, body } => {
-                    if freevars(&body).contains(&name) {
+                    if free_vars(&body).contains(&name) {
                         (Expr::Quant { kind, name, body }, false)
                     } else {
                         // if name is not free in body, then the quantifier isn't binding anything and can be removed
@@ -1140,7 +1131,7 @@ impl Expr {
         }
 
         let mut gamma = vec![];
-        gamma.extend(freevars(&self));
+        gamma.extend(free_vars(&self));
 
         let mut ret = aux(self, gamma.clone());
         // at this point, we've numbered all the vars, including the free ones
@@ -1205,7 +1196,7 @@ impl Expr {
             // if the binder doesn't occur in `all_free` (the union of all the arms freevars), it won't induce capturing
             let mut all_free = HashSet::new();
             for expr in &exprs {
-                all_free.extend(freevars(&expr));
+                all_free.extend(free_vars(&expr));
             }
             let mut found = None;
             let mut others = vec![];
@@ -1245,8 +1236,8 @@ impl Expr {
                     mut left,
                     mut right,
                 } => {
-                    let left_free = freevars(&left);
-                    let right_free = freevars(&right);
+                    let left_free = free_vars(&left);
+                    let right_free = free_vars(&right);
                     left = match *left {
                         Expr::Quant { kind, name, body } if !right_free.contains(&name) => {
                             // 7c case, quantifier is flipped

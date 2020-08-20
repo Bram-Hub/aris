@@ -202,7 +202,7 @@ define_rewrite_rule! {
 mod tests {
     use super::*;
 
-    use crate::expr::freevars;
+    use crate::expr::free_vars;
 
     fn for_each_truthtable<F>(n: usize, mut f: F)
     where
@@ -249,7 +249,7 @@ mod tests {
         for rule in rules {
             for (lhs, rhs) in rule.reductions.iter() {
                 println!("Testing {} -> {}", lhs, rhs);
-                let mut fvs: Vec<String> = freevars(&lhs).union(&freevars(&rhs)).cloned().collect();
+                let mut fvs: Vec<String> = free_vars(&lhs).union(&free_vars(&rhs)).cloned().collect();
                 fvs.sort();
                 let mut arities = HashMap::new();
                 lhs.infer_arities(&mut arities);
