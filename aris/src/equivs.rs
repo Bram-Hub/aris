@@ -249,7 +249,8 @@ mod tests {
         for rule in rules {
             for (lhs, rhs) in rule.reductions.iter() {
                 println!("Testing {} -> {}", lhs, rhs);
-                let mut fvs: Vec<String> = free_vars(&lhs).union(&free_vars(&rhs)).cloned().collect();
+                let mut fvs: Vec<String> =
+                    free_vars(&lhs).union(&free_vars(&rhs)).cloned().collect();
                 fvs.sort();
                 let mut arities = HashMap::new();
                 lhs.infer_arities(&mut arities);

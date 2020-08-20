@@ -2,7 +2,7 @@
 //! they stop applying
 
 use crate::expr::free_vars;
-use crate::expr::gensym;
+use crate::expr::gen_var;
 use crate::expr::subst;
 use crate::expr::Equal;
 use crate::expr::Expr;
@@ -242,7 +242,7 @@ fn freevarsify_pattern(e: &Expr, patterns: &[(Expr, Expr)]) -> Vec<(Expr, Expr, 
             // Replace all the free vars in the pattern with a known fresh variable in e
             let mut pattern_vars = HashSet::new();
             for free_var in free_pattern {
-                let new_sym = gensym(&*free_var, &e_free);
+                let new_sym = gen_var(&*free_var, &e_free);
                 pattern = subst(&pattern, &*free_var, Expr::var(&*new_sym));
                 replace = subst(&replace, &*free_var, Expr::var(&*new_sym));
                 pattern_vars.insert(new_sym);

@@ -266,11 +266,15 @@ pub fn free_vars(expr: &Expr) -> HashSet<String> {
     }
 }
 
-/// Generate a fresh symbol/variable name, using "orig" as a prefix, and avoiding collisions with the specified set
-pub fn gensym(orig: &str, avoid: &HashSet<String>) -> String {
+/// Generate a variable name that doesn't exist in a set
+///
+/// ## Parameters
+///   * `prefix` - prefix of variable name to generate
+///   * `avoid` - set of names to avoid returning
+pub fn gen_var(prefix: &str, avoid: &HashSet<String>) -> String {
     for i in 0u64.. {
-        let ret = format!("{}{}", orig, i);
-        if !avoid.contains(&ret[..]) {
+        let ret = format!("{}{}", prefix, i);
+        if !avoid.contains(&ret) {
             return ret;
         }
     }
@@ -315,7 +319,7 @@ pub fn subst(e: &Expr, to_replace: &str, with: Expr) -> Expr {
             let (newname, newbody) = match (name == to_replace, fv_with.contains(name)) {
                 (true, _) => (name.clone(), *body.clone()),
                 (false, true) => {
-                    let newname = gensym(name, &fv_with);
+                    let newname = gen_var(name, &fv_with);
                     let body0 = subst(body, name, Expr::var(&newname[..]));
                     let body1 = subst(&body0, to_replace, with);
                     //println!("{:?}\n{:?}\n{:?}", body, body0, body1);
@@ -466,7 +470,7 @@ pub fn unify(mut c: HashSet<Equal>) -> Option<Substitution<String, Expr>> {
                 body: tb,
             },
         ) if sk == tk => {
-            let uv = gensym("__unification_var", &fvs.union(&fvt).cloned().collect());
+            let uv = gen_var("__unification_var", &fvs.union(&fvt).cloned().collect());
             // require that the bodies of the quantifiers are alpha-equal by substituting a fresh constant
             c.insert(Equal {
                 left: subst(sb, sn, Expr::var(&uv)),
