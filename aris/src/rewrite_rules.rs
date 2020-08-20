@@ -6,7 +6,6 @@ use crate::expr::gensym;
 use crate::expr::subst;
 use crate::expr::Equal;
 use crate::expr::Expr;
-use crate::expr::PossiblyCommutative;
 
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -53,8 +52,8 @@ impl RewriteRule {
 fn permute_ops(e: Expr) -> Vec<Expr> {
     match e {
         // Trivial cases
-        e @ Expr::Contradiction => vec![e],
-        e @ Expr::Tautology => vec![e],
+        e @ Expr::Contra => vec![e],
+        e @ Expr::Taut => vec![e],
         e @ Expr::Var { .. } => vec![e],
         Expr::Apply { func, args } => std::iter::once(permute_ops(*func))
             .chain(args.into_iter().map(permute_ops))
@@ -64,47 +63,37 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
                 Expr::Apply { func, args }
             })
             .collect(),
-        Expr::Unop { symbol, operand } => {
+        Expr::Not { operand } => {
             // Just permute the operands and return them
             let results = permute_ops(*operand);
             results
                 .into_iter()
-                .map(|e| Expr::Unop {
-                    symbol,
+                .map(|e| Expr::Not {
                     operand: Box::new(e),
                 })
                 .collect::<Vec<_>>()
         }
-        Expr::Binop {
-            symbol,
-            left,
-            right,
-        } => {
+        Expr::Impl { left, right } => {
             let permute_left = permute_ops(*left);
             let permute_right = permute_ops(*right);
 
             let mut results = vec![];
             for left in &permute_left {
                 for right in &permute_right {
-                    results.push(Expr::binop(symbol, left.clone(), right.clone()));
-                    if symbol.is_commutative() {
-                        results.push(Expr::binop(symbol, right.clone(), left.clone()));
-                    }
+                    results.push(Expr::implies(left.clone(), right.clone()));
                 }
             }
             results
         }
-        Expr::AssocBinop { symbol, exprs } => {
+        Expr::Binary { op, exprs } => {
             // For every combination of the args, add the cartesian product of the permutations of their parameters
 
+            let len = exprs.len();
+
             // All orderings of arguments
-            let arg_combinations = if symbol.is_commutative() {
-                exprs.iter().permutations(exprs.len()).collect()
-            } else {
-                vec![exprs.iter().collect::<Vec<_>>()]
-            };
-            arg_combinations
+            exprs
                 .into_iter()
+                .permutations(len)
                 .flat_map(|args| {
                     // Permuting every expression in the current list of args
                     let permutations = args
@@ -123,20 +112,20 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
                     // The `collect()` is necessary to maintain the borrows from permutations
                     product
                         .into_iter()
-                        .map(|args| Expr::AssocBinop {
-                            symbol,
+                        .map(|args| Expr::Binary {
+                            op,
                             exprs: args.into_iter().cloned().collect::<Vec<_>>(),
                         })
                         .collect::<Vec<_>>()
                 })
                 .collect::<Vec<_>>()
         }
-        Expr::Quantifier { symbol, name, body } => {
+        Expr::Quant { kind, name, body } => {
             let results = permute_ops(*body);
             results
                 .into_iter()
-                .map(|e| Expr::Quantifier {
-                    symbol,
+                .map(|e| Expr::Quant {
+                    kind,
                     name: name.clone(),
                     body: Box::new(e),
                 })
@@ -268,7 +257,7 @@ fn freevarsify_pattern(e: &Expr, patterns: &[(Expr, Expr)]) -> Vec<(Expr, Expr, 
 mod tests {
     use super::*;
 
-    use crate::expr::ASymbol;
+    use crate::expr::BinOp;
 
     #[test]
     fn test_permute_ops() {
@@ -300,22 +289,22 @@ mod tests {
         // DeMorgan's for and/or that have only two parameters
 
         // ~(phi & psi) ==> ~phi | ~psi
-        let pattern1 = Expr::not(Expr::assocbinop(
-            ASymbol::And,
+        let pattern1 = Expr::not(Expr::binary(
+            BinOp::And,
             &[Expr::var("phi"), Expr::var("psi")],
         ));
-        let replace1 = Expr::assocbinop(
-            ASymbol::Or,
+        let replace1 = Expr::binary(
+            BinOp::Or,
             &[Expr::not(Expr::var("phi")), Expr::not(Expr::var("psi"))],
         );
 
         // ~(phi | psi) ==> ~phi & ~psi
-        let pattern2 = Expr::not(Expr::assocbinop(
-            ASymbol::Or,
+        let pattern2 = Expr::not(Expr::binary(
+            BinOp::Or,
             &[Expr::var("phi"), Expr::var("psi")],
         ));
-        let replace2 = Expr::assocbinop(
-            ASymbol::And,
+        let replace2 = Expr::binary(
+            BinOp::And,
             &[Expr::not(Expr::var("phi")), Expr::not(Expr::var("psi"))],
         );
 

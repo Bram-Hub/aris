@@ -1,10 +1,8 @@
 //! Parse infix logical expressions into an AST
 
-use crate::expr::ASymbol;
-use crate::expr::BSymbol;
+use crate::expr::BinOp;
 use crate::expr::Expr;
-use crate::expr::QSymbol;
-use crate::expr::USymbol;
+use crate::expr::QuantKind;
 
 use nom::*;
 
@@ -48,54 +46,55 @@ named!(space<&str, ()>, do_parse!(many0!(one_of!(" \t")) >> (())));
 named!(variable_<&str, String>, do_parse!(x: many1!(one_of!("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")) >> ({let mut y = String::new(); for c in x { y.push(c); }; y})));
 named!(keyword<&str, &str>, alt!(tag!("forall") | tag!("exists")));
 
-named!(contradiction<&str, Expr>, do_parse!(alt!(tag!("_|_") | tag!("⊥")) >> (Expr::Contradiction)));
-named!(tautology<&str, Expr>, do_parse!(alt!(tag!("^|^") | tag!("⊤")) >> (Expr::Tautology)));
+named!(contradiction<&str, Expr>, do_parse!(alt!(tag!("_|_") | tag!("⊥")) >> (Expr::Contra)));
+named!(tautology<&str, Expr>, do_parse!(alt!(tag!("^|^") | tag!("⊤")) >> (Expr::Taut)));
 
-named!(notterm<&str, Expr>, do_parse!(alt!(tag!("~") | tag!("¬")) >> e: paren_expr >> (Expr::Unop { symbol: USymbol::Not, operand: Box::new(e) })));
+named!(notterm<&str, Expr>, do_parse!(alt!(tag!("~") | tag!("¬")) >> e: paren_expr >> (Expr::Not { operand: Box::new(e) })));
 
 named!(predicate<&str, Expr>, alt!(
 do_parse!(space >> name: variable >> space >> tag!("(") >> space >> args: separated_list!(do_parse!(space >> tag!(",") >> space >> (())), expr) >> tag!(")") >> (Expr::Apply { func: Box::new(Expr::Var { name }), args })) |
 do_parse!(space >> name: variable >> space >> (Expr::Var { name }))
 ));
 
-named!(forall_quantifier<&str, QSymbol>, do_parse!(alt!(tag!("forall ") | tag!("∀")) >> (QSymbol::Forall)));
-named!(exists_quantifier<&str, QSymbol>, do_parse!(alt!(tag!("exists ") | tag!("∃")) >> (QSymbol::Exists)));
-named!(quantifier<&str, QSymbol>, alt!(forall_quantifier | exists_quantifier));
-named!(binder<&str, Expr>, do_parse!(space >> symbol: quantifier >> space >> name: variable >> space >> tag!(",") >> space >> body: expr >> (Expr::Quantifier { symbol, name, body: Box::new(body) })));
+named!(forall_quantifier<&str, QuantKind>, do_parse!(alt!(tag!("forall ") | tag!("∀")) >> (QuantKind::Forall)));
+named!(exists_quantifier<&str, QuantKind>, do_parse!(alt!(tag!("exists ") | tag!("∃")) >> (QuantKind::Exists)));
+named!(quantifier<&str, QuantKind>, alt!(forall_quantifier | exists_quantifier));
+named!(binder<&str, Expr>, do_parse!(space >> kind: quantifier >> space >> name: variable >> space >> tag!(",") >> space >> body: expr >> (Expr::Quant { kind, name, body: Box::new(body) })));
 
-named!(binop<&str, BSymbol>, alt!(do_parse!(alt!(tag!("->") | tag!("→")) >> (BSymbol::Implies)) | do_parse!(tag!("+") >> (BSymbol::Plus)) | do_parse!(tag!("*") >> (BSymbol::Mult))));
-named!(binopterm<&str, Expr>, do_parse!(left: paren_expr >> space >> symbol: binop >> space >> right: paren_expr >> (Expr::Binop { symbol, left: Box::new(left), right: Box::new(right) })));
+named!(impl_term<&str, Expr>, do_parse!(left: paren_expr >> space >> alt!(tag!("->") | tag!("→")) >> space >> right: paren_expr >> (Expr::Impl { left: Box::new(left), right: Box::new(right) })));
 
-named!(andrepr<&str, ASymbol>, do_parse!(alt!(tag!("&") | tag!("∧") | tag!("/\\")) >> (ASymbol::And)));
-named!(orrepr<&str, ASymbol>, do_parse!(alt!(tag!("|") | tag!("∨") | tag!("\\/")) >> (ASymbol::Or)));
-named!(biconrepr<&str, ASymbol>, do_parse!(alt!(tag!("<->") | tag!("↔")) >> (ASymbol::Bicon)));
-named!(equivrepr<&str, ASymbol>, do_parse!(alt!(tag!("===") | tag!("≡")) >> (ASymbol::Equiv)));
+named!(andrepr<&str, BinOp>, do_parse!(alt!(tag!("&") | tag!("∧") | tag!("/\\")) >> (BinOp::And)));
+named!(orrepr<&str, BinOp>, do_parse!(alt!(tag!("|") | tag!("∨") | tag!("\\/")) >> (BinOp::Or)));
+named!(biconrepr<&str, BinOp>, do_parse!(alt!(tag!("<->") | tag!("↔")) >> (BinOp::Bicon)));
+named!(equivrepr<&str, BinOp>, do_parse!(alt!(tag!("===") | tag!("≡")) >> (BinOp::Equiv)));
+named!(plusrepr<&str, BinOp>, do_parse!(tag!("+") >> (BinOp::Add)));
+named!(multrepr<&str, BinOp>, do_parse!(tag!("*") >> (BinOp::Mult)));
 
-named!(assoctermaux<&str, (Vec<Expr>, Vec<ASymbol>)>, alt!(
-do_parse!(space >> e: paren_expr >> space >> sym: alt!(andrepr | orrepr | biconrepr | equivrepr) >> space >> rec: assoctermaux >> ({ let (mut es, mut syms) = rec; es.push(e); syms.push(sym); (es, syms) })) |
+named!(binary_term_aux<&str, (Vec<Expr>, Vec<BinOp>)>, alt!(
+do_parse!(space >> e: paren_expr >> space >> sym: alt!(andrepr | orrepr | biconrepr | equivrepr | plusrepr | multrepr) >> space >> rec: binary_term_aux >> ({ let (mut es, mut syms) = rec; es.push(e); syms.push(sym); (es, syms) })) |
 do_parse!(e: paren_expr >> (vec![e], vec![]))
 ));
 
 /// assocterm is implemented as a function instead of using nom's macros because
 /// enforcing that all the symbols are the same is more easily done with iterators.
 /// This check is what rules out `(a /\ b \/ c)` without further parenthesization.
-fn assocterm(s: &str) -> nom::IResult<&str, Expr> {
-    let (rest, (mut exprs, syms)) = assoctermaux(s)?;
+fn binary_term(s: &str) -> nom::IResult<&str, Expr> {
+    let (rest, (mut exprs, syms)) = binary_term_aux(s)?;
     assert_eq!(exprs.len(), syms.len() + 1);
     if exprs.len() == 1 {
         return custom_error(rest, 0);
     }
-    let symbol = syms[0];
-    if !syms.iter().all(|x| x == &symbol) {
+    let op = syms[0];
+    if !syms.iter().all(|x| x == &op) {
         return custom_error(rest, 0);
     }
     exprs.reverse();
-    Ok((rest, Expr::AssocBinop { symbol, exprs }))
+    Ok((rest, Expr::Binary { op, exprs }))
 }
 
 // paren_expr is a factoring of expr that eliminates left-recursion, which parser combinators have trouble with
 named!(paren_expr<&str, Expr>, alt!(contradiction | tautology | predicate | notterm | binder | do_parse!(space >> tag!("(") >> space >> e: expr >> space >> tag!(")") >> space >> (e))));
-named!(expr<&str, Expr>, alt!(assocterm | binopterm | paren_expr));
+named!(expr<&str, Expr>, alt!(binary_term | impl_term | paren_expr));
 named!(main<&str, Expr>, do_parse!(e: expr >> tag!("\n") >> (e)));
 
 #[test]

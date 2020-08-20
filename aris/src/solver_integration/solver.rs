@@ -1,4 +1,4 @@
-use crate::expr::{ASymbol, Expr, USymbol};
+use crate::expr::{BinOp, Expr};
 use crate::proofs::{Justification, PJRef, Proof};
 use crate::rules::{Rule, RuleM};
 
@@ -45,8 +45,8 @@ impl<P: Proof> SatProofBuilder<P> {
     #[cfg(test)]
     fn new() -> SatProofBuilder<P> {
         let mut proof = P::new();
-        let empty_and = Expr::AssocBinop {
-            symbol: ASymbol::And,
+        let empty_and = Expr::Binary {
+            op: BinOp::And,
             exprs: vec![],
         };
         let main_subproof = proof.add_subproof();
@@ -54,8 +54,7 @@ impl<P: Proof> SatProofBuilder<P> {
             .with_mut_subproof(&main_subproof, |sub| sub.add_premise(empty_and.clone()))
             .unwrap();
         let cnf_conclusion = proof.add_step(Justification(
-            Expr::Unop {
-                symbol: USymbol::Not,
+            Expr::Not {
                 operand: Box::new(empty_and),
             },
             RuleM::NotIntro,
@@ -80,8 +79,7 @@ impl<P: Proof> SatProofBuilder<P> {
         if lit.is_positive() {
             pos
         } else {
-            Expr::Unop {
-                symbol: USymbol::Not,
+            Expr::Not {
                 operand: Box::new(pos),
             }
         }
@@ -94,12 +92,12 @@ impl<P: Proof> SatProofBuilder<P> {
         }
         // TODO: Expr::from_disjuncts is semantically the right thing, but the current code may handle the len=1 case differently
         if !exprs.is_empty() {
-            Expr::AssocBinop {
-                symbol: ASymbol::Or,
+            Expr::Binary {
+                op: BinOp::Or,
                 exprs,
             }
         } else {
-            Expr::Contradiction
+            Expr::Contra
         }
     }
 

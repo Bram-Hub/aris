@@ -55,12 +55,10 @@ Adding the tests and implementing the rule can be interleaved; it's convenient t
 */
 
 use crate::equivs;
-use crate::expr::ASymbol;
-use crate::expr::BSymbol;
+use crate::expr::BinOp;
 use crate::expr::Equal;
 use crate::expr::Expr;
-use crate::expr::QSymbol;
-use crate::expr::USymbol;
+use crate::expr::QuantKind;
 use crate::proofs::PJRef;
 use crate::proofs::Proof;
 use crate::rewrite_rules::RewriteRule;
@@ -460,11 +458,7 @@ pub fn do_expressions_contradict<P: Proof>(
         prem1,
         prem2,
         |i, j| {
-            if let Expr::Unop {
-                symbol: USymbol::Not,
-                ref operand,
-            } = i
-            {
+            if let Expr::Not { ref operand } = i {
                 if **operand == *j {
                     return AnyOrderResult::Ok;
                 }
@@ -559,8 +553,8 @@ impl RuleT for PrepositionalInference {
                 }
             }
             AndIntro => {
-                if let Expr::AssocBinop {
-                    symbol: ASymbol::And,
+                if let Expr::Binary {
+                    op: BinOp::And,
                     ref exprs,
                 } = conclusion
                 {
@@ -583,13 +577,13 @@ impl RuleT for PrepositionalInference {
                     }
                     Ok(())
                 } else {
-                    Err(ConclusionOfWrongForm(Expr::assocplaceholder(ASymbol::And)))
+                    Err(ConclusionOfWrongForm(Expr::assocplaceholder(BinOp::And)))
                 }
             }
             AndElim => {
                 let prem = p.lookup_expr_or_die(&deps[0])?;
-                if let Expr::AssocBinop {
-                    symbol: ASymbol::And,
+                if let Expr::Binary {
+                    op: BinOp::And,
                     ref exprs,
                 } = prem
                 {
@@ -601,13 +595,13 @@ impl RuleT for PrepositionalInference {
                     // TODO: allow `A /\ B /\ C |- C /\ A /\ C`, etc
                     Err(DoesNotOccur(conclusion, prem.clone()))
                 } else {
-                    Err(DepDoesNotExist(Expr::assocplaceholder(ASymbol::And), true))
+                    Err(DepDoesNotExist(Expr::assocplaceholder(BinOp::And), true))
                 }
             }
             OrIntro => {
                 let prem = p.lookup_expr_or_die(&deps[0])?;
-                if let Expr::AssocBinop {
-                    symbol: ASymbol::Or,
+                if let Expr::Binary {
+                    op: BinOp::Or,
                     ref exprs,
                 } = conclusion
                 {
@@ -616,13 +610,13 @@ impl RuleT for PrepositionalInference {
                     }
                     Ok(())
                 } else {
-                    Err(ConclusionOfWrongForm(Expr::assocplaceholder(ASymbol::Or)))
+                    Err(ConclusionOfWrongForm(Expr::assocplaceholder(BinOp::Or)))
                 }
             }
             OrElim => {
                 let prem = p.lookup_expr_or_die(&deps[0])?;
-                if let Expr::AssocBinop {
-                    symbol: ASymbol::Or,
+                if let Expr::Binary {
+                    op: BinOp::Or,
                     ref exprs,
                 } = prem
                 {
@@ -660,15 +654,14 @@ impl RuleT for PrepositionalInference {
                     }
                     Ok(())
                 } else {
-                    Err(DepDoesNotExist(Expr::assocplaceholder(ASymbol::Or), true))
+                    Err(DepDoesNotExist(Expr::assocplaceholder(BinOp::Or), true))
                 }
             }
             ImpIntro => {
                 let sproof = p.lookup_subproof_or_die(&sdeps[0])?;
                 // TODO: allow generalized premises
                 assert_eq!(sproof.premises().len(), 1);
-                if let Expr::Binop {
-                    symbol: BSymbol::Implies,
+                if let Expr::Impl {
                     ref left,
                     ref right,
                 } = conclusion
@@ -692,9 +685,7 @@ impl RuleT for PrepositionalInference {
                     }
                     Ok(())
                 } else {
-                    Err(ConclusionOfWrongForm(Expr::binopplaceholder(
-                        BSymbol::Implies,
-                    )))
+                    Err(ConclusionOfWrongForm(Expr::impl_place_holder()))
                 }
             }
             ImpElim => {
@@ -704,8 +695,7 @@ impl RuleT for PrepositionalInference {
                     &prem1,
                     &prem2,
                     |i, j| {
-                        if let Expr::Binop {
-                            symbol: BSymbol::Implies,
+                        if let Expr::Impl {
                             ref left,
                             ref right,
                         } = i
@@ -731,18 +721,14 @@ impl RuleT for PrepositionalInference {
                         }
                         AnyOrderResult::WrongOrder
                     },
-                    || DepDoesNotExist(Expr::binopplaceholder(BSymbol::Implies), true),
+                    || DepDoesNotExist(Expr::impl_place_holder(), true),
                 )
             }
             NotIntro => {
                 let sproof = p.lookup_subproof_or_die(&sdeps[0])?;
                 // TODO: allow generalized premises
                 assert_eq!(sproof.premises().len(), 1);
-                if let Expr::Unop {
-                    symbol: USymbol::Not,
-                    ref operand,
-                } = conclusion
-                {
+                if let Expr::Not { ref operand } = conclusion {
                     let prem = sproof
                         .premises()
                         .into_iter()
@@ -757,8 +743,8 @@ impl RuleT for PrepositionalInference {
                         .filter_map(|x| x.get::<P::JustificationReference, _>().cloned())
                         .map(|r| p.lookup_expr_or_die(&Coproduct::inject(r)))
                         .collect::<Result<Vec<Expr>, _>>()?;
-                    if conc.iter().find(|x| **x == Expr::Contradiction).is_none() {
-                        return Err(DepDoesNotExist(Expr::Contradiction, false));
+                    if conc.iter().find(|x| **x == Expr::Contra).is_none() {
+                        return Err(DepDoesNotExist(Expr::Contra, false));
                     }
                     Ok(())
                 } else {
@@ -767,16 +753,8 @@ impl RuleT for PrepositionalInference {
             }
             NotElim => {
                 let prem = p.lookup_expr_or_die(&deps[0])?;
-                if let Expr::Unop {
-                    symbol: USymbol::Not,
-                    ref operand,
-                } = prem
-                {
-                    if let Expr::Unop {
-                        symbol: USymbol::Not,
-                        ref operand,
-                    } = **operand
-                    {
+                if let Expr::Not { ref operand } = prem {
+                    if let Expr::Not { ref operand } = **operand {
                         if **operand == conclusion {
                             return Ok(());
                         }
@@ -791,20 +769,20 @@ impl RuleT for PrepositionalInference {
                 }
             }
             ContradictionIntro => {
-                if let Expr::Contradiction = conclusion {
+                if let Expr::Contra = conclusion {
                     let prem1 = p.lookup_expr_or_die(&deps[0])?;
                     let prem2 = p.lookup_expr_or_die(&deps[1])?;
                     do_expressions_contradict::<P>(&prem1, &prem2)
                 } else {
-                    Err(ConclusionOfWrongForm(Expr::Contradiction))
+                    Err(ConclusionOfWrongForm(Expr::Contra))
                 }
             }
             ContradictionElim => {
                 let prem = p.lookup_expr_or_die(&deps[0])?;
-                if let Expr::Contradiction = prem {
+                if let Expr::Contra = prem {
                     Ok(())
                 } else {
-                    Err(DepOfWrongForm(prem, Expr::Contradiction))
+                    Err(DepOfWrongForm(prem, Expr::Contra))
                 }
             }
             BiconditionalElim => {
@@ -814,14 +792,14 @@ impl RuleT for PrepositionalInference {
                     &prem1,
                     &prem2,
                     |i, j| {
-                        if let Expr::AssocBinop {
-                            symbol: ASymbol::Bicon,
+                        if let Expr::Binary {
+                            op: BinOp::Bicon,
                             ref exprs,
                         } = i
                         {
                             let mut s = HashSet::new();
-                            if let Expr::AssocBinop {
-                                symbol: ASymbol::Bicon,
+                            if let Expr::Binary {
+                                op: BinOp::Bicon,
                                 ref exprs,
                             } = j
                             {
@@ -845,7 +823,7 @@ impl RuleT for PrepositionalInference {
                             let expected = if terms.len() == 1 {
                                 terms[0].clone()
                             } else {
-                                Expr::assocbinop(ASymbol::Bicon, &terms[..])
+                                Expr::binary(BinOp::Bicon, &terms[..])
                             };
                             // TODO: maybe commutativity
                             if conclusion != expected {
@@ -859,21 +837,21 @@ impl RuleT for PrepositionalInference {
                             AnyOrderResult::WrongOrder
                         }
                     },
-                    || DepDoesNotExist(Expr::assocplaceholder(ASymbol::Bicon), true),
+                    || DepDoesNotExist(Expr::assocplaceholder(BinOp::Bicon), true),
                 )
             }
             EquivalenceIntro | BiconditionalIntro => {
-                let sym = if let EquivalenceIntro = self {
-                    ASymbol::Equiv
+                let oper = if let EquivalenceIntro = self {
+                    BinOp::Equiv
                 } else {
-                    ASymbol::Bicon
+                    BinOp::Bicon
                 };
-                if let Expr::AssocBinop { symbol, ref exprs } = conclusion {
-                    if sym == symbol {
+                if let Expr::Binary { op, ref exprs } = conclusion {
+                    if oper == op {
                         if let BiconditionalIntro = self {
                             if exprs.len() != 2 {
-                                return Err(ConclusionOfWrongForm(Expr::AssocBinop {
-                                    symbol: ASymbol::Bicon,
+                                return Err(ConclusionOfWrongForm(Expr::Binary {
+                                    op: BinOp::Bicon,
                                     exprs: vec![Expr::var("_"), Expr::var("_")],
                                 }));
                             }
@@ -895,7 +873,7 @@ impl RuleT for PrepositionalInference {
                         let mut g = DiGraphMap::new();
                         for prem in prems.iter() {
                             match prem {
-                                Expr::AssocBinop { symbol, ref exprs } if &sym == symbol => {
+                                Expr::Binary { op, ref exprs } if &oper == op => {
                                     for e1 in exprs.iter() {
                                         for e2 in exprs.iter() {
                                             slab.entry(e1.clone()).or_insert_with(|| next());
@@ -904,8 +882,7 @@ impl RuleT for PrepositionalInference {
                                         }
                                     }
                                 }
-                                Expr::Binop {
-                                    symbol: BSymbol::Implies,
+                                Expr::Impl {
                                     ref left,
                                     ref right,
                                 } => {
@@ -915,11 +892,8 @@ impl RuleT for PrepositionalInference {
                                 }
                                 _ => {
                                     return Err(OneOf(btreeset![
-                                        DepOfWrongForm(prem.clone(), Expr::assocplaceholder(sym)),
-                                        DepOfWrongForm(
-                                            prem.clone(),
-                                            Expr::binopplaceholder(BSymbol::Implies)
-                                        ),
+                                        DepOfWrongForm(prem.clone(), Expr::assocplaceholder(oper)),
+                                        DepOfWrongForm(prem.clone(), Expr::impl_place_holder()),
                                     ]))
                                 }
                             }
@@ -966,7 +940,7 @@ impl RuleT for PrepositionalInference {
                         }
                     }
                 }
-                Err(ConclusionOfWrongForm(Expr::assocplaceholder(sym)))
+                Err(ConclusionOfWrongForm(Expr::assocplaceholder(oper)))
             }
             EquivalenceElim => {
                 let prem1 = p.lookup_expr_or_die(&deps[0])?;
@@ -975,8 +949,8 @@ impl RuleT for PrepositionalInference {
                     &prem1,
                     &prem2,
                     |i, j| {
-                        if let Expr::AssocBinop {
-                            symbol: ASymbol::Equiv,
+                        if let Expr::Binary {
+                            op: BinOp::Equiv,
                             ref exprs,
                         } = i
                         {
@@ -995,7 +969,7 @@ impl RuleT for PrepositionalInference {
                             AnyOrderResult::WrongOrder
                         }
                     },
-                    || DepDoesNotExist(Expr::assocplaceholder(ASymbol::Equiv), true),
+                    || DepDoesNotExist(Expr::assocplaceholder(BinOp::Equiv), true),
                 )
             }
         }
@@ -1110,8 +1084,8 @@ impl RuleT for PredicateInference {
         match self {
             ForallIntro => {
                 let sproof = p.lookup_subproof_or_die(&sdeps[0])?;
-                if let Expr::Quantifier {
-                    symbol: QSymbol::Forall,
+                if let Expr::Quant {
+                    kind: QuantKind::Forall,
                     ref name,
                     ref body,
                 } = conclusion
@@ -1153,14 +1127,14 @@ impl RuleT for PredicateInference {
                     )))
                 } else {
                     Err(ConclusionOfWrongForm(Expr::quantifierplaceholder(
-                        QSymbol::Forall,
+                        QuantKind::Forall,
                     )))
                 }
             }
             ForallElim => {
                 let prem = p.lookup_expr_or_die(&deps[0])?;
-                if let Expr::Quantifier {
-                    symbol: QSymbol::Forall,
+                if let Expr::Quant {
+                    kind: QuantKind::Forall,
                     ref name,
                     ref body,
                 } = prem
@@ -1170,13 +1144,13 @@ impl RuleT for PredicateInference {
                 } else {
                     Err(DepOfWrongForm(
                         prem,
-                        Expr::quantifierplaceholder(QSymbol::Forall),
+                        Expr::quantifierplaceholder(QuantKind::Forall),
                     ))
                 }
             }
             ExistsIntro => {
-                if let Expr::Quantifier {
-                    symbol: QSymbol::Exists,
+                if let Expr::Quant {
+                    kind: QuantKind::Exists,
                     ref name,
                     ref body,
                 } = conclusion
@@ -1186,7 +1160,7 @@ impl RuleT for PredicateInference {
                     Ok(())
                 } else {
                     Err(ConclusionOfWrongForm(Expr::quantifierplaceholder(
-                        QSymbol::Exists,
+                        QuantKind::Exists,
                     )))
                 }
             }
@@ -1207,8 +1181,8 @@ impl RuleT for PredicateInference {
                 let prem = p.lookup_expr_or_die(&deps[0])?;
                 let sproof = p.lookup_subproof_or_die(&sdeps[0])?;
                 let skolemname = {
-                    if let Expr::Quantifier {
-                        symbol: QSymbol::Exists,
+                    if let Expr::Quant {
+                        kind: QuantKind::Exists,
                         ref name,
                         ref body,
                     } = prem
@@ -1235,7 +1209,7 @@ impl RuleT for PredicateInference {
                     } else {
                         return Err(DepOfWrongForm(
                             prem,
-                            Expr::quantifierplaceholder(QSymbol::Exists),
+                            Expr::quantifierplaceholder(QuantKind::Exists),
                         ));
                     }
                 };
@@ -1604,12 +1578,7 @@ impl RuleT for RedundantPrepositionalInference {
                     &dep_0,
                     &dep_1,
                     |dep_0, dep_1| {
-                        if let Expr::Binop {
-                            symbol: BSymbol::Implies,
-                            left: p,
-                            right: q,
-                        } = dep_0
-                        {
+                        if let Expr::Impl { left: p, right: q } = dep_0 {
                             let not_p = Expr::not(*p.clone());
                             let not_q = Expr::not(*q.clone());
                             if not_q != *dep_1 {
@@ -1623,7 +1592,7 @@ impl RuleT for RedundantPrepositionalInference {
                             AnyOrderResult::WrongOrder
                         }
                     },
-                    || DepDoesNotExist(Expr::binopplaceholder(BSymbol::Implies), true),
+                    || DepDoesNotExist(Expr::impl_place_holder(), true),
                 )
             }
             HypotheticalSyllogism => {
@@ -1637,18 +1606,15 @@ impl RuleT for RedundantPrepositionalInference {
                     &dep_1,
                     |dep_0, dep_1| {
                         if let (
-                            Expr::Binop {
-                                symbol: BSymbol::Implies,
+                            Expr::Impl {
                                 left: p_0,
                                 right: q_0,
                             },
-                            Expr::Binop {
-                                symbol: BSymbol::Implies,
+                            Expr::Impl {
                                 left: q_1,
                                 right: r_0,
                             },
-                            Expr::Binop {
-                                symbol: BSymbol::Implies,
+                            Expr::Impl {
                                 left: p_1,
                                 right: r_1,
                             },
@@ -1667,7 +1633,7 @@ impl RuleT for RedundantPrepositionalInference {
                             AnyOrderResult::WrongOrder
                         }
                     },
-                    || DepDoesNotExist(Expr::binopplaceholder(BSymbol::Implies), true),
+                    || DepDoesNotExist(Expr::impl_place_holder(), true),
                 )
             }
             ExcludedMiddle => {
@@ -1675,8 +1641,8 @@ impl RuleT for RedundantPrepositionalInference {
                 let wrong_form_err =
                     ConclusionOfWrongForm(Expr::or(Expr::var("_"), Expr::not(Expr::var("_"))));
                 let operands = match conclusion {
-                    Expr::AssocBinop {
-                        symbol: ASymbol::Or,
+                    Expr::Binary {
+                        op: BinOp::Or,
                         exprs,
                     } => exprs,
                     _ => return Err(wrong_form_err),
@@ -1709,22 +1675,20 @@ impl RuleT for RedundantPrepositionalInference {
                     |deps| {
                         let (dep_0, dep_1, dep_2) = deps.into_iter().collect_tuple().unwrap();
                         if let (
-                            Expr::Binop {
-                                symbol: BSymbol::Implies,
+                            Expr::Impl {
                                 left: p_0,
                                 right: q_0,
                             },
-                            Expr::Binop {
-                                symbol: BSymbol::Implies,
+                            Expr::Impl {
                                 left: r_0,
                                 right: s_0,
                             },
-                            Expr::AssocBinop {
-                                symbol: ASymbol::Or,
+                            Expr::Binary {
+                                op: BinOp::Or,
                                 exprs: p_r,
                             },
-                            Expr::AssocBinop {
-                                symbol: ASymbol::Or,
+                            Expr::Binary {
+                                op: BinOp::Or,
                                 exprs: q_s,
                             },
                         ) = (dep_0, dep_1, dep_2, &conclusion)
@@ -1777,8 +1741,8 @@ impl RuleT for RedundantPrepositionalInference {
                     },
                     || {
                         OneOf(btreeset![
-                            DepDoesNotExist(Expr::binopplaceholder(BSymbol::Implies), true),
-                            DepDoesNotExist(Expr::assocplaceholder(ASymbol::Or), true),
+                            DepDoesNotExist(Expr::impl_place_holder(), true),
+                            DepDoesNotExist(Expr::assocplaceholder(BinOp::Or), true),
                         ])
                     },
                 )
@@ -1868,8 +1832,8 @@ impl RuleT for AutomationRelatedRules {
                     .into_iter()
                     .map(|dep| p.lookup_expr_or_die(&dep))
                     .collect::<Result<Vec<Expr>, _>>()?;
-                let premise = Expr::AssocBinop {
-                    symbol: ASymbol::And,
+                let premise = Expr::Binary {
+                    op: BinOp::And,
                     exprs: premises,
                 };
 
@@ -2211,8 +2175,7 @@ mod tests {
             &dep_1,
             &dep_2,
             |i, j| {
-                if let Expr::Binop {
-                    symbol: BSymbol::Implies,
+                if let Expr::Impl {
                     ref left,
                     ref right,
                 } = i
@@ -2238,7 +2201,7 @@ mod tests {
                 }
                 AnyOrderResult::WrongOrder
             },
-            || DepDoesNotExist(Expr::binopplaceholder(BSymbol::Implies), true),
+            || DepDoesNotExist(Expr::impl_place_holder(), true),
         );
 
         assert!(result.is_ok());

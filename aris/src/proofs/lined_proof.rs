@@ -156,7 +156,7 @@ where
     pub fn add_line(&mut self, i: usize, is_premise: bool, subproof_level: usize) {
         use frunk_core::coproduct::Coproduct::{Inl, Inr};
         println!("add_line {:?} {:?} {:?}", i, is_premise, subproof_level);
-        let const_true = Expr::Tautology;
+        let const_true = Expr::Taut;
         let line: Option<Line<P>> = self.lines.get(i).cloned();
         match line {
             None => {

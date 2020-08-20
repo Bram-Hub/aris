@@ -355,7 +355,6 @@ pub fn xml_from_proof_and_metadata_with_hash<P: Proof, W: Write>(
 mod tests {
     use super::*;
 
-    use crate::expr::BSymbol;
     use crate::proofs::pooledproof::PooledProof;
 
     use frunk_core::Hlist;
@@ -446,10 +445,7 @@ mod tests {
             .get::<Justification<_, _, _>, _>()
             .unwrap()
             .clone();
-        assert_eq!(
-            e2,
-            Expr::binop(BSymbol::Implies, Expr::var("A"), Expr::var("A"))
-        );
+        assert_eq!(e2, Expr::implies(Expr::var("A"), Expr::var("A")));
         assert_eq!(r2, RuleM::ImpIntro);
         assert_eq!(d2.len(), 0);
         assert_eq!(s2.len(), 1);

@@ -1,10 +1,8 @@
 use super::*;
 
-use aris::expr::ASymbol;
-use aris::expr::BSymbol;
+use aris::expr::BinOp;
 use aris::expr::Expr;
-use aris::expr::QSymbol;
-use aris::expr::USymbol;
+use aris::expr::QuantKind;
 
 #[no_mangle]
 #[allow(non_snake_case)]
@@ -55,29 +53,28 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
                 .l()?,
         ))?,
     );
-    let handle_binop = |symbol: BSymbol| -> jni::errors::Result<Expr> {
+    let handle_impl = || -> jni::errors::Result<Expr> {
         let left = env
             .get_field(obj, "l", "Ledu/rpi/aris/ast/Expression;")?
             .l()?;
         let right = env
             .get_field(obj, "r", "Ledu/rpi/aris/ast/Expression;")?
             .l()?;
-        Ok(Expr::binop(
-            symbol,
+        Ok(Expr::implies(
             jobject_to_expr(env, left)?,
             jobject_to_expr(env, right)?,
         ))
     };
-    let handle_abe = |symbol: ASymbol| -> jni::errors::Result<Expr> {
+    let handle_binary = |op: BinOp| -> jni::errors::Result<Expr> {
         let mut exprs = vec![];
         java_iterator_for_each(
             env,
             env.get_field(obj, "exprs", "Ljava/util/ArrayList;")?.l()?,
             |expr| Ok(exprs.push(jobject_to_expr(env, expr)?)),
         )?;
-        Ok(Expr::AssocBinop { symbol, exprs })
+        Ok(Expr::Binary { op, exprs })
     };
-    let handle_quantifier = |symbol: QSymbol| -> jni::errors::Result<Expr> {
+    let handle_quantifier = |kind: QuantKind| -> jni::errors::Result<Expr> {
         let name = jobject_to_string(
             env,
             env.get_field(obj, "boundvar", "Ljava/lang/String;")?.l()?,
@@ -85,8 +82,8 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
         let body = env
             .get_field(obj, "body", "Ledu/rpi/aris/ast/Expression;")?
             .l()?;
-        Ok(Expr::Quantifier {
-            symbol,
+        Ok(Expr::Quant {
+            kind,
             name,
             body: Box::new(jobject_to_expr(env, body)?),
         })
@@ -103,17 +100,17 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
                 jobject_to_string(env, env.get_field(obj, "name", "Ljava/lang/String;")?.l()?)?;
             Ok(Expr::var(&name))
         }
-        "edu.rpi.aris.ast.Expression$ImplicationExpression" => handle_binop(BSymbol::Implies),
-        "edu.rpi.aris.ast.Expression$AddExpression" => handle_binop(BSymbol::Plus),
-        "edu.rpi.aris.ast.Expression$MultExpression" => handle_binop(BSymbol::Mult),
-        "edu.rpi.aris.ast.Expression$AndExpression" => handle_abe(ASymbol::And),
-        "edu.rpi.aris.ast.Expression$OrExpression" => handle_abe(ASymbol::Or),
-        "edu.rpi.aris.ast.Expression$BiconExpression" => handle_abe(ASymbol::Bicon),
-        "edu.rpi.aris.ast.Expression$EquivExpression" => handle_abe(ASymbol::Equiv),
-        "edu.rpi.aris.ast.Expression$ForallExpression" => handle_quantifier(QSymbol::Forall),
-        "edu.rpi.aris.ast.Expression$ExistsExpression" => handle_quantifier(QSymbol::Exists),
-        "edu.rpi.aris.ast.Expression$ContradictionExpression" => Ok(Expr::Contradiction),
-        "edu.rpi.aris.ast.Expression$TautologyExpression" => Ok(Expr::Tautology),
+        "edu.rpi.aris.ast.Expression$ImplicationExpression" => handle_impl(),
+        "edu.rpi.aris.ast.Expression$AddExpression" => handle_binary(BinOp::Add),
+        "edu.rpi.aris.ast.Expression$MultExpression" => handle_binary(BinOp::Mult),
+        "edu.rpi.aris.ast.Expression$AndExpression" => handle_binary(BinOp::And),
+        "edu.rpi.aris.ast.Expression$OrExpression" => handle_binary(BinOp::Or),
+        "edu.rpi.aris.ast.Expression$BiconExpression" => handle_binary(BinOp::Bicon),
+        "edu.rpi.aris.ast.Expression$EquivExpression" => handle_binary(BinOp::Equiv),
+        "edu.rpi.aris.ast.Expression$ForallExpression" => handle_quantifier(QuantKind::Forall),
+        "edu.rpi.aris.ast.Expression$ExistsExpression" => handle_quantifier(QuantKind::Exists),
+        "edu.rpi.aris.ast.Expression$ContradictionExpression" => Ok(Expr::Contra),
+        "edu.rpi.aris.ast.Expression$TautologyExpression" => Ok(Expr::Taut),
         "edu.rpi.aris.ast.Expression$ApplyExpression" => {
             let func = jobject_to_expr(
                 env,
@@ -166,8 +163,8 @@ pub fn expr_to_jobject<'a>(env: &'a JNIEnv, e: Expr) -> jni::errors::Result<JObj
         Ok(JObject::from(expr_to_jobject(env, e)?).into())
     };
     match e {
-        Expr::Contradiction => (),
-        Expr::Tautology => (),
+        Expr::Contra => (),
+        Expr::Taut => (),
         Expr::Var { name } => env.set_field(obj, "name", "Ljava/lang/String;", jv(&name)?)?,
         Expr::Apply { func, args } => {
             env.set_field(obj, "func", "Ledu/rpi/aris/ast/Expression;", rec(*func)?)?;
@@ -176,7 +173,7 @@ pub fn expr_to_jobject<'a>(env: &'a JNIEnv, e: Expr) -> jni::errors::Result<JObj
                 env.call_method(list, "add", "(Ljava/lang/Object;)Z", &[rec(arg)?])?;
             }
         }
-        Expr::Unop { symbol: _, operand } => {
+        Expr::Not { operand } => {
             env.set_field(
                 obj,
                 "operand",
@@ -184,22 +181,18 @@ pub fn expr_to_jobject<'a>(env: &'a JNIEnv, e: Expr) -> jni::errors::Result<JObj
                 rec(*operand)?,
             )?;
         }
-        Expr::Binop {
-            symbol: _,
-            left,
-            right,
-        } => {
+        Expr::Impl { left, right } => {
             env.set_field(obj, "l", "Ledu/rpi/aris/ast/Expression;", rec(*left)?)?;
             env.set_field(obj, "r", "Ledu/rpi/aris/ast/Expression;", rec(*right)?)?;
         }
-        Expr::AssocBinop { symbol: _, exprs } => {
+        Expr::Binary { op: _, exprs } => {
             let list = env.get_field(obj, "exprs", "Ljava/util/ArrayList;")?.l()?;
             for expr in exprs {
                 env.call_method(list, "add", "(Ljava/lang/Object;)Z", &[rec(expr)?])?;
             }
         }
-        Expr::Quantifier {
-            symbol: _,
+        Expr::Quant {
+            kind: _,
             name,
             body,
         } => {
@@ -213,51 +206,37 @@ pub fn expr_to_jobject<'a>(env: &'a JNIEnv, e: Expr) -> jni::errors::Result<JObj
 trait HasClass {
     fn get_class(&self) -> &'static str;
 }
-impl HasClass for USymbol {
+impl HasClass for BinOp {
     fn get_class(&self) -> &'static str {
         match self {
-            USymbol::Not => "Ledu/rpi/aris/ast/Expression$NotExpression;",
+            BinOp::And => "Ledu/rpi/aris/ast/Expression$AndExpression;",
+            BinOp::Or => "Ledu/rpi/aris/ast/Expression$OrExpression;",
+            BinOp::Bicon => "Ledu/rpi/aris/ast/Expression$BiconExpression;",
+            BinOp::Equiv => "Ledu/rpi/aris/ast/Expression$EquivExpression;",
+            BinOp::Add => "Ledu/rpi/aris/ast/Expression$AddExpression;",
+            BinOp::Mult => "Ledu/rpi/aris/ast/Expression$MultExpression;",
         }
     }
 }
-impl HasClass for BSymbol {
+impl HasClass for QuantKind {
     fn get_class(&self) -> &'static str {
         match self {
-            BSymbol::Implies => "Ledu/rpi/aris/ast/Expression$ImplicationExpression;",
-            BSymbol::Plus => "Ledu/rpi/aris/ast/Expression$AddExpression;",
-            BSymbol::Mult => "Ledu/rpi/aris/ast/Expression$MultExpression;",
-        }
-    }
-}
-impl HasClass for ASymbol {
-    fn get_class(&self) -> &'static str {
-        match self {
-            ASymbol::And => "Ledu/rpi/aris/ast/Expression$AndExpression;",
-            ASymbol::Or => "Ledu/rpi/aris/ast/Expression$OrExpression;",
-            ASymbol::Bicon => "Ledu/rpi/aris/ast/Expression$BiconExpression;",
-            ASymbol::Equiv => "Ledu/rpi/aris/ast/Expression$EquivExpression;",
-        }
-    }
-}
-impl HasClass for QSymbol {
-    fn get_class(&self) -> &'static str {
-        match self {
-            QSymbol::Forall => "Ledu/rpi/aris/ast/Expression$ForallExpression;",
-            QSymbol::Exists => "Ledu/rpi/aris/ast/Expression$ExistsExpression;",
+            QuantKind::Forall => "Ledu/rpi/aris/ast/Expression$ForallExpression;",
+            QuantKind::Exists => "Ledu/rpi/aris/ast/Expression$ExistsExpression;",
         }
     }
 }
 impl HasClass for Expr {
     fn get_class(&self) -> &'static str {
         match self {
-            Expr::Contradiction => "Ledu/rpi/aris/ast/Expression$ContradictionExpression;",
-            Expr::Tautology => "Ledu/rpi/aris/ast/Expression$TautologyExpression;",
+            Expr::Contra => "Ledu/rpi/aris/ast/Expression$ContradictionExpression;",
+            Expr::Taut => "Ledu/rpi/aris/ast/Expression$TautologyExpression;",
             Expr::Var { .. } => "Ledu/rpi/aris/ast/Expression$VarExpression;",
             Expr::Apply { .. } => "Ledu/rpi/aris/ast/Expression$ApplyExpression;",
-            Expr::Unop { symbol, .. } => symbol.get_class(),
-            Expr::Binop { symbol, .. } => symbol.get_class(),
-            Expr::AssocBinop { symbol, .. } => symbol.get_class(),
-            Expr::Quantifier { symbol, .. } => symbol.get_class(),
+            Expr::Not { .. } => "Ledu/rpi/aris/ast/Expression$NotExpression;",
+            Expr::Impl { .. } => "Ledu/rpi/aris/ast/Expression$ImplicationExpression;",
+            Expr::Binary { op, .. } => op.get_class(),
+            Expr::Quant { kind, .. } => kind.get_class(),
         }
     }
 }

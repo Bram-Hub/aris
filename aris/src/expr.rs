@@ -24,45 +24,6 @@ fn handle_user_input(input: &str) -> String {
 assert_eq!(&handle_user_input("good(predicate, expr)"), "successful parse: Apply { func: Var { name: \"good\" }, args: [Var { name: \"predicate\" }, Var { name: \"expr\" }] }");
 assert_eq!(&handle_user_input("bad(missing, paren"), "unsuccessful parse");
 ```
-
-`Expr` is an enum, and can be inspected with rust's `match` construct:
-
-```
-use aris::parser::parse_unwrap as p;
-use aris::expr::*;
-
-fn is_it_an_and(e: &Expr) -> bool {
-    match e {
-        Expr::AssocBinop { symbol: ASymbol::And, .. } => true,
-        _ => false,
-    }
-}
-
-let expr1 = p("a & b");
-let expr2 = p("a | (b & c)");
-let expr3 = p("forall a, exists b, forall c, exists d, a -> (b | c | ~d)");
-
-assert_eq!(is_it_an_and(&expr1), true);
-assert_eq!(is_it_an_and(&expr2), false);
-assert_eq!(is_it_an_and(&expr3), false);
-
-fn does_it_have_any_ands(e: &Expr) -> bool {
-    use aris::expr::Expr::*;
-    match e {
-        Contradiction | Tautology | Var { .. } => false,
-        Apply { func, args } => does_it_have_any_ands(&func) || args.iter().any(|arg| does_it_have_any_ands(arg)),
-        Unop { symbol: _, operand } => does_it_have_any_ands(&operand),
-        Binop { symbol: _, left, right } => does_it_have_any_ands(&left) || does_it_have_any_ands(&right),
-        AssocBinop { symbol: ASymbol::And, .. } => true,
-        AssocBinop { symbol: _, exprs } => exprs.iter().any(|expr| does_it_have_any_ands(expr)),
-        Quantifier { symbol: _, name: _, body } => does_it_have_any_ands(&body),
-    }
-}
-
-assert_eq!(does_it_have_any_ands(&expr1), true);
-assert_eq!(does_it_have_any_ands(&expr2), true);
-assert_eq!(does_it_have_any_ands(&expr3), false);
-```
 */
 
 use std::collections::BTreeSet;
@@ -74,67 +35,89 @@ use itertools::Itertools;
 use serde::Deserialize;
 use serde::Serialize;
 
-/// Symbol for unary operations
+/// Associative binary operators. All of these operations are associative.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 #[repr(C)]
-pub enum USymbol {
-    Not,
-}
-/// Symbol for binary operations
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
-#[repr(C)]
-pub enum BSymbol {
-    Implies,
-    Plus,
+pub enum BinOp {
+    /// Logical and `∧`
+    And,
+    /// Logical or `∨`
+    Or,
+    /// Logical biconditional `↔`
+    Bicon,
+    /// Logical equivalence `≡`
+    Equiv,
+    /// Arithmetic addition `+`
+    Add,
+    /// Arithmetic multiplication `*`
     Mult,
 }
-/// Symbol for associative binary operations
+
+/// Kinds of quantifiers
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 #[repr(C)]
-pub enum ASymbol {
-    And,
-    Or,
-    Bicon,
-    Equiv,
-}
-/// Symbol for quantifiers
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
-#[repr(C)]
-pub enum QSymbol {
+pub enum QuantKind {
+    /// Universal quantifier `∀`
     Forall,
+    /// Existential quantifier `∃`
     Exists,
 }
 
-/// aris::expr::Expr is the core AST (Abstract Syntax Tree) type for representing logical expressions.
-/// For most of the recursive cases, it uses symbols so that code can work on the shape of e.g. a binary operation without worrying about which binary operation it is.
+/// A logical expression
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 #[repr(C)]
 pub enum Expr {
-    Contradiction,
-    Tautology,
+    /// Contradiction `⊥`
+    Contra,
+
+    /// Tautology `⊤`
+    Taut,
+
+    /// A symbolic logical variable `P`
     Var {
+        /// Name of the variable
         name: String,
     },
+
+    /// A function call `P(A, B, C)`
     Apply {
+        /// The function `P` being called
         func: Box<Expr>,
+
+        /// Arguments `A, B, C` passed to the function
         args: Vec<Expr>,
     },
-    Unop {
-        symbol: USymbol,
-        operand: Box<Expr>,
-    },
-    Binop {
-        symbol: BSymbol,
+
+    /// Logical negation `¬P`
+    Not { operand: Box<Expr> },
+
+    /// Logical implication `P → Q`
+    Impl {
+        /// The left expression `P`
         left: Box<Expr>,
+
+        /// The right expression `Q`
         right: Box<Expr>,
     },
-    AssocBinop {
-        symbol: ASymbol,
+
+    /// An associative binary operation `P <OP> Q <OP> R`
+    Binary {
+        /// The operator `<OP>`
+        op: BinOp,
+
+        /// The expressions `P, Q, R`
         exprs: Vec<Expr>,
     },
-    Quantifier {
-        symbol: QSymbol,
+
+    /// A quantifier expression `<KIND> A, P`
+    Quant {
+        /// The kind of quantifier `<KIND>`
+        kind: QuantKind,
+
+        /// The quantified variable `A`
         name: String,
+
+        /// The quantifier body `P`
         body: Box<Expr>,
     },
 }
@@ -153,8 +136,10 @@ pub enum NnfExpr {
         /// Name of the variable
         name: String,
     },
+
     /// Sub-expressions OR'ed together
     Or { exprs: Vec<NnfExpr> },
+
     /// Sub-expressions AND'ed together
     And { exprs: Vec<NnfExpr> },
 }
@@ -171,47 +156,31 @@ pub enum NnfExpr {
 /// ```rust
 /// use aris::expr::Expr;
 /// # use aris::expr::CnfExpr;
-/// assert_eq!(Expr::Tautology.into_cnf(), Some(CnfExpr::tautology()));
+/// assert_eq!(Expr::Taut.into_cnf(), Some(CnfExpr::taut()));
 /// ```
 ///
 /// [cnf]: https://en.wikipedia.org/wiki/Conjunctive_normal_form
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct CnfExpr(Vec<Vec<(bool, String)>>);
 
-impl std::fmt::Display for USymbol {
+impl std::fmt::Display for BinOp {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            USymbol::Not => write!(f, "¬"),
+            BinOp::And => write!(f, "∧"),
+            BinOp::Or => write!(f, "∨"),
+            BinOp::Bicon => write!(f, "↔"),
+            BinOp::Equiv => write!(f, "≡"),
+            BinOp::Add => write!(f, "+"),
+            BinOp::Mult => write!(f, "*"),
         }
     }
 }
 
-impl std::fmt::Display for BSymbol {
+impl std::fmt::Display for QuantKind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            BSymbol::Implies => write!(f, "→"),
-            BSymbol::Plus => write!(f, "+"),
-            BSymbol::Mult => write!(f, "*"),
-        }
-    }
-}
-
-impl std::fmt::Display for ASymbol {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            ASymbol::And => write!(f, "∧"),
-            ASymbol::Or => write!(f, "∨"),
-            ASymbol::Bicon => write!(f, "↔"),
-            ASymbol::Equiv => write!(f, "≡"),
-        }
-    }
-}
-
-impl std::fmt::Display for QSymbol {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            QSymbol::Forall => write!(f, "∀"),
-            QSymbol::Exists => write!(f, "∃"),
+            QuantKind::Forall => write!(f, "∀"),
+            QuantKind::Exists => write!(f, "∃"),
         }
     }
 }
@@ -235,12 +204,11 @@ where
 
 impl std::fmt::Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        use Expr::*;
         match self {
-            Contradiction => write!(f, "⊥"),
-            Tautology => write!(f, "⊤"),
-            Var { name } => write!(f, "{}", name),
-            Apply { func, args } => {
+            Expr::Contra => write!(f, "⊥"),
+            Expr::Taut => write!(f, "⊤"),
+            Expr::Var { name } => write!(f, "{}", name),
+            Expr::Apply { func, args } => {
                 write!(f, "{}", func)?;
                 if !args.is_empty() {
                     write!(
@@ -254,14 +222,10 @@ impl std::fmt::Display for Expr {
                 };
                 Ok(())
             }
-            Unop { symbol, operand } => write!(f, "{}{}", symbol, operand),
-            Binop {
-                symbol,
-                left,
-                right,
-            } => write!(f, "({} {} {})", left, symbol, right),
-            AssocBinop { symbol, exprs } => assoc_display_helper(f, symbol, exprs),
-            Quantifier { symbol, name, body } => write!(f, "({} {}, {})", symbol, name, body),
+            Expr::Not { operand } => write!(f, "¬{}", operand),
+            Expr::Impl { left, right } => write!(f, "({} → {})", left, right),
+            Expr::Binary { op, exprs } => assoc_display_helper(f, op, exprs),
+            Expr::Quant { kind, name, body } => write!(f, "({} {}, {})", kind, name, body),
         }
     }
 }
@@ -279,36 +243,12 @@ impl std::fmt::Display for NnfExpr {
     }
 }
 
-pub trait PossiblyCommutative {
-    fn is_commutative(&self) -> bool;
-}
-
-impl PossiblyCommutative for BSymbol {
-    fn is_commutative(&self) -> bool {
-        use BSymbol::*;
-        match self {
-            Implies => false,
-            Plus | Mult => true,
-        }
-    }
-}
-
-impl PossiblyCommutative for ASymbol {
-    fn is_commutative(&self) -> bool {
-        use ASymbol::*;
-        match self {
-            // currently, all the implemented associative connectives are also commutative, but that's not true in general, so this is future-proofing
-            And | Or | Bicon | Equiv => true,
-        }
-    }
-}
-
 /// Calculates the set of variables that occur free in some logical expression
 pub fn freevars(e: &Expr) -> HashSet<String> {
     let mut r = HashSet::new();
     match e {
-        Expr::Contradiction => (),
-        Expr::Tautology => (),
+        Expr::Contra => (),
+        Expr::Taut => (),
         Expr::Var { name } => {
             r.insert(name.clone());
         }
@@ -318,19 +258,19 @@ pub fn freevars(e: &Expr) -> HashSet<String> {
                 r.extend(s);
             }
         }
-        Expr::Unop { operand, .. } => {
+        Expr::Not { operand } => {
             r.extend(freevars(operand));
         }
-        Expr::Binop { left, right, .. } => {
+        Expr::Impl { left, right, .. } => {
             r.extend(freevars(left));
             r.extend(freevars(right));
         }
-        Expr::AssocBinop { exprs, .. } => {
+        Expr::Binary { exprs, .. } => {
             for expr in exprs.iter() {
                 r.extend(freevars(expr));
             }
         }
-        Expr::Quantifier { name, body, .. } => {
+        Expr::Quant { name, body, .. } => {
             r.extend(freevars(body));
             r.remove(name);
         }
@@ -352,8 +292,8 @@ pub fn gensym(orig: &str, avoid: &HashSet<String>) -> String {
 /// `subst(e, to_replace, with)` performs capture-avoiding substitution of free variables named `to_replace` with `with` in `e`
 pub fn subst(e: &Expr, to_replace: &str, with: Expr) -> Expr {
     match e {
-        Expr::Contradiction => Expr::Contradiction,
-        Expr::Tautology => Expr::Tautology,
+        Expr::Contra => Expr::Contra,
+        Expr::Taut => Expr::Taut,
         Expr::Var { ref name } => {
             if name == to_replace {
                 with
@@ -368,27 +308,21 @@ pub fn subst(e: &Expr, to_replace: &str, with: Expr) -> Expr {
                 .map(|e2| subst(e2, to_replace, with.clone()))
                 .collect(),
         },
-        Expr::Unop { symbol, operand } => Expr::Unop {
-            symbol: *symbol,
+        Expr::Not { operand } => Expr::Not {
             operand: Box::new(subst(operand, to_replace, with)),
         },
-        Expr::Binop {
-            symbol,
-            left,
-            right,
-        } => Expr::Binop {
-            symbol: *symbol,
+        Expr::Impl { left, right } => Expr::Impl {
             left: Box::new(subst(left, to_replace, with.clone())),
             right: Box::new(subst(right, to_replace, with)),
         },
-        Expr::AssocBinop { symbol, exprs } => Expr::AssocBinop {
-            symbol: *symbol,
+        Expr::Binary { op, exprs } => Expr::Binary {
+            op: *op,
             exprs: exprs
                 .iter()
                 .map(|e2| subst(e2, to_replace, with.clone()))
                 .collect(),
         },
-        Expr::Quantifier { symbol, name, body } => {
+        Expr::Quant { kind, name, body } => {
             let fv_with = freevars(&with);
             let (newname, newbody) = match (name == to_replace, fv_with.contains(name)) {
                 (true, _) => (name.clone(), *body.clone()),
@@ -401,8 +335,8 @@ pub fn subst(e: &Expr, to_replace: &str, with: Expr) -> Expr {
                 }
                 (false, false) => (name.clone(), subst(body, to_replace, with)),
             };
-            Expr::Quantifier {
-                symbol: *symbol,
+            Expr::Quant {
+                kind: *kind,
                 name: newname,
                 body: Box::new(newbody),
             }
@@ -416,15 +350,15 @@ fn test_subst() {
     assert_eq!(
         subst(&p("x & forall x, x"), "x", p("y")),
         p("y & forall x, x")
-    ); // hit (true, _) case in Quantifier
+    ); // hit (true, _) case in Expr::Quantifier
     assert_eq!(
         subst(&p("forall x, x & y"), "y", p("x")),
         p("forall x0, x0 & x")
-    ); // hit (false, true) case in Quantifier
+    ); // hit (false, true) case in Expr::Quantifier
     assert_eq!(
         subst(&p("forall x, x & y"), "y", p("z")),
         p("forall x, x & z")
-    ); // hit (false, false) case in Quantifier
+    ); // hit (false, false) case in Expr::Quantifier
     assert_eq!(
         subst(&p("forall f, f(x) & g(y, z)"), "g", p("h")),
         p("forall f, f(x) & h(y, z)")
@@ -455,7 +389,6 @@ pub fn unify(mut c: HashSet<Equal>) -> Option<Substitution<String, Expr>> {
     } else {
         return Some(Substitution(vec![]));
     };
-    use Expr::*;
     let subst_set = |x, e1: Expr, set: HashSet<_>| {
         set.into_iter()
             .map(
@@ -472,46 +405,35 @@ pub fn unify(mut c: HashSet<Equal>) -> Option<Substitution<String, Expr>> {
     let (fvs, fvt) = (freevars(&left), freevars(&right));
     match (&left, &right) {
         (_, _) if left == right => unify(c),
-        (Var { name: ref sname }, _) if !fvt.contains(sname) => {
+        (Expr::Var { name: ref sname }, _) if !fvt.contains(sname) => {
             unify(subst_set(&sname, right.clone(), c)).map(|mut x| {
                 x.0.push((sname.clone(), right.clone()));
                 x
             })
         }
-        (_, Var { name: ref tname }) if !fvs.contains(tname) => {
+        (_, Expr::Var { name: ref tname }) if !fvs.contains(tname) => {
             unify(subst_set(&tname, left.clone(), c)).map(|mut x| {
                 x.0.push((tname.clone(), left.clone()));
                 x
             })
         }
-        (
-            Unop {
-                symbol: ss,
-                operand: so,
-            },
-            Unop {
-                symbol: ts,
-                operand: to,
-            },
-        ) if ss == ts => {
+        (Expr::Not { operand: s }, Expr::Not { operand: t }) => {
             c.insert(Equal {
-                left: *so.clone(),
-                right: *to.clone(),
+                left: *s.clone(),
+                right: *t.clone(),
             });
             unify(c)
         }
         (
-            Binop {
-                symbol: ss,
+            Expr::Impl {
                 left: sl,
                 right: sr,
             },
-            Binop {
-                symbol: ts,
+            Expr::Impl {
                 left: tl,
                 right: tr,
             },
-        ) if ss == ts => {
+        ) => {
             c.insert(Equal {
                 left: *sl.clone(),
                 right: *tl.clone(),
@@ -522,7 +444,9 @@ pub fn unify(mut c: HashSet<Equal>) -> Option<Substitution<String, Expr>> {
             });
             unify(c)
         }
-        (Apply { func: sf, args: sa }, Apply { func: tf, args: ta }) if sa.len() == ta.len() => {
+        (Expr::Apply { func: sf, args: sa }, Expr::Apply { func: tf, args: ta })
+            if sa.len() == ta.len() =>
+        {
             c.insert(Equal {
                 left: *sf.clone(),
                 right: *tf.clone(),
@@ -533,16 +457,9 @@ pub fn unify(mut c: HashSet<Equal>) -> Option<Substitution<String, Expr>> {
             }));
             unify(c)
         }
-        (
-            AssocBinop {
-                symbol: ss,
-                exprs: se,
-            },
-            AssocBinop {
-                symbol: ts,
-                exprs: te,
-            },
-        ) if ss == ts && se.len() == te.len() => {
+        (Expr::Binary { op: so, exprs: se }, Expr::Binary { op: to, exprs: te })
+            if so == to && se.len() == te.len() =>
+        {
             c.extend(se.iter().zip(te.iter()).map(|(x, y)| Equal {
                 left: x.clone(),
                 right: y.clone(),
@@ -550,17 +467,17 @@ pub fn unify(mut c: HashSet<Equal>) -> Option<Substitution<String, Expr>> {
             unify(c)
         }
         (
-            Quantifier {
-                symbol: ss,
+            Expr::Quant {
+                kind: sk,
                 name: sn,
                 body: sb,
             },
-            Quantifier {
-                symbol: ts,
+            Expr::Quant {
+                kind: tk,
                 name: tn,
                 body: tb,
             },
-        ) if ss == ts => {
+        ) if sk == tk => {
             let uv = gensym("__unification_var", &fvs.union(&fvt).cloned().collect());
             // require that the bodies of the quantifiers are alpha-equal by substituting a fresh constant
             c.insert(Equal {
@@ -634,7 +551,7 @@ fn test_unify() {
 Note apply_non_literal
 
 In order to make substitution not special case predicate/function application, Expr::Apply's func field is a general Box<Expr> instead of a String.
-This also makes sense for eventually supporting lambda expressions using Quantifier nodes.
+This also makes sense for eventually supporting lambda expressions using Expr::Quantifier nodes.
 Currently, the parser will never produce Expr::Apply nodes that have a func that is not an Expr::Var, and some code depends on this to avoid handling a more difficult general case.
 */
 
@@ -649,66 +566,60 @@ impl Expr {
         }
     }
     pub fn not(expr: Expr) -> Expr {
-        Expr::Unop {
-            symbol: USymbol::Not,
+        Expr::Not {
             operand: Box::new(expr),
         }
     }
-    pub fn binop(symbol: BSymbol, l: Expr, r: Expr) -> Expr {
-        Expr::Binop {
-            symbol,
-            left: Box::new(l),
-            right: Box::new(r),
+    pub fn impl_place_holder() -> Expr {
+        Expr::implies(Expr::var("_"), Expr::var("_"))
+    }
+    pub fn implies(left: Expr, right: Expr) -> Expr {
+        Expr::Impl {
+            left: Box::new(left),
+            right: Box::new(right),
         }
     }
-    pub fn binopplaceholder(symbol: BSymbol) -> Expr {
-        Expr::binop(symbol, Expr::var("_"), Expr::var("_"))
-    }
-    pub fn implies(l: Expr, r: Expr) -> Expr {
-        Expr::binop(BSymbol::Implies, l, r)
-    }
     pub fn or(l: Expr, r: Expr) -> Expr {
-        Expr::assocbinop(ASymbol::Or, &[l, r])
+        Expr::binary(BinOp::Or, &[l, r])
     }
-    pub fn assocbinop(symbol: ASymbol, exprs: &[Expr]) -> Expr {
-        Expr::AssocBinop {
-            symbol,
+    pub fn binary(op: BinOp, exprs: &[Expr]) -> Expr {
+        Expr::Binary {
+            op,
             exprs: exprs.to_vec(),
         }
     }
-    pub fn assocplaceholder(symbol: ASymbol) -> Expr {
-        Expr::assocbinop(symbol, &[Expr::var("_"), Expr::var("_"), Expr::var("...")])
+    pub fn assocplaceholder(op: BinOp) -> Expr {
+        Expr::binary(op, &[Expr::var("_"), Expr::var("_"), Expr::var("...")])
     }
-    pub fn quantifierplaceholder(symbol: QSymbol) -> Expr {
-        Expr::Quantifier {
-            symbol,
+    pub fn quantifierplaceholder(kind: QuantKind) -> Expr {
+        Expr::Quant {
+            kind,
             name: "_".into(),
             body: Box::new(Expr::var("_")),
         }
     }
     pub fn forall(name: &str, body: Expr) -> Expr {
-        Expr::Quantifier {
-            symbol: QSymbol::Forall,
+        Expr::Quant {
+            kind: QuantKind::Forall,
             name: name.into(),
             body: Box::new(body),
         }
     }
     pub fn exists(name: &str, body: Expr) -> Expr {
-        Expr::Quantifier {
-            symbol: QSymbol::Exists,
+        Expr::Quant {
+            kind: QuantKind::Exists,
             name: name.into(),
             body: Box::new(body),
         }
     }
     pub fn infer_arities(&self, arities: &mut HashMap<String, usize>) {
-        use Expr::*;
         match self {
-            Contradiction | Tautology => {}
-            Var { name } => {
+            Expr::Contra | Expr::Taut => {}
+            Expr::Var { name } => {
                 arities.entry(name.clone()).or_insert(0);
             }
-            Apply { func, args } => match &**func {
-                Var { name } => {
+            Expr::Apply { func, args } => match &**func {
+                Expr::Var { name } => {
                     let arity = arities.entry(name.clone()).or_insert_with(|| args.len());
                     *arity = args.len().max(*arity);
                     for arg in args {
@@ -717,24 +628,20 @@ impl Expr {
                 }
                 _ => panic!("See note apply_non_literal"),
             },
-            Unop { symbol: _, operand } => {
+            Expr::Not { operand } => {
                 operand.infer_arities(arities);
             }
-            Binop {
-                symbol: _,
-                left,
-                right,
-            } => {
+            Expr::Impl { left, right } => {
                 left.infer_arities(arities);
                 right.infer_arities(arities)
             }
-            AssocBinop { symbol: _, exprs } => {
+            Expr::Binary { op: _, exprs } => {
                 for e in exprs {
                     e.infer_arities(arities);
                 }
             }
-            Quantifier {
-                symbol: _,
+            Expr::Quant {
+                kind: _,
                 name,
                 body,
             } => {
@@ -752,13 +659,12 @@ impl Expr {
     /// Evaluate a quantifier-free boolean expression, given values for all the free variables as truth tables of their arities
     /// panics on unbound variables or expressions with quantifiers or arithmetic
     pub fn eval(&self, env: &HashMap<String, Vec<bool>>) -> bool {
-        use Expr::*;
         match self {
-            Contradiction => false,
-            Tautology => true,
-            Var { name } => env[name][0], // variables are 0-arity functions
-            Apply { func, args } => match &**func {
-                Var { name } => {
+            Expr::Contra => false,
+            Expr::Taut => true,
+            Expr::Var { name } => env[name][0], // variables are 0-arity functions
+            Expr::Apply { func, args } => match &**func {
+                Expr::Var { name } => {
                     let evaled_args: Vec<bool> = args.iter().map(|arg| arg.eval(env)).collect();
                     let mut index: usize = 0;
                     for (i, x) in evaled_args.into_iter().enumerate() {
@@ -768,83 +674,37 @@ impl Expr {
                 }
                 _ => panic!("See note apply_non_literal"),
             },
-            Unop { symbol, operand } => {
-                use USymbol::*;
-                match symbol {
-                    Not => !operand.eval(env),
-                }
-            }
-            Binop {
-                symbol,
-                left,
-                right,
-            } => {
-                use BSymbol::*;
+            Expr::Not { operand } => !operand.eval(env),
+            Expr::Impl { left, right } => {
                 let (x, y) = (left.eval(env), right.eval(env));
-                match symbol {
-                    Implies => !x || y,
-                    Plus | Mult => panic!("Expr::eval does not support arithmetic"),
-                }
+                !x || y
             }
-            AssocBinop { symbol, exprs } => {
-                use ASymbol::*;
-                let (mut ret, f): (bool, &dyn Fn(bool, bool) -> bool) = match symbol {
-                    And => (true, &|x, y| x && y),
-                    Or => (false, &|x, y| x || y),
-                    Bicon => (true, &|x, y| x == y),
-                    Equiv => unimplemented!(),
+            Expr::Binary { op, exprs } => {
+                let (mut ret, f): (bool, &dyn Fn(bool, bool) -> bool) = match op {
+                    BinOp::And => (true, &|x, y| x && y),
+                    BinOp::Or => (false, &|x, y| x || y),
+                    BinOp::Bicon => (true, &|x, y| x == y),
+                    BinOp::Equiv | BinOp::Add | BinOp::Mult => unimplemented!(),
                 };
                 for b in exprs.iter().map(|e| e.eval(env)) {
                     ret = f(ret, b);
                 }
                 ret
             }
-            Quantifier { .. } => panic!("Expr::eval does not support quantifiers"),
+            Expr::Quant { .. } => panic!("Expr::eval does not support quantifiers"),
         }
     }
     /// Sort all commutative associative operators to normalize expressions in the case of arbitrary ordering
     /// Eg (B & A) ==> (A & B)
     pub fn sort_commutative_ops(self) -> Expr {
-        use Expr::*;
-
         self.transform(&|e| match e {
-            Binop {
-                symbol,
-                left,
-                right,
-            } => {
-                if symbol.is_commutative() {
-                    let (left, right) = if left <= right {
-                        (left, right)
-                    } else {
-                        (right, left)
-                    };
-                    (
-                        Binop {
-                            symbol,
-                            left,
-                            right,
-                        },
-                        true,
-                    )
-                } else {
-                    (
-                        Binop {
-                            symbol,
-                            left,
-                            right,
-                        },
-                        false,
-                    )
-                }
-            }
-            AssocBinop { symbol, mut exprs } => {
+            Expr::Binary { op, mut exprs } => {
                 let is_sorted = exprs.windows(2).all(|xy| xy[0] <= xy[1]);
-                if symbol.is_commutative() && !is_sorted {
+                if !is_sorted {
                     exprs.sort();
-                    (AssocBinop { symbol, exprs }, true)
+                    (Expr::Binary { op, exprs }, true)
                 } else {
-                    (AssocBinop { symbol, exprs }, false)
+                    (Expr::Binary { op, exprs }, false)
                 }
             }
             _ => (e, false),
@@ -854,28 +714,26 @@ impl Expr {
     /// Combine associative operators such that nesting is flattened
     /// Eg (A & (B & C)) ==> (A & B & C)
     pub fn combine_associative_ops(self) -> Expr {
-        use Expr::*;
-
         self.transform(&|e| match e {
-            AssocBinop {
-                symbol: symbol1,
-                exprs: exprs1,
+            Expr::Binary {
+                op: op_1,
+                exprs: exprs_1,
             } => {
                 let mut result = vec![];
                 let mut combined = false;
-                for expr in exprs1 {
-                    if let AssocBinop {
-                        symbol: symbol2,
-                        exprs: exprs2,
+                for expr in exprs_1 {
+                    if let Expr::Binary {
+                        op: op_2,
+                        exprs: exprs_2,
                     } = expr
                     {
-                        if symbol1 == symbol2 {
-                            result.extend(exprs2);
+                        if op_1 == op_2 {
+                            result.extend(exprs_2);
                             combined = true;
                         } else {
-                            result.push(AssocBinop {
-                                symbol: symbol2,
-                                exprs: exprs2,
+                            result.push(Expr::Binary {
+                                op: op_2,
+                                exprs: exprs_2,
                             });
                         }
                     } else {
@@ -883,8 +741,8 @@ impl Expr {
                     }
                 }
                 (
-                    AssocBinop {
-                        symbol: symbol1,
+                    Expr::Binary {
+                        op: op_1,
                         exprs: result,
                     },
                     combined,
@@ -901,19 +759,17 @@ impl Expr {
     where
         Trans: Fn(Expr) -> (Expr, bool),
     {
-        use Expr::*;
-
         let (result, status) = trans(expr);
         let (result, status2) = match result {
             // Base cases: these just got transformed above so no need to recurse them
-            e @ Contradiction => (e, false),
-            e @ Tautology => (e, false),
-            e @ Var { .. } => (e, false),
+            e @ Expr::Contra => (e, false),
+            e @ Expr::Taut => (e, false),
+            e @ Expr::Var { .. } => (e, false),
 
             // Recursive cases: transform each of the sub-expressions of the various compound expressions
             // and then construct a new instance of that compound expression with their transformed results.
             // If any transformation is successful, we return success
-            Apply { func, args } => {
+            Expr::Apply { func, args } => {
                 let (func, fs) = Self::transform_expr_inner(*func, trans);
                 let func = Box::new(func);
                 // Fancy iterator hackery to transform each sub expr and then collect all their results
@@ -922,44 +778,33 @@ impl Expr {
                     .map(move |expr| Self::transform_expr_inner(expr, trans))
                     .unzip();
                 let success = fs || stats.into_iter().any(|x| x);
-                (Apply { func, args }, success)
+                (Expr::Apply { func, args }, success)
             }
-            Unop { symbol, operand } => {
+            Expr::Not { operand } => {
                 let (operand, success) = Self::transform_expr_inner(*operand, trans);
                 let operand = Box::new(operand);
-                (Unop { symbol, operand }, success)
+                (Expr::Not { operand }, success)
             }
-            Binop {
-                symbol,
-                left,
-                right,
-            } => {
+            Expr::Impl { left, right } => {
                 let (left, ls) = Self::transform_expr_inner(*left, trans);
                 let (right, rs) = Self::transform_expr_inner(*right, trans);
                 let left = Box::new(left);
                 let right = Box::new(right);
                 let success = ls || rs;
-                (
-                    Binop {
-                        symbol,
-                        left,
-                        right,
-                    },
-                    success,
-                )
+                (Expr::Impl { left, right }, success)
             }
-            AssocBinop { symbol, exprs } => {
+            Expr::Binary { op, exprs } => {
                 let (exprs, stats): (Vec<_>, Vec<_>) = exprs
                     .into_iter()
                     .map(move |expr| Self::transform_expr_inner(expr, trans))
                     .unzip();
                 let success = stats.into_iter().any(|x| x);
-                (AssocBinop { symbol, exprs }, success)
+                (Expr::Binary { op, exprs }, success)
             }
-            Quantifier { symbol, name, body } => {
+            Expr::Quant { kind, name, body } => {
                 let (body, success) = Self::transform_expr_inner(*body, trans);
                 let body = Box::new(body);
-                (Quantifier { symbol, name, body }, success)
+                (Expr::Quant { kind, name, body }, success)
             }
         };
         // The key to this function is that it returns true if ANYTHING was transformed. That means
@@ -1015,8 +860,6 @@ impl Expr {
     where
         Trans: Fn(Expr) -> (Expr, bool),
     {
-        use Expr::*;
-
         let mut set = HashSet::new();
 
         // Add all incremental normalization levels to set. Keep transforming
@@ -1039,13 +882,13 @@ impl Expr {
         for expr in set.clone() {
             match expr {
                 // Base case: no sub-nodes
-                Contradiction => {}
-                Tautology => {}
-                Var { .. } => {}
+                Expr::Contra => {}
+                Expr::Taut => {}
+                Expr::Var { .. } => {}
 
                 // Add the Cartesian product of the set of `func`
                 // transformations and the sets of transformations of `args`
-                Apply { func, args } => {
+                Expr::Apply { func, args } => {
                     let func_set = func.transform_set(trans_fn).into_iter().map(Box::new);
                     let args_set = args
                         .into_iter()
@@ -1054,58 +897,49 @@ impl Expr {
                     set.extend(
                         func_set
                             .cartesian_product(args_set)
-                            .map(|(func, args)| Apply { func, args }),
+                            .map(|(func, args)| Expr::Apply { func, args }),
                     );
                 }
 
                 // Add the set of transformations of `operand`
-                Unop { symbol, operand } => {
+                Expr::Not { operand } => {
                     set.extend(
                         operand
                             .transform_set(trans_fn)
                             .into_iter()
                             .map(Box::new)
-                            .map(move |operand| Unop { symbol, operand }),
+                            .map(move |operand| Expr::Not { operand }),
                     );
                 }
 
                 // Add the Cartesian product of the transformation sets of the
                 // `left` and `right` sub-nodes
-                Binop {
-                    symbol,
-                    left,
-                    right,
-                } => {
+                Expr::Impl { left, right } => {
                     let left_set = left.transform_set(trans_fn).into_iter().map(Box::new);
                     let right_set = right.transform_set_vec(trans_fn).into_iter().map(Box::new);
-                    let binop_set =
-                        left_set
-                            .cartesian_product(right_set)
-                            .map(|(left, right)| Binop {
-                                symbol,
-                                left,
-                                right,
-                            });
+                    let binop_set = left_set
+                        .cartesian_product(right_set)
+                        .map(|(left, right)| Expr::Impl { left, right });
                     set.extend(binop_set);
                 }
 
                 // Add the Cartesian product of the transformation sets of the
                 // sub-nodes in `exprs`
-                AssocBinop { symbol, exprs } => {
+                Expr::Binary { op, exprs } => {
                     set.extend(
                         exprs
                             .into_iter()
                             .map(|expr| expr.transform_set_vec(trans_fn))
                             .multi_cartesian_product()
-                            .map(|exprs| AssocBinop { symbol, exprs }),
+                            .map(|exprs| Expr::Binary { op, exprs }),
                     );
                 }
 
                 // Add the set of transformations of `body`
-                Quantifier { symbol, name, body } => {
+                Expr::Quant { kind, name, body } => {
                     let body_set = body.transform_set(trans_fn).into_iter().map(Box::new);
-                    let quant_set = body_set.map(|body| Quantifier {
-                        symbol,
+                    let quant_set = body_set.map(|body| Expr::Quant {
+                        kind,
                         name: name.clone(),
                         body,
                     });
@@ -1119,37 +953,31 @@ impl Expr {
 
     /// Simplify an expression with recursive DeMorgan's
     /// ~(A ^ B) <=> ~A v ~B  /  ~(A v B) <=> ~A ^ ~B
-    /// Strategy: Apply this to all ~(A ^ B) constructions
+    /// Strategy: Expr::Apply this to all ~(A ^ B) constructions
     /// This should leave us with an expression in "DeMorgans'd normal form"
     /// With no ~(A ^ B) / ~(A v B) expressions
     pub fn normalize_demorgans(self) -> Expr {
-        use Expr::*;
-
         self.transform(&|expr| {
-            let demorgans = |new_symbol, exprs: Vec<Expr>| AssocBinop {
-                symbol: new_symbol,
+            let demorgans = |op, exprs: Vec<Expr>| Expr::Binary {
+                op,
                 exprs: exprs
                     .into_iter()
-                    .map(|expr| Unop {
-                        symbol: USymbol::Not,
+                    .map(|expr| Expr::Not {
                         operand: Box::new(expr),
                     })
                     .collect(),
             };
 
             match expr {
-                Unop {
-                    symbol: USymbol::Not,
-                    operand,
-                } => match *operand {
-                    AssocBinop {
-                        symbol: ASymbol::And,
+                Expr::Not { operand } => match *operand {
+                    Expr::Binary {
+                        op: BinOp::And,
                         exprs,
-                    } => (demorgans(ASymbol::Or, exprs), true),
-                    AssocBinop {
-                        symbol: ASymbol::Or,
+                    } => (demorgans(BinOp::Or, exprs), true),
+                    Expr::Binary {
+                        op: BinOp::Or,
                         exprs,
-                    } => (demorgans(ASymbol::And, exprs), true),
+                    } => (demorgans(BinOp::And, exprs), true),
                     _ => (Expr::not(*operand), false),
                 },
                 _ => (expr, false),
@@ -1162,16 +990,14 @@ impl Expr {
     /// A | A -> A
     /// In a manner equivalent to normalize_demorgans
     pub fn normalize_idempotence(self) -> Expr {
-        use Expr::*;
-
         self.transform(&|expr| {
             match expr {
-                AssocBinop {
-                    symbol: symbol @ ASymbol::And,
+                Expr::Binary {
+                    op: op @ BinOp::And,
                     exprs,
                 }
-                | AssocBinop {
-                    symbol: symbol @ ASymbol::Or,
+                | Expr::Binary {
+                    op: op @ BinOp::Or,
                     exprs,
                 } => {
                     let mut unifies = true;
@@ -1189,7 +1015,7 @@ impl Expr {
                         // Just use the first one
                         (exprs.into_iter().next().unwrap(), true)
                     } else {
-                        (AssocBinop { symbol, exprs }, false)
+                        (Expr::Binary { op, exprs }, false)
                     }
                 }
                 _ => (expr, false),
@@ -1197,88 +1023,59 @@ impl Expr {
         })
     }
 
-    /*
-    pub fn to_prenex(self) -> Expr {
-        use Expr::*; use QSymbol::*;
-        match self {
-            Contradiction => Contradiction,
-            Predicate { .. } => e.clone(),
-            Unop { symbol: USymbol::Not, operand } => match to_prenex(&operand) {
-                Quantifier { symbol, name, body } => Quantifier { symbol: match symbol { Forall => Exists, Exists => Forall }, name, body: Box::new(expression_builders::not(*body)) },
-                e => e
-            },
-            Binop { symbol: BSymbol::Implies, left, right } => unimplemented!(),
-            Binop { symbol: _, left, right } => unimplemented!(),
-            AssocBinop { symbol, exprs } => {
-                let exprs: Vec<Expr> = exprs.iter().map(to_prenex).collect();
-                unimplemented!()
-            },
-            Quantifier { name, body, .. } => unimplemented!(),
-        }
-    }
-    */
     pub fn disjuncts(&self) -> Vec<Expr> {
-        use Expr::*;
         match self {
-            Contradiction => vec![],
-            AssocBinop {
-                symbol: ASymbol::Or,
+            Expr::Contra => vec![],
+            Expr::Binary {
+                op: BinOp::Or,
                 exprs,
             } => exprs.clone(),
             _ => vec![self.clone()],
         }
     }
     pub fn from_disjuncts(mut disjuncts: Vec<Expr>) -> Expr {
-        use Expr::*;
         match disjuncts.len() {
-            0 => Contradiction,
+            0 => Expr::Contra,
             1 => disjuncts.pop().unwrap(),
-            _ => AssocBinop {
-                symbol: ASymbol::Or,
+            _ => Expr::Binary {
+                op: BinOp::Or,
                 exprs: disjuncts,
             },
         }
     }
     pub fn conjuncts(&self) -> Vec<Expr> {
-        use Expr::*;
         match self {
-            Tautology => vec![],
-            AssocBinop {
-                symbol: ASymbol::And,
+            Expr::Taut => vec![],
+            Expr::Binary {
+                op: BinOp::And,
                 exprs,
             } => exprs.clone(),
             _ => vec![self.clone()],
         }
     }
     pub fn from_conjuncts(mut conjuncts: Vec<Expr>) -> Expr {
-        use Expr::*;
         match conjuncts.len() {
-            0 => Tautology,
+            0 => Expr::Taut,
             1 => conjuncts.pop().unwrap(),
-            _ => AssocBinop {
-                symbol: ASymbol::And,
+            _ => Expr::Binary {
+                op: BinOp::And,
                 exprs: conjuncts,
             },
         }
     }
     pub fn negate_quantifiers(self) -> Expr {
-        use Expr::*;
-
         self.transform(&|expr| {
-            let gen_opposite = |new_symbol, name, body| Quantifier {
-                symbol: new_symbol,
+            let gen_opposite = |kind, name, body| Expr::Quant {
+                kind,
                 name,
                 body: Box::new(Expr::not(body)),
             };
 
             match expr {
-                Unop {
-                    symbol: USymbol::Not,
-                    operand,
-                } => match *operand {
-                    Quantifier { symbol, name, body } => match symbol {
-                        QSymbol::Exists => (gen_opposite(QSymbol::Forall, name, *body), true),
-                        QSymbol::Forall => (gen_opposite(QSymbol::Exists, name, *body), true),
+                Expr::Not { operand } => match *operand {
+                    Expr::Quant { kind, name, body } => match kind {
+                        QuantKind::Exists => (gen_opposite(QuantKind::Forall, name, *body), true),
+                        QuantKind::Forall => (gen_opposite(QuantKind::Exists, name, *body), true),
                     },
                     _ => (Expr::not(*operand), false),
                 },
@@ -1287,13 +1084,11 @@ impl Expr {
         })
     }
     pub fn normalize_null_quantifiers(self) -> Expr {
-        use Expr::*;
-
         self.transform(&|expr| {
             match expr {
-                Quantifier { symbol, name, body } => {
+                Expr::Quant { kind, name, body } => {
                     if freevars(&body).contains(&name) {
-                        (Quantifier { symbol, name, body }, false)
+                        (Expr::Quant { kind, name, body }, false)
                     } else {
                         // if name is not free in body, then the quantifier isn't binding anything and can be removed
                         (*body, true)
@@ -1304,12 +1099,10 @@ impl Expr {
         })
     }
     pub fn replacing_bound_vars(self) -> Expr {
-        use Expr::*;
-
         // replaces the letter names with numbers
         fn aux(expr: Expr, mut gamma: Vec<String>) -> Expr {
             match expr {
-                Var { name } => {
+                Expr::Var { name } => {
                     // look up the name in gamma, get the index
                     let i = gamma
                         .into_iter()
@@ -1317,7 +1110,7 @@ impl Expr {
                         .find(|(_, n)| n == &name)
                         .unwrap()
                         .0;
-                    Var {
+                    Expr::Var {
                         name: format!("{}", i),
                     }
                 }
@@ -1325,47 +1118,38 @@ impl Expr {
                 // Example: for forall x, P(x)
                 // push x onto gamma
                 // save the length of gamma before recursing, to use as the new name
-                Quantifier { symbol, name, body } => {
+                Expr::Quant { kind, name, body } => {
                     let current_level = format!("{}", gamma.len());
                     gamma.push(name);
                     let new_body = aux(*body, gamma);
-                    Quantifier {
-                        symbol,
+                    Expr::Quant {
+                        kind,
                         name: current_level,
                         body: Box::new(new_body),
                     }
                 }
                 // All the remainder cases
-                Contradiction => Contradiction,
-                Tautology => Tautology,
-                Apply { func, args } => {
+                Expr::Contra => Expr::Contra,
+                Expr::Taut => Expr::Taut,
+                Expr::Apply { func, args } => {
                     let func = aux(*func, gamma.clone());
                     let args = args.into_iter().map(|e| aux(e, gamma.clone())).collect();
-                    Apply {
+                    Expr::Apply {
                         func: Box::new(func),
                         args,
                     }
                 }
-                Unop { symbol, operand } => Unop {
-                    symbol,
+                Expr::Not { operand } => Expr::Not {
                     operand: Box::new(aux(*operand, gamma)),
                 },
-                Binop {
-                    symbol,
-                    left,
-                    right,
-                } => {
+                Expr::Impl { left, right } => {
                     let left = Box::new(aux(*left, gamma.clone()));
                     let right = Box::new(aux(*right, gamma));
-                    Binop {
-                        symbol,
-                        left,
-                        right,
-                    }
+                    Expr::Impl { left, right }
                 }
-                AssocBinop { symbol, exprs } => {
+                Expr::Binary { op, exprs } => {
                     let exprs = exprs.into_iter().map(|e| aux(e, gamma.clone())).collect();
-                    AssocBinop { symbol, exprs }
+                    Expr::Binary { op, exprs }
                 }
             }
         }
@@ -1377,7 +1161,7 @@ impl Expr {
         // at this point, we've numbered all the vars, including the free ones
         // replace the free vars with their original names
         for (i, name) in gamma.into_iter().enumerate() {
-            ret = subst(&ret, &format!("{}", i), Var { name });
+            ret = subst(&ret, &format!("{}", i), Expr::Var { name });
         }
         ret
     }
@@ -1388,30 +1172,28 @@ impl Expr {
     // rewrap all the quantifiers in sorted order
     // if the sorted set is the same as the initial set, return false
     pub fn swap_quantifiers(self) -> Expr {
-        use Expr::*;
-
         self.transform(&|expr| {
             let mut mod_expr = expr.clone();
             let mut stack = vec![];
             let mut last_quantifier = None;
 
-            while let Quantifier { symbol, name, body } = mod_expr {
-                if last_quantifier.is_none() || last_quantifier == Some(symbol) {
-                    last_quantifier = Some(symbol);
+            while let Expr::Quant { kind, name, body } = mod_expr {
+                if last_quantifier.is_none() || last_quantifier == Some(kind) {
+                    last_quantifier = Some(kind);
                     stack.push(name);
                     mod_expr = *body;
                 } else {
-                    mod_expr = Quantifier { symbol, name, body };
+                    mod_expr = Expr::Quant { kind, name, body };
                     break;
                 }
             }
 
             stack.sort();
 
-            if let Some(sym) = &last_quantifier {
+            if let Some(kind) = last_quantifier {
                 for l_name in stack {
-                    mod_expr = Quantifier {
-                        symbol: *sym,
+                    mod_expr = Expr::Quant {
+                        kind,
                         name: l_name,
                         body: Box::new(mod_expr),
                     };
@@ -1428,13 +1210,12 @@ impl Expr {
     /// 7a2. exists x, (phi(x) ∧ psi) == (exists x, phi(x)) ∧ psi
     /// 7b1. forall x, (phi(x) ∨ psi) == (forall x, phi(x)) ∨ psi
     /// 7b2. exists x, (phi(x) ∨ psi) == (exists x, phi(x)) ∨ psi
-    /// 7c1. forall x, (phi(x) → psi) == (exists x, phi(x)) → psi (! Quantifier changes!)
-    /// 7c2. exists x, (phi(x) → psi) == (forall x, phi(x)) → psi (! Quantifier changes!)
+    /// 7c1. forall x, (phi(x) → psi) == (exists x, phi(x)) → psi (! Expr::Quantifier changes!)
+    /// 7c2. exists x, (phi(x) → psi) == (forall x, phi(x)) → psi (! Expr::Quantifier changes!)
     /// 7d1. forall x, (psi → phi(x)) == psi → (forall x, phi(x))
     /// 7d2. exists x, (psi → phi(x)) == psi → (exists x, phi(x))
     pub fn normalize_prenex_laws(self) -> Expr {
-        use Expr::*;
-        let transform_7ab = |asymbol: ASymbol, exprs: Vec<Expr>| {
+        let transform_7ab = |op: BinOp, exprs: Vec<Expr>| {
             // hoist a forall out of an and/or when the binder won't capture any of the other arms
             // if the binder doesn't occur in `all_free` (the union of all the arms freevars), it won't induce capturing
             let mut all_free = HashSet::new();
@@ -1445,93 +1226,72 @@ impl Expr {
             let mut others = vec![];
             for expr in exprs.into_iter() {
                 match expr {
-                    Quantifier { symbol, name, body } => {
+                    Expr::Quant { kind, name, body } => {
                         if found.is_none() && !all_free.contains(&name) {
-                            found = Some((symbol, name));
+                            found = Some((kind, name));
                             others.push(*body);
                         } else {
-                            others.push(Quantifier { symbol, name, body });
+                            others.push(Expr::Quant { kind, name, body });
                         }
                     }
                     _ => others.push(expr),
                 }
             }
-            if let Some((symbol, name)) = found {
-                let body = Box::new(AssocBinop {
-                    symbol: asymbol,
-                    exprs: others,
-                });
-                (Quantifier { symbol, name, body }, true)
+            if let Some((kind, name)) = found {
+                let body = Box::new(Expr::Binary { op, exprs: others });
+                (Expr::Quant { kind, name, body }, true)
             } else {
                 // if none of the subexpressions were quantifiers whose binder was free, `others` should be in the same as `exprs`
-                (
-                    AssocBinop {
-                        symbol: asymbol,
-                        exprs: others,
-                    },
-                    false,
-                )
+                (Expr::Binary { op, exprs: others }, false)
             }
         };
-        let reconstruct_7cd = |symbol: QSymbol, name: String, left, right| {
-            let body = Box::new(Binop {
-                symbol: BSymbol::Implies,
-                left,
-                right,
-            });
-            (Quantifier { symbol, name, body }, true)
+        let reconstruct_7cd = |kind: QuantKind, name: String, left, right| {
+            let body = Box::new(Expr::Impl { left, right });
+            (Expr::Quant { kind, name, body }, true)
         };
         self.transform(&|expr| {
             match expr {
-                AssocBinop { symbol, exprs } => match symbol {
-                    ASymbol::And => transform_7ab(ASymbol::And, exprs),
-                    ASymbol::Or => transform_7ab(ASymbol::Or, exprs),
-                    _ => (AssocBinop { symbol, exprs }, false),
+                Expr::Binary { op, exprs } => match op {
+                    BinOp::And => transform_7ab(BinOp::And, exprs),
+                    BinOp::Or => transform_7ab(BinOp::Or, exprs),
+                    _ => (Expr::Binary { op, exprs }, false),
                 },
-                Binop {
-                    symbol: BSymbol::Implies,
+                Expr::Impl {
                     mut left,
                     mut right,
                 } => {
                     let left_free = freevars(&left);
                     let right_free = freevars(&right);
                     left = match *left {
-                        Quantifier { symbol, name, body } if !right_free.contains(&name) => {
+                        Expr::Quant { kind, name, body } if !right_free.contains(&name) => {
                             // 7c case, quantifier is flipped
-                            match symbol {
-                                QSymbol::Forall => {
-                                    return reconstruct_7cd(QSymbol::Exists, name, body, right);
+                            match kind {
+                                QuantKind::Forall => {
+                                    return reconstruct_7cd(QuantKind::Exists, name, body, right);
                                 }
-                                QSymbol::Exists => {
-                                    return reconstruct_7cd(QSymbol::Forall, name, body, right);
+                                QuantKind::Exists => {
+                                    return reconstruct_7cd(QuantKind::Forall, name, body, right);
                                 }
                             }
                         }
                         left => Box::new(left),
                     };
                     right = match *right {
-                        Quantifier { symbol, name, body } if !left_free.contains(&name) => {
+                        Expr::Quant { kind, name, body } if !left_free.contains(&name) => {
                             // 7d case, quantifier is not flipped
                             // exhaustive match despite the bodies being the same: since if more quantifiers are added, should reconsider here instead of blindly hoisting the new quantifier
-                            match symbol {
-                                QSymbol::Forall => {
-                                    return reconstruct_7cd(QSymbol::Forall, name, left, body);
+                            match kind {
+                                QuantKind::Forall => {
+                                    return reconstruct_7cd(QuantKind::Forall, name, left, body);
                                 }
-                                QSymbol::Exists => {
-                                    return reconstruct_7cd(QSymbol::Exists, name, left, body);
+                                QuantKind::Exists => {
+                                    return reconstruct_7cd(QuantKind::Exists, name, left, body);
                                 }
                             }
                         }
                         right => Box::new(right),
                     };
-                    (
-                        Binop {
-                            symbol: BSymbol::Implies,
-                            left,
-                            right,
-                        },
-                        false,
-                    )
+                    (Expr::Impl { left, right }, false)
                 }
                 _ => (expr, false),
             }
@@ -1539,21 +1299,19 @@ impl Expr {
     }
 
     pub fn aristotelean_square(self) -> Expr {
-        use Expr::*;
-
         self.transform(&|expr| {
-            let gen_opposite = |symbol, name, body| match symbol {
-                QSymbol::Exists => (
-                    Quantifier {
-                        symbol: QSymbol::Forall,
+            let gen_opposite = |kind, name, body| match kind {
+                QuantKind::Exists => (
+                    Expr::Quant {
+                        kind: QuantKind::Forall,
                         name,
                         body,
                     },
                     true,
                 ),
-                QSymbol::Forall => (
-                    Quantifier {
-                        symbol: QSymbol::Exists,
+                QuantKind::Forall => (
+                    Expr::Quant {
+                        kind: QuantKind::Exists,
                         name,
                         body,
                     },
@@ -1564,43 +1322,35 @@ impl Expr {
             let orig_expr = expr.clone();
             match expr {
                 // find unop quantifier on the left
-                Unop {
-                    symbol: USymbol::Not,
-                    operand,
-                } => {
+                Expr::Not { operand } => {
                     match *operand {
-                        Quantifier { symbol, name, body } => {
+                        Expr::Quant { kind, name, body } => {
                             match *body {
                                 // find implies, turn into associative binop
-                                Binop {
-                                    symbol: BSymbol::Implies,
-                                    left,
-                                    right,
-                                } => {
+                                Expr::Impl { left, right } => {
                                     let new_exprs = vec![*left, Expr::not(*right)];
 
-                                    let new_body = AssocBinop {
-                                        symbol: ASymbol::And,
+                                    let new_body = Expr::Binary {
+                                        op: BinOp::And,
                                         exprs: new_exprs,
                                     };
-                                    gen_opposite(symbol, name, Box::new(new_body))
+                                    gen_opposite(kind, name, Box::new(new_body))
                                 }
 
                                 // find and with exactly 2 exprs
-                                AssocBinop {
-                                    symbol: ASymbol::And,
+                                Expr::Binary {
+                                    op: BinOp::And,
                                     exprs,
                                 } => {
                                     if exprs.len() != 2 {
                                         (orig_expr, false)
                                     } else {
-                                        let new_body = Binop {
-                                            symbol: BSymbol::Implies,
+                                        let new_body = Expr::Impl {
                                             left: Box::new(exprs[0].clone()),
                                             right: Box::new(Expr::not(exprs[1].clone())),
                                         };
 
-                                        gen_opposite(symbol, name, Box::new(new_body))
+                                        gen_opposite(kind, name, Box::new(new_body))
                                     }
                                 }
 
@@ -1617,18 +1367,16 @@ impl Expr {
     }
 
     pub fn quantifier_distribution(self) -> Expr {
-        use Expr::*;
-
-        let push_quantifier_inside = |qsymbol: QSymbol, qname: String, exprs: &mut Vec<Expr>| {
+        let push_quantifier_inside = |kind: QuantKind, qname: String, exprs: &mut Vec<Expr>| {
             for iter in exprs.iter_mut() {
-                match qsymbol {
-                    QSymbol::Exists => {
-                        let tmp = mem::replace(iter, Contradiction);
+                match kind {
+                    QuantKind::Exists => {
+                        let tmp = mem::replace(iter, Expr::Contra);
                         *iter = Expr::exists(qname.as_str(), tmp);
                     }
 
-                    QSymbol::Forall => {
-                        let tmp = mem::replace(iter, Contradiction);
+                    QuantKind::Forall => {
+                        let tmp = mem::replace(iter, Expr::Contra);
                         *iter = Expr::forall(qname.as_str(), tmp);
                     }
                 }
@@ -1639,25 +1387,18 @@ impl Expr {
             let orig_expr = expr.clone();
 
             match expr {
-                Quantifier {
-                    symbol: qsymbol,
-                    name,
-                    body,
-                } => {
+                Expr::Quant { kind, name, body } => {
                     match *body {
-                        AssocBinop {
-                            symbol: asymbol,
-                            mut exprs,
-                        } => {
-                            // continue only if asymbol is And or Or
-                            match asymbol {
-                                ASymbol::And | ASymbol::Or => {}
+                        Expr::Binary { op, mut exprs } => {
+                            // continue only if op is And or Or
+                            match op {
+                                BinOp::And | BinOp::Or => {}
                                 _ => return (orig_expr, false),
                             };
 
                             // inline push_quantifier_inside here
-                            push_quantifier_inside(qsymbol, name, &mut exprs);
-                            (Expr::assocbinop(asymbol, &exprs), true)
+                            push_quantifier_inside(kind, name, &mut exprs);
+                            (Expr::binary(op, &exprs), true)
                         }
                         _ => (orig_expr, false),
                     }
@@ -1706,8 +1447,6 @@ impl Expr {
     /// assert_eq!(p("~A").into_nnf().unwrap(), !NnfExpr::var("A"));
     /// ```
     pub fn into_nnf(self) -> Option<NnfExpr> {
-        use Expr::*;
-
         // Helper function for converting a vector of expressions to NNF
         fn map_nnf(exprs: Vec<Expr>) -> Option<Vec<NnfExpr>> {
             exprs.into_iter().map(Expr::into_nnf).collect()
@@ -1716,67 +1455,57 @@ impl Expr {
         // Recursively convert to NNF
         match self {
             // Base cases
-            Contradiction => Some(NnfExpr::contradiction()),
-            Tautology => Some(NnfExpr::tautology()),
-            Var { name } => Some(NnfExpr::var(name)),
-            Apply { .. } | Quantifier { .. } => None,
+            Expr::Contra => Some(NnfExpr::contra()),
+            Expr::Taut => Some(NnfExpr::taut()),
+            Expr::Var { name } => Some(NnfExpr::var(name)),
+            Expr::Apply { .. } | Expr::Quant { .. } => None,
 
             // Recursive cases
-            Unop {
-                symbol: USymbol::Not,
-                operand,
-            } => operand.into_nnf().map(NnfExpr::not),
-            Binop {
-                symbol,
-                left,
-                right,
-            } => match symbol {
-                BSymbol::Implies => {
-                    let left = left.into_nnf()?;
-                    let right = right.into_nnf()?;
-                    Some(left.implies(right))
-                }
-                BSymbol::Mult | BSymbol::Plus => None,
-            },
-            AssocBinop { symbol, exprs } => match symbol {
-                ASymbol::And => map_nnf(exprs).map(|exprs| NnfExpr::And { exprs }),
-                ASymbol::Or => map_nnf(exprs).map(|exprs| NnfExpr::Or { exprs }),
-                ASymbol::Bicon => exprs
+            Expr::Not { operand } => operand.into_nnf().map(NnfExpr::not),
+            Expr::Impl { left, right } => {
+                let left = left.into_nnf()?;
+                let right = right.into_nnf()?;
+                Some(left.implies(right))
+            }
+            Expr::Binary { op, exprs } => match op {
+                BinOp::And => map_nnf(exprs).map(|exprs| NnfExpr::And { exprs }),
+                BinOp::Or => map_nnf(exprs).map(|exprs| NnfExpr::Or { exprs }),
+                BinOp::Bicon => exprs
                     .into_iter()
                     .map(Self::into_nnf)
                     .collect::<Option<Vec<NnfExpr>>>()?
                     .into_iter()
                     .fold1(NnfExpr::bicon),
-                ASymbol::Equiv => None,
+                BinOp::Equiv | BinOp::Add | BinOp::Mult => None,
             },
         }
     }
 }
 
 impl NnfExpr {
-    /// Create a true NNF expression.
+    /// Create a true (tautology) NNF expression.
     ///
     /// ```rust
     /// use aris::parser::parse_unwrap as p;
     /// # use aris::expr::NnfExpr;
     ///
-    /// assert_eq!(p("⊤").into_nnf(), Some(NnfExpr::tautology()));
+    /// assert_eq!(p("⊤").into_nnf(), Some(NnfExpr::taut()));
     /// ```
-    pub fn tautology() -> Self {
+    pub fn taut() -> Self {
         // An empty AND
         // AND() ≡ ⊤
         Self::And { exprs: vec![] }
     }
 
-    /// Create a false NNF expression.
+    /// Create a false (contradiction) NNF expression.
     ///
     /// ```rust
     /// use aris::parser::parse_unwrap as p;
     /// # use aris::expr::NnfExpr;
     ///
-    /// assert_eq!(p("⊥").into_nnf(), Some(NnfExpr::contradiction()));
+    /// assert_eq!(p("⊥").into_nnf(), Some(NnfExpr::contra()));
     /// ```
-    pub fn contradiction() -> Self {
+    pub fn contra() -> Self {
         // An empty OR
         // OR() ≡ ⊥
         Self::Or { exprs: vec![] }
@@ -1893,29 +1622,29 @@ impl Not for NnfExpr {
 }
 
 impl CnfExpr {
-    /// Create a true CNF expression.
+    /// Create a true (tautology) CNF expression.
     ///
     /// ```rust
     /// use aris::parser::parse_unwrap as p;
     /// # use aris::expr::CnfExpr;
     ///
-    /// assert_eq!(p("⊤").into_cnf(), Some(CnfExpr::tautology()));
+    /// assert_eq!(p("⊤").into_cnf(), Some(CnfExpr::taut()));
     /// ```
-    pub fn tautology() -> Self {
+    pub fn taut() -> Self {
         // An empty AND
         // AND() ≡ ⊤
         CnfExpr(vec![])
     }
 
-    /// Create a false CNF expression.
+    /// Create a false (contradiction) CNF expression.
     ///
     /// ```rust
     /// use aris::parser::parse_unwrap as p;
     /// # use aris::expr::CnfExpr;
     ///
-    /// assert_eq!(p("⊥").into_cnf(), Some(CnfExpr::contradiction()));
+    /// assert_eq!(p("⊥").into_cnf(), Some(CnfExpr::contra()));
     /// ```
-    pub fn contradiction() -> Self {
+    pub fn contra() -> Self {
         // An AND with an empty OR inside
         // AND(OR()) ≡ OR() ≡ ⊥
         CnfExpr(vec![vec![]])
@@ -1987,7 +1716,7 @@ impl CnfExpr {
             .map(|clauses| clauses.concat())
             .collect::<Vec<Vec<(bool, String)>>>();
         if clauses.is_empty() {
-            CnfExpr::contradiction()
+            CnfExpr::contra()
         } else {
             CnfExpr(clauses)
         }
@@ -2066,8 +1795,8 @@ pub fn expressions_for_depth(
 ) -> BTreeSet<Expr> {
     let mut ret = BTreeSet::new();
     if depth == 0 {
-        ret.insert(Expr::Contradiction);
-        ret.insert(Expr::Tautology);
+        ret.insert(Expr::Contra);
+        ret.insert(Expr::Taut);
         ret.extend(vars.iter().cloned().map(|name| Expr::Var { name }));
     } else {
         let smaller: Vec<_> = expressions_for_depth(depth - 1, max_assoc, vars.clone())
@@ -2085,16 +1814,21 @@ pub fn expressions_for_depth(
         for e in smaller.iter() {
             ret.insert(Expr::not(e.clone()));
         }
-        for symbol in &[BSymbol::Implies /*BSymbol::Plus, BSymbol::Mult*/] {
-            for lhs in smaller.iter() {
-                for rhs in smaller.iter() {
-                    ret.insert(Expr::binop(*symbol, lhs.clone(), rhs.clone()));
-                }
+        for lhs in smaller.iter() {
+            for rhs in smaller.iter() {
+                ret.insert(Expr::implies(lhs.clone(), rhs.clone()));
             }
         }
-        for symbol in &[ASymbol::And, ASymbol::Or, ASymbol::Bicon, ASymbol::Equiv] {
+        for op in &[
+            BinOp::And,
+            BinOp::Or,
+            BinOp::Bicon,
+            BinOp::Equiv,
+            BinOp::Add,
+            BinOp::Mult,
+        ] {
             for arglist in products.iter() {
-                ret.insert(Expr::assocbinop(*symbol, &arglist));
+                ret.insert(Expr::binary(*op, &arglist));
             }
         }
         let x = format!("x{}", depth);
