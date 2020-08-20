@@ -1,10 +1,10 @@
 use super::*;
 
-use aris::expression::ASymbol;
-use aris::expression::BSymbol;
-use aris::expression::Expr;
-use aris::expression::QSymbol;
-use aris::expression::USymbol;
+use aris::expr::ASymbol;
+use aris::expr::BSymbol;
+use aris::expr::Expr;
+use aris::expr::QSymbol;
+use aris::expr::USymbol;
 
 #[no_mangle]
 #[allow(non_snake_case)]
@@ -55,7 +55,6 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
                 .l()?,
         ))?,
     );
-    use aris::expression::expression_builders::*;
     let handle_binop = |symbol: BSymbol| -> jni::errors::Result<Expr> {
         let left = env
             .get_field(obj, "l", "Ledu/rpi/aris/ast/Expression;")?
@@ -63,7 +62,7 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
         let right = env
             .get_field(obj, "r", "Ledu/rpi/aris/ast/Expression;")?
             .l()?;
-        Ok(binop(
+        Ok(Expr::binop(
             symbol,
             jobject_to_expr(env, left)?,
             jobject_to_expr(env, right)?,
@@ -97,12 +96,12 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
             let operand = env
                 .get_field(obj, "operand", "Ledu/rpi/aris/ast/Expression;")?
                 .l()?;
-            Ok(not(jobject_to_expr(env, operand)?))
+            Ok(Expr::not(jobject_to_expr(env, operand)?))
         }
         "edu.rpi.aris.ast.Expression$VarExpression" => {
             let name =
                 jobject_to_string(env, env.get_field(obj, "name", "Ljava/lang/String;")?.l()?)?;
-            Ok(var(&name))
+            Ok(Expr::var(&name))
         }
         "edu.rpi.aris.ast.Expression$ImplicationExpression" => handle_binop(BSymbol::Implies),
         "edu.rpi.aris.ast.Expression$AddExpression" => handle_binop(BSymbol::Plus),
@@ -127,10 +126,7 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
                 env.get_field(obj, "args", "Ljava/util/List;")?.l()?,
                 |arg| Ok(args.push(jobject_to_expr(env, arg)?)),
             )?;
-            Ok(aris::expression::expression_builders::apply(
-                func,
-                &args[..],
-            ))
+            Ok(Expr::apply(func, &args[..]))
         }
         _ => Err(jni::errors::Error::from_kind(jni::errors::ErrorKind::Msg(
             format!("jobject_to_expr: unknown class {}", name),

@@ -1,6 +1,6 @@
 use crate::JsResult;
 
-use aris::expression::Expr;
+use aris::expr::Expr;
 use aris::proofs::Proof as ProofT;
 
 use std::collections::HashSet;

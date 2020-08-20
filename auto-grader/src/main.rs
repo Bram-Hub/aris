@@ -1,10 +1,11 @@
-extern crate aris;
+//! This file builds the headless version of Aris,
+//! meant for verifying proofs submitted on Submitty.
 
-// This file builds the headless version of Aris,
-// meant for verifying proofs submitted on Submitty.
-#[macro_use]
-extern crate frunk_core;
-use frunk_core::coproduct::Coproduct;
+use aris::expr::Expr;
+use aris::proofs::lined_proof::LinedProof;
+use aris::proofs::xml_interop::proof_from_xml;
+use aris::proofs::{Justification, PJRef, Proof};
+use aris::rules::ProofCheckError;
 
 use std::collections::HashSet;
 use std::env;
@@ -12,11 +13,8 @@ use std::fmt::Debug;
 use std::fs::File;
 use std::path::Path;
 
-use aris::expression::Expr;
-use aris::proofs::lined_proof::LinedProof;
-use aris::proofs::xml_interop::proof_from_xml;
-use aris::proofs::{Justification, PJRef, Proof};
-use aris::rules::ProofCheckError;
+use frunk_core::coproduct::Coproduct;
+use frunk_core::Hlist;
 
 fn validate_recursive<P: Proof>(
     proof: &P,

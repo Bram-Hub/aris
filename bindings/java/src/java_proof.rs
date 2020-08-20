@@ -1,6 +1,6 @@
 use super::*;
 
-use aris::expression::Expr;
+use aris::expr::Expr;
 use aris::proofs::lined_proof::LinedProof;
 use aris::proofs::pooledproof::PooledProof;
 use aris::proofs::Proof;

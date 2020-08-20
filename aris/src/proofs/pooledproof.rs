@@ -106,9 +106,24 @@ Various parts of `PooledProof` use `frunk_core::coproduct::Coproduct` to create 
 While the `[]`s in the `Justification`s are actually `Vec`s and will be that simple in the `Debug` rendering, `premise_list` and `line_list` are `ZipperVec`s for performance, and so the `Debug` rendering reveals where the cursor (roughly, last insertion point) is.
 */
 
-use super::*;
-use frunk_core::hlist::HCons;
+use crate::expr::Expr;
+use crate::proofs::js_to_pjs;
+use crate::proofs::DisplayIndented;
+use crate::proofs::JSRef;
+use crate::proofs::Justification;
+use crate::proofs::PJRef;
+use crate::proofs::PJSRef;
+use crate::proofs::Proof;
+use crate::rules::ProofCheckError;
+use crate::rules::RuleT;
+use crate::zipper_vec::ZipperVec;
+
 use std::collections::BTreeMap;
+use std::collections::HashSet;
+
+use frunk_core::coproduct::Coproduct;
+use frunk_core::hlist::HCons;
+use frunk_core::Coprod;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PremKey(usize);
@@ -277,25 +292,6 @@ impl<T> PooledSubproof<T> {
             line_list: ZipperVec::new(),
         }
     }
-    fn increment_indices(&mut self, i: PremKey, j: JustKey, k: SubKey) {
-        let newprems = self
-            .premise_list
-            .iter()
-            .map(|x| PremKey(x.0 + i.0))
-            .collect();
-        self.premise_list = ZipperVec::from_vec(newprems);
-        let newlines = self
-            .line_list
-            .iter()
-            .map(|x| {
-                x.fold(hlist![
-                    |y: JustKey| Coproduct::inject(JustKey(y.0 + j.0)),
-                    |y: SubKey| Coproduct::inject(SubKey(y.0 + k.0))
-                ])
-            })
-            .collect();
-        self.line_list = ZipperVec::from_vec(newlines);
-    }
 }
 
 impl<T: Clone> Pools<T> {
@@ -332,41 +328,6 @@ impl<T: Clone> Pools<T> {
                 .unwrap_or(0),
         )
     }
-    fn add_pools(&mut self, other: &Self) -> (PremKey, JustKey, SubKey) {
-        // TODO: deduplicate values for efficiency on joining subproofs with copies of the same expression multiple times
-        let premkey = self.next_premkey();
-        let justkey = self.next_justkey();
-        let subkey = self.next_subkey();
-        for (k, v) in other.prem_map.iter() {
-            self.prem_map.insert(PremKey(premkey.0 + k.0), v.clone());
-        }
-        for (k, v) in other.just_map.iter() {
-            self.just_map.insert(
-                JustKey(justkey.0 + k.0),
-                Justification(
-                    v.0.clone(),
-                    v.1,
-                    v.2.iter()
-                        .map(|x| {
-                            x.fold(hlist![
-                                |x: PremKey| Coproduct::inject(PremKey(x.0 + premkey.0)),
-                                |x: JustKey| Coproduct::inject(JustKey(x.0 + justkey.0)),
-                            ])
-                        })
-                        .collect(),
-                    v.3.iter()
-                        .map(|x: &SubKey| (SubKey(x.0 + subkey.0)))
-                        .collect(),
-                ),
-            );
-        }
-        for (k, v) in other.sub_map.iter() {
-            let mut w = v.clone();
-            w.increment_indices(premkey, justkey, subkey);
-            self.sub_map.insert(SubKey(subkey.0 + k.0), w);
-        }
-        (premkey, justkey, subkey)
-    }
 }
 
 impl<Tail: Default + Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
@@ -380,11 +341,6 @@ impl<Tail: Default + Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
     fn top_level_proof(&self) -> &Self {
         self
     }
-    /*fn lookup(&self, r: PJRef<Self>) -> Option<Coprod!(Expr, Justification<Expr, PJRef<Self>, Self::SubproofReference>)> {
-        r.fold(hlist![
-            |ref k| unsafe { &*self.pools }.prem_map.get(k).map(|x| Coproduct::inject(x.head.clone())),
-            |ref k| unsafe { &*self.pools }.just_map.get(k).map(|x| Coproduct::inject(x.clone().map0(|y| y.head)))])
-    }*/
     fn lookup_premise(&self, r: &Self::PremiseReference) -> Option<Expr> {
         unsafe { &*self.pools }
             .prem_map
@@ -763,23 +719,16 @@ impl<Tail: Default + Clone> Proof for PooledProof<HCons<Expr, Tail>> {
     }
 }
 
-#[test]
-fn prettyprint_pool() {
-    let prf: PooledProof<Hlist![Expr]> = super::proof_tests::demo_proof_1();
-    println!("{:?}\n{}\n", prf, prf);
-    println!("{:?}\n{:?}\n", prf.premises(), prf.lines());
-}
-
 impl<Tail> DisplayIndented for PooledProof<HCons<Expr, Tail>> {
     fn display_indented(
         &self,
-        fmt: &mut Formatter,
+        fmt: &mut std::fmt::Formatter,
         indent: usize,
         linecount: &mut usize,
     ) -> std::result::Result<(), std::fmt::Error> {
         fn aux<Tail>(
             p: &PooledProof<HCons<Expr, Tail>>,
-            fmt: &mut Formatter,
+            fmt: &mut std::fmt::Formatter,
             indent: usize,
             linecount: &mut usize,
             sub: &PooledSubproof<HCons<Expr, Tail>>,
@@ -827,32 +776,48 @@ impl<Tail> DisplayIndented for PooledProof<HCons<Expr, Tail>> {
     }
 }
 
-impl<Tail> Display for PooledProof<HCons<Expr, Tail>> {
-    fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> {
-        self.display_indented(fmt, 1, &mut 1)
+impl<Tail> std::fmt::Display for PooledProof<HCons<Expr, Tail>> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.display_indented(f, 1, &mut 1)
     }
 }
 
-#[test]
-fn test_pooledproof_mutating_lines() {
-    use parser::parse_unwrap as p;
-    let mut prf = PooledProof::<Hlist![Expr]>::new();
-    let r1 = prf.add_premise(p("A"));
-    let r2 = prf.add_step(Justification(
-        p("A & A"),
-        RuleM::AndIntro,
-        vec![Coproduct::inject(r1.clone())],
-        vec![],
-    ));
-    println!("{}", prf);
-    prf.with_mut_premise(&r1, |e| {
-        *e = p("B");
-    })
-    .unwrap();
-    prf.with_mut_step(&r2, |j| {
-        j.0 = p("A | B");
-        j.1 = RuleM::OrIntro;
-    })
-    .unwrap();
-    println!("{}", prf);
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::rules::RuleM;
+
+    use frunk_core::Hlist;
+
+    #[test]
+    fn test_pooledproof_mutating_lines() {
+        use crate::parser::parse_unwrap as p;
+        let mut prf = PooledProof::<Hlist![Expr]>::new();
+        let r1 = prf.add_premise(p("A"));
+        let r2 = prf.add_step(Justification(
+            p("A & A"),
+            RuleM::AndIntro,
+            vec![Coproduct::inject(r1.clone())],
+            vec![],
+        ));
+        println!("{}", prf);
+        prf.with_mut_premise(&r1, |e| {
+            *e = p("B");
+        })
+        .unwrap();
+        prf.with_mut_step(&r2, |j| {
+            j.0 = p("A | B");
+            j.1 = RuleM::OrIntro;
+        })
+        .unwrap();
+        println!("{}", prf);
+    }
+
+    #[test]
+    fn prettyprint_pool() {
+        let prf: PooledProof<Hlist![Expr]> = crate::proofs::proof_tests::demo_proof_1();
+        println!("{:?}\n{}\n", prf, prf);
+        println!("{:?}\n{:?}\n", prf.premises(), prf.lines());
+    }
 }

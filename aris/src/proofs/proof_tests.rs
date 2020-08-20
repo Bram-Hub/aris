@@ -1,10 +1,19 @@
 #![deny(unused_variables, dead_code)]
-use super::*;
 
+use crate::expr::Expr;
+use crate::proofs::pooledproof::PooledProof;
+use crate::proofs::Justification;
+use crate::proofs::PJRef;
+use crate::proofs::Proof;
+use crate::rules::RuleM;
+
+use std::collections::HashSet;
 use std::fmt::Debug;
+use std::fmt::Display;
 
 use frunk_core::coproduct::CoprodInjector;
 use frunk_core::coproduct::Coproduct;
+use frunk_core::Hlist;
 
 fn coproduct_inject<T, Index, Head, Tail>(to_insert: T) -> Coproduct<Head, Tail>
 where
@@ -44,12 +53,13 @@ macro_rules! generate_tests {
     ($proofrepr:ty, $modprefix:ident; $( $generic_test:ident ),+,) => {
         #[cfg(test)]
         mod $modprefix {
-        $(
-            #[test]
-            fn $generic_test() {
-                super::run_test::<$proofrepr, _>(super::$generic_test);
-            }
-        )+
+            use super::*;
+            $(
+                #[test]
+                fn $generic_test() {
+                    super::run_test::<$proofrepr, _>(super::$generic_test);
+                }
+            )+
         }
     }
 }
@@ -86,9 +96,8 @@ macro_rules! enumerate_subproofful_tests {
     };
 }
 
-enumerate_subproofless_tests! { super::treeproof::TreeProof<(), ()>, test_rules_on_treeproof }
-enumerate_subproofless_tests! { super::pooledproof::PooledProof<Hlist![super::Expr]>, test_subproofless_rules_on_pooledproof }
-enumerate_subproofful_tests! { super::pooledproof::PooledProof<Hlist![super::Expr]>, test_subproofful_rules_on_pooledproof }
+enumerate_subproofless_tests! { PooledProof<Hlist![Expr]>, test_subproofless_rules_on_pooledproof }
+enumerate_subproofful_tests! { PooledProof<Hlist![Expr]>, test_subproofful_rules_on_pooledproof }
 
 pub fn demo_proof_1<P: Proof>() -> P
 where
@@ -97,7 +106,7 @@ where
     P::SubproofReference: PartialEq + std::fmt::Debug,
 {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A"));
     let r2 = prf.add_premise(p("B"));
@@ -154,7 +163,7 @@ where
 
 pub fn test_andelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A & B & C & D"));
     let r2 = prf.add_premise(p("E | F"));
@@ -187,7 +196,7 @@ pub fn test_andelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_contelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("_|_"));
     let r2 = prf.add_premise(p("A & B"));
@@ -208,7 +217,7 @@ pub fn test_contelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_orintro<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A"));
     let r2 = prf.add_step(Justification(
@@ -234,7 +243,7 @@ pub fn test_orintro<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_reit<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A"));
     let r2 = prf.add_step(Justification(
@@ -254,7 +263,7 @@ pub fn test_reit<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_andintro<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A"));
     let r2 = prf.add_premise(p("B"));
@@ -288,7 +297,7 @@ pub fn test_andintro<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_contradictionintro<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A"));
     let r2 = prf.add_premise(p("~A"));
@@ -335,7 +344,7 @@ pub fn test_contradictionintro<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) 
 
 pub fn test_notelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("~~A"));
     let r2 = prf.add_premise(p("~~(A & B)"));
@@ -376,7 +385,7 @@ pub fn test_notelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_impelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("P"));
     let r2 = prf.add_premise(p("P -> Q"));
@@ -446,7 +455,7 @@ pub fn test_impelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_biconelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A <-> B <-> C"));
     let r2 = prf.add_premise(p("A"));
@@ -534,7 +543,7 @@ where
     P::Subproof: Debug,
 {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A"));
     let r2 = prf.add_premise(p("B"));
@@ -589,7 +598,7 @@ where
 
 pub fn test_notintro<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A -> _|_"));
     let r4 = prf.add_subproof();
@@ -619,7 +628,7 @@ pub fn test_notintro<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_orelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A | B"));
     let r4 = prf.add_subproof();
@@ -663,7 +672,7 @@ where
     P::Subproof: Debug,
 {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("P -> Q"));
     let r2 = prf.add_premise(p("Q -> R"));
@@ -758,7 +767,7 @@ where
     P::Subproof: Debug,
 {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("P -> Q"));
     let r2 = prf.add_premise(p("Q -> R"));
@@ -850,7 +859,7 @@ where
 
 pub fn test_equivelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("A === B === C"));
     let r2 = prf.add_premise(p("A"));
@@ -898,7 +907,7 @@ where
     P::Subproof: Debug,
 {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("forall x, p(x)"));
     let r2 = prf.add_step(Justification(
@@ -929,7 +938,7 @@ where
     P::SubproofReference: Debug,
 {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("forall x, p(x)"));
     let r2 = prf.add_premise(p("forall x, q(x)"));
@@ -1069,7 +1078,7 @@ where
     P::SubproofReference: Debug,
 {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
 
     let r1 = prf.add_premise(p("p(a)"));
@@ -1148,7 +1157,7 @@ where
     P::SubproofReference: Debug,
 {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("exists x, p(x)"));
     let r2 = prf.add_premise(p("p(a) -> q(a)"));
@@ -1335,7 +1344,7 @@ where
 
 pub fn test_commutation<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("(A & B & C) | (P & Q & R & S)"));
     let r2 = prf.add_premise(p("(a <-> b <-> c <-> d) === (bar -> quux)"));
@@ -1390,7 +1399,7 @@ pub fn test_commutation<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_association<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("(A & B & C) | (P & Q & R & S) | (U <-> V <-> W)"));
     let r2 = prf.add_step(Justification(
@@ -1410,7 +1419,7 @@ pub fn test_association<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_demorgan<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
 
     let r1 = prf.add_premise(p("~(A & B)"));
@@ -1599,7 +1608,7 @@ pub fn test_demorgan<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_idempotence<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
 
     let r1 = prf.add_premise(p("A & A"));
@@ -1711,7 +1720,7 @@ pub fn test_idempotence<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_doublenegation<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
 
     let r1 = prf.add_premise(p("~~A & A"));
@@ -1777,7 +1786,7 @@ pub fn test_doublenegation<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_distribution<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
 
     let p1 = prf.add_premise(p("A & (B | C)"));
@@ -1814,7 +1823,7 @@ pub fn test_distribution<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_complement<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
 
     let r1 = prf.add_premise(p("A & ~A"));
@@ -1955,7 +1964,7 @@ pub fn test_complement<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_identity<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
 
     let r1 = prf.add_premise(p("A & ^|^"));
@@ -2054,7 +2063,7 @@ pub fn test_identity<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_annihilation<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
 
     let r1 = prf.add_premise(p("A & _|_"));
@@ -2134,7 +2143,7 @@ pub fn test_annihilation<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_inverse<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
 
     let r1 = prf.add_premise(p("~_|_"));
@@ -2199,7 +2208,7 @@ pub fn test_inverse<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_absorption<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
 
     let r1 = prf.add_premise(p("A & (A | B)"));
@@ -2290,7 +2299,7 @@ pub fn test_absorption<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_reduction<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
 
     let p1 = prf.add_premise(p("A & (~A | B)"));
@@ -2394,7 +2403,7 @@ pub fn test_reduction<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_adjacency<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
 
     let p1 = prf.add_premise(p("(A & B) | (A & ~B)"));
@@ -2443,7 +2452,7 @@ pub fn test_adjacency<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_resolution<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let p1 = prf.add_premise(p("a1 | a2 | c"));
     let p2 = prf.add_premise(p("b1 | b2 | ~c"));
@@ -2517,7 +2526,7 @@ pub fn test_resolution<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_tautcon<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let p1 = prf.add_premise(p("_|_"));
     let p2 = prf.add_premise(p("^|^"));
@@ -2651,7 +2660,7 @@ pub fn test_tautcon<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_empty_rule<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let p1 = prf.add_premise(p("A"));
     let r1 = prf.add_step(Justification(
@@ -2666,7 +2675,7 @@ pub fn test_empty_rule<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_modus_tollens<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("~Q"));
     let r2 = prf.add_premise(p("P -> Q"));
@@ -2736,7 +2745,7 @@ pub fn test_modus_tollens<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
 
 pub fn test_hypothetical_syllogism<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("P -> Q"));
     let r2 = prf.add_premise(p("Q -> R"));
@@ -2806,7 +2815,7 @@ pub fn test_hypothetical_syllogism<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P
 
 pub fn test_constructive_dilemma<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("P -> Q"));
     let r2 = prf.add_premise(p("R -> S"));
@@ -2870,7 +2879,7 @@ pub fn test_constructive_dilemma<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>
 
 pub fn test_excluded_middle<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     use self::coproduct_inject as i;
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_step(Justification(
         p("A | ~A"),

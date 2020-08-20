@@ -1,7 +1,17 @@
-use crate::combinatorics::{multi_cartesian_product, permutations};
-use crate::expression::*;
+//! Fixpoint engine for applying transformations to a formula in a loop until
+//! they stop applying
 
-use std::collections::{HashMap, HashSet};
+use crate::expr::freevars;
+use crate::expr::gensym;
+use crate::expr::subst;
+use crate::expr::Equal;
+use crate::expr::Expr;
+use crate::expr::PossiblyCommutative;
+
+use std::collections::HashMap;
+use std::collections::HashSet;
+
+use itertools::Itertools;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct RewriteRule {
@@ -41,37 +51,31 @@ impl RewriteRule {
 /// E.g. ((A & B) & C) ==> [((A & B) & C), ((B & A) & C), (C & (A & B)), (C & (B & A))]
 /// This function is extremely slow! Don't use it for large expressions or too often.
 fn permute_ops(e: Expr) -> Vec<Expr> {
-    use crate::expression_builders::*;
-    use crate::Expr::*;
     match e {
         // Trivial cases
-        e @ Contradiction => vec![e],
-        e @ Tautology => vec![e],
-        e @ Var { .. } => vec![e],
-        Apply { func, args } => {
-            let mut to_permute: Vec<Vec<Expr>> = vec![permute_ops(*func)];
-            to_permute.extend(args.into_iter().map(permute_ops));
-            let permuted = multi_cartesian_product(to_permute);
-            permuted
-                .into_iter()
-                .map(|mut args| {
-                    let func = Box::new(args.remove(0));
-                    Apply { func, args }
-                })
-                .collect()
-        }
-        Unop { symbol, operand } => {
+        e @ Expr::Contradiction => vec![e],
+        e @ Expr::Tautology => vec![e],
+        e @ Expr::Var { .. } => vec![e],
+        Expr::Apply { func, args } => std::iter::once(permute_ops(*func))
+            .chain(args.into_iter().map(permute_ops))
+            .multi_cartesian_product()
+            .map(|mut args| {
+                let func = Box::new(args.remove(0));
+                Expr::Apply { func, args }
+            })
+            .collect(),
+        Expr::Unop { symbol, operand } => {
             // Just permute the operands and return them
             let results = permute_ops(*operand);
             results
                 .into_iter()
-                .map(|e| Unop {
+                .map(|e| Expr::Unop {
                     symbol,
                     operand: Box::new(e),
                 })
                 .collect::<Vec<_>>()
         }
-        Binop {
+        Expr::Binop {
             symbol,
             left,
             right,
@@ -82,20 +86,20 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
             let mut results = vec![];
             for left in &permute_left {
                 for right in &permute_right {
-                    results.push(binop(symbol, left.clone(), right.clone()));
+                    results.push(Expr::binop(symbol, left.clone(), right.clone()));
                     if symbol.is_commutative() {
-                        results.push(binop(symbol, right.clone(), left.clone()));
+                        results.push(Expr::binop(symbol, right.clone(), left.clone()));
                     }
                 }
             }
             results
         }
-        AssocBinop { symbol, exprs } => {
+        Expr::AssocBinop { symbol, exprs } => {
             // For every combination of the args, add the cartesian product of the permutations of their parameters
 
             // All orderings of arguments
             let arg_combinations = if symbol.is_commutative() {
-                permutations(exprs.iter().collect::<Vec<_>>())
+                exprs.iter().permutations(exprs.len()).collect()
             } else {
                 vec![exprs.iter().collect::<Vec<_>>()]
             };
@@ -114,12 +118,12 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
                         .collect::<Vec<_>>();
                     // Then get a cartesian product of all permutations (this is the slow part)
                     // Gives you a list of new argument lists
-                    let product = multi_cartesian_product(ref_perms);
+                    let product = ref_perms.into_iter().multi_cartesian_product();
                     // Then just turn everything from that list into an assoc binop
                     // The `collect()` is necessary to maintain the borrows from permutations
                     product
                         .into_iter()
-                        .map(|args| AssocBinop {
+                        .map(|args| Expr::AssocBinop {
                             symbol,
                             exprs: args.into_iter().cloned().collect::<Vec<_>>(),
                         })
@@ -127,11 +131,11 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
                 })
                 .collect::<Vec<_>>()
         }
-        Quantifier { symbol, name, body } => {
+        Expr::Quantifier { symbol, name, body } => {
             let results = permute_ops(*body);
             results
                 .into_iter()
-                .map(|e| Quantifier {
+                .map(|e| Expr::Quantifier {
                     symbol,
                     name: name.clone(),
                     body: Box::new(e),
@@ -139,31 +143,6 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
                 .collect::<Vec<_>>()
         }
     }
-}
-
-#[test]
-fn test_permute_ops() {
-    use crate::parser::parse_unwrap as p;
-
-    // A & B
-    // B & A
-    let p1 = permute_ops(p("A & B"));
-    // (A & B) & (C & D)
-    // (B & A) & (C & D)
-    // (A & B) & (D & C)
-    // (B & A) & (D & C)
-    // (C & D) & (A & B)
-    // (C & D) & (B & A)
-    // (D & C) & (A & B)
-    // (D & C) & (B & A)
-    let p2 = permute_ops(p("(A & B) & (C & D)"));
-    assert_eq!(p1.len(), 2);
-    println!("{} {}", p1[0], p1[1]);
-    assert_eq!(p2.len(), 8);
-    println!(
-        "{} {} {} {} {} {} {} {}",
-        p2[0], p2[1], p2[2], p2[3], p2[4], p2[5], p2[6], p2[7]
-    );
 }
 
 /// Permute the search expression of every pattern, all mapping to the same replacement
@@ -190,25 +169,7 @@ fn permute_patterns(patterns: Vec<(Expr, Expr)>) -> Vec<(Expr, Expr)> {
 /// the substitutions from the unification.
 ///
 /// Limitations: Cannot do variadic versions of assoc binops, you need a constant number of args
-///
-/// # Example
-/// ```
-/// // DeMorgan's for and/or that have only two parameters
-/// use aris::expression::{ASymbol, expression_builders::*};
-/// use aris::rewrite_rules::reduce_pattern;
-///
-/// // ~(phi & psi) ==> ~phi | ~psi
-/// let pattern1 = not(assocbinop(ASymbol::And, &[var("phi"), var("psi")]));
-/// let replace1 = assocbinop(ASymbol::Or, &[not(var("phi")), not(var("psi"))]);
-///
-/// // ~(phi | psi) ==> ~phi & ~psi
-/// let pattern2 = not(assocbinop(ASymbol::Or, &[var("phi"), var("psi")]));
-/// let replace2 = assocbinop(ASymbol::And, &[not(var("phi")), not(var("psi"))]);
-///
-/// let patterns = vec![(pattern1, replace1), (pattern2, replace2)];
-/// reduce_pattern(var("some_expr"), &patterns);
-/// ```
-pub fn reduce_pattern(e: Expr, patterns: &[(Expr, Expr)]) -> Expr {
+fn reduce_pattern(e: Expr, patterns: &[(Expr, Expr)]) -> Expr {
     let patterns = freevarsify_pattern(&e, patterns);
     e.transform(&|expr| reduce_transform_func(expr, &patterns))
 }
@@ -216,7 +177,7 @@ pub fn reduce_pattern(e: Expr, patterns: &[(Expr, Expr)]) -> Expr {
 /// Like `reduce_pattern()`, but creates a set of possible reductions. This set
 /// will contain all levels of reduction (up to full normalization), and on all
 /// sub-nodes of the expression.
-pub fn reduce_pattern_set(e: Expr, patterns: &[(Expr, Expr)]) -> HashSet<Expr> {
+fn reduce_pattern_set(e: Expr, patterns: &[(Expr, Expr)]) -> HashSet<Expr> {
     let patterns = freevarsify_pattern(&e, patterns);
     e.transform_set(&|expr| reduce_transform_func(expr, &patterns))
 }
@@ -232,10 +193,13 @@ fn reduce_transform_func(expr: Expr, patterns: &[(Expr, Expr, HashSet<String>)])
     // Try all our patterns at every level of the tree
     for (pattern, replace, pattern_vars) in patterns {
         // Unify3D
-        let ret = unify(
-            vec![Constraint::Equal(pattern.clone(), expr.clone())]
-                .into_iter()
-                .collect(),
+        let ret = crate::expr::unify(
+            vec![Equal {
+                left: pattern.clone(),
+                right: expr.clone(),
+            }]
+            .into_iter()
+            .collect(),
         );
         if let Some(ret) = ret {
             // Collect all unification results and make sure we actually match exactly
@@ -256,7 +220,7 @@ fn reduce_transform_func(expr: Expr, patterns: &[(Expr, Expr, HashSet<String>)])
             if !any_bad && subs.len() == pattern_vars.len() {
                 let subst_replace = subs
                     .into_iter()
-                    .fold(replace.clone(), |z, (x, y)| subst(&z, &x, y));
+                    .fold(replace.clone(), |z, (x, y)| crate::expr::subst(&z, &x, y));
                 return (subst_replace, true);
             }
         }
@@ -272,8 +236,6 @@ fn reduce_transform_func(expr: Expr, patterns: &[(Expr, Expr, HashSet<String>)])
 ///   * `new_replace` is the old `replace` with the renames in `new_pattern`
 ///   * `pattern_vars` is the set of free variables in `new_pattern`
 fn freevarsify_pattern(e: &Expr, patterns: &[(Expr, Expr)]) -> Vec<(Expr, Expr, HashSet<String>)> {
-    use crate::expression_builders::*;
-
     let e_free = freevars(e);
 
     // Find all free variables in the patterns and map them to generated names free for e
@@ -292,12 +254,72 @@ fn freevarsify_pattern(e: &Expr, patterns: &[(Expr, Expr)]) -> Vec<(Expr, Expr, 
             let mut pattern_vars = HashSet::new();
             for free_var in free_pattern {
                 let new_sym = gensym(&*free_var, &e_free);
-                pattern = subst(&pattern, &*free_var, var(&*new_sym));
-                replace = subst(&replace, &*free_var, var(&*new_sym));
+                pattern = subst(&pattern, &*free_var, Expr::var(&*new_sym));
+                replace = subst(&replace, &*free_var, Expr::var(&*new_sym));
                 pattern_vars.insert(new_sym);
             }
 
             (pattern, replace, pattern_vars)
         })
         .collect::<Vec<_>>()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::expr::ASymbol;
+
+    #[test]
+    fn test_permute_ops() {
+        use crate::parser::parse_unwrap as p;
+
+        // A & B
+        // B & A
+        let p1 = permute_ops(p("A & B"));
+        // (A & B) & (C & D)
+        // (B & A) & (C & D)
+        // (A & B) & (D & C)
+        // (B & A) & (D & C)
+        // (C & D) & (A & B)
+        // (C & D) & (B & A)
+        // (D & C) & (A & B)
+        // (D & C) & (B & A)
+        let p2 = permute_ops(p("(A & B) & (C & D)"));
+        assert_eq!(p1.len(), 2);
+        println!("{} {}", p1[0], p1[1]);
+        assert_eq!(p2.len(), 8);
+        println!(
+            "{} {} {} {} {} {} {} {}",
+            p2[0], p2[1], p2[2], p2[3], p2[4], p2[5], p2[6], p2[7]
+        );
+    }
+
+    #[test]
+    fn test_reduce_pattern() {
+        // DeMorgan's for and/or that have only two parameters
+
+        // ~(phi & psi) ==> ~phi | ~psi
+        let pattern1 = Expr::not(Expr::assocbinop(
+            ASymbol::And,
+            &[Expr::var("phi"), Expr::var("psi")],
+        ));
+        let replace1 = Expr::assocbinop(
+            ASymbol::Or,
+            &[Expr::not(Expr::var("phi")), Expr::not(Expr::var("psi"))],
+        );
+
+        // ~(phi | psi) ==> ~phi & ~psi
+        let pattern2 = Expr::not(Expr::assocbinop(
+            ASymbol::Or,
+            &[Expr::var("phi"), Expr::var("psi")],
+        ));
+        let replace2 = Expr::assocbinop(
+            ASymbol::And,
+            &[Expr::not(Expr::var("phi")), Expr::not(Expr::var("psi"))],
+        );
+
+        let patterns = vec![(pattern1, replace1), (pattern2, replace2)];
+        reduce_pattern(Expr::var("some_expr"), &patterns);
+    }
 }

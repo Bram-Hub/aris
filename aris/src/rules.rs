@@ -1,4 +1,6 @@
 /*!
+Logical inference rules for checking proof steps
+
 # Organization
 `RuleT` is the main trait to implement for rule metadata and implementations.
 
@@ -52,20 +54,32 @@ Adding the tests and implementing the rule can be interleaved; it's convenient t
     - if default metadata doesn't apply to all rules of the type, add an empty match block (e.g. `PrepositionalInference`)
 */
 
-use super::*;
-
-use proofs::PJRef;
+use crate::equivs;
+use crate::expr::ASymbol;
+use crate::expr::BSymbol;
+use crate::expr::Equal;
+use crate::expr::Expr;
+use crate::expr::QSymbol;
+use crate::expr::USymbol;
+use crate::proofs::PJRef;
+use crate::proofs::Proof;
+use crate::rewrite_rules::RewriteRule;
 
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::iter::FromIterator;
+use std::string::ToString;
 
-use frunk_core::coproduct::Coproduct::{self, Inl, Inr};
+use frunk_core::coproduct::Coproduct;
+use frunk_core::coproduct::Coproduct::Inl;
+use frunk_core::coproduct::Coproduct::Inr;
+use frunk_core::Coprod;
 use itertools::Itertools;
 use maplit::btreeset;
 use petgraph::algo::tarjan_scc;
 use petgraph::graphmap::DiGraphMap;
+use strum_macros::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PrepositionalInference {
@@ -569,9 +583,7 @@ impl RuleT for PrepositionalInference {
                     }
                     Ok(())
                 } else {
-                    Err(ConclusionOfWrongForm(
-                        expression_builders::assocplaceholder(ASymbol::And),
-                    ))
+                    Err(ConclusionOfWrongForm(Expr::assocplaceholder(ASymbol::And)))
                 }
             }
             AndElim => {
@@ -589,10 +601,7 @@ impl RuleT for PrepositionalInference {
                     // TODO: allow `A /\ B /\ C |- C /\ A /\ C`, etc
                     Err(DoesNotOccur(conclusion, prem.clone()))
                 } else {
-                    Err(DepDoesNotExist(
-                        expression_builders::assocplaceholder(ASymbol::And),
-                        true,
-                    ))
+                    Err(DepDoesNotExist(Expr::assocplaceholder(ASymbol::And), true))
                 }
             }
             OrIntro => {
@@ -607,9 +616,7 @@ impl RuleT for PrepositionalInference {
                     }
                     Ok(())
                 } else {
-                    Err(ConclusionOfWrongForm(
-                        expression_builders::assocplaceholder(ASymbol::Or),
-                    ))
+                    Err(ConclusionOfWrongForm(Expr::assocplaceholder(ASymbol::Or)))
                 }
             }
             OrElim => {
@@ -653,10 +660,7 @@ impl RuleT for PrepositionalInference {
                     }
                     Ok(())
                 } else {
-                    Err(DepDoesNotExist(
-                        expression_builders::assocplaceholder(ASymbol::Or),
-                        true,
-                    ))
+                    Err(DepDoesNotExist(Expr::assocplaceholder(ASymbol::Or), true))
                 }
             }
             ImpIntro => {
@@ -688,9 +692,9 @@ impl RuleT for PrepositionalInference {
                     }
                     Ok(())
                 } else {
-                    Err(ConclusionOfWrongForm(
-                        expression_builders::binopplaceholder(BSymbol::Implies),
-                    ))
+                    Err(ConclusionOfWrongForm(Expr::binopplaceholder(
+                        BSymbol::Implies,
+                    )))
                 }
             }
             ImpElim => {
@@ -727,12 +731,7 @@ impl RuleT for PrepositionalInference {
                         }
                         AnyOrderResult::WrongOrder
                     },
-                    || {
-                        DepDoesNotExist(
-                            expression_builders::binopplaceholder(BSymbol::Implies),
-                            true,
-                        )
-                    },
+                    || DepDoesNotExist(Expr::binopplaceholder(BSymbol::Implies), true),
                 )
             }
             NotIntro => {
@@ -763,10 +762,7 @@ impl RuleT for PrepositionalInference {
                     }
                     Ok(())
                 } else {
-                    Err(ConclusionOfWrongForm({
-                        use expression_builders::*;
-                        not(var("_"))
-                    }))
+                    Err(ConclusionOfWrongForm(Expr::not(Expr::var("_"))))
                 }
             }
             NotElim => {
@@ -785,26 +781,13 @@ impl RuleT for PrepositionalInference {
                             return Ok(());
                         }
                         Err(ConclusionOfWrongForm({
-                            use expression_builders::*;
-                            not(not(var("_")))
+                            Expr::not(Expr::not(Expr::var("_")))
                         }))
                     } else {
-                        Err(DepDoesNotExist(
-                            {
-                                use expression_builders::*;
-                                not(not(var("_")))
-                            },
-                            true,
-                        ))
+                        Err(DepDoesNotExist(Expr::not(Expr::not(Expr::var("_"))), true))
                     }
                 } else {
-                    Err(DepDoesNotExist(
-                        {
-                            use expression_builders::*;
-                            not(not(var("_")))
-                        },
-                        true,
-                    ))
+                    Err(DepDoesNotExist(Expr::not(Expr::not(Expr::var("_"))), true))
                 }
             }
             ContradictionIntro => {
@@ -862,7 +845,7 @@ impl RuleT for PrepositionalInference {
                             let expected = if terms.len() == 1 {
                                 terms[0].clone()
                             } else {
-                                expression_builders::assocbinop(ASymbol::Bicon, &terms[..])
+                                Expr::assocbinop(ASymbol::Bicon, &terms[..])
                             };
                             // TODO: maybe commutativity
                             if conclusion != expected {
@@ -876,7 +859,7 @@ impl RuleT for PrepositionalInference {
                             AnyOrderResult::WrongOrder
                         }
                     },
-                    || DepDoesNotExist(expression_builders::assocplaceholder(ASymbol::Bicon), true),
+                    || DepDoesNotExist(Expr::assocplaceholder(ASymbol::Bicon), true),
                 )
             }
             EquivalenceIntro | BiconditionalIntro => {
@@ -889,10 +872,9 @@ impl RuleT for PrepositionalInference {
                     if sym == symbol {
                         if let BiconditionalIntro = self {
                             if exprs.len() != 2 {
-                                use expression_builders::var;
                                 return Err(ConclusionOfWrongForm(Expr::AssocBinop {
                                     symbol: ASymbol::Bicon,
-                                    exprs: vec![var("_"), var("_")],
+                                    exprs: vec![Expr::var("_"), Expr::var("_")],
                                 }));
                             }
                         }
@@ -933,13 +915,10 @@ impl RuleT for PrepositionalInference {
                                 }
                                 _ => {
                                     return Err(OneOf(btreeset![
+                                        DepOfWrongForm(prem.clone(), Expr::assocplaceholder(sym)),
                                         DepOfWrongForm(
                                             prem.clone(),
-                                            expression_builders::assocplaceholder(sym)
-                                        ),
-                                        DepOfWrongForm(
-                                            prem.clone(),
-                                            expression_builders::binopplaceholder(BSymbol::Implies)
+                                            Expr::binopplaceholder(BSymbol::Implies)
                                         ),
                                     ]))
                                 }
@@ -987,9 +966,7 @@ impl RuleT for PrepositionalInference {
                         }
                     }
                 }
-                Err(ConclusionOfWrongForm(
-                    expression_builders::assocplaceholder(sym),
-                ))
+                Err(ConclusionOfWrongForm(Expr::assocplaceholder(sym)))
             }
             EquivalenceElim => {
                 let prem1 = p.lookup_expr_or_die(&deps[0])?;
@@ -1018,7 +995,7 @@ impl RuleT for PrepositionalInference {
                             AnyOrderResult::WrongOrder
                         }
                     },
-                    || DepDoesNotExist(expression_builders::assocplaceholder(ASymbol::Equiv), true),
+                    || DepDoesNotExist(Expr::assocplaceholder(ASymbol::Equiv), true),
                 )
             }
         }
@@ -1074,17 +1051,24 @@ impl RuleT for PredicateInference {
             e2: &Expr,
             var: &str,
         ) -> Result<Expr, ProofCheckError<PJRef<P>, P::SubproofReference>> {
-            let constraints = vec![Constraint::Equal(e1.clone(), e2.clone())]
-                .into_iter()
-                .collect();
-            if let Some(substitutions) = unify(constraints) {
+            let constraints = vec![Equal {
+                left: e1.clone(),
+                right: e2.clone(),
+            }]
+            .into_iter()
+            .collect();
+            if let Some(substitutions) = crate::expr::unify(constraints) {
                 if substitutions.0.is_empty() {
                     assert_eq!(e1, e2);
-                    Ok(expression_builders::var(var))
+                    Ok(Expr::var(var))
                 } else if substitutions.0.len() == 1 {
                     if substitutions.0[0].0 == var {
                         assert_eq!(
-                            &subst(e1, &substitutions.0[0].0, substitutions.0[0].1.clone()),
+                            &crate::expr::subst(
+                                e1,
+                                &substitutions.0[0].0,
+                                substitutions.0[0].1.clone()
+                            ),
                             e2
                         );
                         Ok(substitutions.0[0].1.clone())
@@ -1121,7 +1105,7 @@ impl RuleT for PredicateInference {
             //println!("gvc outside {:?}", outside.clone().map(|x| sproof.lookup_expr(&x)).collect::<Vec<_>>());
             outside
                 .filter_map(|x| sproof.lookup_expr(&x))
-                .find(|e| freevars(e).contains(var))
+                .find(|e| crate::expr::freevars(e).contains(var))
         }
         match self {
             ForallIntro => {
@@ -1147,8 +1131,7 @@ impl RuleT for PredicateInference {
                             {
                                 return Err(Other(format!("The constant {} occurs in dependency {} that's outside the subproof.", constant, dangling)));
                             } else {
-                                let expected =
-                                    subst(body, &constant, expression_builders::var(name));
+                                let expected = crate::expr::subst(body, &constant, Expr::var(name));
                                 if expected != **body {
                                     return Err(Other(format!("Not all free occurrences of {} are replaced with {} in {}.", constant, name, body)));
                                 }
@@ -1169,9 +1152,9 @@ impl RuleT for PredicateInference {
                         conclusion
                     )))
                 } else {
-                    Err(ConclusionOfWrongForm(
-                        expression_builders::quantifierplaceholder(QSymbol::Forall),
-                    ))
+                    Err(ConclusionOfWrongForm(Expr::quantifierplaceholder(
+                        QSymbol::Forall,
+                    )))
                 }
             }
             ForallElim => {
@@ -1187,7 +1170,7 @@ impl RuleT for PredicateInference {
                 } else {
                     Err(DepOfWrongForm(
                         prem,
-                        expression_builders::quantifierplaceholder(QSymbol::Forall),
+                        Expr::quantifierplaceholder(QSymbol::Forall),
                     ))
                 }
             }
@@ -1202,9 +1185,9 @@ impl RuleT for PredicateInference {
                     unifies_wrt_var::<P>(body, &prem, name)?;
                     Ok(())
                 } else {
-                    Err(ConclusionOfWrongForm(
-                        expression_builders::quantifierplaceholder(QSymbol::Exists),
-                    ))
+                    Err(ConclusionOfWrongForm(Expr::quantifierplaceholder(
+                        QSymbol::Exists,
+                    )))
                 }
             }
             ExistsElim => {
@@ -1252,7 +1235,7 @@ impl RuleT for PredicateInference {
                     } else {
                         return Err(DepOfWrongForm(
                             prem,
-                            expression_builders::quantifierplaceholder(QSymbol::Exists),
+                            Expr::quantifierplaceholder(QSymbol::Exists),
                         ));
                     }
                 };
@@ -1272,7 +1255,7 @@ impl RuleT for PredicateInference {
                         {
                             return Err(Other(format!("The skolem constant {} occurs in dependency {} that's outside the subproof.", skolemname, dangling)));
                         }
-                        if freevars(&conclusion).contains(&skolemname) {
+                        if crate::expr::freevars(&conclusion).contains(&skolemname) {
                             return Err(Other(format!(
                                 "The skolem constant {} escapes to the conclusion {}.",
                                 skolemname, conclusion
@@ -1410,29 +1393,31 @@ impl RuleT for BooleanEquivalence {
                 e.normalize_idempotence()
             }),
             DoubleNegation => {
-                check_by_rewrite_rule_confl(p, deps, conclusion, false, &DOUBLE_NEGATION_RULES)
+                check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::DOUBLE_NEGATION)
             }
             // Distribution and Reduction have outputs containing binops that need commutative sorting
             // because we can't expect people to know the specific order of outputs that our definition
             // of the rules uses
             Distribution => {
-                check_by_rewrite_rule_confl(p, deps, conclusion, true, &DISTRIBUTION_RULES)
+                check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::DISTRIBUTION)
             }
             Complement => {
-                check_by_rewrite_rule_confl(p, deps, conclusion, false, &COMPLEMENT_RULES)
+                check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::COMPLEMENT)
             }
-            Identity => check_by_rewrite_rule_confl(p, deps, conclusion, false, &IDENTITY_RULES),
+            Identity => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::IDENTITY),
             Annihilation => {
-                check_by_rewrite_rule_confl(p, deps, conclusion, false, &ANNIHILATION_RULES)
+                check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::ANNIHILATION)
             }
-            Inverse => check_by_rewrite_rule_confl(p, deps, conclusion, false, &INVERSE_RULES),
+            Inverse => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::INVERSE),
             Absorption => {
-                check_by_rewrite_rule_confl(p, deps, conclusion, false, &ABSORPTION_RULES)
+                check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::ABSORPTION)
             }
             Reduction => {
-                check_by_rewrite_rule_non_confl(p, deps, conclusion, true, &REDUCTION_RULES)
+                check_by_rewrite_rule_non_confl(p, deps, conclusion, true, &equivs::REDUCTION)
             }
-            Adjacency => check_by_rewrite_rule_confl(p, deps, conclusion, false, &ADJACENCY_RULES),
+            Adjacency => {
+                check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::ADJACENCY)
+            }
         }
     }
 }
@@ -1483,75 +1468,87 @@ impl RuleT for ConditionalEquivalence {
                 deps,
                 conclusion,
                 false,
-                &CONDITIONAL_COMPLEMENT_RULES,
+                &equivs::CONDITIONAL_COMPLEMENT,
             ),
-            Identity => {
-                check_by_rewrite_rule_confl(p, deps, conclusion, false, &CONDITIONAL_IDENTITY_RULES)
-            }
+            Identity => check_by_rewrite_rule_confl(
+                p,
+                deps,
+                conclusion,
+                false,
+                &equivs::CONDITIONAL_IDENTITY,
+            ),
             Annihilation => check_by_rewrite_rule_confl(
                 p,
                 deps,
                 conclusion,
                 false,
-                &CONDITIONAL_ANNIHILATION_RULES,
+                &equivs::CONDITIONAL_ANNIHILATION,
             ),
             Implication => check_by_rewrite_rule_confl(
                 p,
                 deps,
                 conclusion,
                 false,
-                &CONDITIONAL_IMPLICATION_RULES,
+                &equivs::CONDITIONAL_IMPLICATION,
             ),
             BiImplication => check_by_rewrite_rule_confl(
                 p,
                 deps,
                 conclusion,
                 false,
-                &CONDITIONAL_BIIMPLICATION_RULES,
+                &equivs::CONDITIONAL_BIIMPLICATION,
             ),
             Contraposition => check_by_rewrite_rule_confl(
                 p,
                 deps,
                 conclusion,
                 false,
-                &CONDITIONAL_CONTRAPOSITION_RULES,
+                &equivs::CONDITIONAL_CONTRAPOSITION,
             ),
-            Currying => {
-                check_by_rewrite_rule_confl(p, deps, conclusion, false, &CONDITIONAL_CURRYING_RULES)
-            }
+            Currying => check_by_rewrite_rule_confl(
+                p,
+                deps,
+                conclusion,
+                false,
+                &equivs::CONDITIONAL_CURRYING,
+            ),
             ConditionalDistribution => check_by_rewrite_rule_confl(
                 p,
                 deps,
                 conclusion,
                 true,
-                &CONDITIONAL_DISTRIBUTION_RULES,
+                &equivs::CONDITIONAL_DISTRIBUTION,
             ),
-            ConditionalReduction => {
-                check_by_rewrite_rule_confl(p, deps, conclusion, true, &CONDITIONAL_REDUCTION_RULES)
-            }
+            ConditionalReduction => check_by_rewrite_rule_confl(
+                p,
+                deps,
+                conclusion,
+                true,
+                &equivs::CONDITIONAL_REDUCTION,
+            ),
             KnightsAndKnaves => {
-                check_by_rewrite_rule_confl(p, deps, conclusion, true, &KNIGHTS_AND_KNAVES_RULES)
+                check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::KNIGHTS_AND_KNAVES)
             }
             ConditionalIdempotence => check_by_rewrite_rule_confl(
                 p,
                 deps,
                 conclusion,
                 true,
-                &CONDITIONAL_IDEMPOTENCE_RULES,
+                &equivs::CONDITIONAL_IDEMPOTENCE,
             ),
             BiconditionalNegation => check_by_rewrite_rule_confl(
                 p,
                 deps,
                 conclusion,
                 true,
-                &BICONDITIONAL_NEGATION_RULES,
+                &equivs::BICONDITIONAL_NEGATION,
             ),
             BiconditionalSubstitution => check_by_rewrite_rule_confl(
                 p,
                 deps,
                 conclusion,
                 true,
-                &BICONDITIONAL_SUBSTITUTION_RULES,
+                &equivs::BICONDITIONAL_SUBSTITUTION,
             ),
         }
     }
@@ -1592,7 +1589,6 @@ impl RuleT for RedundantPrepositionalInference {
         deps: Vec<PJRef<P>>,
         sdeps: Vec<P::SubproofReference>,
     ) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
-        use expression_builders::*;
         use ProofCheckError::*;
         use RedundantPrepositionalInference::*;
 
@@ -1614,8 +1610,8 @@ impl RuleT for RedundantPrepositionalInference {
                             right: q,
                         } = dep_0
                         {
-                            let not_p = not(*p.clone());
-                            let not_q = not(*q.clone());
+                            let not_p = Expr::not(*p.clone());
+                            let not_q = Expr::not(*q.clone());
                             if not_q != *dep_1 {
                                 AnyOrderResult::Err(DoesNotOccur(not_q, dep_1.clone()))
                             } else if not_p != conclusion {
@@ -1627,7 +1623,7 @@ impl RuleT for RedundantPrepositionalInference {
                             AnyOrderResult::WrongOrder
                         }
                     },
-                    || DepDoesNotExist(binopplaceholder(BSymbol::Implies), true),
+                    || DepDoesNotExist(Expr::binopplaceholder(BSymbol::Implies), true),
                 )
             }
             HypotheticalSyllogism => {
@@ -1671,12 +1667,13 @@ impl RuleT for RedundantPrepositionalInference {
                             AnyOrderResult::WrongOrder
                         }
                     },
-                    || DepDoesNotExist(binopplaceholder(BSymbol::Implies), true),
+                    || DepDoesNotExist(Expr::binopplaceholder(BSymbol::Implies), true),
                 )
             }
             ExcludedMiddle => {
                 // A | ~A
-                let wrong_form_err = ConclusionOfWrongForm(or(var("_"), not(var("_"))));
+                let wrong_form_err =
+                    ConclusionOfWrongForm(Expr::or(Expr::var("_"), Expr::not(Expr::var("_"))));
                 let operands = match conclusion {
                     Expr::AssocBinop {
                         symbol: ASymbol::Or,
@@ -1691,7 +1688,7 @@ impl RuleT for RedundantPrepositionalInference {
                 };
 
                 let not_a_0 = not_a.clone();
-                let not_a_1 = not(a.clone());
+                let not_a_1 = Expr::not(a.clone());
 
                 if not_a_0 == not_a_1 {
                     Ok(())
@@ -1742,14 +1739,17 @@ impl RuleT for RedundantPrepositionalInference {
                             let (p_1, r_1) = match p_r.into_iter().collect_tuple() {
                                 Some((p_1, r_1)) => (p_1, r_1),
                                 None => {
-                                    return AnyOrderResult::Err(DoesNotOccur(or(p_0, r_0), dep_2))
+                                    return AnyOrderResult::Err(DoesNotOccur(
+                                        Expr::or(p_0, r_0),
+                                        dep_2,
+                                    ))
                                 }
                             };
                             let (q_1, s_1) = match q_s.into_iter().collect_tuple() {
                                 Some((q_1, s_1)) => (q_1, s_1),
                                 None => {
                                     return AnyOrderResult::Err(DoesNotOccur(
-                                        or(q_0, s_0),
+                                        Expr::or(q_0, s_0),
                                         conclusion,
                                     ))
                                 }
@@ -1777,8 +1777,8 @@ impl RuleT for RedundantPrepositionalInference {
                     },
                     || {
                         OneOf(btreeset![
-                            DepDoesNotExist(binopplaceholder(BSymbol::Implies), true),
-                            DepDoesNotExist(assocplaceholder(ASymbol::Or), true),
+                            DepDoesNotExist(Expr::binopplaceholder(BSymbol::Implies), true),
+                            DepDoesNotExist(Expr::assocplaceholder(ASymbol::Or), true),
                         ])
                     },
                 )
@@ -1875,8 +1875,7 @@ impl RuleT for AutomationRelatedRules {
 
                 // Create `varisat` formula of `~(P -> Q)`. If this is
                 // unsatisfiable, then we've proven `P -> Q`.
-                use expression_builders::*;
-                let sat = not(implies(premise, conclusion));
+                let sat = Expr::not(Expr::implies(premise, conclusion));
                 let (sat, vars) = into_cnf(sat)?.to_varisat();
                 let mut solver = varisat::Solver::new();
                 solver.add_formula(&sat);
@@ -2118,57 +2117,6 @@ where
     any_order(deps, check_func, fallthrough_error)
 }
 
-#[test]
-fn test_either_order() {
-    use crate::parser::parse_unwrap as p;
-    use ProofCheckError::*;
-
-    type P = crate::proofs::pooledproof::PooledProof<Hlist![Expr]>;
-    type SRef = <P as Proof>::SubproofReference;
-
-    let dep_1 = p("(A & B) -> C");
-    let dep_2 = p("(A & B)");
-    let conclusion = p("C");
-
-    let result = either_order::<PJRef<P>, SRef, _, _>(
-        &dep_1,
-        &dep_2,
-        |i, j| {
-            if let Expr::Binop {
-                symbol: BSymbol::Implies,
-                ref left,
-                ref right,
-            } = i
-            {
-                //bad case, p -> q, a therefore --doesn't matter, nothing can be said
-                //with a
-                if **left != *j {
-                    return AnyOrderResult::Err(DoesNotOccur(i.clone(), j.clone()));
-                }
-
-                //bad case, p -> q, p therefore a which does not follow
-                if **right != conclusion {
-                    return AnyOrderResult::Err(DoesNotOccur(conclusion.clone(), *right.clone()));
-                }
-
-                //good case, p -> q, p therefore q
-                if **left == *j && **right == conclusion {
-                    return AnyOrderResult::Ok;
-                }
-            }
-            AnyOrderResult::WrongOrder
-        },
-        || {
-            DepDoesNotExist(
-                expression_builders::binopplaceholder(BSymbol::Implies),
-                true,
-            )
-        },
-    );
-
-    assert!(result.is_ok());
-}
-
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ProofCheckError<R, S> {
     LineDoesNotExist(R),
@@ -2238,5 +2186,61 @@ impl<R: std::fmt::Debug, S: std::fmt::Debug> std::fmt::Display for ProofCheckErr
             }
             Other(msg) => write!(f, "{}", msg),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use frunk_core::Hlist;
+
+    #[test]
+    fn test_either_order() {
+        use crate::parser::parse_unwrap as p;
+        use ProofCheckError::*;
+
+        type P = crate::proofs::pooledproof::PooledProof<Hlist![Expr]>;
+        type SRef = <P as Proof>::SubproofReference;
+
+        let dep_1 = p("(A & B) -> C");
+        let dep_2 = p("(A & B)");
+        let conclusion = p("C");
+
+        let result = either_order::<PJRef<P>, SRef, _, _>(
+            &dep_1,
+            &dep_2,
+            |i, j| {
+                if let Expr::Binop {
+                    symbol: BSymbol::Implies,
+                    ref left,
+                    ref right,
+                } = i
+                {
+                    //bad case, p -> q, a therefore --doesn't matter, nothing can be said
+                    //with a
+                    if **left != *j {
+                        return AnyOrderResult::Err(DoesNotOccur(i.clone(), j.clone()));
+                    }
+
+                    //bad case, p -> q, p therefore a which does not follow
+                    if **right != conclusion {
+                        return AnyOrderResult::Err(DoesNotOccur(
+                            conclusion.clone(),
+                            *right.clone(),
+                        ));
+                    }
+
+                    //good case, p -> q, p therefore q
+                    if **left == *j && **right == conclusion {
+                        return AnyOrderResult::Ok;
+                    }
+                }
+                AnyOrderResult::WrongOrder
+            },
+            || DepDoesNotExist(Expr::binopplaceholder(BSymbol::Implies), true),
+        );
+
+        assert!(result.is_ok());
     }
 }

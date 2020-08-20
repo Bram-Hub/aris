@@ -1,6 +1,6 @@
 use crate::components::expr_entry::ExprEntry;
 
-use aris::expression::Expr;
+use aris::expr::Expr;
 
 use yew::prelude::*;
 

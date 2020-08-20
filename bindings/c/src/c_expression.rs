@@ -1,6 +1,6 @@
 use crate::with_null_options;
 
-pub use aris::expression::*;
+pub use aris::expr::Expr;
 
 use std::ffi::CStr;
 

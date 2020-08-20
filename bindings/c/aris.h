@@ -46,7 +46,7 @@ typedef struct Vec_Expr Vec_Expr;
 typedef struct Vec_String Vec_String;
 
 /**
- * aris::expression::Expr is the core AST (Abstract Syntax Tree) type for representing logical expressions.
+ * aris::expr::Expr is the core AST (Abstract Syntax Tree) type for representing logical expressions.
  * For most of the recursive cases, it uses symbols so that code can work on the shape of e.g. a binary operation without worrying about which binary operation it is.
  */
 typedef enum {

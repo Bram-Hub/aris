@@ -1,4 +1,6 @@
 /*!
+Data structures for representing natural deduction style proofs
+
 # Description
 This module houses different proof representations with different performance/simplicity tradeoffs.
 
@@ -28,7 +30,7 @@ The test running apparatus expects you to return the proof, a list of line refer
 
 ```
 #[macro_use] extern crate frunk_core;
-use aris::expression::Expr;
+use aris::expr::Expr;
 use aris::proofs::xml_interop::proof_from_xml;
 let data = &include_bytes!("../../example-proofs/propositional_logic_arguments_for_proofs_ii_problem_10.bram")[..];
 type P = aris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
@@ -56,7 +58,7 @@ Code that builds the proof generically and then instantiates it:
 ```
 #[macro_use] extern crate frunk_core;
 use frunk_core::coproduct::Coproduct;
-use aris::expression::Expr;
+use aris::expr::Expr;
 use aris::proofs::{Proof, Justification, pooledproof::PooledProof};
 use aris::rules::RuleM;
 fn contraposition_demo<P: Proof>() -> P {
@@ -87,7 +89,7 @@ let concrete_proof = contraposition_demo::<P>();
 ```
 #[macro_use] extern crate frunk_core;
 use frunk_core::coproduct::Coproduct;
-use aris::expression::Expr;
+use aris::expr::Expr;
 use aris::parser::parse_unwrap as p;
 use aris::proofs::{Proof, Justification, pooledproof::PooledProof};
 use aris::rules::RuleM;
@@ -117,7 +119,7 @@ This is prevented by the fact that the lifetime parameter of the subproof refere
 ```compile_fail,E0495
 #[macro_use] extern crate frunk_core;
 use aris::proofs::{Proof, pooledproof::PooledProof};
-use aris::expression::Expr;
+use aris::expr::Expr;
 fn should_fail_with_lifetime_error() {
     let mut p = PooledProof::<Hlist![Expr]>::new();
     let r = p.add_subproof();
@@ -128,28 +130,19 @@ fn should_fail_with_lifetime_error() {
 This is a similar trick to the rank-2 type of `runST` in Haskell used to prevent the phantom state from escaping.
 */
 
-use super::*;
+use crate::expr::Expr;
+use crate::rules::ProofCheckError;
+use crate::rules::Rule;
 
 use std::collections::HashSet;
-use std::fmt::{Display, Formatter};
 use std::hash::Hash;
 
-use frunk_core::coproduct::*;
+use frunk_core::coproduct::Coproduct;
+use frunk_core::hlist;
+use frunk_core::Coprod;
 
 #[cfg(test)]
 mod proof_tests;
-
-/// treeproof represents a proof as a vec of premises and a vec of non-premise lines with either rule applications (with explicit line numbers for dependencies) or nested subproofs, with hooks for annotations
-/// # Tradeoffs
-/// ## Pros
-/// - rules out invalid nesting
-/// - close to the presentation of the system in the textbook
-/// ## Cons
-/// - many operations of interest {adding and deleting lines, recomputing line numbers for dependencies} are O(n)
-/// - abandoned, subproofs are not yet implemented
-pub mod treeproof;
-#[cfg(test)]
-mod treeproof_tests;
 
 /// pooledproof represents proofs as ZipperVec's of indices into three seperate pools of {premises, justifications, subproofs}
 /// # Tradeoffs
@@ -188,7 +181,7 @@ pub mod xml_interop;
 pub trait DisplayIndented {
     fn display_indented(
         &self,
-        fmt: &mut Formatter,
+        fmt: &mut std::fmt::Formatter,
         indent: usize,
         linecount: &mut usize,
     ) -> Result<(), std::fmt::Error>;
@@ -517,15 +510,15 @@ impl<T, R, S> Justification<T, R, S> {
 }
 
 pub trait JustificationExprDisplay {
-    fn fmt_expr(&self, fmt: &mut Formatter) -> std::fmt::Result;
+    fn fmt_expr(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result;
 }
 impl JustificationExprDisplay for Expr {
-    fn fmt_expr(&self, fmt: &mut Formatter) -> std::fmt::Result {
+    fn fmt_expr(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(fmt, "{}", self)
     }
 }
 impl<Tail> JustificationExprDisplay for frunk_core::hlist::HCons<Expr, Tail> {
-    fn fmt_expr(&self, fmt: &mut Formatter) -> std::fmt::Result {
+    fn fmt_expr(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(fmt, "{}", self.head)
     }
 }
@@ -535,7 +528,7 @@ impl<T: JustificationExprDisplay, R: std::fmt::Debug, S: std::fmt::Debug> Displa
 {
     fn display_indented(
         &self,
-        fmt: &mut Formatter,
+        fmt: &mut std::fmt::Formatter,
         indent: usize,
         linecount: &mut usize,
     ) -> std::result::Result<(), std::fmt::Error> {

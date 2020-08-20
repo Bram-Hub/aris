@@ -1,5 +1,13 @@
-use super::*;
+use crate::expr::Expr;
+use crate::proofs::Justification;
+use crate::proofs::PJRef;
+use crate::proofs::Proof;
+use crate::rules::RuleM;
+use crate::zipper_vec::ZipperVec;
+
 use std::fmt::Debug;
+
+use frunk_core::coproduct::Coproduct;
 
 pub struct Line<P: Proof> {
     pub raw_expr: String,
@@ -221,21 +229,29 @@ where
     }
 }
 
-#[test]
-fn test_from_proof() {
-    let (p, _, _) =
-        proof_tests::test_forallintro::<super::pooledproof::PooledProof<Hlist![Expr]>>();
-    let mut lp = LinedProof::from_proof(p);
-    println!("{:?}\n{}", lp, lp.proof);
-    let mut f = |i: usize| {
-        println!("Deleting {}:", i + 1);
-        lp.delete(i);
-        println!("{}", lp.proof);
-    };
-    f(1);
-    f(3);
-    f(6);
-    f(3);
-    f(0);
-    f(1);
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::proofs::pooledproof::PooledProof;
+
+    use frunk_core::Hlist;
+
+    #[test]
+    fn test_from_proof() {
+        let (p, _, _) = crate::proofs::proof_tests::test_forallintro::<PooledProof<Hlist![Expr]>>();
+        let mut lp = LinedProof::from_proof(p);
+        println!("{:?}\n{}", lp, lp.proof);
+        let mut f = |i: usize| {
+            println!("Deleting {}:", i + 1);
+            lp.delete(i);
+            println!("{}", lp.proof);
+        };
+        f(1);
+        f(3);
+        f(6);
+        f(3);
+        f(0);
+        f(1);
+    }
 }

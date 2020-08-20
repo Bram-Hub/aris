@@ -1,7 +1,13 @@
-use super::*;
-use proofs::PJRef;
+use crate::expr::Expr;
+use crate::proofs::Justification;
+use crate::proofs::PJRef;
+use crate::proofs::Proof;
+use crate::rules::RuleM;
+
 use std::collections::HashMap;
 use std::io::{Read, Write};
+
+use frunk_core::coproduct::Coproduct;
 use xml::reader::EventReader;
 
 #[derive(Debug, Clone)]
@@ -27,7 +33,7 @@ pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Result<(P, ProofMetaData), Str
     macro_rules! parse {
         ($x:expr) => {{
             let s: &str = $x;
-            match parser::parse(&s) {
+            match crate::parser::parse(&s) {
                 Some(e) => e,
                 None if s == "" => Expr::Var {
                     name: "__xml_interop_blank_line".into(),
@@ -345,104 +351,116 @@ pub fn xml_from_proof_and_metadata_with_hash<P: Proof, W: Write>(
     xml_from_proof_and_metadata(prf, &meta, out)
 }
 
-#[test]
-fn test_xml() {
-    let data = &include_bytes!(
-        "../../../example-proofs/propositional_logic_arguments_for_proofs_ii_problem_10.bram"
-    )[..];
-    type P = super::proofs::pooledproof::PooledProof<Hlist![Expr]>;
-    let (prf, metadata) = proof_from_xml::<P, _>(data).unwrap();
-    println!("{:?} {:?}\n{}", metadata.author, metadata.hash, prf);
-    let mut reserialized = vec![];
-    xml_from_proof_and_metadata_with_hash(&prf, &metadata, &mut reserialized).unwrap();
-    println!("{}", String::from_utf8_lossy(&reserialized));
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-#[test]
-fn test_xml2() {
-    /*
-    1 | | A
-      | -----
-    2 | | A ; REIT [1] []
-    3 | A -> A ; -> I [] [1]
-    */
-    let xml = br#"
-    <bram>
-        <proof id="0">
-            <step linenum="1">
-                <rule>SUBPROOF</rule>
-                <premise>1</premise>
-            </step>
-            <step linenum="3">
-                <rule>CONDITIONAL_PROOF</rule>
-                <raw>A -> A</raw>
-                <premise>1</premise>
-            </step>
-        </proof>
-        <proof id="1">
-            <assumption linenum="1">
-                <raw>A</raw>
-            </assumption>
-            <step linenum="2">
-                <rule>REITERATION</rule>
-                <raw>A</raw>
-                <premise>1</premise>
-            </step>
-        </proof>
-    </bram>
-    "#;
-    type P = super::proofs::pooledproof::PooledProof<Hlist![Expr]>;
-    let (prf, metadata) = proof_from_xml::<P, _>(&xml[..]).unwrap();
-    println!("{:?} {:?}\n{}", metadata.author, metadata.hash, prf);
-    let lines = prf.lines();
-    let sub = prf
-        .lookup_subproof(
-            &lines[0]
-                .get::<<P as Proof>::SubproofReference, _>()
-                .unwrap()
-                .clone(),
-        )
-        .unwrap();
-    use expression_builders::{binop, var};
-    assert_eq!(prf.lookup_premise(&sub.premises()[0]), Some(var("A")));
-    let sub_lines = sub.lines();
-    let Justification(e1, r1, d1, s1) = prf
-        .lookup_pj(&Coproduct::inject(
-            sub_lines[0]
-                .get::<<P as Proof>::JustificationReference, _>()
-                .unwrap()
-                .clone(),
-        ))
-        .unwrap()
-        .get::<Justification<_, _, _>, _>()
-        .unwrap()
-        .clone();
-    assert_eq!(e1, var("A"));
-    assert_eq!(r1, RuleM::Reit);
-    assert_eq!(d1.len(), 1);
-    assert_eq!(s1.len(), 0);
-    let Justification(e2, r2, d2, s2) = prf
-        .lookup_pj(&Coproduct::inject(
-            lines[1]
-                .get::<<P as Proof>::JustificationReference, _>()
-                .unwrap()
-                .clone(),
-        ))
-        .unwrap()
-        .get::<Justification<_, _, _>, _>()
-        .unwrap()
-        .clone();
-    assert_eq!(e2, binop(BSymbol::Implies, var("A"), var("A")));
-    assert_eq!(r2, RuleM::ImpIntro);
-    assert_eq!(d2.len(), 0);
-    assert_eq!(s2.len(), 1);
-}
+    use crate::expr::BSymbol;
+    use crate::proofs::pooledproof::PooledProof;
 
-#[test]
-fn test_xml3() {
-    let xml = b"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<bram>\n  <program>Aris</program>\n  <version>0.0.187</version>\n  <metadata>\n    <author>UNKNOWN</author>\n    <hash>aCDnd1IQS0y8QoTmgj7xeVpBG9o1A3m6tZWd0HXkwjg=</hash>\n  </metadata>\n  <proof id=\"0\">\n    <assumption linenum=\"0\">\n      <sen>p</sen>\n      <raw>p</raw>\n    </assumption>\n    <step linenum=\"1\">\n      <sen>p</sen>\n      <raw>p</raw>\n      <rule>REITERATION</rule>\n      <premise>0</premise>\n    </step>\n    <goal>\n      <sen/>\n      <raw/>\n    </goal>\n  </proof>\n</bram>\n";
-    type P = super::proofs::pooledproof::PooledProof<Hlist![Expr]>;
-    let (prf, metadata) = proof_from_xml::<P, _>(&xml[..]).unwrap();
-    println!("{}", prf);
-    println!("{:?}", metadata);
+    use frunk_core::Hlist;
+
+    #[test]
+    fn test_xml() {
+        let data = &include_bytes!(
+            "../../../example-proofs/propositional_logic_arguments_for_proofs_ii_problem_10.bram"
+        )[..];
+        type P = PooledProof<Hlist![Expr]>;
+        let (prf, metadata) = proof_from_xml::<P, _>(data).unwrap();
+        println!("{:?} {:?}\n{}", metadata.author, metadata.hash, prf);
+        let mut reserialized = vec![];
+        xml_from_proof_and_metadata_with_hash(&prf, &metadata, &mut reserialized).unwrap();
+        println!("{}", String::from_utf8_lossy(&reserialized));
+    }
+
+    #[test]
+    fn test_xml2() {
+        /*
+        1 | | A
+          | -----
+        2 | | A ; REIT [1] []
+        3 | A -> A ; -> I [] [1]
+        */
+        let xml = br#"
+        <bram>
+            <proof id="0">
+                <step linenum="1">
+                    <rule>SUBPROOF</rule>
+                    <premise>1</premise>
+                </step>
+                <step linenum="3">
+                    <rule>CONDITIONAL_PROOF</rule>
+                    <raw>A -> A</raw>
+                    <premise>1</premise>
+                </step>
+            </proof>
+            <proof id="1">
+                <assumption linenum="1">
+                    <raw>A</raw>
+                </assumption>
+                <step linenum="2">
+                    <rule>REITERATION</rule>
+                    <raw>A</raw>
+                    <premise>1</premise>
+                </step>
+            </proof>
+        </bram>
+        "#;
+        type P = PooledProof<Hlist![Expr]>;
+        let (prf, metadata) = proof_from_xml::<P, _>(&xml[..]).unwrap();
+        println!("{:?} {:?}\n{}", metadata.author, metadata.hash, prf);
+        let lines = prf.lines();
+        let sub = prf
+            .lookup_subproof(
+                &lines[0]
+                    .get::<<P as Proof>::SubproofReference, _>()
+                    .unwrap()
+                    .clone(),
+            )
+            .unwrap();
+        assert_eq!(prf.lookup_premise(&sub.premises()[0]), Some(Expr::var("A")));
+        let sub_lines = sub.lines();
+        let Justification(e1, r1, d1, s1) = prf
+            .lookup_pj(&Coproduct::inject(
+                sub_lines[0]
+                    .get::<<P as Proof>::JustificationReference, _>()
+                    .unwrap()
+                    .clone(),
+            ))
+            .unwrap()
+            .get::<Justification<_, _, _>, _>()
+            .unwrap()
+            .clone();
+        assert_eq!(e1, Expr::var("A"));
+        assert_eq!(r1, RuleM::Reit);
+        assert_eq!(d1.len(), 1);
+        assert_eq!(s1.len(), 0);
+        let Justification(e2, r2, d2, s2) = prf
+            .lookup_pj(&Coproduct::inject(
+                lines[1]
+                    .get::<<P as Proof>::JustificationReference, _>()
+                    .unwrap()
+                    .clone(),
+            ))
+            .unwrap()
+            .get::<Justification<_, _, _>, _>()
+            .unwrap()
+            .clone();
+        assert_eq!(
+            e2,
+            Expr::binop(BSymbol::Implies, Expr::var("A"), Expr::var("A"))
+        );
+        assert_eq!(r2, RuleM::ImpIntro);
+        assert_eq!(d2.len(), 0);
+        assert_eq!(s2.len(), 1);
+    }
+
+    #[test]
+    fn test_xml3() {
+        let xml = b"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<bram>\n  <program>Aris</program>\n  <version>0.0.187</version>\n  <metadata>\n    <author>UNKNOWN</author>\n    <hash>aCDnd1IQS0y8QoTmgj7xeVpBG9o1A3m6tZWd0HXkwjg=</hash>\n  </metadata>\n  <proof id=\"0\">\n    <assumption linenum=\"0\">\n      <sen>p</sen>\n      <raw>p</raw>\n    </assumption>\n    <step linenum=\"1\">\n      <sen>p</sen>\n      <raw>p</raw>\n      <rule>REITERATION</rule>\n      <premise>0</premise>\n    </step>\n    <goal>\n      <sen/>\n      <raw/>\n    </goal>\n  </proof>\n</bram>\n";
+        type P = PooledProof<Hlist![Expr]>;
+        let (prf, metadata) = proof_from_xml::<P, _>(&xml[..]).unwrap();
+        println!("{}", prf);
+        println!("{:?}", metadata);
+    }
 }

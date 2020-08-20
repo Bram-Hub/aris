@@ -1,3 +1,5 @@
+//! Utilities for macro expansion in UI frontends
+
 /// Table of ASCII characters, macros, and their corresponding logic symbols.
 /// The format of each row is `(symbol, macros)`.
 pub static TABLE: [(&str, &[&str]); 10] = [

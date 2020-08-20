@@ -8,17 +8,6 @@ pub struct ZipperVec<T> {
     suffix_r: Vec<T>,
 }
 
-/*
-impl<T> std::fmt::Debug for ZipperVec<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("ZipperVec")
-            .field("prefix", &self.prefix.iter().map(|_| ()).collect::<Vec<_>>())
-            .field("suffix_r", &self.suffix_r.iter().map(|_| ()).collect::<Vec<_>>())
-            .finish()
-    }
-}
-*/
-
 impl<T> ZipperVec<T> {
     pub fn new() -> Self {
         ZipperVec {
@@ -63,10 +52,6 @@ impl<T> ZipperVec<T> {
     pub fn push(&mut self, x: T) {
         let len = self.len();
         self.move_cursor(len);
-        self.prefix.push(x);
-    }
-    pub fn push_front(&mut self, x: T) {
-        self.move_cursor(0);
         self.prefix.push(x);
     }
     pub fn iter(&self) -> impl Iterator<Item = &T> {

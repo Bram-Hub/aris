@@ -6,8 +6,7 @@ use crate::proof_ui_data::ProofUiData;
 use crate::util::calculate_lineinfo;
 use crate::util::P;
 
-use aris::expression::expression_builders::var;
-use aris::expression::Expr;
+use aris::expr::Expr;
 use aris::proofs::pj_to_pjs;
 use aris::proofs::JSRef;
 use aris::proofs::Justification;
@@ -657,13 +656,18 @@ fn render_open_error(error: &str) -> Html {
 /// Create a new empty premise, the default premise when creating a new one in
 /// the UI. The `ProofUiData` is supposed to be modified so this appears blank.
 fn new_empty_premise() -> Expr {
-    var("__js_ui_blank_premise")
+    Expr::var("__js_ui_blank_premise")
 }
 
 /// Create a new empty step, the default step when creating a new one in the UI.
 /// The `ProofUiData` is supposed to be modified so this appears blank.
 fn new_empty_step() -> Justification<Expr, PJRef<P>, <P as Proof>::SubproofReference> {
-    Justification(var("__js_ui_blank_step"), RuleM::EmptyRule, vec![], vec![])
+    Justification(
+        Expr::var("__js_ui_blank_step"),
+        RuleM::EmptyRule,
+        vec![],
+        vec![],
+    )
 }
 
 /// Create a new empty proof, the default proof shown in the UI

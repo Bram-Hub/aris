@@ -1,4 +1,12 @@
-use super::{ASymbol, BSymbol, Expr, QSymbol, USymbol};
+//! Parse infix logical expressions into an AST
+
+use crate::expr::ASymbol;
+use crate::expr::BSymbol;
+use crate::expr::Expr;
+use crate::expr::QSymbol;
+use crate::expr::USymbol;
+
+use nom::*;
 
 /// parser::parse parses a string slice into an Expr AST, returning None if there's an error
 pub fn parse(input: &str) -> Option<Expr> {
@@ -92,7 +100,7 @@ named!(main<&str, Expr>, do_parse!(e: expr >> tag!("\n") >> (e)));
 
 #[test]
 fn test_parser() {
-    use super::freevars;
+    use crate::expr::freevars;
     println!("{:?}", predicate("a(   b, c)"));
     println!("{:?}", predicate("s(s(s(s(s(z)))))"));
     println!("{:?}", expr("a & b & c(x,y)\n"));

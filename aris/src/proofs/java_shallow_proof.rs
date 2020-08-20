@@ -1,4 +1,13 @@
-use super::*;
+use crate::expr::Expr;
+use crate::proofs::JSRef;
+use crate::proofs::Justification;
+use crate::proofs::PJRef;
+use crate::proofs::PJSRef;
+use crate::proofs::Proof;
+use crate::rules::ProofCheckError;
+use crate::rules::RuleM;
+use crate::rules::RuleT;
+
 use frunk_core::coproduct::Coproduct;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

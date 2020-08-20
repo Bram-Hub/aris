@@ -1,4 +1,6 @@
 /*!
+ASTs for logical expressions
+
 # Usage
 
 Parsing an expression that's statically known to be valid:
@@ -27,7 +29,7 @@ assert_eq!(&handle_user_input("bad(missing, paren"), "unsuccessful parse");
 
 ```
 use aris::parser::parse_unwrap as p;
-use aris::expression::*;
+use aris::expr::*;
 
 fn is_it_an_and(e: &Expr) -> bool {
     match e {
@@ -45,7 +47,7 @@ assert_eq!(is_it_an_and(&expr2), false);
 assert_eq!(is_it_an_and(&expr3), false);
 
 fn does_it_have_any_ands(e: &Expr) -> bool {
-    use aris::expression::Expr::*;
+    use aris::expr::Expr::*;
     match e {
         Contradiction | Tautology | Var { .. } => false,
         Apply { func, args } => does_it_have_any_ands(&func) || args.iter().any(|arg| does_it_have_any_ands(arg)),
@@ -62,8 +64,6 @@ assert_eq!(does_it_have_any_ands(&expr2), true);
 assert_eq!(does_it_have_any_ands(&expr3), false);
 ```
 */
-
-use super::*;
 
 use std::collections::BTreeSet;
 use std::collections::{HashMap, HashSet};
@@ -105,7 +105,7 @@ pub enum QSymbol {
     Exists,
 }
 
-/// aris::expression::Expr is the core AST (Abstract Syntax Tree) type for representing logical expressions.
+/// aris::expr::Expr is the core AST (Abstract Syntax Tree) type for representing logical expressions.
 /// For most of the recursive cases, it uses symbols so that code can work on the shape of e.g. a binary operation without worrying about which binary operation it is.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 #[repr(C)]
@@ -169,8 +169,8 @@ pub enum NnfExpr {
 /// polarity and name of the literal.
 ///
 /// ```rust
-/// use aris::expression::Expr;
-/// # use aris::expression::CnfExpr;
+/// use aris::expr::Expr;
+/// # use aris::expr::CnfExpr;
 /// assert_eq!(Expr::Tautology.into_cnf(), Some(CnfExpr::tautology()));
 /// ```
 ///
@@ -394,7 +394,7 @@ pub fn subst(e: &Expr, to_replace: &str, with: Expr) -> Expr {
                 (true, _) => (name.clone(), *body.clone()),
                 (false, true) => {
                     let newname = gensym(name, &fv_with);
-                    let body0 = subst(body, name, expression_builders::var(&newname[..]));
+                    let body0 = subst(body, name, Expr::var(&newname[..]));
                     let body1 = subst(&body0, to_replace, with);
                     //println!("{:?}\n{:?}\n{:?}", body, body0, body1);
                     (newname, body1)
@@ -412,7 +412,7 @@ pub fn subst(e: &Expr, to_replace: &str, with: Expr) -> Expr {
 
 #[test]
 fn test_subst() {
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     assert_eq!(
         subst(&p("x & forall x, x"), "x", p("y")),
         p("y & forall x, x")
@@ -436,18 +436,20 @@ fn test_subst() {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Constraint<A> {
-    Equal(A, A),
+pub struct Equal {
+    pub left: Expr,
+    pub right: Expr,
 }
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Substitution<A, B>(pub Vec<(A, B)>);
 /// Unifies a set of equality constraints on expressions, giving a list of substitutions that make constrained expressions equal.
-/// a == b -> unify(HashSet::from_iter(vec![Constraint::Equal(a, b)])) == Some(vec![])
-pub fn unify(mut c: HashSet<Constraint<Expr>>) -> Option<Substitution<String, Expr>> {
+/// a == b -> unify(HashSet::from_iter(vec![Equal(a, b)])) == Some(vec![])
+pub fn unify(mut c: HashSet<Equal>) -> Option<Substitution<String, Expr>> {
     // inspired by TAPL 22.4
     //println!("\t{:?}", c);
     let mut c_ = c.clone();
-    let Constraint::Equal(s, t) = if let Some(x) = c_.drain().next() {
+    let Equal { left, right } = if let Some(x) = c_.drain().next() {
         c.remove(&x);
         x
     } else {
@@ -456,23 +458,29 @@ pub fn unify(mut c: HashSet<Constraint<Expr>>) -> Option<Substitution<String, Ex
     use Expr::*;
     let subst_set = |x, e1: Expr, set: HashSet<_>| {
         set.into_iter()
-            .map(|Constraint::Equal(e2, e3)| {
-                Constraint::Equal(subst(&e2, x, e1.clone()), subst(&e3, x, e1.clone()))
-            })
+            .map(
+                |Equal {
+                     left: e2,
+                     right: e3,
+                 }| Equal {
+                    left: subst(&e2, x, e1.clone()),
+                    right: subst(&e3, x, e1.clone()),
+                },
+            )
             .collect::<_>()
     };
-    let (fvs, fvt) = (freevars(&s), freevars(&t));
-    match (&s, &t) {
-        (_, _) if s == t => unify(c),
+    let (fvs, fvt) = (freevars(&left), freevars(&right));
+    match (&left, &right) {
+        (_, _) if left == right => unify(c),
         (Var { name: ref sname }, _) if !fvt.contains(sname) => {
-            unify(subst_set(&sname, t.clone(), c)).map(|mut x| {
-                x.0.push((sname.clone(), t.clone()));
+            unify(subst_set(&sname, right.clone(), c)).map(|mut x| {
+                x.0.push((sname.clone(), right.clone()));
                 x
             })
         }
         (_, Var { name: ref tname }) if !fvs.contains(tname) => {
-            unify(subst_set(&tname, s.clone(), c)).map(|mut x| {
-                x.0.push((tname.clone(), s.clone()));
+            unify(subst_set(&tname, left.clone(), c)).map(|mut x| {
+                x.0.push((tname.clone(), left.clone()));
                 x
             })
         }
@@ -486,7 +494,10 @@ pub fn unify(mut c: HashSet<Constraint<Expr>>) -> Option<Substitution<String, Ex
                 operand: to,
             },
         ) if ss == ts => {
-            c.insert(Constraint::Equal(*so.clone(), *to.clone()));
+            c.insert(Equal {
+                left: *so.clone(),
+                right: *to.clone(),
+            });
             unify(c)
         }
         (
@@ -501,17 +512,25 @@ pub fn unify(mut c: HashSet<Constraint<Expr>>) -> Option<Substitution<String, Ex
                 right: tr,
             },
         ) if ss == ts => {
-            c.insert(Constraint::Equal(*sl.clone(), *tl.clone()));
-            c.insert(Constraint::Equal(*sr.clone(), *tr.clone()));
+            c.insert(Equal {
+                left: *sl.clone(),
+                right: *tl.clone(),
+            });
+            c.insert(Equal {
+                left: *sr.clone(),
+                right: *tr.clone(),
+            });
             unify(c)
         }
         (Apply { func: sf, args: sa }, Apply { func: tf, args: ta }) if sa.len() == ta.len() => {
-            c.insert(Constraint::Equal(*sf.clone(), *tf.clone()));
-            c.extend(
-                sa.iter()
-                    .zip(ta.iter())
-                    .map(|(x, y)| Constraint::Equal(x.clone(), y.clone())),
-            );
+            c.insert(Equal {
+                left: *sf.clone(),
+                right: *tf.clone(),
+            });
+            c.extend(sa.iter().zip(ta.iter()).map(|(x, y)| Equal {
+                left: x.clone(),
+                right: y.clone(),
+            }));
             unify(c)
         }
         (
@@ -524,11 +543,10 @@ pub fn unify(mut c: HashSet<Constraint<Expr>>) -> Option<Substitution<String, Ex
                 exprs: te,
             },
         ) if ss == ts && se.len() == te.len() => {
-            c.extend(
-                se.iter()
-                    .zip(te.iter())
-                    .map(|(x, y)| Constraint::Equal(x.clone(), y.clone())),
-            );
+            c.extend(se.iter().zip(te.iter()).map(|(x, y)| Equal {
+                left: x.clone(),
+                right: y.clone(),
+            }));
             unify(c)
         }
         (
@@ -545,10 +563,10 @@ pub fn unify(mut c: HashSet<Constraint<Expr>>) -> Option<Substitution<String, Ex
         ) if ss == ts => {
             let uv = gensym("__unification_var", &fvs.union(&fvt).cloned().collect());
             // require that the bodies of the quantifiers are alpha-equal by substituting a fresh constant
-            c.insert(Constraint::Equal(
-                subst(sb, sn, expression_builders::var(&uv)),
-                subst(tb, tn, expression_builders::var(&uv)),
-            ));
+            c.insert(Equal {
+                left: subst(sb, sn, Expr::var(&uv)),
+                right: subst(tb, tn, Expr::var(&uv)),
+            });
             // if the constant escapes, then a free variable in one formula unified with a captured variable in the other, so the values don't unify
             unify(c).and_then(|sub| {
                 if sub
@@ -568,26 +586,29 @@ pub fn unify(mut c: HashSet<Constraint<Expr>>) -> Option<Substitution<String, Ex
 
 #[test]
 fn test_unify() {
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let u = |s, t| {
-        let l = p(s);
-        let r = p(t);
+        let left = p(s);
+        let right = p(t);
         let ret = unify(
-            vec![Constraint::Equal(l.clone(), r.clone())]
-                .into_iter()
-                .collect(),
+            vec![Equal {
+                left: left.clone(),
+                right: right.clone(),
+            }]
+            .into_iter()
+            .collect(),
         );
         if let Some(ref ret) = ret {
             let subst_l = ret
                 .0
                 .iter()
-                .fold(l.clone(), |z, (x, y)| subst(&z, x, y.clone()));
+                .fold(left.clone(), |z, (x, y)| subst(&z, x, y.clone()));
             let subst_r = ret
                 .0
                 .iter()
-                .fold(r.clone(), |z, (x, y)| subst(&z, x, y.clone()));
+                .fold(right.clone(), |z, (x, y)| subst(&z, x, y.clone()));
             // TODO: assert alpha_equal(subst_l, subst_r);
-            println!("{} {} {:?} {} {}", l, r, ret, subst_l, subst_r);
+            println!("{} {} {:?} {} {}", left, right, ret, subst_l, subst_r);
         }
         ret
     };
@@ -618,6 +639,67 @@ Currently, the parser will never produce Expr::Apply nodes that have a func that
 */
 
 impl Expr {
+    pub fn var(name: &str) -> Expr {
+        Expr::Var { name: name.into() }
+    }
+    pub fn apply(func: Expr, args: &[Expr]) -> Expr {
+        Expr::Apply {
+            func: Box::new(func),
+            args: args.to_vec(),
+        }
+    }
+    pub fn not(expr: Expr) -> Expr {
+        Expr::Unop {
+            symbol: USymbol::Not,
+            operand: Box::new(expr),
+        }
+    }
+    pub fn binop(symbol: BSymbol, l: Expr, r: Expr) -> Expr {
+        Expr::Binop {
+            symbol,
+            left: Box::new(l),
+            right: Box::new(r),
+        }
+    }
+    pub fn binopplaceholder(symbol: BSymbol) -> Expr {
+        Expr::binop(symbol, Expr::var("_"), Expr::var("_"))
+    }
+    pub fn implies(l: Expr, r: Expr) -> Expr {
+        Expr::binop(BSymbol::Implies, l, r)
+    }
+    pub fn or(l: Expr, r: Expr) -> Expr {
+        Expr::assocbinop(ASymbol::Or, &[l, r])
+    }
+    pub fn assocbinop(symbol: ASymbol, exprs: &[Expr]) -> Expr {
+        Expr::AssocBinop {
+            symbol,
+            exprs: exprs.to_vec(),
+        }
+    }
+    pub fn assocplaceholder(symbol: ASymbol) -> Expr {
+        Expr::assocbinop(symbol, &[Expr::var("_"), Expr::var("_"), Expr::var("...")])
+    }
+    pub fn quantifierplaceholder(symbol: QSymbol) -> Expr {
+        Expr::Quantifier {
+            symbol,
+            name: "_".into(),
+            body: Box::new(Expr::var("_")),
+        }
+    }
+    pub fn forall(name: &str, body: Expr) -> Expr {
+        Expr::Quantifier {
+            symbol: QSymbol::Forall,
+            name: name.into(),
+            body: Box::new(body),
+        }
+    }
+    pub fn exists(name: &str, body: Expr) -> Expr {
+        Expr::Quantifier {
+            symbol: QSymbol::Exists,
+            name: name.into(),
+            body: Box::new(body),
+        }
+    }
     pub fn infer_arities(&self, arities: &mut HashMap<String, usize>) {
         use Expr::*;
         match self {
@@ -1068,7 +1150,7 @@ impl Expr {
                         symbol: ASymbol::Or,
                         exprs,
                     } => (demorgans(ASymbol::And, exprs), true),
-                    _ => (expression_builders::not(*operand), false),
+                    _ => (Expr::not(*operand), false),
                 },
                 _ => (expr, false),
             }
@@ -1186,7 +1268,7 @@ impl Expr {
             let gen_opposite = |new_symbol, name, body| Quantifier {
                 symbol: new_symbol,
                 name,
-                body: Box::new(expression_builders::not(body)),
+                body: Box::new(Expr::not(body)),
             };
 
             match expr {
@@ -1198,7 +1280,7 @@ impl Expr {
                         QSymbol::Exists => (gen_opposite(QSymbol::Forall, name, *body), true),
                         QSymbol::Forall => (gen_opposite(QSymbol::Exists, name, *body), true),
                     },
-                    _ => (expression_builders::not(*operand), false),
+                    _ => (Expr::not(*operand), false),
                 },
                 _ => (expr, false),
             }
@@ -1495,7 +1577,7 @@ impl Expr {
                                     left,
                                     right,
                                 } => {
-                                    let new_exprs = vec![*left, expression_builders::not(*right)];
+                                    let new_exprs = vec![*left, Expr::not(*right)];
 
                                     let new_body = AssocBinop {
                                         symbol: ASymbol::And,
@@ -1515,9 +1597,7 @@ impl Expr {
                                         let new_body = Binop {
                                             symbol: BSymbol::Implies,
                                             left: Box::new(exprs[0].clone()),
-                                            right: Box::new(expression_builders::not(
-                                                exprs[1].clone(),
-                                            )),
+                                            right: Box::new(Expr::not(exprs[1].clone())),
                                         };
 
                                         gen_opposite(symbol, name, Box::new(new_body))
@@ -1527,7 +1607,7 @@ impl Expr {
                                 _ => (orig_expr, false),
                             }
                         }
-                        _ => (expression_builders::not(*operand), false),
+                        _ => (Expr::not(*operand), false),
                     }
                 }
 
@@ -1544,12 +1624,12 @@ impl Expr {
                 match qsymbol {
                     QSymbol::Exists => {
                         let tmp = mem::replace(iter, Contradiction);
-                        *iter = expression_builders::exists(qname.as_str(), tmp);
+                        *iter = Expr::exists(qname.as_str(), tmp);
                     }
 
                     QSymbol::Forall => {
                         let tmp = mem::replace(iter, Contradiction);
-                        *iter = expression_builders::forall(qname.as_str(), tmp);
+                        *iter = Expr::forall(qname.as_str(), tmp);
                     }
                 }
             }
@@ -1577,7 +1657,7 @@ impl Expr {
 
                             // inline push_quantifier_inside here
                             push_quantifier_inside(qsymbol, name, &mut exprs);
-                            (expression_builders::assocbinop(asymbol, &exprs), true)
+                            (Expr::assocbinop(asymbol, &exprs), true)
                         }
                         _ => (orig_expr, false),
                     }
@@ -1593,8 +1673,8 @@ impl Expr {
     ///
     /// ```rust
     /// use aris::parser::parse_unwrap as p;
-    /// # use aris::expression::Expr;
-    /// use aris::expression::CnfExpr;
+    /// # use aris::expr::Expr;
+    /// use aris::expr::CnfExpr;
     ///
     /// let a = CnfExpr::var("A");
     /// let b = CnfExpr::var("B");
@@ -1614,8 +1694,8 @@ impl Expr {
     ///
     /// ```rust
     /// use aris::parser::parse_unwrap as p;
-    /// # use aris::expression::Expr;
-    /// use aris::expression::NnfExpr;
+    /// # use aris::expr::Expr;
+    /// use aris::expr::NnfExpr;
     ///
     /// let a = NnfExpr::var("A");
     /// let b = NnfExpr::var("B");
@@ -1678,7 +1758,7 @@ impl NnfExpr {
     ///
     /// ```rust
     /// use aris::parser::parse_unwrap as p;
-    /// # use aris::expression::NnfExpr;
+    /// # use aris::expr::NnfExpr;
     ///
     /// assert_eq!(p("⊤").into_nnf(), Some(NnfExpr::tautology()));
     /// ```
@@ -1692,7 +1772,7 @@ impl NnfExpr {
     ///
     /// ```rust
     /// use aris::parser::parse_unwrap as p;
-    /// # use aris::expression::NnfExpr;
+    /// # use aris::expr::NnfExpr;
     ///
     /// assert_eq!(p("⊥").into_nnf(), Some(NnfExpr::contradiction()));
     /// ```
@@ -1707,7 +1787,7 @@ impl NnfExpr {
     ///
     /// ```rust
     /// use aris::parser::parse_unwrap as p;
-    /// # use aris::expression::NnfExpr;
+    /// # use aris::expr::NnfExpr;
     ///
     /// let a = NnfExpr::var("A");
     /// let b = NnfExpr::var("B");
@@ -1725,7 +1805,7 @@ impl NnfExpr {
     ///
     /// ```rust
     /// use aris::parser::parse_unwrap as p;
-    /// # use aris::expression::NnfExpr;
+    /// # use aris::expr::NnfExpr;
     ///
     /// assert_eq!(p("A").into_nnf(), Some(NnfExpr::var("A")));
     /// ```
@@ -1742,7 +1822,7 @@ impl NnfExpr {
     ///
     /// ```rust
     /// use aris::parser::parse_unwrap as p;
-    /// # use aris::expression::NnfExpr;
+    /// # use aris::expr::NnfExpr;
     ///
     /// let a = NnfExpr::var("A");
     /// let b = NnfExpr::var("B");
@@ -1759,8 +1839,8 @@ impl NnfExpr {
     /// Convert from [`NnfExpr`](NnfExpr) into [`CnfExpr`](CnfExpr) by distributing ORs.
     ///
     /// ```rust
-    /// # use aris::expression::NnfExpr;
-    /// # use aris::expression::CnfExpr;
+    /// # use aris::expr::NnfExpr;
+    /// # use aris::expr::CnfExpr;
     /// assert_eq!(NnfExpr::var("A").into_cnf(), CnfExpr::var("A"));
     /// ```
     pub fn into_cnf(self) -> CnfExpr {
@@ -1784,7 +1864,7 @@ impl Not for NnfExpr {
     ///
     /// ```rust
     /// use aris::parser::parse_unwrap as p;
-    /// # use aris::expression::NnfExpr;
+    /// # use aris::expr::NnfExpr;
     ///
     /// // Using `!` operator
     /// let a = NnfExpr::var("A");
@@ -1817,7 +1897,7 @@ impl CnfExpr {
     ///
     /// ```rust
     /// use aris::parser::parse_unwrap as p;
-    /// # use aris::expression::CnfExpr;
+    /// # use aris::expr::CnfExpr;
     ///
     /// assert_eq!(p("⊤").into_cnf(), Some(CnfExpr::tautology()));
     /// ```
@@ -1831,7 +1911,7 @@ impl CnfExpr {
     ///
     /// ```rust
     /// use aris::parser::parse_unwrap as p;
-    /// # use aris::expression::CnfExpr;
+    /// # use aris::expr::CnfExpr;
     ///
     /// assert_eq!(p("⊥").into_cnf(), Some(CnfExpr::contradiction()));
     /// ```
@@ -1846,7 +1926,7 @@ impl CnfExpr {
     ///
     /// ```rust
     /// use aris::parser::parse_unwrap as p;
-    /// # use aris::expression::CnfExpr;
+    /// # use aris::expr::CnfExpr;
     ///
     /// assert_eq!(p("A").into_cnf().unwrap(), CnfExpr::literal(true, "A"));
     /// assert_eq!(p("~A").into_cnf().unwrap(), CnfExpr::literal(false, "A"));
@@ -1859,7 +1939,7 @@ impl CnfExpr {
     ///
     /// ```rust
     /// use aris::parser::parse_unwrap as p;
-    /// # use aris::expression::CnfExpr;
+    /// # use aris::expr::CnfExpr;
     ///
     /// assert_eq!(p("A").into_cnf().unwrap(), CnfExpr::var("A"));
     /// ```
@@ -1871,7 +1951,7 @@ impl CnfExpr {
     ///
     /// ```rust
     /// use aris::parser::parse_unwrap as p;
-    /// # use aris::expression::CnfExpr;
+    /// # use aris::expr::CnfExpr;
     ///
     /// let a = CnfExpr::var("A");
     /// let b = CnfExpr::var("B");
@@ -1889,7 +1969,7 @@ impl CnfExpr {
     ///
     /// ```rust
     /// use aris::parser::parse_unwrap as p;
-    /// # use aris::expression::CnfExpr;
+    /// # use aris::expr::CnfExpr;
     ///
     /// let a = CnfExpr::var("A");
     /// let b = CnfExpr::var("B");
@@ -1919,7 +1999,7 @@ impl CnfExpr {
     /// model returned by `varisat` can be pretty printed.
     ///
     /// ```rust
-    /// # use aris::expression::CnfExpr;
+    /// # use aris::expr::CnfExpr;
     /// let (sat, vars) = CnfExpr::var("A").to_varisat();
     /// ```
     ///
@@ -1965,7 +2045,7 @@ impl CnfExpr {
 
 #[test]
 pub fn test_combine_associative_ops() {
-    use parser::parse_unwrap as p;
+    use crate::parser::parse_unwrap as p;
     let f = |s: &str| {
         let e = p(s);
         println!(
@@ -1979,78 +2059,6 @@ pub fn test_combine_associative_ops() {
     f("(a & (b & c)) | (q | r)");
 }
 
-/// Convenience functions for constructing `Expr`s inline without needing all the struct boilerplate
-pub mod expression_builders {
-    use super::{ASymbol, BSymbol, Expr, QSymbol, USymbol};
-    pub fn var(name: &str) -> Expr {
-        Expr::Var { name: name.into() }
-    }
-    pub fn apply(func: Expr, args: &[Expr]) -> Expr {
-        Expr::Apply {
-            func: Box::new(func),
-            args: args.to_vec(),
-        }
-    }
-    pub fn predicate(name: &str, args: &[&str]) -> Expr {
-        apply(
-            var(name),
-            &args.iter().map(|&x| var(x)).collect::<Vec<_>>()[..],
-        )
-    }
-    pub fn not(expr: Expr) -> Expr {
-        Expr::Unop {
-            symbol: USymbol::Not,
-            operand: Box::new(expr),
-        }
-    }
-    pub fn binop(symbol: BSymbol, l: Expr, r: Expr) -> Expr {
-        Expr::Binop {
-            symbol,
-            left: Box::new(l),
-            right: Box::new(r),
-        }
-    }
-    pub fn binopplaceholder(symbol: BSymbol) -> Expr {
-        binop(symbol, var("_"), var("_"))
-    }
-    pub fn implies(l: Expr, r: Expr) -> Expr {
-        binop(BSymbol::Implies, l, r)
-    }
-    pub fn or(l: Expr, r: Expr) -> Expr {
-        assocbinop(ASymbol::Or, &[l, r])
-    }
-    pub fn assocbinop(symbol: ASymbol, exprs: &[Expr]) -> Expr {
-        Expr::AssocBinop {
-            symbol,
-            exprs: exprs.to_vec(),
-        }
-    }
-    pub fn assocplaceholder(symbol: ASymbol) -> Expr {
-        assocbinop(symbol, &[var("_"), var("_"), var("...")])
-    }
-    pub fn quantifierplaceholder(symbol: QSymbol) -> Expr {
-        Expr::Quantifier {
-            symbol,
-            name: "_".into(),
-            body: Box::new(var("_")),
-        }
-    }
-    pub fn forall(name: &str, body: Expr) -> Expr {
-        Expr::Quantifier {
-            symbol: QSymbol::Forall,
-            name: name.into(),
-            body: Box::new(body),
-        }
-    }
-    pub fn exists(name: &str, body: Expr) -> Expr {
-        Expr::Quantifier {
-            symbol: QSymbol::Exists,
-            name: name.into(),
-            body: Box::new(body),
-        }
-    }
-}
-
 pub fn expressions_for_depth(
     depth: usize,
     max_assoc: usize,
@@ -2062,41 +2070,38 @@ pub fn expressions_for_depth(
         ret.insert(Expr::Tautology);
         ret.extend(vars.iter().cloned().map(|name| Expr::Var { name }));
     } else {
-        use expression_builders::{apply, assocbinop, binop, exists, forall, not, var};
         let smaller: Vec<_> = expressions_for_depth(depth - 1, max_assoc, vars.clone())
             .into_iter()
             .collect();
         let mut products = vec![];
         for i in 2..=max_assoc {
-            products.extend(multi_cartesian_product(
-                (0..i).map(|_| smaller.clone()).collect(),
-            ));
+            products.extend((0..i).map(|_| smaller.clone()).multi_cartesian_product());
         }
         for v in vars.iter() {
             for arglist in products.iter() {
-                ret.insert(apply(var(v), arglist));
+                ret.insert(Expr::apply(Expr::var(v), arglist));
             }
         }
         for e in smaller.iter() {
-            ret.insert(not(e.clone()));
+            ret.insert(Expr::not(e.clone()));
         }
         for symbol in &[BSymbol::Implies /*BSymbol::Plus, BSymbol::Mult*/] {
             for lhs in smaller.iter() {
                 for rhs in smaller.iter() {
-                    ret.insert(binop(*symbol, lhs.clone(), rhs.clone()));
+                    ret.insert(Expr::binop(*symbol, lhs.clone(), rhs.clone()));
                 }
             }
         }
         for symbol in &[ASymbol::And, ASymbol::Or, ASymbol::Bicon, ASymbol::Equiv] {
             for arglist in products.iter() {
-                ret.insert(assocbinop(*symbol, &arglist));
+                ret.insert(Expr::assocbinop(*symbol, &arglist));
             }
         }
         let x = format!("x{}", depth);
         vars.insert(x.clone());
         for body in expressions_for_depth(depth - 1, max_assoc, vars).into_iter() {
-            ret.insert(forall(&x, body.clone()));
-            ret.insert(exists(&x, body.clone()));
+            ret.insert(Expr::forall(&x, body.clone()));
+            ret.insert(Expr::exists(&x, body.clone()));
         }
     }
     ret

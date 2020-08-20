@@ -1,4 +1,4 @@
-use aris::expression::Expr;
+use aris::expr::Expr;
 use aris::proofs::pooledproof::PooledProof;
 use aris::proofs::PJRef;
 use aris::proofs::Proof;

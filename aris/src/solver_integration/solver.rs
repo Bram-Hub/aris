@@ -1,9 +1,11 @@
-use crate::expression::{ASymbol, Expr, USymbol};
+use crate::expr::{ASymbol, Expr, USymbol};
 use crate::proofs::{Justification, PJRef, Proof};
 use crate::rules::{Rule, RuleM};
-use frunk_core::coproduct::Coproduct;
+
 use std::collections::HashMap;
 use std::fmt::{self, Debug, Display};
+
+use frunk_core::coproduct::Coproduct;
 use varisat::{
     checker::{CheckedProofStep, ProofProcessor},
     Lit,
@@ -40,6 +42,7 @@ where
 }
 
 impl<P: Proof> SatProofBuilder<P> {
+    #[cfg(test)]
     fn new() -> SatProofBuilder<P> {
         let mut proof = P::new();
         let empty_and = Expr::AssocBinop {
@@ -172,31 +175,38 @@ where
     }
 }
 
-// Test case
-// (a) && (~a || b) && (~b)
-#[test]
-fn test_generate_proof() {
-    use crate::proofs::pooledproof::PooledProof;
-    use varisat::{CnfFormula, ExtendFormula, Lit, Solver, Var};
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let mut cnf = CnfFormula::new();
-    let a = Var::from_index(0);
-    let b = Var::from_index(1);
-    let a0 = Lit::from_var(a, false);
-    let b0 = Lit::from_var(b, false);
-    let a1 = Lit::from_var(a, true);
-    let b1 = Lit::from_var(b, true);
-    cnf.add_clause(&[a1]);
-    cnf.add_clause(&[a0, b1]);
-    cnf.add_clause(&[b0]);
-    println!("{:?}", cnf);
-    let mut foo = SatProofBuilder::<PooledProof<Hlist![Expr]>>::new();
-    {
-        let mut s = Solver::new();
-        s.add_proof_processor(&mut foo);
-        s.add_formula(&cnf);
-        let r = s.solve();
-        println!("{:?}", r);
+    use frunk_core::Hlist;
+
+    // Test case
+    // (a) && (~a || b) && (~b)
+    #[test]
+    fn test_generate_proof() {
+        use crate::proofs::pooledproof::PooledProof;
+        use varisat::{CnfFormula, ExtendFormula, Lit, Solver, Var};
+
+        let mut cnf = CnfFormula::new();
+        let a = Var::from_index(0);
+        let b = Var::from_index(1);
+        let a0 = Lit::from_var(a, false);
+        let b0 = Lit::from_var(b, false);
+        let a1 = Lit::from_var(a, true);
+        let b1 = Lit::from_var(b, true);
+        cnf.add_clause(&[a1]);
+        cnf.add_clause(&[a0, b1]);
+        cnf.add_clause(&[b0]);
+        println!("{:?}", cnf);
+        let mut foo = SatProofBuilder::<PooledProof<Hlist![Expr]>>::new();
+        {
+            let mut s = Solver::new();
+            s.add_proof_processor(&mut foo);
+            s.add_formula(&cnf);
+            let r = s.solve();
+            println!("{:?}", r);
+        }
+        println!("{}", foo.proof);
     }
-    println!("{}", foo.proof);
 }
