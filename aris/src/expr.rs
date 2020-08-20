@@ -278,7 +278,7 @@ pub fn gen_var(prefix: &str, avoid: &HashSet<String>) -> String {
             return ret;
         }
     }
-    panic!("Somehow gensym used more than 2^64 ids without finding anything?")
+    panic!("Somehow used more than 2^64 vars without finding anything?")
 }
 
 /// `subst(e, to_replace, with)` performs capture-avoiding substitution of free variables named `to_replace` with `with` in `e`
