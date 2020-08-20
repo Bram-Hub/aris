@@ -209,7 +209,7 @@ fn reduce_transform_func(expr: Expr, patterns: &[(Expr, Expr, HashSet<String>)])
             if !any_bad && subs.len() == pattern_vars.len() {
                 let subst_replace = subs
                     .into_iter()
-                    .fold(replace.clone(), |z, (x, y)| crate::expr::subst(&z, &x, y));
+                    .fold(replace.clone(), |z, (x, y)| crate::expr::subst(z, &x, y));
                 return (subst_replace, true);
             }
         }
@@ -243,8 +243,8 @@ fn freevarsify_pattern(e: &Expr, patterns: &[(Expr, Expr)]) -> Vec<(Expr, Expr, 
             let mut pattern_vars = HashSet::new();
             for free_var in free_pattern {
                 let new_sym = gen_var(&*free_var, &e_free);
-                pattern = subst(&pattern, &*free_var, Expr::var(&*new_sym));
-                replace = subst(&replace, &*free_var, Expr::var(&*new_sym));
+                pattern = subst(pattern, &*free_var, Expr::var(&*new_sym));
+                replace = subst(replace, &*free_var, Expr::var(&*new_sym));
                 pattern_vars.insert(new_sym);
             }
 

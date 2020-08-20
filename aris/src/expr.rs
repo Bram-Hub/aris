@@ -266,12 +266,18 @@ pub fn free_vars(expr: &Expr) -> HashSet<String> {
     }
 }
 
-/// Generate a variable name that doesn't exist in a set
+/// Generate a variable name that doesn't exist in a set.
+///
+/// If `prefix` is not in `avoid`, `prefix` will be returned.
 ///
 /// ## Parameters
 ///   * `prefix` - prefix of variable name to generate
 ///   * `avoid` - set of names to avoid returning
 pub fn gen_var(prefix: &str, avoid: &HashSet<String>) -> String {
+    if !avoid.contains(prefix) {
+        return prefix.to_owned();
+    }
+
     for i in 0u64.. {
         let ret = format!("{}{}", prefix, i);
         if !avoid.contains(&ret) {
@@ -281,84 +287,73 @@ pub fn gen_var(prefix: &str, avoid: &HashSet<String>) -> String {
     panic!("Somehow used more than 2^64 vars without finding anything?")
 }
 
-/// `subst(e, to_replace, with)` performs capture-avoiding substitution of free variables named `to_replace` with `with` in `e`
-pub fn subst(e: &Expr, to_replace: &str, with: Expr) -> Expr {
-    match e {
+/// Replace a given free variable with an expression.
+///
+/// The replacement is capture-avoiding, meaning that the free variables in
+/// `replacement` will remain free in the returned value. This works by renaming
+/// the bound variables in quantifiers to prevent them from binding variables in
+/// `replacement`.
+///
+/// ## Parameters
+///   * `expr` - expression to check for matching free variables
+///   * `var_to_replace` - variable name to be replaced
+///   * `replacement` - expression that replaces the variable
+pub fn subst(expr: Expr, var_to_replace: &str, replacement: Expr) -> Expr {
+    match expr {
         Expr::Contra => Expr::Contra,
         Expr::Taut => Expr::Taut,
-        Expr::Var { ref name } => {
-            if name == to_replace {
-                with
+        Expr::Var { name } => {
+            if name == var_to_replace {
+                replacement
             } else {
-                Expr::Var { name: name.clone() }
+                Expr::Var { name }
             }
         }
-        Expr::Apply { ref func, ref args } => Expr::Apply {
-            func: Box::new(subst(func, to_replace, with.clone())),
+        Expr::Apply { func, args } => Expr::Apply {
+            func: Box::new(subst(*func, var_to_replace, replacement.clone())),
             args: args
-                .iter()
-                .map(|e2| subst(e2, to_replace, with.clone()))
+                .into_iter()
+                .map(|expr| subst(expr, var_to_replace, replacement.clone()))
                 .collect(),
         },
         Expr::Not { operand } => Expr::Not {
-            operand: Box::new(subst(operand, to_replace, with)),
+            operand: Box::new(subst(*operand, var_to_replace, replacement)),
         },
         Expr::Impl { left, right } => Expr::Impl {
-            left: Box::new(subst(left, to_replace, with.clone())),
-            right: Box::new(subst(right, to_replace, with)),
+            left: Box::new(subst(*left, var_to_replace, replacement.clone())),
+            right: Box::new(subst(*right, var_to_replace, replacement)),
         },
         Expr::Assoc { op, exprs } => Expr::Assoc {
-            op: *op,
+            op,
             exprs: exprs
-                .iter()
-                .map(|e2| subst(e2, to_replace, with.clone()))
+                .into_iter()
+                .map(|expr| subst(expr, var_to_replace, replacement.clone()))
                 .collect(),
         },
         Expr::Quant { kind, name, body } => {
-            let fv_with = free_vars(&with);
-            let (newname, newbody) = match (name == to_replace, fv_with.contains(name)) {
-                (true, _) => (name.clone(), *body.clone()),
-                (false, true) => {
-                    let newname = gen_var(name, &fv_with);
-                    let body0 = subst(body, name, Expr::var(&newname[..]));
-                    let body1 = subst(&body0, to_replace, with);
-                    //println!("{:?}\n{:?}\n{:?}", body, body0, body1);
-                    (newname, body1)
-                }
-                (false, false) => (name.clone(), subst(body, to_replace, with)),
-            };
-            Expr::Quant {
-                kind: *kind,
-                name: newname,
-                body: Box::new(newbody),
+            if name == var_to_replace {
+                // Variable is bound here, so can stop replacement
+                Expr::Quant { kind, name, body }
+            } else {
+                // Capture-avoidance behavior, rename the quantified variable if
+                // it collides with free variables in the replacement.
+
+                let old_name = name;
+
+                // New quantifier variable name
+                let name = gen_var(&old_name, &free_vars(&replacement));
+
+                // Change quantified variable
+                let body = subst(*body, &old_name, Expr::var(&name));
+
+                // Now it's safe to continue substitution
+                let body = subst(body, var_to_replace, replacement);
+
+                let body = Box::new(body);
+                Expr::Quant { kind, name, body }
             }
         }
     }
-}
-
-#[test]
-fn test_subst() {
-    use crate::parser::parse_unwrap as p;
-    assert_eq!(
-        subst(&p("x & forall x, x"), "x", p("y")),
-        p("y & forall x, x")
-    ); // hit (true, _) case in Expr::Quantifier
-    assert_eq!(
-        subst(&p("forall x, x & y"), "y", p("x")),
-        p("forall x0, x0 & x")
-    ); // hit (false, true) case in Expr::Quantifier
-    assert_eq!(
-        subst(&p("forall x, x & y"), "y", p("z")),
-        p("forall x, x & z")
-    ); // hit (false, false) case in Expr::Quantifier
-    assert_eq!(
-        subst(&p("forall f, f(x) & g(y, z)"), "g", p("h")),
-        p("forall f, f(x) & h(y, z)")
-    );
-    assert_eq!(
-        subst(&p("forall f, f(x) & g(y, z)"), "g", p("f")),
-        p("forall f0, f0(x) & f(y, z)")
-    );
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -388,22 +383,22 @@ pub fn unify(mut c: HashSet<Equal>) -> Option<Substitution<String, Expr>> {
                      left: e2,
                      right: e3,
                  }| Equal {
-                    left: subst(&e2, x, e1.clone()),
-                    right: subst(&e3, x, e1.clone()),
+                    left: subst(e2, x, e1.clone()),
+                    right: subst(e3, x, e1.clone()),
                 },
             )
             .collect::<_>()
     };
     let (fvs, fvt) = (free_vars(&left), free_vars(&right));
-    match (&left, &right) {
-        (_, _) if left == right => unify(c),
-        (Expr::Var { name: ref sname }, _) if !fvt.contains(sname) => {
+    match (left, right) {
+        (left, right) if left == right => unify(c),
+        (Expr::Var { name: sname }, right) if !fvt.contains(&sname) => {
             unify(subst_set(&sname, right.clone(), c)).map(|mut x| {
                 x.0.push((sname.clone(), right.clone()));
                 x
             })
         }
-        (_, Expr::Var { name: ref tname }) if !fvs.contains(tname) => {
+        (left, Expr::Var { name: tname }) if !fvs.contains(&tname) => {
             unify(subst_set(&tname, left.clone(), c)).map(|mut x| {
                 x.0.push((tname.clone(), left.clone()));
                 x
@@ -411,8 +406,8 @@ pub fn unify(mut c: HashSet<Equal>) -> Option<Substitution<String, Expr>> {
         }
         (Expr::Not { operand: s }, Expr::Not { operand: t }) => {
             c.insert(Equal {
-                left: *s.clone(),
-                right: *t.clone(),
+                left: *s,
+                right: *t,
             });
             unify(c)
         }
@@ -427,12 +422,12 @@ pub fn unify(mut c: HashSet<Equal>) -> Option<Substitution<String, Expr>> {
             },
         ) => {
             c.insert(Equal {
-                left: *sl.clone(),
-                right: *tl.clone(),
+                left: *sl,
+                right: *tl,
             });
             c.insert(Equal {
-                left: *sr.clone(),
-                right: *tr.clone(),
+                left: *sr,
+                right: *tr,
             });
             unify(c)
         }
@@ -440,13 +435,14 @@ pub fn unify(mut c: HashSet<Equal>) -> Option<Substitution<String, Expr>> {
             if sa.len() == ta.len() =>
         {
             c.insert(Equal {
-                left: *sf.clone(),
-                right: *tf.clone(),
+                left: *sf,
+                right: *tf,
             });
-            c.extend(sa.iter().zip(ta.iter()).map(|(x, y)| Equal {
-                left: x.clone(),
-                right: y.clone(),
-            }));
+            c.extend(
+                sa.into_iter()
+                    .zip(ta.into_iter())
+                    .map(|(x, y)| Equal { left: x, right: y }),
+            );
             unify(c)
         }
         (Expr::Assoc { op: so, exprs: se }, Expr::Assoc { op: to, exprs: te })
@@ -473,8 +469,8 @@ pub fn unify(mut c: HashSet<Equal>) -> Option<Substitution<String, Expr>> {
             let uv = gen_var("__unification_var", &fvs.union(&fvt).cloned().collect());
             // require that the bodies of the quantifiers are alpha-equal by substituting a fresh constant
             c.insert(Equal {
-                left: subst(sb, sn, Expr::var(&uv)),
-                right: subst(tb, tn, Expr::var(&uv)),
+                left: subst(*sb, &sn, Expr::var(&uv)),
+                right: subst(*tb, &tn, Expr::var(&uv)),
             });
             // if the constant escapes, then a free variable in one formula unified with a captured variable in the other, so the values don't unify
             unify(c).and_then(|sub| {
@@ -491,52 +487,6 @@ pub fn unify(mut c: HashSet<Equal>) -> Option<Substitution<String, Expr>> {
         }
         _ => None,
     }
-}
-
-#[test]
-fn test_unify() {
-    use crate::parser::parse_unwrap as p;
-    let u = |s, t| {
-        let left = p(s);
-        let right = p(t);
-        let ret = unify(
-            vec![Equal {
-                left: left.clone(),
-                right: right.clone(),
-            }]
-            .into_iter()
-            .collect(),
-        );
-        if let Some(ref ret) = ret {
-            let subst_l = ret
-                .0
-                .iter()
-                .fold(left.clone(), |z, (x, y)| subst(&z, x, y.clone()));
-            let subst_r = ret
-                .0
-                .iter()
-                .fold(right.clone(), |z, (x, y)| subst(&z, x, y.clone()));
-            // TODO: assert alpha_equal(subst_l, subst_r);
-            println!("{} {} {:?} {} {}", left, right, ret, subst_l, subst_r);
-        }
-        ret
-    };
-    println!("{:?}", u("x", "forall y, y"));
-    println!("{:?}", u("forall y, y", "y"));
-    println!("{:?}", u("x", "x"));
-    assert_eq!(u("forall x, x", "forall y, y"), Some(Substitution(vec![]))); // should be equal with no substitution since unification is modulo alpha equivalence
-    println!("{:?}", u("f(x,y,z)", "g(x,y,y)"));
-    println!("{:?}", u("g(x,y,y)", "f(x,y,z)"));
-    println!(
-        "{:?}",
-        u(
-            "forall foo, foo(x,y,z) & bar",
-            "forall bar, bar(x,y,z) & baz"
-        )
-    );
-
-    assert_eq!(u("forall x, z", "forall y, y"), None);
-    assert_eq!(u("x & y", "x | y"), None);
 }
 
 /*
@@ -583,10 +533,10 @@ impl Expr {
     pub fn assocplaceholder(op: Op) -> Expr {
         Expr::assoc(op, &[Expr::var("_"), Expr::var("_"), Expr::var("...")])
     }
-    pub fn quantifierplaceholder(kind: QuantKind) -> Expr {
+    pub fn quant_placeholder(kind: QuantKind) -> Expr {
         Expr::Quant {
             kind,
-            name: "_".into(),
+            name: "_".to_owned(),
             body: Box::new(Expr::var("_")),
         }
     }
@@ -1141,7 +1091,7 @@ impl Expr {
         // at this point, we've numbered all the vars, including the free ones
         // replace the free vars with their original names
         for (i, name) in gamma.into_iter().enumerate() {
-            ret = subst(&ret, &format!("{}", i), Expr::Var { name });
+            ret = subst(ret, &format!("{}", i), Expr::Var { name });
         }
         ret
     }
@@ -1749,22 +1699,6 @@ impl CnfExpr {
     }
 }
 
-#[test]
-pub fn test_combine_associative_ops() {
-    use crate::parser::parse_unwrap as p;
-    let f = |s: &str| {
-        let e = p(s);
-        println!(
-            "association of {} is {}",
-            e,
-            e.clone().combine_associative_ops()
-        );
-    };
-    f("a & (b & (c | (p -> (q <-> (r <-> s)))) & ((t === u) === (v === ((w | x) | y))))");
-    f("a & ((b & c) | (q | r))");
-    f("(a & (b & c)) | (q | r)");
-}
-
 pub fn expressions_for_depth(
     depth: usize,
     max_assoc: usize,
@@ -1811,46 +1745,145 @@ pub fn expressions_for_depth(
     ret
 }
 
-#[test]
-fn test_expressions_for_depth() {
-    use std::iter::FromIterator;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let vars = BTreeSet::from_iter(vec!["a".into()]);
-    for depth in 0..3 {
-        let set = expressions_for_depth(depth, 2, vars.clone());
-        println!("Depth: {}", depth);
-        for expr in set {
-            println!("\t{}", expr);
+    #[test]
+    fn test_gen_var() {
+        assert_eq!(gen_var("A", &hashset![]), "A");
+        assert_eq!(
+            gen_var(
+                "A",
+                &hashset!["B".to_owned(), "C".to_owned(), "D".to_owned()]
+            ),
+            "A"
+        );
+        assert_eq!(
+            gen_var(
+                "A",
+                &hashset![
+                    "A".to_owned(),
+                    "B".to_owned(),
+                    "C".to_owned(),
+                    "D".to_owned()
+                ]
+            ),
+            "A0"
+        );
+        assert_eq!(
+            gen_var(
+                "A",
+                &hashset![
+                    "A".to_owned(),
+                    "A0".to_owned(),
+                    "A1".to_owned(),
+                    "A2".to_owned(),
+                    "A3".to_owned()
+                ]
+            ),
+            "A4"
+        );
+    }
+
+    #[test]
+    fn test_subst() {
+        use crate::parser::parse_unwrap as p;
+        assert_eq!(
+            subst(p("x & forall x, x"), "x", p("y")),
+            p("y & forall x, x")
+        ); // hit (true, _) case in Expr::Quantifier
+        assert_eq!(
+            subst(p("forall x, x & y"), "y", p("x")),
+            p("forall x0, x0 & x")
+        ); // hit (false, true) case in Expr::Quantifier
+        assert_eq!(
+            subst(p("forall x, x & y"), "y", p("z")),
+            p("forall x, x & z")
+        ); // hit (false, false) case in Expr::Quantifier
+        assert_eq!(
+            subst(p("forall f, f(x) & g(y, z)"), "g", p("h")),
+            p("forall f, f(x) & h(y, z)")
+        );
+        assert_eq!(
+            subst(p("forall f, f(x) & g(y, z)"), "g", p("f")),
+            p("forall f0, f0(x) & f(y, z)")
+        );
+    }
+
+    #[test]
+    fn test_unify() {
+        use crate::parser::parse_unwrap as p;
+        let u = |s, t| {
+            let left = p(s);
+            let right = p(t);
+            let ret = unify(
+                vec![Equal {
+                    left: left.clone(),
+                    right: right.clone(),
+                }]
+                .into_iter()
+                .collect(),
+            );
+            if let Some(ref ret) = ret {
+                let subst_l = ret
+                    .0
+                    .iter()
+                    .fold(left.clone(), |z, (x, y)| subst(z, x, y.clone()));
+                let subst_r = ret
+                    .0
+                    .iter()
+                    .fold(right.clone(), |z, (x, y)| subst(z, x, y.clone()));
+                // TODO: assert alpha_equal(subst_l, subst_r);
+                println!("{} {} {:?} {} {}", left, right, ret, subst_l, subst_r);
+            }
+            ret
+        };
+        println!("{:?}", u("x", "forall y, y"));
+        println!("{:?}", u("forall y, y", "y"));
+        println!("{:?}", u("x", "x"));
+        assert_eq!(u("forall x, x", "forall y, y"), Some(Substitution(vec![]))); // should be equal with no substitution since unification is modulo alpha equivalence
+        println!("{:?}", u("f(x,y,z)", "g(x,y,y)"));
+        println!("{:?}", u("g(x,y,y)", "f(x,y,z)"));
+        println!(
+            "{:?}",
+            u(
+                "forall foo, foo(x,y,z) & bar",
+                "forall bar, bar(x,y,z) & baz"
+            )
+        );
+
+        assert_eq!(u("forall x, z", "forall y, y"), None);
+        assert_eq!(u("x & y", "x | y"), None);
+    }
+
+    #[test]
+    pub fn test_combine_associative_ops() {
+        use crate::parser::parse_unwrap as p;
+        let f = |s: &str| {
+            let e = p(s);
+            println!(
+                "association of {} is {}",
+                e,
+                e.clone().combine_associative_ops()
+            );
+        };
+        f("a & (b & (c | (p -> (q <-> (r <-> s)))) & ((t === u) === (v === ((w | x) | y))))");
+        f("a & ((b & c) | (q | r))");
+        f("(a & (b & c)) | (q | r)");
+    }
+
+    #[test]
+    fn test_expressions_for_depth() {
+        use std::iter::FromIterator;
+
+        let vars = BTreeSet::from_iter(vec!["a".into()]);
+        for depth in 0..3 {
+            let set = expressions_for_depth(depth, 2, vars.clone());
+            println!("Depth: {}", depth);
+            for expr in set {
+                println!("\t{}", expr);
+            }
         }
     }
 }
-
-/*
-pub struct ExpressionGenerator {
-    num_freevars: usize,
-    max_depth: usize,
-    vars_in_scope: BTreeSet<String>,
-    queue: VecDeque<Expr>,
-}
-
-impl ExpressionGenerator {
-    pub fn new() -> ExpressionGenerator {
-        ExpressionGenerator {
-            num_freevars: 0,
-            max_depth: 0,
-            vars_in_scope: BTreeSet::new(),
-            queue: VecDeque::from_iter(vec![Expr::Contradiction, Expr::Tautology]),
-        }
-    }
-    pub fn generate_batch(&mut self) {
-        //let queue = vec![];
-    }
-}
-
-impl Iterator for ExpressionGenerator {
-    type Item = Expr;
-    fn next(&mut self) -> Option<Expr> {
-        self.queue.pop_front()
-    }
-}
-*/

@@ -1039,7 +1039,7 @@ impl RuleT for PredicateInference {
                     if substitutions.0[0].0 == var {
                         assert_eq!(
                             &crate::expr::subst(
-                                e1,
+                                e1.clone(),
                                 &substitutions.0[0].0,
                                 substitutions.0[0].1.clone()
                             ),
@@ -1086,9 +1086,9 @@ impl RuleT for PredicateInference {
                 let sproof = p.lookup_subproof_or_die(&sdeps[0])?;
                 if let Expr::Quant {
                     kind: QuantKind::Forall,
-                    ref name,
-                    ref body,
-                } = conclusion
+                    name,
+                    body,
+                } = &conclusion
                 {
                     for (r, expr) in sproof
                         .exprs()
@@ -1097,7 +1097,7 @@ impl RuleT for PredicateInference {
                         .collect::<Result<Vec<_>, _>>()?
                     {
                         if let Ok(Expr::Var { name: constant }) =
-                            unifies_wrt_var::<P>(body, &expr, name)
+                            unifies_wrt_var::<P>(&body, &expr, &name)
                         {
                             println!("ForallIntro constant {:?}", constant);
                             if let Some(dangling) =
@@ -1105,7 +1105,8 @@ impl RuleT for PredicateInference {
                             {
                                 return Err(Other(format!("The constant {} occurs in dependency {} that's outside the subproof.", constant, dangling)));
                             } else {
-                                let expected = crate::expr::subst(body, &constant, Expr::var(name));
+                                let expected =
+                                    crate::expr::subst(*body.clone(), &constant, Expr::var(&name));
                                 if expected != **body {
                                     return Err(Other(format!("Not all free occurrences of {} are replaced with {} in {}.", constant, name, body)));
                                 }
@@ -1126,7 +1127,7 @@ impl RuleT for PredicateInference {
                         conclusion
                     )))
                 } else {
-                    Err(ConclusionOfWrongForm(Expr::quantifierplaceholder(
+                    Err(ConclusionOfWrongForm(Expr::quant_placeholder(
                         QuantKind::Forall,
                     )))
                 }
@@ -1144,7 +1145,7 @@ impl RuleT for PredicateInference {
                 } else {
                     Err(DepOfWrongForm(
                         prem,
-                        Expr::quantifierplaceholder(QuantKind::Forall),
+                        Expr::quant_placeholder(QuantKind::Forall),
                     ))
                 }
             }
@@ -1159,7 +1160,7 @@ impl RuleT for PredicateInference {
                     unifies_wrt_var::<P>(body, &prem, name)?;
                     Ok(())
                 } else {
-                    Err(ConclusionOfWrongForm(Expr::quantifierplaceholder(
+                    Err(ConclusionOfWrongForm(Expr::quant_placeholder(
                         QuantKind::Exists,
                     )))
                 }
@@ -1209,7 +1210,7 @@ impl RuleT for PredicateInference {
                     } else {
                         return Err(DepOfWrongForm(
                             prem,
-                            Expr::quantifierplaceholder(QuantKind::Exists),
+                            Expr::quant_placeholder(QuantKind::Exists),
                         ));
                     }
                 };
