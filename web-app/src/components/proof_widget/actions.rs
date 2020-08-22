@@ -4,29 +4,13 @@
 //! valid actions on a given line.
 
 use super::may_remove_line;
-use super::LAKItem;
 use super::LineActionKind;
+use super::ProofItemKind;
 use super::P;
 
 use aris::proofs::pj_to_pjs;
 use aris::proofs::PJRef;
 use aris::proofs::Proof;
-
-/// The different classes of proof line actions. These are used to filter the
-/// actions that are valid for certain lines.
-enum ActionClass {
-    /// Action deletes a line
-    DeleteLine,
-
-    /// Action is relative to a subproof
-    SubproofRelative,
-
-    /// Action is relative to a premise
-    PremiseRelative,
-
-    /// Action is relative to a step
-    StepRelative,
-}
 
 /// Information associated with a line action
 pub struct ActionInfo {
@@ -42,9 +26,6 @@ pub struct ActionInfo {
 
     /// The kind of this line action, used in `ProofWidgetMsg::LineAction`
     pub line_action_kind: LineActionKind,
-
-    /// The class of this line action, for determining if it's valid for a line
-    class: ActionClass,
 }
 
 /// Get an iterator over the valid actions in a line. For example,
@@ -56,143 +37,180 @@ pub struct ActionInfo {
 pub fn valid_actions(proof: &P, line_ref: PJRef<P>) -> impl Iterator<Item = &ActionInfo> {
     use frunk_core::coproduct::Coproduct::{Inl, Inr};
 
-    let can_delete = may_remove_line(proof, &line_ref);
+    // Can the current line be deleted?
+    let can_delete_line = may_remove_line(proof, &line_ref);
+
+    // Is the current line a premise?
     let is_premise = matches!(line_ref, Inl(_));
-    let is_step = matches!(line_ref, Inr(Inl(_)));
+
+    // Is the current line a justification?
+    let is_just = matches!(line_ref, Inr(Inl(_)));
+
+    // Is the current line in a subproof?
     let in_subproof = proof.parent_of_line(&pj_to_pjs::<P>(line_ref)).is_some();
 
-    ACTIONS.iter().filter(move |action_info| {
-        match action_info.class {
-            ActionClass::DeleteLine => can_delete,
-            // Only allow subproof operations on non-root subproofs
-            ActionClass::SubproofRelative => in_subproof,
-            // Subproofs should only have one assumption
-            ActionClass::PremiseRelative => is_premise && !in_subproof,
-            ActionClass::StepRelative => is_step,
-        }
-    })
+    ACTIONS
+        .iter()
+        .filter(move |action_info| match action_info.line_action_kind {
+            LineActionKind::Insert {
+                relative_to, what, ..
+            } => {
+                let valid = match relative_to {
+                    ProofItemKind::Premise => is_premise,
+                    ProofItemKind::Just => is_just,
+                    ProofItemKind::Subproof => in_subproof,
+                };
+
+                if what == ProofItemKind::Premise {
+                    // Subproofs should only have one assumption
+                    valid && !in_subproof
+                } else {
+                    valid
+                }
+            }
+            LineActionKind::Delete { what } => match what {
+                ProofItemKind::Premise => is_premise && can_delete_line,
+                ProofItemKind::Just => is_just && can_delete_line,
+                ProofItemKind::Subproof => in_subproof,
+            },
+            _ => false,
+        })
 }
 
 /// Array of all actions
-static ACTIONS: [ActionInfo; 12] = [
-    // Delete line
+static ACTIONS: [ActionInfo; 15] = [
+    // Delete actions
     ActionInfo {
         keyboard_shortcut: Some('d'),
-        description: "Delete line",
+        description: "Delete premise",
         line_action_kind: LineActionKind::Delete {
-            what: LAKItem::Line,
+            what: ProofItemKind::Premise,
         },
-        class: ActionClass::DeleteLine,
     },
-    // Subproof-relative actions
+    ActionInfo {
+        keyboard_shortcut: Some('d'),
+        description: "Delete step",
+        line_action_kind: LineActionKind::Delete {
+            what: ProofItemKind::Just,
+        },
+    },
     ActionInfo {
         keyboard_shortcut: None,
         description: "Delete subproof",
         line_action_kind: LineActionKind::Delete {
-            what: LAKItem::Subproof,
+            what: ProofItemKind::Subproof,
         },
-        class: ActionClass::SubproofRelative,
     },
+    // Insert actions
+    // Subproof-relative insert actions
     ActionInfo {
         keyboard_shortcut: None,
         description: "Insert step before this subproof",
         line_action_kind: LineActionKind::Insert {
-            what: LAKItem::Line,
+            what: ProofItemKind::Just,
             after: false,
-            relative_to: LAKItem::Subproof,
+            relative_to: ProofItemKind::Subproof,
         },
-        class: ActionClass::SubproofRelative,
     },
     ActionInfo {
         keyboard_shortcut: Some('e'),
         description: "Insert step after this subproof",
         line_action_kind: LineActionKind::Insert {
-            what: LAKItem::Line,
+            what: ProofItemKind::Just,
             after: true,
-            relative_to: LAKItem::Subproof,
+            relative_to: ProofItemKind::Subproof,
         },
-        class: ActionClass::SubproofRelative,
     },
     ActionInfo {
         keyboard_shortcut: None,
         description: "Insert subproof before this subproof",
         line_action_kind: LineActionKind::Insert {
-            what: LAKItem::Subproof,
+            what: ProofItemKind::Subproof,
             after: false,
-            relative_to: LAKItem::Subproof,
+            relative_to: ProofItemKind::Subproof,
         },
-        class: ActionClass::SubproofRelative,
     },
     ActionInfo {
         keyboard_shortcut: None,
         description: "Insert subproof after this subproof",
         line_action_kind: LineActionKind::Insert {
-            what: LAKItem::Subproof,
+            what: ProofItemKind::Subproof,
             after: true,
-            relative_to: LAKItem::Subproof,
+            relative_to: ProofItemKind::Subproof,
         },
-        class: ActionClass::SubproofRelative,
     },
-    // Premise-relative actions
+    // Premise-relative insert actions
     ActionInfo {
         keyboard_shortcut: None,
         description: "Insert premise before this premise",
         line_action_kind: LineActionKind::Insert {
-            what: LAKItem::Line,
+            what: ProofItemKind::Premise,
             after: false,
-            relative_to: LAKItem::Line,
+            relative_to: ProofItemKind::Premise,
         },
-        class: ActionClass::PremiseRelative,
     },
     ActionInfo {
         keyboard_shortcut: Some('r'),
         description: "Insert premise after this premise",
         line_action_kind: LineActionKind::Insert {
-            what: LAKItem::Line,
+            what: ProofItemKind::Premise,
             after: true,
-            relative_to: LAKItem::Line,
+            relative_to: ProofItemKind::Premise,
         },
-        class: ActionClass::PremiseRelative,
     },
-    // Step-relative actions
+    ActionInfo {
+        keyboard_shortcut: Some('a'),
+        description: "Insert step after this premise",
+        line_action_kind: LineActionKind::Insert {
+            what: ProofItemKind::Just,
+            after: true,
+            relative_to: ProofItemKind::Premise,
+        },
+    },
+    // Step-relative insert actions
     ActionInfo {
         keyboard_shortcut: Some('b'),
         description: "Insert step before this step",
         line_action_kind: LineActionKind::Insert {
-            what: LAKItem::Line,
+            what: ProofItemKind::Just,
             after: false,
-            relative_to: LAKItem::Line,
+            relative_to: ProofItemKind::Just,
         },
-        class: ActionClass::StepRelative,
     },
     ActionInfo {
         keyboard_shortcut: Some('a'),
         description: "Insert step after this step",
         line_action_kind: LineActionKind::Insert {
-            what: LAKItem::Line,
+            what: ProofItemKind::Just,
             after: true,
-            relative_to: LAKItem::Line,
+            relative_to: ProofItemKind::Just,
         },
-        class: ActionClass::StepRelative,
     },
     ActionInfo {
         keyboard_shortcut: None,
         description: "Insert subproof before this step",
         line_action_kind: LineActionKind::Insert {
-            what: LAKItem::Subproof,
+            what: ProofItemKind::Subproof,
             after: false,
-            relative_to: LAKItem::Line,
+            relative_to: ProofItemKind::Just,
         },
-        class: ActionClass::StepRelative,
     },
     ActionInfo {
         keyboard_shortcut: Some('p'),
         description: "Insert subproof after this step",
         line_action_kind: LineActionKind::Insert {
-            what: LAKItem::Subproof,
+            what: ProofItemKind::Subproof,
             after: true,
-            relative_to: LAKItem::Line,
+            relative_to: ProofItemKind::Just,
         },
-        class: ActionClass::StepRelative,
+    },
+    ActionInfo {
+        keyboard_shortcut: Some('r'),
+        description: "Insert premise before this step",
+        line_action_kind: LineActionKind::Insert {
+            what: ProofItemKind::Premise,
+            after: false,
+            relative_to: ProofItemKind::Just,
+        },
     },
 ];

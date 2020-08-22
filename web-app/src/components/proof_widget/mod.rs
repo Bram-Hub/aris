@@ -60,21 +60,26 @@ pub struct ProofWidget {
     props: ProofWidgetProps,
 }
 
-#[derive(Debug, Copy, Clone)]
-pub enum LAKItem {
-    Line,
+/// A kind of proof structure item
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ProofItemKind {
+    /// A premise
+    Premise,
+    /// A justification
+    Just,
+    /// A subproof
     Subproof,
 }
 
 #[derive(Debug, Clone)]
 pub enum LineActionKind {
     Insert {
-        what: LAKItem,
+        what: ProofItemKind,
         after: bool,
-        relative_to: LAKItem,
+        relative_to: ProofItemKind,
     },
     Delete {
-        what: LAKItem,
+        what: ProofItemKind,
     },
     SetRule {
         rule: Rule,
@@ -754,25 +759,52 @@ impl Component for ProofWidget {
                 orig_ref,
             ) => {
                 let to_select;
+                let orig_ref = pj_to_pjs::<P>(orig_ref);
+                let parent = self.prf.parent_of_line(&orig_ref);
                 let insertion_point: PJSRef<P> = match relative_to {
-                    LAKItem::Line => pj_to_pjs::<P>(orig_ref),
-                    LAKItem::Subproof => {
-                        let parent = self.prf.parent_of_line(&pj_to_pjs::<P>(orig_ref));
-                        match parent {
-                            Some(parent) => Coproduct::inject(parent),
-                            None => return ret,
-                        }
-                    }
+                    ProofItemKind::Premise | ProofItemKind::Just => orig_ref,
+                    ProofItemKind::Subproof => match parent {
+                        Some(parent) => Coproduct::inject(parent),
+                        None => return ret,
+                    },
                 };
                 match what {
-                    LAKItem::Line => match insertion_point {
+                    ProofItemKind::Premise => match insertion_point {
                         Inl(pr) => {
+                            // Insert premise relative to premise
                             to_select =
                                 Inl(self
                                     .prf
                                     .add_premise_relative(new_empty_premise(), &pr, after));
                         }
+                        Inr(Inl(_)) | Inr(Inr(Inl(_))) => {
+                            // Insert premise relative to line or subproof
+                            to_select = Inl(self.prf.add_premise(new_empty_premise()));
+                        }
+                        Inr(Inr(Inr(void))) => match void {},
+                    },
+                    ProofItemKind::Just => match insertion_point {
+                        Inl(_) => {
+                            // Insert justification relative to premise
+
+                            // Add justification to enclosing subproof of premise, if it exists
+                            let just_ref = parent.and_then(|parent| {
+                                self.prf.with_mut_subproof(&parent, |parent| {
+                                    parent.prepend_step(new_empty_step())
+                                })
+                            });
+
+                            // If the insertion point is not in a subproof, add justification to the top-level proof
+                            match just_ref {
+                                Some(just_ref) => to_select = Coproduct::inject(just_ref),
+                                None => {
+                                    to_select =
+                                        Coproduct::inject(self.prf.prepend_step(new_empty_step()))
+                                }
+                            }
+                        }
                         Inr(Inl(jr)) => {
+                            // Insert justification relative to justification
                             let jsr = Coproduct::inject(jr);
                             to_select = Inr(Inl(self.prf.add_step_relative(
                                 new_empty_step(),
@@ -781,6 +813,7 @@ impl Component for ProofWidget {
                             )));
                         }
                         Inr(Inr(Inl(sr))) => {
+                            // Insert justification relative to subproof
                             let jsr = Coproduct::inject(sr);
                             to_select = Inr(Inl(self.prf.add_step_relative(
                                 new_empty_step(),
@@ -790,7 +823,7 @@ impl Component for ProofWidget {
                         }
                         Inr(Inr(Inr(void))) => match void {},
                     },
-                    LAKItem::Subproof => {
+                    ProofItemKind::Subproof => {
                         // Convert insertion point from `PJSRef` to `JSRef`,
                         // returning silently on failure
                         let insertion_point: JSRef<P> = match insertion_point.subset() {
@@ -803,7 +836,7 @@ impl Component for ProofWidget {
                             .prf
                             .with_mut_subproof(&sr, |sub| {
                                 let to_select = Inl(sub.add_premise(new_empty_premise()));
-                                sub.add_step(new_empty_step());
+                                sub.prepend_step(new_empty_step());
                                 to_select
                             })
                             .expect("Subproof doesn't exist after creating it");
@@ -816,7 +849,7 @@ impl Component for ProofWidget {
             ProofWidgetMsg::LineAction(LineActionKind::Delete { what }, proofref) => {
                 let parent = self.prf.parent_of_line(&pj_to_pjs::<P>(proofref.clone()));
                 match what {
-                    LAKItem::Line => {
+                    ProofItemKind::Premise | ProofItemKind::Just => {
                         fn remove_line_if_allowed<
                             P: Proof,
                             Q: Proof<
@@ -846,7 +879,7 @@ impl Component for ProofWidget {
                             }
                         }
                     }
-                    LAKItem::Subproof => {
+                    ProofItemKind::Subproof => {
                         // TODO: recursively clean out the ProofUiData entries for lines inside a subproof before deletion
                         match parent {
                             Some(sr) => {

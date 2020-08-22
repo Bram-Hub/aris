@@ -251,6 +251,15 @@ pub trait Proof: Sized {
         &mut self,
         just: Justification<Expr, PJRef<Self>, Self::SubproofReference>,
     ) -> Self::JustificationReference;
+    fn prepend_step(
+        &mut self,
+        just: Justification<Expr, PJRef<Self>, Self::SubproofReference>,
+    ) -> Self::JustificationReference {
+        match self.lines().first() {
+            Some(first_step) => self.add_step_relative(just, first_step, false),
+            None => self.add_step(just),
+        }
+    }
     fn add_premise_relative(
         &mut self,
         e: Expr,
