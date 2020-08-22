@@ -632,7 +632,7 @@ impl ProofWidget {
 
 /// Is the user allowed to remove the line at `line_ref`?
 fn may_remove_line<P: Proof>(prf: &P, line_ref: &PJRef<P>) -> bool {
-    use Coproduct::{Inl, Inr};
+    use Coproduct::Inl;
 
     let is_premise = matches!(prf.lookup_pj(line_ref), Some(Inl(_)));
 
