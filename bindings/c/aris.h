@@ -4,38 +4,48 @@
 #include <stdlib.h>
 
 /**
- * Symbol for associative binary operations
+ * Associative operators. All of these operations are associative.
  */
 typedef enum {
+  /**
+   * Logical and `∧`
+   */
   And,
+  /**
+   * Logical or `∨`
+   */
   Or,
+  /**
+   * Logical biconditional `↔`
+   */
   Bicon,
+  /**
+   * Logical equivalence `≡`
+   */
   Equiv,
-} ASymbol;
-
-/**
- * Symbol for binary operations
- */
-typedef enum {
-  Implies,
-  Plus,
+  /**
+   * Arithmetic addition `+`
+   */
+  Add,
+  /**
+   * Arithmetic multiplication `*`
+   */
   Mult,
-} BSymbol;
+} Op;
 
 /**
- * Symbol for quantifiers
+ * Kinds of quantifiers
  */
 typedef enum {
+  /**
+   * Universal quantifier `∀`
+   */
   Forall,
+  /**
+   * Existential quantifier `∃`
+   */
   Exists,
-} QSymbol;
-
-/**
- * Symbol for unary operations
- */
-typedef enum {
-  Not,
-} USymbol;
+} QuantKind;
 
 typedef struct Box_Expr Box_Expr;
 
@@ -46,60 +56,111 @@ typedef struct Vec_Expr Vec_Expr;
 typedef struct Vec_String Vec_String;
 
 /**
- * aris::expr::Expr is the core AST (Abstract Syntax Tree) type for representing logical expressions.
- * For most of the recursive cases, it uses symbols so that code can work on the shape of e.g. a binary operation without worrying about which binary operation it is.
+ * A logical expression
  */
 typedef enum {
-  Contradiction,
-  Tautology,
+  /**
+   * Contradiction `⊥`
+   */
+  Contra,
+  /**
+   * Tautology `⊤`
+   */
+  Taut,
+  /**
+   * A symbolic logical variable `P`
+   */
   Var,
+  /**
+   * A function call `P(A, B, C)`
+   */
   Apply,
-  Unop,
-  Binop,
-  AssocBinop,
-  Quantifier,
+  /**
+   * Logical negation `¬P`
+   */
+  Not,
+  /**
+   * Logical implication `P → Q`
+   */
+  Impl,
+  /**
+   * An associative operation `P <OP> Q <OP> R`
+   */
+  Assoc,
+  /**
+   * A quantifier expression `<KIND> A, P`
+   */
+  Quant,
 } Expr_Tag;
 
 typedef struct {
+  /**
+   * Name of the variable
+   */
   String name;
 } Var_Body;
 
 typedef struct {
+  /**
+   * The function `P` being called
+   */
   Box_Expr func;
+  /**
+   * Arguments `A, B, C` passed to the function
+   */
   Vec_Expr args;
 } Apply_Body;
 
 typedef struct {
-  USymbol symbol;
   Box_Expr operand;
-} Unop_Body;
+} Not_Body;
 
 typedef struct {
-  BSymbol symbol;
+  /**
+   * The left expression `P`
+   */
   Box_Expr left;
+  /**
+   * The right expression `Q`
+   */
   Box_Expr right;
-} Binop_Body;
+} Impl_Body;
 
 typedef struct {
-  ASymbol symbol;
+  /**
+   * The operator `<OP>`
+   */
+  Op op;
+  /**
+   * The expressions `P, Q, R`
+   */
   Vec_Expr exprs;
-} AssocBinop_Body;
+} Assoc_Body;
 
 typedef struct {
-  QSymbol symbol;
+  /**
+   * The kind of quantifier `<KIND>`
+   */
+  QuantKind kind;
+  /**
+   * The quantified variable `A`
+   */
   String name;
+  /**
+   * The quantifier body `P`
+   */
   Box_Expr body;
-} Quantifier_Body;
+} Quant_Body;
 
 typedef struct {
   Expr_Tag tag;
   union {
     Var_Body var;
     Apply_Body apply;
-    Unop_Body unop;
-    Binop_Body binop;
-    AssocBinop_Body assoc_binop;
-    Quantifier_Body quantifier;
+    Not_Body not;
+    Impl_Body impl;
+    Assoc_Body assoc;
+    Quant_Body quant;
   };
 } Expr;
 
