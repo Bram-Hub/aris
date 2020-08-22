@@ -630,20 +630,27 @@ impl ProofWidget {
     }
 }
 
-fn may_remove_line<P: Proof>(prf: &P, proofref: &PJRef<P>) -> bool {
+/// Is the user allowed to remove the line at `line_ref`?
+fn may_remove_line<P: Proof>(prf: &P, line_ref: &PJRef<P>) -> bool {
     use Coproduct::{Inl, Inr};
-    let is_premise = match prf.lookup_pj(proofref) {
-        Some(Inl(_)) => true,
-        Some(Inr(Inl(_))) => false,
-        Some(Inr(Inr(void))) => match void {},
-        None => panic!("prf.lookup failed in while processing a Delete"),
-    };
-    let parent = prf.parent_of_line(&pj_to_pjs::<P>(proofref.clone()));
-    match parent.and_then(|x| prf.lookup_subproof(&x)) {
-        Some(sub) => {
-            (is_premise && sub.premises().len() > 1) || (!is_premise && sub.lines().len() > 1)
+
+    let is_premise = matches!(prf.lookup_pj(line_ref), Some(Inl(_)));
+
+    let in_subproof = prf
+        .parent_of_line(&pj_to_pjs::<P>(line_ref.clone()))
+        .is_some();
+
+    if is_premise {
+        if in_subproof {
+            // Subproof premises can't be removed
+            false
+        } else {
+            // Can't remove the last top-level premise
+            prf.premises().len() > 1
         }
-        None => (is_premise && prf.premises().len() > 1) || (!is_premise && prf.lines().len() > 1),
+    } else {
+        // Steps can always be removed
+        true
     }
 }
 
