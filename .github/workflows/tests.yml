@@ -12,6 +12,9 @@ jobs:
         uses: actions/checkout@v2
       - name: Run tests
         run: cargo test
+        env:
+          # Deny compile warnings
+          RUSTFLAGS: -D warnings
 
   lints:
     name: Lints
