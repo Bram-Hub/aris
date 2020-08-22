@@ -686,7 +686,6 @@ fn new_empty_step() -> Justification<Expr, PJRef<P>, <P as Proof>::SubproofRefer
 fn new_empty_proof() -> (P, ProofUiData<P>) {
     let mut proof = P::new();
     proof.add_premise(new_empty_premise());
-    proof.add_step(new_empty_step());
 
     let mut pud = ProofUiData::from_proof(&proof);
     for input in pud.ref_to_input.values_mut() {
