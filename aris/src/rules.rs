@@ -150,7 +150,6 @@ pub enum RedundantPrepositionalInference {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AutomationRelatedRules {
-    AsymmetricTautology,
     Resolution,
     TautologicalConsequence,
 }
@@ -292,7 +291,6 @@ pub mod RuleM {
         [BiconditionalNegation, "BICONDITIONAL_NEGATION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiconditionalNegation))))))],
         [BiconditionalSubstitution, "BICONDITIONAL_SUBSTITUTION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiconditionalSubstitution))))))],
 
-        [AsymmetricTautology, "ASYMMETRIC_TAUTOLOGY", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::AsymmetricTautology))))))))],
         [Resolution, "RESOLUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::Resolution))))))))],
         [TautologicalConsequence, "TAUTOLOGICAL_CONSEQUENCE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::TautologicalConsequence))))))))],
 
@@ -1752,7 +1750,6 @@ impl RuleT for RedundantPrepositionalInference {
 impl RuleT for AutomationRelatedRules {
     fn get_name(&self) -> String {
         match self {
-            AutomationRelatedRules::AsymmetricTautology => "Asymmetric Tautology",
             AutomationRelatedRules::Resolution => "Resolution",
             AutomationRelatedRules::TautologicalConsequence => "Tautological Consequence",
         }
@@ -1766,15 +1763,13 @@ impl RuleT for AutomationRelatedRules {
     }
     fn num_deps(&self) -> Option<usize> {
         match self {
-            AutomationRelatedRules::AsymmetricTautology => None,
             AutomationRelatedRules::Resolution => Some(2),
             AutomationRelatedRules::TautologicalConsequence => None,
         }
     }
     fn num_subdeps(&self) -> Option<usize> {
         match self {
-            AutomationRelatedRules::AsymmetricTautology
-            | AutomationRelatedRules::Resolution
+            AutomationRelatedRules::Resolution
             | AutomationRelatedRules::TautologicalConsequence => Some(0),
         }
     }
@@ -1786,7 +1781,6 @@ impl RuleT for AutomationRelatedRules {
         _sdeps: Vec<P::SubproofReference>,
     ) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
         match self {
-            AutomationRelatedRules::AsymmetricTautology => unimplemented!(),
             AutomationRelatedRules::Resolution => {
                 let prem0 = p.lookup_expr_or_die(&deps[0])?;
                 let prem1 = p.lookup_expr_or_die(&deps[1])?;

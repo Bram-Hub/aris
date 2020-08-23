@@ -9,6 +9,3 @@ pub mod proofs;
 mod rewrite_rules;
 pub mod rules;
 mod zipper_vec;
-mod solver_integration {
-    mod solver;
-}
