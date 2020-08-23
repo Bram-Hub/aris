@@ -1,4 +1,6 @@
-[![deploy-pages](https://github.com/Bram-Hub/aris/workflows/deploy-pages/badge.svg)](https://github.com/Bram-Hub/aris/actions)
+[![Checks](https://github.com/Bram-Hub/aris/workflows/Checks/badge.svg)](https://github.com/Bram-Hub/aris/actions?query=workflow%3AChecks)
+[![Security audit](https://github.com/Bram-Hub/aris/workflows/Security%20audit/badge.svg)](https://github.com/Bram-Hub/aris/actions?query=workflow%3A%22Security+audit%22)
+[![Deploy pages](https://github.com/Bram-Hub/aris/workflows/Deploy%20pages/badge.svg)](https://github.com/Bram-Hub/aris/actions?query=workflow%3A%22Deploy+pages%22)
 
 # Aris
 
