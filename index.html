@@ -30,12 +30,8 @@
         });
     </script>
     <script type="module">
-        import init, { run_app } from './pkg/aris_web_app.js';
-        async function main() {
-            await init('./pkg/aris_web_app_bg.wasm');
-            run_app();
-        }
-        main()
+        import init from './pkg/aris_web_app.js';
+        init();
     </script>
 </body>
 
