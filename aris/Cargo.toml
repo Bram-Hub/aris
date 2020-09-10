@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 base64 = "0.12.0"
-failure = "0.1.6"
 lazy_static = "1.4.0"
 nom = "4.1.1"
 petgraph = "0.4.13"
