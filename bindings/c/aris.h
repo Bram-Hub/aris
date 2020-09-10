@@ -53,8 +53,6 @@ typedef struct String String;
 
 typedef struct Vec_Expr Vec_Expr;
 
-typedef struct Vec_String Vec_String;
-
 /**
  * A logical expression
  */
@@ -164,10 +162,4 @@ typedef struct {
   };
 } Expr;
 
-Expr aris_box_expr_deref(const Box_Expr *x);
-
 Expr *aris_expr_parse(const int8_t *e);
-
-Expr aris_vec_expr_index(const Vec_Expr *x, uintptr_t i);
-
-String aris_vec_string_index(const Vec_String *x, uintptr_t i);
