@@ -144,6 +144,7 @@ pub enum ConditionalEquivalence {
 pub enum RedundantPrepositionalInference {
     ModusTollens,
     HypotheticalSyllogism,
+    DisjunctiveSyllogism,
     ExcludedMiddle,
     ConstructiveDilemma,
 }
@@ -241,7 +242,7 @@ pub mod RuleM {
         [AndIntro, "CONJUNCTION", (SharedChecks(Inl(PrepositionalInference::AndIntro)))],
         [AndElim, "SIMPLIFICATION", (SharedChecks(Inl(PrepositionalInference::AndElim)))],
         [OrIntro, "ADDITION", (SharedChecks(Inl(PrepositionalInference::OrIntro)))],
-        [OrElim, "DISJUNCTIVE_SYLLOGISM", (SharedChecks(Inl(PrepositionalInference::OrElim)))],
+        [OrElim, "DISJUNCTIVE_ELIMINATION", (SharedChecks(Inl(PrepositionalInference::OrElim)))],
         [ImpIntro, "CONDITIONAL_PROOF", (SharedChecks(Inl(PrepositionalInference::ImpIntro)))],
         [ImpElim, "MODUS_PONENS", (SharedChecks(Inl(PrepositionalInference::ImpElim)))],
         [NotIntro, "PROOF_BY_CONTRADICTION", (SharedChecks(Inl(PrepositionalInference::NotIntro)))],
@@ -260,6 +261,7 @@ pub mod RuleM {
 
         [ModusTollens, "MODUS_TOLLENS", (SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ModusTollens)))))))],
         [HypotheticalSyllogism, "HYPOTHETICAL_SYLLOGISM", (SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::HypotheticalSyllogism)))))))],
+        [DisjunctiveSyllogism, "DISJUNCTIVE_SYLLOGISM", (SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::DisjunctiveSyllogism)))))))],
         [ExcludedMiddle, "EXCLUDED_MIDDLE", (SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ExcludedMiddle)))))))],
         [ConstructiveDilemma, "CONSTRUCTIVE_DILEMMA", (SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ConstructiveDilemma)))))))],
 
@@ -1533,6 +1535,7 @@ impl RuleT for RedundantPrepositionalInference {
         match self {
             ModusTollens => "Modus Tollens",
             HypotheticalSyllogism => "Hypothetical Syllogism",
+            DisjunctiveSyllogism => "Disjunctive Syllogism",
             ExcludedMiddle => "Excluded Middle",
             ConstructiveDilemma => "Constructive Dilemma",
         }
@@ -1547,7 +1550,7 @@ impl RuleT for RedundantPrepositionalInference {
     fn num_deps(&self) -> Option<usize> {
         use RedundantPrepositionalInference::*;
         match self {
-            ModusTollens | HypotheticalSyllogism => Some(2),
+            ModusTollens | HypotheticalSyllogism | DisjunctiveSyllogism => Some(2),
             ExcludedMiddle => Some(0),
             ConstructiveDilemma => Some(3),
         }
@@ -1633,6 +1636,33 @@ impl RuleT for RedundantPrepositionalInference {
                         }
                     },
                     || DepDoesNotExist(Expr::impl_place_holder(), true),
+                )
+            }
+            DisjunctiveSyllogism => {
+                // P | Q, ~P
+                // ---------
+                // Q
+                let dep_0 = proof.lookup_expr_or_die(&deps[0])?;
+                let dep_1 = proof.lookup_expr_or_die(&deps[1])?;
+                either_order(
+                    &dep_0,
+                    &dep_1,
+                    |dep_0, dep_1| {
+                        if let Expr::Assoc { op: _, exprs: expression } = dep_0 {
+                            let p = Expr::not(expression[0].clone());
+                            let q = expression[1].clone();
+                            if p != *dep_1 {
+                                AnyOrderResult::Err(DoesNotOccur(p, dep_1.clone()))
+                            } else if q != conclusion {
+                                AnyOrderResult::Err(DoesNotOccur(q, conclusion.clone()))
+                            } else {
+                                AnyOrderResult::Ok
+                            }
+                        } else {
+                            AnyOrderResult::WrongOrder
+                        }
+                    },
+                    || DepDoesNotExist(Expr::assocplaceholder(Op::Or), true),
                 )
             }
             ExcludedMiddle => {
