@@ -2820,7 +2820,6 @@ pub fn test_disjunctive_syllogism<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>
     let r1 = prf.add_premise(p("~Q"));
     let r2 = prf.add_premise(p("P ∨ Q"));
     let r3 = prf.add_premise(p("P"));
-    let r4 = prf.add_premise(p("~P"));
     let r6 = prf.add_step(Justification(
         p("P"),
         RuleM::DisjunctiveSyllogism,
