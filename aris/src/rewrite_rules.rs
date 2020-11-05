@@ -23,12 +23,7 @@ impl RewriteRule {
     /// Will parse strings into `Expr`s and permute all commutative binops
     pub fn from_patterns(patterns: &[(&str, &str)]) -> Self {
         use crate::parser::parse_unwrap as p;
-        let reductions = permute_patterns(
-            patterns
-                .iter()
-                .map(|(premise, conclusion)| (p(premise), p(conclusion)))
-                .collect::<Vec<_>>(),
-        );
+        let reductions = permute_patterns(patterns.iter().map(|(premise, conclusion)| (p(premise), p(conclusion))).collect::<Vec<_>>());
 
         RewriteRule { reductions }
     }
@@ -66,12 +61,7 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
         Expr::Not { operand } => {
             // Just permute the operands and return them
             let results = permute_ops(*operand);
-            results
-                .into_iter()
-                .map(|e| Expr::Not {
-                    operand: Box::new(e),
-                })
-                .collect::<Vec<_>>()
+            results.into_iter().map(|e| Expr::Not { operand: Box::new(e) }).collect::<Vec<_>>()
         }
         Expr::Impl { left, right } => {
             let permute_left = permute_ops(*left);
@@ -96,40 +86,21 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
                 .permutations(len)
                 .flat_map(|args| {
                     // Permuting every expression in the current list of args
-                    let permutations = args
-                        .into_iter()
-                        .map(|arg| permute_ops(arg.clone()))
-                        .collect::<Vec<_>>();
+                    let permutations = args.into_iter().map(|arg| permute_ops(arg.clone())).collect::<Vec<_>>();
                     // Convert the Vec<Vec<Expr>> to a Vec<Vec<&Expr>>
-                    let ref_perms = permutations
-                        .iter()
-                        .map(|l| l.iter().collect::<Vec<_>>())
-                        .collect::<Vec<_>>();
+                    let ref_perms = permutations.iter().map(|l| l.iter().collect::<Vec<_>>()).collect::<Vec<_>>();
                     // Then get a cartesian product of all permutations (this is the slow part)
                     // Gives you a list of new argument lists
                     let product = ref_perms.into_iter().multi_cartesian_product();
                     // Then just turn everything from that list into an assoc binop
                     // The `collect()` is necessary to maintain the borrows from permutations
-                    product
-                        .into_iter()
-                        .map(|args| Expr::Assoc {
-                            op,
-                            exprs: args.into_iter().cloned().collect::<Vec<_>>(),
-                        })
-                        .collect::<Vec<_>>()
+                    product.into_iter().map(|args| Expr::Assoc { op, exprs: args.into_iter().cloned().collect::<Vec<_>>() }).collect::<Vec<_>>()
                 })
                 .collect::<Vec<_>>()
         }
         Expr::Quant { kind, name, body } => {
             let results = permute_ops(*body);
-            results
-                .into_iter()
-                .map(|e| Expr::Quant {
-                    kind,
-                    name: name.clone(),
-                    body: Box::new(e),
-                })
-                .collect::<Vec<_>>()
+            results.into_iter().map(|e| Expr::Quant { kind, name: name.clone(), body: Box::new(e) }).collect::<Vec<_>>()
         }
     }
 }
@@ -138,14 +109,7 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
 /// E.g. [(A & B) -> C, (A | B) -> C] ==> [(A & B) -> C, (B & A) -> C, (A | B) -> C, (B | A) -> C]
 fn permute_patterns(patterns: Vec<(Expr, Expr)>) -> Vec<(Expr, Expr)> {
     // Permute_ops of all input patterns
-    patterns
-        .into_iter()
-        .flat_map(|(find, replace)| {
-            permute_ops(find)
-                .into_iter()
-                .map(move |find| (find, replace.clone()))
-        })
-        .collect::<Vec<_>>()
+    patterns.into_iter().flat_map(|(find, replace)| permute_ops(find).into_iter().map(move |find| (find, replace.clone()))).collect::<Vec<_>>()
 }
 
 /// Reduce an expression by a pattern with a set of variables
@@ -182,11 +146,7 @@ fn reduce_transform_func(expr: Expr, patterns: &[(Expr, Expr, HashSet<String>)])
     // Try all our patterns at every level of the tree
     for (pattern, replace, pattern_vars) in patterns {
         // Unify3D
-        let ret = crate::expr::unify(
-            vec![Constraint::Equal(pattern.clone(), expr.clone())]
-            .into_iter()
-            .collect(),
-        );
+        let ret = crate::expr::unify(vec![Constraint::Equal(pattern.clone(), expr.clone())].into_iter().collect());
         if let Some(ret) = ret {
             // Collect all unification results and make sure we actually match exactly
             let mut subs = HashMap::new();
@@ -204,9 +164,7 @@ fn reduce_transform_func(expr: Expr, patterns: &[(Expr, Expr, HashSet<String>)])
 
             // Make sure we have a substitution for every variable in the pattern set (and only for them)
             if !any_bad && subs.len() == pattern_vars.len() {
-                let subst_replace = subs
-                    .into_iter()
-                    .fold(replace.clone(), |z, (x, y)| crate::expr::subst(z, &x, y));
+                let subst_replace = subs.into_iter().fold(replace.clone(), |z, (x, y)| crate::expr::subst(z, &x, y));
                 return (subst_replace, true);
             }
         }
@@ -275,10 +233,7 @@ mod tests {
         assert_eq!(p1.len(), 2);
         println!("{} {}", p1[0], p1[1]);
         assert_eq!(p2.len(), 8);
-        println!(
-            "{} {} {} {} {} {} {} {}",
-            p2[0], p2[1], p2[2], p2[3], p2[4], p2[5], p2[6], p2[7]
-        );
+        println!("{} {} {} {} {} {} {} {}", p2[0], p2[1], p2[2], p2[3], p2[4], p2[5], p2[6], p2[7]);
     }
 
     #[test]
@@ -287,17 +242,11 @@ mod tests {
 
         // ~(phi & psi) ==> ~phi | ~psi
         let pattern1 = Expr::not(Expr::assoc(Op::And, &[Expr::var("phi"), Expr::var("psi")]));
-        let replace1 = Expr::assoc(
-            Op::Or,
-            &[Expr::not(Expr::var("phi")), Expr::not(Expr::var("psi"))],
-        );
+        let replace1 = Expr::assoc(Op::Or, &[Expr::not(Expr::var("phi")), Expr::not(Expr::var("psi"))]);
 
         // ~(phi | psi) ==> ~phi & ~psi
         let pattern2 = Expr::not(Expr::assoc(Op::Or, &[Expr::var("phi"), Expr::var("psi")]));
-        let replace2 = Expr::assoc(
-            Op::And,
-            &[Expr::not(Expr::var("phi")), Expr::not(Expr::var("psi"))],
-        );
+        let replace2 = Expr::assoc(Op::And, &[Expr::not(Expr::var("phi")), Expr::not(Expr::var("psi"))]);
 
         let patterns = vec![(pattern1, replace1), (pattern2, replace2)];
         reduce_pattern(Expr::var("some_expr"), &patterns);

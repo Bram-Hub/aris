@@ -19,10 +19,7 @@ pub fn parse_unwrap(input: &str) -> Expr {
 }
 
 fn custom_error<A, B>(a: A, x: u32) -> nom::IResult<A, B> {
-    Err(nom::Err::Error(nom::Context::Code(
-        a,
-        nom::ErrorKind::Custom(x),
-    )))
+    Err(nom::Err::Error(nom::Context::Code(a, nom::ErrorKind::Custom(x))))
 }
 
 /// variable is implemented as a function instead of via nom's macros in order to more conveniently reject keywords as variables
@@ -109,10 +106,7 @@ fn test_parser() {
     println!("{:?} {:?}", e, fv);
     let e = expr("forall a, forall b, ((forall x, in(x,a) <-> in(x,b)) -> eq(a,b))\n");
     let fv = e.clone().map(|x| free_vars(&x.1));
-    assert_eq!(
-        fv,
-        Ok(["eq", "in"].iter().map(|x| String::from(*x)).collect())
-    );
+    assert_eq!(fv, Ok(["eq", "in"].iter().map(|x| String::from(*x)).collect()));
     println!("{:?} {:?}", e, fv);
     named!(f<&str, Vec<&str>>, many1!(tag!("a")));
     println!("{:?}", f("aa\n"));

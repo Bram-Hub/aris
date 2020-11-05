@@ -20,12 +20,7 @@ impl Component for ExprAstWidget {
     type Message = String;
     type Properties = ExprAstWidgetProps;
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let mut ret = Self {
-            link,
-            current_expr: None,
-            current_input: props.initial_contents.clone(),
-            last_good_parse: "".into(),
-        };
+        let mut ret = Self { link, current_expr: None, current_input: props.initial_contents.clone(), last_good_parse: "".into() };
         ret.update(props.initial_contents);
         ret
     }

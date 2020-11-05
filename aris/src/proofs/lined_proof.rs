@@ -18,21 +18,13 @@ pub struct Line<P: Proof> {
 
 impl<P: Proof> Clone for Line<P> {
     fn clone(&self) -> Self {
-        Line {
-            raw_expr: self.raw_expr.clone(),
-            is_premise: self.is_premise,
-            reference: self.reference.clone(),
-            subreference: self.subreference.clone(),
-        }
+        Line { raw_expr: self.raw_expr.clone(), is_premise: self.is_premise, reference: self.reference.clone(), subreference: self.subreference.clone() }
     }
 }
 
 impl<P: Proof> PartialEq for Line<P> {
     fn eq(&self, other: &Self) -> bool {
-        self.raw_expr == other.raw_expr
-            && self.is_premise == other.is_premise
-            && self.reference == other.reference
-            && self.subreference == other.subreference
+        self.raw_expr == other.raw_expr && self.is_premise == other.is_premise && self.reference == other.reference && self.subreference == other.subreference
     }
 }
 
@@ -42,28 +34,13 @@ where
     P::SubproofReference: Debug,
 {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-        fmt.debug_struct("Line")
-            .field("raw_expr", &self.raw_expr)
-            .field("is_premise", &self.is_premise)
-            .field("reference", &self.reference)
-            .field("subreference", &self.subreference)
-            .finish()
+        fmt.debug_struct("Line").field("raw_expr", &self.raw_expr).field("is_premise", &self.is_premise).field("reference", &self.reference).field("subreference", &self.subreference).finish()
     }
 }
 
 impl<P: Proof> Line<P> {
-    fn new(
-        raw_expr: String,
-        is_premise: bool,
-        reference: PJRef<P>,
-        subreference: Option<P::SubproofReference>,
-    ) -> Self {
-        Line {
-            raw_expr,
-            is_premise,
-            reference,
-            subreference,
-        }
+    fn new(raw_expr: String, is_premise: bool, reference: PJRef<P>, subreference: Option<P::SubproofReference>) -> Self {
+        Line { raw_expr, is_premise, reference, subreference }
     }
 }
 
@@ -79,10 +56,7 @@ where
     P::SubproofReference: Debug,
 {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-        fmt.debug_struct("LinedProof")
-            .field("proof", &self.proof)
-            .field("lines", &self.lines)
-            .finish()
+        fmt.debug_struct("LinedProof").field("proof", &self.proof).field("lines", &self.lines).finish()
     }
 }
 
@@ -102,10 +76,7 @@ where
     P::SubproofReference: Debug,
 {
     pub fn new() -> Self {
-        LinedProof {
-            proof: P::new(),
-            lines: ZipperVec::new(),
-        }
+        LinedProof { proof: P::new(), lines: ZipperVec::new() }
     }
     pub fn len(&self) -> usize {
         self.lines.len()
@@ -114,31 +85,17 @@ where
         self.len() == 0
     }
     pub fn from_proof(p: P) -> Self {
-        fn aux<P: Proof>(
-            p: &P::Subproof,
-            ret: &mut LinedProof<P>,
-            current_sub: Option<P::SubproofReference>,
-        ) {
+        fn aux<P: Proof>(p: &P::Subproof, ret: &mut LinedProof<P>, current_sub: Option<P::SubproofReference>) {
             use frunk_core::coproduct::Coproduct::{Inl, Inr};
             for prem in p.premises() {
                 let e = p.lookup_premise(&prem).unwrap();
-                ret.lines.push(Line::new(
-                    format!("{}", e),
-                    true,
-                    Inl(prem),
-                    current_sub.clone(),
-                ));
+                ret.lines.push(Line::new(format!("{}", e), true, Inl(prem), current_sub.clone()));
             }
             for line in p.lines() {
                 match line {
                     Inl(r) => {
                         let just = p.lookup_step(&r).unwrap();
-                        ret.lines.push(Line::new(
-                            format!("{}", just.0),
-                            false,
-                            Inr(Inl(r)),
-                            current_sub.clone(),
-                        ));
+                        ret.lines.push(Line::new(format!("{}", just.0), false, Inr(Inl(r)), current_sub.clone()));
                     }
                     Inr(Inl(s)) => {
                         let sub = p.lookup_subproof(&s).unwrap();
@@ -160,47 +117,17 @@ where
         let line: Option<Line<P>> = self.lines.get(i).cloned();
         match line {
             None => {
-                let r = if is_premise {
-                    Inl(self.proof.add_premise(const_true))
-                } else {
-                    Inr(Inl(self.proof.add_step(Justification(
-                        const_true,
-                        RuleM::Reit,
-                        vec![],
-                        vec![],
-                    ))))
-                };
-                self.lines.push(Line {
-                    raw_expr: "".into(),
-                    is_premise,
-                    reference: r,
-                    subreference: None,
-                });
+                let r = if is_premise { Inl(self.proof.add_premise(const_true)) } else { Inr(Inl(self.proof.add_step(Justification(const_true, RuleM::Reit, vec![], vec![])))) };
+                self.lines.push(Line { raw_expr: "".into(), is_premise, reference: r, subreference: None });
             }
             Some(line) => {
                 let r = match (is_premise, line.reference.clone()) {
                     (true, Inl(pr)) => Inl(self.proof.add_premise_relative(const_true, &pr, true)),
-                    (false, Inr(Inl(jr))) => Inr(Inl(self.proof.add_step_relative(
-                        Justification(const_true, RuleM::Reit, vec![], vec![]),
-                        &Coproduct::inject(jr),
-                        true,
-                    ))),
+                    (false, Inr(Inl(jr))) => Inr(Inl(self.proof.add_step_relative(Justification(const_true, RuleM::Reit, vec![], vec![]), &Coproduct::inject(jr), true))),
                     (_, Inr(Inr(void))) => match void {},
-                    (b, r) => panic!(
-                        "LinedProof::add_line, is_premise was {}, but the line reference was {:?}",
-                        b, r
-                    ),
+                    (b, r) => panic!("LinedProof::add_line, is_premise was {}, but the line reference was {:?}", b, r),
                 };
-                self.lines.insert_relative(
-                    Line {
-                        raw_expr: "".into(),
-                        is_premise,
-                        reference: r,
-                        subreference: None, /* TODO */
-                    },
-                    &line,
-                    true,
-                );
+                self.lines.insert_relative(Line { raw_expr: "".into(), is_premise, reference: r, subreference: None /* TODO */ }, &line, true);
             }
         };
 

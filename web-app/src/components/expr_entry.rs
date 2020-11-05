@@ -49,11 +49,7 @@ impl Component for ExprEntry {
     type Message = ExprEntryMsg;
     type Properties = ExprEntryProps;
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self {
-            link,
-            props,
-            node_ref: NodeRef::default(),
-        }
+        Self { link, props, node_ref: NodeRef::default() }
     }
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
@@ -92,9 +88,7 @@ impl Component for ExprEntry {
 impl ExprEntry {
     /// Get `<input>` element used as a text field
     fn input_element(&self) -> web_sys::HtmlInputElement {
-        self.node_ref
-            .cast::<web_sys::HtmlInputElement>()
-            .expect("failed casting node ref to input element")
+        self.node_ref.cast::<web_sys::HtmlInputElement>().expect("failed casting node ref to input element")
     }
 
     /// Sync the focus of the text field with the `focus` property
@@ -115,10 +109,7 @@ impl ExprEntry {
         let input_elem = self.input_element();
 
         // Get cursor position in text field
-        let cursor_pos = input_elem
-            .selection_start()
-            .expect("failed getting selection start")
-            .unwrap_or_default() as usize;
+        let cursor_pos = input_elem.selection_start().expect("failed getting selection start").unwrap_or_default() as usize;
 
         // Get text to the left and right of cursor position
         //
@@ -142,12 +133,8 @@ impl ExprEntry {
         input_elem.set_value(&value);
 
         // Update cursor position
-        input_elem
-            .set_selection_start(Some(cursor_pos))
-            .expect("failed setting selection start");
-        input_elem
-            .set_selection_end(Some(cursor_pos))
-            .expect("failed setting selection end");
+        input_elem.set_selection_start(Some(cursor_pos)).expect("failed setting selection start");
+        input_elem.set_selection_end(Some(cursor_pos)).expect("failed setting selection end");
 
         self.props.oninput.emit(value);
     }

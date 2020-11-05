@@ -16,28 +16,15 @@ pub struct ProofUiData<P: Proof> {
 impl<P: Proof> ProofUiData<P> {
     pub fn from_proof(prf: &P) -> ProofUiData<P> {
         let mut ref_to_line_depth = HashMap::new();
-        calculate_lineinfo::<P>(
-            &mut ref_to_line_depth,
-            prf.top_level_proof(),
-            &mut 1,
-            &mut 0,
-        );
-        ProofUiData {
-            ref_to_line_depth,
-            ref_to_input: initialize_inputs(prf),
-        }
+        calculate_lineinfo::<P>(&mut ref_to_line_depth, prf.top_level_proof(), &mut 1, &mut 0);
+        ProofUiData { ref_to_line_depth, ref_to_input: initialize_inputs(prf) }
     }
 }
 
 fn initialize_inputs<P: Proof>(prf: &P) -> HashMap<PJRef<P>, String> {
     fn aux<P: Proof>(p: &<P as Proof>::Subproof, out: &mut HashMap<PJRef<P>, String>) {
         use Coproduct::{Inl, Inr};
-        for line in p
-            .premises()
-            .into_iter()
-            .map(Coproduct::inject)
-            .chain(p.lines().into_iter().map(js_to_pjs::<P>))
-        {
+        for line in p.premises().into_iter().map(Coproduct::inject).chain(p.lines().into_iter().map(js_to_pjs::<P>)) {
             match line {
                 Inl(pr) => {
                     if let Some(e) = p.lookup_expr(&Coproduct::inject(pr.clone())) {

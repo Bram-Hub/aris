@@ -16,10 +16,7 @@ use std::path::Path;
 use frunk_core::coproduct::Coproduct;
 use frunk_core::Hlist;
 
-fn validate_recursive<P: Proof>(
-    proof: &P,
-    line: PJRef<P>,
-) -> Result<(), (PJRef<P>, ProofCheckError<PJRef<P>, P::SubproofReference>)>
+fn validate_recursive<P: Proof>(proof: &P, line: PJRef<P>) -> Result<(), (PJRef<P>, ProofCheckError<PJRef<P>, P::SubproofReference>)>
 where
     PJRef<P>: Debug,
     P::SubproofReference: Debug,
@@ -46,9 +43,7 @@ where
                 q.extend(deps);
 
                 for sdep in sdeps.iter() {
-                    let sub = proof
-                        .lookup_subproof_or_die(&sdep)
-                        .map_err(|e| (r.clone(), e))?;
+                    let sub = proof.lookup_subproof_or_die(&sdep).map_err(|e| (r.clone(), e))?;
                     q.extend(sub.direct_lines().into_iter().map(Coproduct::inject));
                 }
             }
@@ -71,10 +66,7 @@ fn main() -> Result<(), String> {
     let args: Vec<_> = env::args().collect();
 
     if args.len() != 3 {
-        return Err(format!(
-            "Usage: {} <instructor assignment> <student assignment>",
-            args[0]
-        ));
+        return Err(format!("Usage: {} <instructor assignment> <student assignment>", args[0]));
     }
 
     let instructor_path = Path::new(&args[1]);
@@ -92,16 +84,8 @@ fn main() -> Result<(), String> {
     let student_premises = s_prf.premises();
 
     // Adds the premises into two sets to compare them
-    let instructor_set = instructor_premises
-        .into_iter()
-        .map(|r| i_prf.lookup_premise(&r))
-        .collect::<Option<HashSet<Expr>>>()
-        .expect("Instructor set creation failed");
-    let student_set = student_premises
-        .into_iter()
-        .map(|r| s_prf.lookup_premise(&r))
-        .collect::<Option<HashSet<Expr>>>()
-        .expect("Student set creation failed");
+    let instructor_set = instructor_premises.into_iter().map(|r| i_prf.lookup_premise(&r)).collect::<Option<HashSet<Expr>>>().expect("Instructor set creation failed");
+    let student_set = student_premises.into_iter().map(|r| s_prf.lookup_premise(&r)).collect::<Option<HashSet<Expr>>>().expect("Student set creation failed");
 
     if instructor_set != student_set {
         return Err("Premises do not match!".into());
@@ -113,30 +97,16 @@ fn main() -> Result<(), String> {
 
     // Verify that the goals are in the student lines and that the instructor's conclusion line matches some student's conclusion, and that the student's conclusion checks out using DFS.
     for i_goal in i_meta.goals {
-        if let Some(i) = student_lines
-            .iter()
-            .find(|i| s_prf.lookup_expr(&Coproduct::inject(*i.clone())).as_ref() == Some(&i_goal))
-        {
+        if let Some(i) = student_lines.iter().find(|i| s_prf.lookup_expr(&Coproduct::inject(*i.clone())).as_ref() == Some(&i_goal)) {
             match validate_recursive(&s_prf, Coproduct::inject(*i)) {
                 Ok(()) => {}
                 Err((r, e)) => {
                     return {
                         // Create a lined proof to get line numbers from line reference via linear search
                         let s_prf_with_lines = LinedProof::from_proof(s_prf.clone());
-                        let (index, _) = s_prf_with_lines
-                            .lines
-                            .iter()
-                            .enumerate()
-                            .find(|(_, rl)| rl.reference == r)
-                            .expect(
-                                "Failed to find line number for building error message (BAD!!)",
-                            );
+                        let (index, _) = s_prf_with_lines.lines.iter().enumerate().find(|(_, rl)| rl.reference == r).expect("Failed to find line number for building error message (BAD!!)");
                         eprintln!("{}", s_prf);
-                        Err(format!(
-                            "validate_recursive failed for line {}: {}",
-                            index + 1,
-                            e
-                        ))
+                        Err(format!("validate_recursive failed for line {}: {}", index + 1, e))
                     };
                 }
             }

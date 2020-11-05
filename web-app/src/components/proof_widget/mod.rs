@@ -73,21 +73,11 @@ pub enum ProofItemKind {
 
 #[derive(Debug, Clone)]
 pub enum LineActionKind {
-    Insert {
-        what: ProofItemKind,
-        after: bool,
-        relative_to: ProofItemKind,
-    },
-    Delete {
-        what: ProofItemKind,
-    },
-    SetRule {
-        rule: Rule,
-    },
+    Insert { what: ProofItemKind, after: bool, relative_to: ProofItemKind },
+    Delete { what: ProofItemKind },
+    SetRule { rule: Rule },
     Select,
-    ToggleDependency {
-        dep: Coprod![PJRef<P>, <P as Proof>::SubproofReference],
-    },
+    ToggleDependency { dep: Coprod![PJRef<P>, <P as Proof>::SubproofReference] },
 }
 
 /// Message for `ProofWidget`
@@ -122,11 +112,7 @@ pub struct ProofWidgetProps {
 }
 
 impl ProofWidget {
-    fn render_line_num_dep_checkbox(
-        &self,
-        line: Option<usize>,
-        proofref: Coprod!(PJRef<P>, <P as Proof>::SubproofReference),
-    ) -> Html {
+    fn render_line_num_dep_checkbox(&self, line: Option<usize>, proofref: Coprod!(PJRef<P>, <P as Proof>::SubproofReference)) -> Html {
         let line = match line {
             Some(line) => line.to_string(),
             None => "".to_string(),
@@ -136,9 +122,7 @@ impl ProofWidget {
             if let Inr(Inl(_)) = selected_line.line_ref {
                 let dep = proofref.clone();
                 let line_ref = selected_line.line_ref.clone();
-                let toggle_dep = self.link.callback(move |_| {
-                    ProofWidgetMsg::LineAction(LineActionKind::ToggleDependency { dep }, line_ref)
-                });
+                let toggle_dep = self.link.callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::ToggleDependency { dep }, line_ref));
                 if self.prf.can_reference_dep(&line_ref, &proofref) {
                     return html! {
                         <button
@@ -170,11 +154,7 @@ impl ProofWidget {
     ///   + `cur_rule_name` - name of the current selected rule
     ///
     /// [lib]: https://github.com/vsn4ik/bootstrap-submenu
-    fn render_rules_menu(
-        &self,
-        jref: <P as Proof>::JustificationReference,
-        cur_rule_name: &str,
-    ) -> Html {
+    fn render_rules_menu(&self, jref: <P as Proof>::JustificationReference, cur_rule_name: &str) -> Html {
         // Create menu items for rule classes
         let menu = RuleClassification::iter()
             .map(|rule_class| {
@@ -219,10 +199,7 @@ impl ProofWidget {
         }
     }
     fn render_justification_widget(&self, jref: <P as Proof>::JustificationReference) -> Html {
-        let just = self
-            .prf
-            .lookup_justification_or_die(&jref)
-            .expect("proofref should exist in self.prf");
+        let just = self.prf.lookup_justification_or_die(&jref).expect("proofref should exist in self.prf");
 
         // Iterator over line dependency badges, for rendering list of
         // dependencies
@@ -235,28 +212,19 @@ impl ProofWidget {
 
         // Iterator over subproof dependency badges, for rendering list of
         // dependencies
-        let sdep_badges = just
-            .3
-            .iter()
-            .filter_map(|sdep| self.prf.lookup_subproof(&sdep))
-            .map(|sub| {
-                let (mut lo, mut hi) = (usize::max_value(), usize::min_value());
-                for line in sub
-                    .premises()
-                    .into_iter()
-                    .map(Coproduct::inject)
-                    .chain(sub.direct_lines().into_iter().map(Coproduct::inject))
-                {
-                    if let Some((i, _)) = self.pud.ref_to_line_depth.get(&line) {
-                        lo = std::cmp::min(lo, *i);
-                        hi = std::cmp::max(hi, *i);
-                    }
+        let sdep_badges = just.3.iter().filter_map(|sdep| self.prf.lookup_subproof(&sdep)).map(|sub| {
+            let (mut lo, mut hi) = (usize::max_value(), usize::min_value());
+            for line in sub.premises().into_iter().map(Coproduct::inject).chain(sub.direct_lines().into_iter().map(Coproduct::inject)) {
+                if let Some((i, _)) = self.pud.ref_to_line_depth.get(&line) {
+                    lo = std::cmp::min(lo, *i);
+                    hi = std::cmp::max(hi, *i);
                 }
-                let sdep_line = format!("{}-{}", lo, hi);
-                html! {
-                    <span class="badge badge-secondary m-1"> { sdep_line } </span>
-                }
-            });
+            }
+            let sdep_line = format!("{}-{}", lo, hi);
+            html! {
+                <span class="badge badge-secondary m-1"> { sdep_line } </span>
+            }
+        });
 
         // Node containing all dependency badges, for rendering list of
         // dependencies
@@ -281,13 +249,7 @@ impl ProofWidget {
     }
     fn render_line_feedback(&self, proofref: PJRef<P>, is_subproof: bool) -> Html {
         use aris::parser::parse;
-        let raw_line = match self.pud.ref_to_input.get(&proofref).and_then(|x| {
-            if x.len() > 0 {
-                Some(x)
-            } else {
-                None
-            }
-        }) {
+        let raw_line = match self.pud.ref_to_input.get(&proofref).and_then(|x| if x.len() > 0 { Some(x) } else { None }) {
             None => {
                 return html! { <span></span> };
             }
@@ -321,16 +283,9 @@ impl ProofWidget {
             }
         }
     }
-    fn render_proof_line(
-        &self,
-        line: usize,
-        depth: usize,
-        proofref: PJRef<P>,
-        edge_decoration: &str,
-    ) -> Html {
+    fn render_proof_line(&self, line: usize, depth: usize, proofref: PJRef<P>, edge_decoration: &str) -> Html {
         use Coproduct::{Inl, Inr};
-        let line_num_dep_checkbox =
-            self.render_line_num_dep_checkbox(Some(line), Coproduct::inject(proofref.clone()));
+        let line_num_dep_checkbox = self.render_line_num_dep_checkbox(Some(line), Coproduct::inject(proofref.clone()));
         let mut indentation = yew::virtual_dom::VList::new();
         for _ in 0..depth {
             //indentation.add_child(html! { <span style="background-color:black">{"-"}</span>});
@@ -339,13 +294,9 @@ impl ProofWidget {
         }
         indentation.add_child(html! { <span class="indent">{edge_decoration}</span>});
         let proofref_ = proofref.clone();
-        let handle_input = self
-            .link
-            .callback(move |value: String| ProofWidgetMsg::LineChanged(proofref_.clone(), value));
+        let handle_input = self.link.callback(move |value: String| ProofWidgetMsg::LineChanged(proofref_.clone(), value));
         let proofref_ = proofref.clone();
-        let select_line = self.link.callback(move |()| {
-            ProofWidgetMsg::LineAction(LineActionKind::Select, proofref_.clone())
-        });
+        let select_line = self.link.callback(move |()| ProofWidgetMsg::LineAction(LineActionKind::Select, proofref_.clone()));
 
         // Menu for selecting a line action
         let action_selector = {
@@ -356,9 +307,7 @@ impl ProofWidget {
                     let lak = action_info.line_action_kind.clone();
 
                     // Callback triggering line action
-                    let onclick = self.link.callback(move |_| {
-                        ProofWidgetMsg::LineAction(lak.clone(), proofref_.clone())
-                    });
+                    let onclick = self.link.callback(move |_| ProofWidgetMsg::LineAction(lak.clone(), proofref_.clone()));
 
                     // Badge showing keyboard shortcut of action, if any
                     let keyboard_shortcut = match action_info.keyboard_shortcut {
@@ -406,24 +355,12 @@ impl ProofWidget {
                 </div>
             }
         };
-        let init_value = self
-            .pud
-            .ref_to_input
-            .get(&proofref)
-            .cloned()
-            .unwrap_or_default();
+        let init_value = self.pud.ref_to_input.get(&proofref).cloned().unwrap_or_default();
         let in_subproof = depth > 0;
         let rule_feedback = self.render_line_feedback(proofref, in_subproof);
-        let is_selected_line = self
-            .selected_line
-            .as_ref()
-            .map(|line| line.line_ref == proofref)
-            .unwrap_or(false);
+        let is_selected_line = self.selected_line.as_ref().map(|line| line.line_ref == proofref).unwrap_or(false);
         let is_dep_line = match self.selected_line {
-            Some(SelectedLine {
-                line_ref: Inr(Inl(selected_line)),
-                ..
-            }) => match self.prf.lookup_justification_or_die(&selected_line) {
+            Some(SelectedLine { line_ref: Inr(Inl(selected_line)), .. }) => match self.prf.lookup_justification_or_die(&selected_line) {
                 Ok(Justification(_, _, line_deps, _)) => line_deps.contains(&proofref),
                 Err(_) => false,
             },
@@ -475,26 +412,12 @@ impl ProofWidget {
         }
     }
 
-    fn render_proof(
-        &self,
-        prf: &<P as Proof>::Subproof,
-        sref: Option<<P as Proof>::SubproofReference>,
-        line: &mut usize,
-        depth: &mut usize,
-    ) -> Html {
+    fn render_proof(&self, prf: &<P as Proof>::Subproof, sref: Option<<P as Proof>::SubproofReference>, line: &mut usize, depth: &mut usize) -> Html {
         // output has a bool tag to prune subproof spacers with, because VNode's PartialEq doesn't do the right thing
         let mut output: Vec<(Html, bool)> = Vec::new();
         for prem in prf.premises().iter() {
             let edge_decoration = { box_chars::VERT }.to_string();
-            output.push((
-                self.render_proof_line(
-                    *line,
-                    *depth,
-                    Coproduct::inject(prem.clone()),
-                    &edge_decoration,
-                ),
-                false,
-            ));
+            output.push((self.render_proof_line(*line, *depth, Coproduct::inject(prem.clone()), &edge_decoration), false));
             *line += 1;
         }
         let dep_checkbox = match sref {
@@ -508,11 +431,7 @@ impl ProofWidget {
         for _ in 0..*depth {
             spacer_lines.push(box_chars::VERT);
         }
-        spacer_lines += &format!(
-            "{}{}",
-            box_chars::VERT_RIGHT,
-            box_chars::HORIZ.to_string().repeat(4)
-        );
+        spacer_lines += &format!("{}{}", box_chars::VERT_RIGHT, box_chars::HORIZ.to_string().repeat(4));
         spacer.add_child(html! { <td> <span class="indent"> {spacer_lines} </span> </td> });
 
         let spacer = html! { <tr> { spacer } </tr> };
@@ -521,37 +440,16 @@ impl ProofWidget {
         let prf_lines = prf.lines();
         for (i, lineref) in prf_lines.iter().enumerate() {
             use Coproduct::{Inl, Inr};
-            let edge_decoration = if i == prf_lines.len() - 1 {
-                box_chars::UP_RIGHT
-            } else {
-                box_chars::VERT
-            }
-            .to_string();
+            let edge_decoration = if i == prf_lines.len() - 1 { box_chars::UP_RIGHT } else { box_chars::VERT }.to_string();
             match lineref {
                 Inl(r) => {
-                    output.push((
-                        self.render_proof_line(
-                            *line,
-                            *depth,
-                            Coproduct::inject(r.clone()),
-                            &edge_decoration,
-                        ),
-                        false,
-                    ));
+                    output.push((self.render_proof_line(*line, *depth, Coproduct::inject(r.clone()), &edge_decoration), false));
                     *line += 1;
                 }
                 Inr(Inl(sr)) => {
                     *depth += 1;
                     //output.push(row_spacer.clone());
-                    output.push((
-                        self.render_proof(
-                            &prf.lookup_subproof(&sr).unwrap(),
-                            Some(*sr),
-                            line,
-                            depth,
-                        ),
-                        false,
-                    ));
+                    output.push((self.render_proof(&prf.lookup_subproof(&sr).unwrap(), Some(*sr), line, depth), false));
                     //output.push(row_spacer.clone());
                     *depth -= 1;
                 }
@@ -582,16 +480,9 @@ impl ProofWidget {
     /// Select the line referenced in `line_ref`. Also, set up a listener for
     /// line action keyboard shortcuts
     fn select_line(&mut self, line_ref: PJRef<P>) {
-        let key_listener = yew::services::keyboard::KeyboardService::register_key_down(
-            &yew::utils::window(),
-            self.link
-                .callback(|key_event| ProofWidgetMsg::Keypress(key_event)),
-        );
+        let key_listener = yew::services::keyboard::KeyboardService::register_key_down(&yew::utils::window(), self.link.callback(|key_event| ProofWidgetMsg::Keypress(key_event)));
 
-        self.selected_line = Some(SelectedLine {
-            line_ref,
-            key_listener,
-        });
+        self.selected_line = Some(SelectedLine { line_ref, key_listener });
     }
 
     /// Convert a keyboard shortcut into a `ProofWidgetMsg` that performs the
@@ -617,8 +508,7 @@ impl ProofWidget {
         key_event.prevent_default();
 
         // Look up the triggered action
-        let action = actions::valid_actions(&self.prf, selected_line)
-            .find(|action_info| action_info.keyboard_shortcut == key_event.key().chars().next());
+        let action = actions::valid_actions(&self.prf, selected_line).find(|action_info| action_info.keyboard_shortcut == key_event.key().chars().next());
 
         if let Some(action) = action {
             // Return action message
@@ -636,9 +526,7 @@ fn may_remove_line<P: Proof>(prf: &P, line_ref: &PJRef<P>) -> bool {
 
     let is_premise = matches!(prf.lookup_pj(line_ref), Some(Inl(_)));
 
-    let in_subproof = prf
-        .parent_of_line(&pj_to_pjs::<P>(line_ref.clone()))
-        .is_some();
+    let in_subproof = prf.parent_of_line(&pj_to_pjs::<P>(line_ref.clone())).is_some();
 
     if is_premise {
         if in_subproof {
@@ -674,12 +562,7 @@ fn new_empty_premise() -> Expr {
 /// Create a new empty step, the default step when creating a new one in the UI.
 /// The `ProofUiData` is supposed to be modified so this appears blank.
 fn new_empty_step() -> Justification<Expr, PJRef<P>, <P as Proof>::SubproofReference> {
-    Justification(
-        Expr::var("__js_ui_blank_step"),
-        RuleM::EmptyRule,
-        vec![],
-        vec![],
-    )
+    Justification(Expr::var("__js_ui_blank_step"), RuleM::EmptyRule, vec![], vec![])
 }
 
 /// Create a new empty proof, the default proof shown in the UI
@@ -720,15 +603,7 @@ impl Component for ProofWidget {
             }
         };
 
-        let mut tmp = Self {
-            link,
-            prf,
-            pud,
-            selected_line: None,
-            open_error: error,
-            preblob: "".into(),
-            props,
-        };
+        let mut tmp = Self { link, prf, pud, selected_line: None, open_error: error, preblob: "".into(), props };
         tmp.update(ProofWidgetMsg::Nop);
         tmp
     }
@@ -756,14 +631,7 @@ impl Component for ProofWidget {
                 }
                 ret = true;
             }
-            ProofWidgetMsg::LineAction(
-                LineActionKind::Insert {
-                    what,
-                    after,
-                    relative_to,
-                },
-                orig_ref,
-            ) => {
+            ProofWidgetMsg::LineAction(LineActionKind::Insert { what, after, relative_to }, orig_ref) => {
                 let to_select;
                 let orig_ref = pj_to_pjs::<P>(orig_ref);
                 let parent = self.prf.parent_of_line(&orig_ref);
@@ -778,10 +646,7 @@ impl Component for ProofWidget {
                     ProofItemKind::Premise => match insertion_point {
                         Inl(pr) => {
                             // Insert premise relative to premise
-                            to_select =
-                                Inl(self
-                                    .prf
-                                    .add_premise_relative(new_empty_premise(), &pr, after));
+                            to_select = Inl(self.prf.add_premise_relative(new_empty_premise(), &pr, after));
                         }
                         Inr(Inl(_)) | Inr(Inr(Inl(_))) => {
                             // Insert premise relative to line or subproof
@@ -794,38 +659,23 @@ impl Component for ProofWidget {
                             // Insert justification relative to premise
 
                             // Add justification to enclosing subproof of premise, if it exists
-                            let just_ref = parent.and_then(|parent| {
-                                self.prf.with_mut_subproof(&parent, |parent| {
-                                    parent.prepend_step(new_empty_step())
-                                })
-                            });
+                            let just_ref = parent.and_then(|parent| self.prf.with_mut_subproof(&parent, |parent| parent.prepend_step(new_empty_step())));
 
                             // If the insertion point is not in a subproof, add justification to the top-level proof
                             match just_ref {
                                 Some(just_ref) => to_select = Coproduct::inject(just_ref),
-                                None => {
-                                    to_select =
-                                        Coproduct::inject(self.prf.prepend_step(new_empty_step()))
-                                }
+                                None => to_select = Coproduct::inject(self.prf.prepend_step(new_empty_step())),
                             }
                         }
                         Inr(Inl(jr)) => {
                             // Insert justification relative to justification
                             let jsr = Coproduct::inject(jr);
-                            to_select = Inr(Inl(self.prf.add_step_relative(
-                                new_empty_step(),
-                                &jsr,
-                                after,
-                            )));
+                            to_select = Inr(Inl(self.prf.add_step_relative(new_empty_step(), &jsr, after)));
                         }
                         Inr(Inr(Inl(sr))) => {
                             // Insert justification relative to subproof
                             let jsr = Coproduct::inject(sr);
-                            to_select = Inr(Inl(self.prf.add_step_relative(
-                                new_empty_step(),
-                                &jsr,
-                                after,
-                            )));
+                            to_select = Inr(Inl(self.prf.add_step_relative(new_empty_step(), &jsr, after)));
                         }
                         Inr(Inr(Inr(void))) => match void {},
                     },
@@ -856,17 +706,7 @@ impl Component for ProofWidget {
                 let parent = self.prf.parent_of_line(&pj_to_pjs::<P>(proofref.clone()));
                 match what {
                     ProofItemKind::Premise | ProofItemKind::Just => {
-                        fn remove_line_if_allowed<
-                            P: Proof,
-                            Q: Proof<
-                                PremiseReference = <P as Proof>::PremiseReference,
-                                JustificationReference = <P as Proof>::JustificationReference,
-                            >,
-                        >(
-                            prf: &mut Q,
-                            pud: &mut ProofUiData<P>,
-                            proofref: PJRef<Q>,
-                        ) {
+                        fn remove_line_if_allowed<P: Proof, Q: Proof<PremiseReference = <P as Proof>::PremiseReference, JustificationReference = <P as Proof>::JustificationReference>>(prf: &mut Q, pud: &mut ProofUiData<P>, proofref: PJRef<Q>) {
                             if may_remove_line(prf, &proofref) {
                                 pud.ref_to_line_depth.remove(&proofref);
                                 pud.ref_to_input.remove(&proofref);
@@ -917,8 +757,7 @@ impl Component for ProofWidget {
                 if let Inr(Inl(jr)) = &proofref {
                     self.prf.with_mut_step(&jr, |j| {
                         fn toggle_dep_or_sdep<T: Ord>(dep: T, deps: &mut Vec<T>) {
-                            let mut dep_set: BTreeSet<T> =
-                                mem::replace(deps, vec![]).into_iter().collect();
+                            let mut dep_set: BTreeSet<T> = mem::replace(deps, vec![]).into_iter().collect();
                             if dep_set.contains(&dep) {
                                 dep_set.remove(&dep);
                             } else {
@@ -944,12 +783,7 @@ impl Component for ProofWidget {
             }
         }
         if ret {
-            calculate_lineinfo::<P>(
-                &mut self.pud.ref_to_line_depth,
-                self.prf.top_level_proof(),
-                &mut 1,
-                &mut 0,
-            );
+            calculate_lineinfo::<P>(&mut self.pud.ref_to_line_depth, self.prf.top_level_proof(), &mut 1, &mut 0);
         }
         ret
     }

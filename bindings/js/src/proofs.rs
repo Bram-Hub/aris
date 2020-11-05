@@ -15,8 +15,7 @@ use wasm_bindgen::prelude::*;
 
 type P = aris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
 type SP = aris::proofs::pooledproof::PooledSubproof<Hlist![Expr]>;
-type JustificationInner =
-    aris::proofs::Justification<Expr, aris::proofs::PJRef<P>, aris::proofs::pooledproof::SubKey>;
+type JustificationInner = aris::proofs::Justification<Expr, aris::proofs::PJRef<P>, aris::proofs::pooledproof::SubKey>;
 
 #[wasm_bindgen]
 pub struct Proof(P);
@@ -33,27 +32,18 @@ impl Proof {
     }
 
     pub fn lookup_premise(&self, r: PRef) -> JsResult<JsValue> {
-        let ret = self
-            .0
-            .lookup_premise(&r.0)
-            .ok_or("aris: failed looking up premise")?;
+        let ret = self.0.lookup_premise(&r.0).ok_or("aris: failed looking up premise")?;
         let ret = to_value(&ret)?;
         Ok(ret)
     }
 
     pub fn lookup_step(&self, r: JRef) -> JsResult<Justification> {
-        let ret = self
-            .0
-            .lookup_step(&r.0)
-            .ok_or("aris: failed looking up step")?;
+        let ret = self.0.lookup_step(&r.0).ok_or("aris: failed looking up step")?;
         Ok(Justification(ret))
     }
 
     pub fn lookup_subproof(&self, r: SRef) -> JsResult<Subproof> {
-        let ret = self
-            .0
-            .lookup_subproof(&r.0)
-            .ok_or("aris: failed looking up subproof")?;
+        let ret = self.0.lookup_subproof(&r.0).ok_or("aris: failed looking up subproof")?;
         Ok(Subproof(ret))
     }
 
@@ -125,19 +115,11 @@ impl Proof {
     }
 
     pub fn premises(&self) -> Vec<JsValue> {
-        self.0
-            .premises()
-            .into_iter()
-            .map(|p| JsValue::from(PRef(p)))
-            .collect()
+        self.0.premises().into_iter().map(|p| JsValue::from(PRef(p))).collect()
     }
 
     pub fn lines(&self) -> Vec<JsValue> {
-        self.0
-            .lines()
-            .into_iter()
-            .map(|js| JsValue::from(JSRef(js)))
-            .collect()
+        self.0.lines().into_iter().map(|js| JsValue::from(JSRef(js))).collect()
     }
 
     pub fn parent_of_line(&self, r: PJSRef) -> JsResult<SRef> {
@@ -152,89 +134,52 @@ impl Proof {
     }
 
     pub fn lookup_expr(&self, r: PJRef) -> JsResult<JsValue> {
-        let ret = self
-            .0
-            .lookup_expr(&r.0)
-            .ok_or("aris: failed looking up expression")?;
+        let ret = self.0.lookup_expr(&r.0).ok_or("aris: failed looking up expression")?;
         let ret = to_value(&ret)?;
         Ok(ret)
     }
 
     pub fn lookup_expr_or_die(&self, r: PJRef) -> JsResult<JsValue> {
-        let ret = self
-            .0
-            .lookup_expr_or_die(&r.0)
-            .map_err(|err| err.to_string())?;
+        let ret = self.0.lookup_expr_or_die(&r.0).map_err(|err| err.to_string())?;
         let ret = to_value(&ret)?;
         Ok(ret)
     }
 
     pub fn lookup_premise_or_die(&self, r: PRef) -> JsResult<JsValue> {
-        let ret = self
-            .0
-            .lookup_premise_or_die(&r.0)
-            .map_err(|err| err.to_string())?;
+        let ret = self.0.lookup_premise_or_die(&r.0).map_err(|err| err.to_string())?;
         let ret = to_value(&ret)?;
         Ok(ret)
     }
 
     pub fn lookup_justification_or_die(&self, r: JRef) -> JsResult<Justification> {
-        let ret = self
-            .0
-            .lookup_justification_or_die(&r.0)
-            .map_err(|err| err.to_string())?;
+        let ret = self.0.lookup_justification_or_die(&r.0).map_err(|err| err.to_string())?;
         Ok(Justification(ret))
     }
 
     pub fn lookup_pj(&self, r: PJRef) -> JsResult<JsValue> {
-        let ret = self
-            .0
-            .lookup_pj(&r.0)
-            .ok_or("aris: failed looking up premise or justification")?;
-        ret.fold(hlist![
-            |expr| -> JsResult<JsValue> { Ok(to_value(&expr)?) },
-            |just| -> JsResult<JsValue> { Ok(JsValue::from(Justification(just))) },
-        ])
+        let ret = self.0.lookup_pj(&r.0).ok_or("aris: failed looking up premise or justification")?;
+        ret.fold(hlist![|expr| -> JsResult<JsValue> { Ok(to_value(&expr)?) }, |just| -> JsResult<JsValue> { Ok(JsValue::from(Justification(just))) },])
     }
 
     pub fn lookup_subproof_or_die(&self, r: SRef) -> JsResult<Subproof> {
-        let ret = self
-            .0
-            .lookup_subproof_or_die(&r.0)
-            .map_err(|err| err.to_string())?;
+        let ret = self.0.lookup_subproof_or_die(&r.0).map_err(|err| err.to_string())?;
         Ok(Subproof(ret))
     }
 
     pub fn direct_lines(&self) -> Vec<JsValue> {
-        self.0
-            .direct_lines()
-            .into_iter()
-            .map(|j| JsValue::from(JRef(j)))
-            .collect()
+        self.0.direct_lines().into_iter().map(|j| JsValue::from(JRef(j))).collect()
     }
 
     pub fn exprs(&self) -> Vec<JsValue> {
-        self.0
-            .exprs()
-            .into_iter()
-            .map(|pj| JsValue::from(PJRef(pj)))
-            .collect()
+        self.0.exprs().into_iter().map(|pj| JsValue::from(PJRef(pj))).collect()
     }
 
     pub fn contained_justifications(&self, include_premises: bool) -> Vec<JsValue> {
-        self.0
-            .contained_justifications(include_premises)
-            .into_iter()
-            .map(|pj| JsValue::from(PJRef(pj)))
-            .collect::<Vec<JsValue>>()
+        self.0.contained_justifications(include_premises).into_iter().map(|pj| JsValue::from(PJRef(pj))).collect::<Vec<JsValue>>()
     }
 
     pub fn transitive_dependencies(&self, line: PJRef) -> Vec<JsValue> {
-        self.0
-            .transitive_dependencies(line.0)
-            .into_iter()
-            .map(|pj| JsValue::from(PJRef(pj)))
-            .collect::<Vec<JsValue>>()
+        self.0.transitive_dependencies(line.0).into_iter().map(|pj| JsValue::from(PJRef(pj))).collect::<Vec<JsValue>>()
     }
 
     pub fn depth_of_line(&self, r: PJSRef) -> usize {
@@ -245,19 +190,14 @@ impl Proof {
         let mut deps = HashSet::new();
         let mut sdeps = HashSet::new();
         self.0.possible_deps_for_line(&r.0, &mut deps, &mut sdeps);
-        deps.into_iter()
-            .map(|pj| JsValue::from(PJRef(pj)))
-            .collect::<Vec<JsValue>>()
+        deps.into_iter().map(|pj| JsValue::from(PJRef(pj))).collect::<Vec<JsValue>>()
     }
 
     pub fn possible_sdeps_for_line(&self, r: PJRef) -> Vec<JsValue> {
         let mut deps = HashSet::new();
         let mut sdeps = HashSet::new();
         self.0.possible_deps_for_line(&r.0, &mut deps, &mut sdeps);
-        sdeps
-            .into_iter()
-            .map(|s| JsValue::from(SRef(s)))
-            .collect::<Vec<JsValue>>()
+        sdeps.into_iter().map(|s| JsValue::from(SRef(s))).collect::<Vec<JsValue>>()
     }
 
     pub fn can_reference_dep(&self, r1: PJRef, r2: PJSRef) -> JsResult<bool> {

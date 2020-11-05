@@ -20,14 +20,8 @@ pub struct App {
 pub enum AppMsg {
     TabbedContainerInit(ComponentLink<TabbedContainer>),
     NavBarInit(ComponentLink<NavBarWidget>),
-    CreateTab {
-        name: String,
-        content: Html,
-    },
-    RegisterProofName {
-        name: String,
-        link: ComponentLink<ProofWidget>,
-    },
+    CreateTab { name: String, content: Html },
+    RegisterProofName { name: String, link: ComponentLink<ProofWidget> },
     GetProofFromCurrentTab(Box<dyn FnOnce(String, &P)>),
 }
 
@@ -36,12 +30,7 @@ impl Component for App {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self {
-            link,
-            tabcontainer_link: None,
-            menuwidget_link: None,
-            proofs: HashMap::new(),
-        }
+        Self { link, tabcontainer_link: None, menuwidget_link: None, proofs: HashMap::new() }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -69,15 +58,11 @@ impl Component for App {
             AppMsg::GetProofFromCurrentTab(f) => {
                 if let Some(tabcontainer_link) = &self.tabcontainer_link {
                     let proofs = self.proofs.clone();
-                    tabcontainer_link.send_message(TabbedContainerMsg::GetCurrentTab(Box::new(
-                        move |_, name| {
-                            if let Some(link) = proofs.get(&*name) {
-                                link.send_message(ProofWidgetMsg::CallOnProof(Box::new(
-                                    move |prf| f(name, prf),
-                                )));
-                            }
-                        },
-                    )));
+                    tabcontainer_link.send_message(TabbedContainerMsg::GetCurrentTab(Box::new(move |_, name| {
+                        if let Some(link) = proofs.get(&*name) {
+                            link.send_message(ProofWidgetMsg::CallOnProof(Box::new(move |prf| f(name, prf))));
+                        }
+                    })));
                 }
                 false
             }

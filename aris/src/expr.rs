@@ -93,7 +93,7 @@ pub enum Expr {
     /// Logical negation `¬P`
     Not {
         /// The operand of the negation `P`
-        operand: Box<Expr>
+        operand: Box<Expr>,
     },
 
     /// Logical implication `P → Q`
@@ -145,13 +145,13 @@ pub enum NnfExpr {
     /// Sub-expressions OR'ed together
     Or {
         /// The subexpressions which are OR'ed
-        exprs: Vec<NnfExpr>
+        exprs: Vec<NnfExpr>,
     },
 
     /// Sub-expressions AND'ed together
     And {
         /// The subexpressions which are AND'ed
-        exprs: Vec<NnfExpr>
+        exprs: Vec<NnfExpr>,
     },
 }
 
@@ -206,11 +206,7 @@ where
     O: fmt::Display,
     E: fmt::Display,
 {
-    let s = exprs
-        .iter()
-        .map(E::to_string)
-        .collect::<Vec<String>>()
-        .join(&format!(" {} ", op));
+    let s = exprs.iter().map(E::to_string).collect::<Vec<String>>().join(&format!(" {} ", op));
     write!(f, "({})", s)
 }
 
@@ -220,15 +216,7 @@ impl fmt::Display for Expr {
             Expr::Contra => write!(f, "⊥"),
             Expr::Taut => write!(f, "⊤"),
             Expr::Var { name } => write!(f, "{}", name),
-            Expr::Apply { func, args } => write!(
-                f,
-                "{}({})",
-                func,
-                args.iter()
-                    .map(|x| x.to_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
+            Expr::Apply { func, args } => write!(f, "{}({})", func, args.iter().map(|x| x.to_string()).collect::<Vec<String>>().join(", ")),
             Expr::Not { operand } => write!(f, "¬{}", operand),
             Expr::Impl { left, right } => write!(f, "({} → {})", left, right),
             Expr::Assoc { op, exprs } => assoc_display_helper(f, op, exprs),
@@ -318,27 +306,10 @@ pub fn subst(expr: Expr, var_to_replace: &str, replacement: Expr) -> Expr {
                 Expr::Var { name }
             }
         }
-        Expr::Apply { func, args } => Expr::Apply {
-            func: Box::new(subst(*func, var_to_replace, replacement.clone())),
-            args: args
-                .into_iter()
-                .map(|expr| subst(expr, var_to_replace, replacement.clone()))
-                .collect(),
-        },
-        Expr::Not { operand } => Expr::Not {
-            operand: Box::new(subst(*operand, var_to_replace, replacement)),
-        },
-        Expr::Impl { left, right } => Expr::Impl {
-            left: Box::new(subst(*left, var_to_replace, replacement.clone())),
-            right: Box::new(subst(*right, var_to_replace, replacement)),
-        },
-        Expr::Assoc { op, exprs } => Expr::Assoc {
-            op,
-            exprs: exprs
-                .into_iter()
-                .map(|expr| subst(expr, var_to_replace, replacement.clone()))
-                .collect(),
-        },
+        Expr::Apply { func, args } => Expr::Apply { func: Box::new(subst(*func, var_to_replace, replacement.clone())), args: args.into_iter().map(|expr| subst(expr, var_to_replace, replacement.clone())).collect() },
+        Expr::Not { operand } => Expr::Not { operand: Box::new(subst(*operand, var_to_replace, replacement)) },
+        Expr::Impl { left, right } => Expr::Impl { left: Box::new(subst(*left, var_to_replace, replacement.clone())), right: Box::new(subst(*right, var_to_replace, replacement)) },
+        Expr::Assoc { op, exprs } => Expr::Assoc { op, exprs: exprs.into_iter().map(|expr| subst(expr, var_to_replace, replacement.clone())).collect() },
         Expr::Quant { kind, name, body } => {
             if name == var_to_replace {
                 // Variable is bound here, so can stop replacement
@@ -372,7 +343,6 @@ pub enum Constraint {
     Equal(Expr, Expr),
 }
 
-
 /// A substitution of variable names to `Expr`s, meant to be passed to `subst`
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Substitution(pub Vec<(String, Expr)>);
@@ -380,7 +350,7 @@ pub struct Substitution(pub Vec<(String, Expr)>);
 impl Substitution {
     /// Apply all the pairs in a substitution to an expression
     pub fn apply(&self, expr: Expr) -> Expr {
-        self.0.iter().fold(expr, |z, (x, y)| subst(z, x, y.clone())) 
+        self.0.iter().fold(expr, |z, (x, y)| subst(z, x, y.clone()))
     }
 }
 
@@ -396,92 +366,42 @@ pub fn unify(mut c: HashSet<Constraint>) -> Option<Substitution> {
     } else {
         return Some(Substitution(vec![]));
     };
-    let subst_set = |x, e1: Expr, set: HashSet<_>| {
-        set.into_iter()
-            .map(
-                |Constraint::Equal(e2, e3)| {
-                    Constraint::Equal(subst(e2, x, e1.clone()), subst(e3, x, e1.clone()))
-                },
-            )
-            .collect::<_>()
-    };
+    let subst_set = |x, e1: Expr, set: HashSet<_>| set.into_iter().map(|Constraint::Equal(e2, e3)| Constraint::Equal(subst(e2, x, e1.clone()), subst(e3, x, e1.clone()))).collect::<_>();
     let (fvs, fvt) = (free_vars(&left), free_vars(&right));
     match (left, right) {
         (left, right) if left == right => unify(c),
-        (Expr::Var { name: sname }, right) if !fvt.contains(&sname) => {
-            unify(subst_set(&sname, right.clone(), c)).map(|mut x| {
-                x.0.push((sname.clone(), right.clone()));
-                x
-            })
-        }
-        (left, Expr::Var { name: tname }) if !fvs.contains(&tname) => {
-            unify(subst_set(&tname, left.clone(), c)).map(|mut x| {
-                x.0.push((tname.clone(), left.clone()));
-                x
-            })
-        }
+        (Expr::Var { name: sname }, right) if !fvt.contains(&sname) => unify(subst_set(&sname, right.clone(), c)).map(|mut x| {
+            x.0.push((sname.clone(), right.clone()));
+            x
+        }),
+        (left, Expr::Var { name: tname }) if !fvs.contains(&tname) => unify(subst_set(&tname, left.clone(), c)).map(|mut x| {
+            x.0.push((tname.clone(), left.clone()));
+            x
+        }),
         (Expr::Not { operand: s }, Expr::Not { operand: t }) => {
             c.insert(Constraint::Equal(*s, *t));
             unify(c)
         }
-        (
-            Expr::Impl {
-                left: sl,
-                right: sr,
-            },
-            Expr::Impl {
-                left: tl,
-                right: tr,
-            },
-        ) => {
+        (Expr::Impl { left: sl, right: sr }, Expr::Impl { left: tl, right: tr }) => {
             c.insert(Constraint::Equal(*sl, *tl));
             c.insert(Constraint::Equal(*sr, *tr));
             unify(c)
         }
-        (Expr::Apply { func: sf, args: sa }, Expr::Apply { func: tf, args: ta })
-            if sa.len() == ta.len() =>
-        {
+        (Expr::Apply { func: sf, args: sa }, Expr::Apply { func: tf, args: ta }) if sa.len() == ta.len() => {
             c.insert(Constraint::Equal(*sf, *tf));
-            c.extend(
-                sa.into_iter()
-                    .zip(ta.into_iter())
-                    .map(|(x, y)| Constraint::Equal(x, y)),
-            );
+            c.extend(sa.into_iter().zip(ta.into_iter()).map(|(x, y)| Constraint::Equal(x, y)));
             unify(c)
         }
-        (Expr::Assoc { op: so, exprs: se }, Expr::Assoc { op: to, exprs: te })
-            if so == to && se.len() == te.len() =>
-        {
+        (Expr::Assoc { op: so, exprs: se }, Expr::Assoc { op: to, exprs: te }) if so == to && se.len() == te.len() => {
             c.extend(se.iter().zip(te.iter()).map(|(x, y)| Constraint::Equal(x.clone(), y.clone())));
             unify(c)
         }
-        (
-            Expr::Quant {
-                kind: sk,
-                name: sn,
-                body: sb,
-            },
-            Expr::Quant {
-                kind: tk,
-                name: tn,
-                body: tb,
-            },
-        ) if sk == tk => {
+        (Expr::Quant { kind: sk, name: sn, body: sb }, Expr::Quant { kind: tk, name: tn, body: tb }) if sk == tk => {
             let uv = gen_var("__unification_var", &fvs.union(&fvt).cloned().collect());
             // require that the bodies of the quantifiers are alpha-equal by substituting a fresh constant
             c.insert(Constraint::Equal(subst(*sb, &sn, Expr::var(&uv)), subst(*tb, &tn, Expr::var(&uv))));
             // if the constant escapes, then a free variable in one formula unified with a captured variable in the other, so the values don't unify
-            unify(c).and_then(|sub| {
-                if sub
-                    .0
-                    .iter()
-                    .any(|(x, y)| x == &uv || free_vars(y).contains(&uv))
-                {
-                    None
-                } else {
-                    Some(sub)
-                }
-            })
+            unify(c).and_then(|sub| if sub.0.iter().any(|(x, y)| x == &uv || free_vars(y).contains(&uv)) { None } else { Some(sub) })
         }
         _ => None,
     }
@@ -502,16 +422,11 @@ impl Expr {
     }
     /// Helper for constructing `Apply` nodes
     pub fn apply(func: Expr, args: &[Expr]) -> Expr {
-        Expr::Apply {
-            func: Box::new(func),
-            args: args.to_vec(),
-        }
+        Expr::Apply { func: Box::new(func), args: args.to_vec() }
     }
     /// Helper for constructing `Not` nodes
     pub fn not(expr: Expr) -> Expr {
-        Expr::Not {
-            operand: Box::new(expr),
-        }
+        Expr::Not { operand: Box::new(expr) }
     }
     /// Construct an error message placeholder for an implication
     pub fn impl_place_holder() -> Expr {
@@ -519,10 +434,7 @@ impl Expr {
     }
     /// Helper for constructing `Impl` nodes
     pub fn implies(left: Expr, right: Expr) -> Expr {
-        Expr::Impl {
-            left: Box::new(left),
-            right: Box::new(right),
-        }
+        Expr::Impl { left: Box::new(left), right: Box::new(right) }
     }
     /// Helper for constructing `Or` nodes
     pub fn or(l: Expr, r: Expr) -> Expr {
@@ -530,10 +442,7 @@ impl Expr {
     }
     /// Helper for constructing `Assoc` nodes
     pub fn assoc(op: Op, exprs: &[Expr]) -> Expr {
-        Expr::Assoc {
-            op,
-            exprs: exprs.to_vec(),
-        }
+        Expr::Assoc { op, exprs: exprs.to_vec() }
     }
     /// Construct an error message placeholder for an associative operator
     pub fn assocplaceholder(op: Op) -> Expr {
@@ -541,27 +450,15 @@ impl Expr {
     }
     /// Construct an error message placeholder for a quantifier
     pub fn quant_placeholder(kind: QuantKind) -> Expr {
-        Expr::Quant {
-            kind,
-            name: "_".to_owned(),
-            body: Box::new(Expr::var("_")),
-        }
+        Expr::Quant { kind, name: "_".to_owned(), body: Box::new(Expr::var("_")) }
     }
     /// Helper for constructing `Forall` nodes
     pub fn forall(name: &str, body: Expr) -> Expr {
-        Expr::Quant {
-            kind: QuantKind::Forall,
-            name: name.into(),
-            body: Box::new(body),
-        }
+        Expr::Quant { kind: QuantKind::Forall, name: name.into(), body: Box::new(body) }
     }
     /// Helper for constructing `Exists` nodes
     pub fn exists(name: &str, body: Expr) -> Expr {
-        Expr::Quant {
-            kind: QuantKind::Exists,
-            name: name.into(),
-            body: Box::new(body),
-        }
+        Expr::Quant { kind: QuantKind::Exists, name: name.into(), body: Box::new(body) }
     }
     /// Infer arities (number of arguments) for each variable that occurs free in an expression
     pub fn infer_arities(&self, arities: &mut HashMap<String, usize>) {
@@ -592,11 +489,7 @@ impl Expr {
                     e.infer_arities(arities);
                 }
             }
-            Expr::Quant {
-                kind: _,
-                name,
-                body,
-            } => {
+            Expr::Quant { kind: _, name, body } => {
                 let mut body_arities = HashMap::new();
                 body.infer_arities(&mut body_arities);
                 for (k, v) in body_arities.into_iter() {
@@ -667,38 +560,22 @@ impl Expr {
     /// Eg (A & (B & C)) ==> (A & B & C)
     pub fn combine_associative_ops(self) -> Expr {
         self.transform(&|e| match e {
-            Expr::Assoc {
-                op: op_1,
-                exprs: exprs_1,
-            } => {
+            Expr::Assoc { op: op_1, exprs: exprs_1 } => {
                 let mut result = vec![];
                 let mut combined = false;
                 for expr in exprs_1 {
-                    if let Expr::Assoc {
-                        op: op_2,
-                        exprs: exprs_2,
-                    } = expr
-                    {
+                    if let Expr::Assoc { op: op_2, exprs: exprs_2 } = expr {
                         if op_1 == op_2 {
                             result.extend(exprs_2);
                             combined = true;
                         } else {
-                            result.push(Expr::Assoc {
-                                op: op_2,
-                                exprs: exprs_2,
-                            });
+                            result.push(Expr::Assoc { op: op_2, exprs: exprs_2 });
                         }
                     } else {
                         result.push(expr);
                     }
                 }
-                (
-                    Expr::Assoc {
-                        op: op_1,
-                        exprs: result,
-                    },
-                    combined,
-                )
+                (Expr::Assoc { op: op_1, exprs: result }, combined)
             }
             _ => (e, false),
         })
@@ -725,10 +602,7 @@ impl Expr {
                 let (func, fs) = Self::transform_expr_inner(*func, trans);
                 let func = Box::new(func);
                 // Fancy iterator hackery to transform each sub expr and then collect all their results
-                let (args, stats): (Vec<_>, Vec<_>) = args
-                    .into_iter()
-                    .map(move |expr| Self::transform_expr_inner(expr, trans))
-                    .unzip();
+                let (args, stats): (Vec<_>, Vec<_>) = args.into_iter().map(move |expr| Self::transform_expr_inner(expr, trans)).unzip();
                 let success = fs || stats.into_iter().any(|x| x);
                 (Expr::Apply { func, args }, success)
             }
@@ -746,10 +620,7 @@ impl Expr {
                 (Expr::Impl { left, right }, success)
             }
             Expr::Assoc { op, exprs } => {
-                let (exprs, stats): (Vec<_>, Vec<_>) = exprs
-                    .into_iter()
-                    .map(move |expr| Self::transform_expr_inner(expr, trans))
-                    .unzip();
+                let (exprs, stats): (Vec<_>, Vec<_>) = exprs.into_iter().map(move |expr| Self::transform_expr_inner(expr, trans)).unzip();
                 let success = stats.into_iter().any(|x| x);
                 (Expr::Assoc { op, exprs }, success)
             }
@@ -842,26 +713,13 @@ impl Expr {
                 // transformations and the sets of transformations of `args`
                 Expr::Apply { func, args } => {
                     let func_set = func.transform_set(trans_fn).into_iter().map(Box::new);
-                    let args_set = args
-                        .into_iter()
-                        .map(|arg| arg.transform_set_vec(trans_fn))
-                        .multi_cartesian_product();
-                    set.extend(
-                        func_set
-                            .cartesian_product(args_set)
-                            .map(|(func, args)| Expr::Apply { func, args }),
-                    );
+                    let args_set = args.into_iter().map(|arg| arg.transform_set_vec(trans_fn)).multi_cartesian_product();
+                    set.extend(func_set.cartesian_product(args_set).map(|(func, args)| Expr::Apply { func, args }));
                 }
 
                 // Add the set of transformations of `operand`
                 Expr::Not { operand } => {
-                    set.extend(
-                        operand
-                            .transform_set(trans_fn)
-                            .into_iter()
-                            .map(Box::new)
-                            .map(move |operand| Expr::Not { operand }),
-                    );
+                    set.extend(operand.transform_set(trans_fn).into_iter().map(Box::new).map(move |operand| Expr::Not { operand }));
                 }
 
                 // Add the Cartesian product of the transformation sets of the
@@ -869,32 +727,20 @@ impl Expr {
                 Expr::Impl { left, right } => {
                     let left_set = left.transform_set(trans_fn).into_iter().map(Box::new);
                     let right_set = right.transform_set_vec(trans_fn).into_iter().map(Box::new);
-                    let binop_set = left_set
-                        .cartesian_product(right_set)
-                        .map(|(left, right)| Expr::Impl { left, right });
+                    let binop_set = left_set.cartesian_product(right_set).map(|(left, right)| Expr::Impl { left, right });
                     set.extend(binop_set);
                 }
 
                 // Add the Cartesian product of the transformation sets of the
                 // sub-nodes in `exprs`
                 Expr::Assoc { op, exprs } => {
-                    set.extend(
-                        exprs
-                            .into_iter()
-                            .map(|expr| expr.transform_set_vec(trans_fn))
-                            .multi_cartesian_product()
-                            .map(|exprs| Expr::Assoc { op, exprs }),
-                    );
+                    set.extend(exprs.into_iter().map(|expr| expr.transform_set_vec(trans_fn)).multi_cartesian_product().map(|exprs| Expr::Assoc { op, exprs }));
                 }
 
                 // Add the set of transformations of `body`
                 Expr::Quant { kind, name, body } => {
                     let body_set = body.transform_set(trans_fn).into_iter().map(Box::new);
-                    let quant_set = body_set.map(|body| Expr::Quant {
-                        kind,
-                        name: name.clone(),
-                        body,
-                    });
+                    let quant_set = body_set.map(|body| Expr::Quant { kind, name: name.clone(), body });
                     set.extend(quant_set);
                 }
             }
@@ -910,15 +756,7 @@ impl Expr {
     /// With no ~(A ^ B) / ~(A v B) expressions
     pub fn normalize_demorgans(self) -> Expr {
         self.transform(&|expr| {
-            let demorgans = |op, exprs: Vec<Expr>| Expr::Assoc {
-                op,
-                exprs: exprs
-                    .into_iter()
-                    .map(|expr| Expr::Not {
-                        operand: Box::new(expr),
-                    })
-                    .collect(),
-            };
+            let demorgans = |op, exprs: Vec<Expr>| Expr::Assoc { op, exprs: exprs.into_iter().map(|expr| Expr::Not { operand: Box::new(expr) }).collect() };
 
             match expr {
                 Expr::Not { operand } => match *operand {
@@ -938,14 +776,7 @@ impl Expr {
     pub fn normalize_idempotence(self) -> Expr {
         self.transform(&|expr| {
             match expr {
-                Expr::Assoc {
-                    op: op @ Op::And,
-                    exprs,
-                }
-                | Expr::Assoc {
-                    op: op @ Op::Or,
-                    exprs,
-                } => {
+                Expr::Assoc { op: op @ Op::And, exprs } | Expr::Assoc { op: op @ Op::Or, exprs } => {
                     let mut unifies = true;
                     // (0, 1), (1, 2), ... (n - 2, n - 1)
                     for pair in exprs.windows(2) {
@@ -982,10 +813,7 @@ impl Expr {
         match disjuncts.len() {
             0 => Expr::Contra,
             1 => disjuncts.pop().unwrap(),
-            _ => Expr::Assoc {
-                op: Op::Or,
-                exprs: disjuncts,
-            },
+            _ => Expr::Assoc { op: Op::Or, exprs: disjuncts },
         }
     }
     /// View the top-level conjuncts of an Expr, counting tautology as an empty conjunction. Useful for SAT interopration.
@@ -1001,20 +829,13 @@ impl Expr {
         match conjuncts.len() {
             0 => Expr::Taut,
             1 => conjuncts.pop().unwrap(),
-            _ => Expr::Assoc {
-                op: Op::And,
-                exprs: conjuncts,
-            },
+            _ => Expr::Assoc { op: Op::And, exprs: conjuncts },
         }
     }
     /// Push negation inwards through forall/exists, flipping the quantifier kind in the process
     pub fn negate_quantifiers(self) -> Expr {
         self.transform(&|expr| {
-            let gen_opposite = |kind, name, body| Expr::Quant {
-                kind,
-                name,
-                body: Box::new(Expr::not(body)),
-            };
+            let gen_opposite = |kind, name, body| Expr::Quant { kind, name, body: Box::new(Expr::not(body)) };
 
             match expr {
                 Expr::Not { operand } => match *operand {
@@ -1052,15 +873,8 @@ impl Expr {
             match expr {
                 Expr::Var { name } => {
                     // look up the name in gamma, get the index
-                    let i = gamma
-                        .into_iter()
-                        .enumerate()
-                        .find(|(_, n)| n == &name)
-                        .unwrap()
-                        .0;
-                    Expr::Var {
-                        name: format!("{}", i),
-                    }
+                    let i = gamma.into_iter().enumerate().find(|(_, n)| n == &name).unwrap().0;
+                    Expr::Var { name: format!("{}", i) }
                 }
                 // push the name onto gamma from the actual quantifier,
                 // Example: for forall x, P(x)
@@ -1070,11 +884,7 @@ impl Expr {
                     let current_level = format!("{}", gamma.len());
                     gamma.push(name);
                     let new_body = aux(*body, gamma);
-                    Expr::Quant {
-                        kind,
-                        name: current_level,
-                        body: Box::new(new_body),
-                    }
+                    Expr::Quant { kind, name: current_level, body: Box::new(new_body) }
                 }
                 // All the remainder cases
                 Expr::Contra => Expr::Contra,
@@ -1082,14 +892,9 @@ impl Expr {
                 Expr::Apply { func, args } => {
                     let func = aux(*func, gamma.clone());
                     let args = args.into_iter().map(|e| aux(e, gamma.clone())).collect();
-                    Expr::Apply {
-                        func: Box::new(func),
-                        args,
-                    }
+                    Expr::Apply { func: Box::new(func), args }
                 }
-                Expr::Not { operand } => Expr::Not {
-                    operand: Box::new(aux(*operand, gamma)),
-                },
+                Expr::Not { operand } => Expr::Not { operand: Box::new(aux(*operand, gamma)) },
                 Expr::Impl { left, right } => {
                     let left = Box::new(aux(*left, gamma.clone()));
                     let right = Box::new(aux(*right, gamma));
@@ -1141,11 +946,7 @@ impl Expr {
 
             if let Some(kind) = last_quantifier {
                 for l_name in stack {
-                    mod_expr = Expr::Quant {
-                        kind,
-                        name: l_name,
-                        body: Box::new(mod_expr),
-                    };
+                    mod_expr = Expr::Quant { kind, name: l_name, body: Box::new(mod_expr) };
                 }
 
                 return (mod_expr.clone(), mod_expr != expr);
@@ -1205,10 +1006,7 @@ impl Expr {
                     Op::Or => transform_7ab(Op::Or, exprs),
                     _ => (Expr::Assoc { op, exprs }, false),
                 },
-                Expr::Impl {
-                    mut left,
-                    mut right,
-                } => {
+                Expr::Impl { mut left, mut right } => {
                     let left_free = free_vars(&left);
                     let right_free = free_vars(&right);
                     left = match *left {
@@ -1250,22 +1048,8 @@ impl Expr {
     pub fn aristotelean_square(self) -> Expr {
         self.transform(&|expr| {
             let gen_opposite = |kind, name, body| match kind {
-                QuantKind::Exists => (
-                    Expr::Quant {
-                        kind: QuantKind::Forall,
-                        name,
-                        body,
-                    },
-                    true,
-                ),
-                QuantKind::Forall => (
-                    Expr::Quant {
-                        kind: QuantKind::Exists,
-                        name,
-                        body,
-                    },
-                    true,
-                ),
+                QuantKind::Exists => (Expr::Quant { kind: QuantKind::Forall, name, body }, true),
+                QuantKind::Forall => (Expr::Quant { kind: QuantKind::Exists, name, body }, true),
             };
 
             let orig_expr = expr.clone();
@@ -1279,10 +1063,7 @@ impl Expr {
                                 Expr::Impl { left, right } => {
                                     let new_exprs = vec![*left, Expr::not(*right)];
 
-                                    let new_body = Expr::Assoc {
-                                        op: Op::And,
-                                        exprs: new_exprs,
-                                    };
+                                    let new_body = Expr::Assoc { op: Op::And, exprs: new_exprs };
                                     gen_opposite(kind, name, Box::new(new_body))
                                 }
 
@@ -1291,10 +1072,7 @@ impl Expr {
                                     if exprs.len() != 2 {
                                         (orig_expr, false)
                                     } else {
-                                        let new_body = Expr::Impl {
-                                            left: Box::new(exprs[0].clone()),
-                                            right: Box::new(Expr::not(exprs[1].clone())),
-                                        };
+                                        let new_body = Expr::Impl { left: Box::new(exprs[0].clone()), right: Box::new(Expr::not(exprs[1].clone())) };
 
                                         gen_opposite(kind, name, Box::new(new_body))
                                     }
@@ -1417,12 +1195,7 @@ impl Expr {
             Expr::Assoc { op, exprs } => match op {
                 Op::And => map_nnf(exprs).map(|exprs| NnfExpr::And { exprs }),
                 Op::Or => map_nnf(exprs).map(|exprs| NnfExpr::Or { exprs }),
-                Op::Bicon => exprs
-                    .into_iter()
-                    .map(Self::into_nnf)
-                    .collect::<Option<Vec<NnfExpr>>>()?
-                    .into_iter()
-                    .fold1(NnfExpr::bicon),
+                Op::Bicon => exprs.into_iter().map(Self::into_nnf).collect::<Option<Vec<NnfExpr>>>()?.into_iter().fold1(NnfExpr::bicon),
                 Op::Equiv | Op::Add | Op::Mult => None,
             },
         }
@@ -1472,9 +1245,7 @@ impl NnfExpr {
     /// ```
     pub fn implies(self, other: Self) -> Self {
         // A → B ≡ ¬A ∨ B
-        Self::Or {
-            exprs: vec![self.not(), other],
-        }
+        Self::Or { exprs: vec![self.not(), other] }
     }
 
     /// Create an NNF expression from a variable name
@@ -1487,10 +1258,7 @@ impl NnfExpr {
     /// ```
     pub fn var<S: ToString>(name: S) -> Self {
         let name = name.to_string();
-        Self::Lit {
-            polarity: true,
-            name,
-        }
+        Self::Lit { polarity: true, name }
     }
 
     /// Create an NNF expression by applying the logical biconditional to two NNF
@@ -1554,16 +1322,9 @@ impl Not for NnfExpr {
     fn not(self) -> Self {
         let map_not = |exprs: Vec<Self>| exprs.into_iter().map(Self::not).collect();
         match self {
-            NnfExpr::Lit { polarity, name } => NnfExpr::Lit {
-                polarity: !polarity,
-                name,
-            },
-            NnfExpr::And { exprs } => NnfExpr::Or {
-                exprs: map_not(exprs),
-            },
-            NnfExpr::Or { exprs } => NnfExpr::And {
-                exprs: map_not(exprs),
-            },
+            NnfExpr::Lit { polarity, name } => NnfExpr::Lit { polarity: !polarity, name },
+            NnfExpr::And { exprs } => NnfExpr::Or { exprs: map_not(exprs) },
+            NnfExpr::Or { exprs } => NnfExpr::And { exprs: map_not(exprs) },
         }
     }
 }
@@ -1656,12 +1417,7 @@ impl CnfExpr {
     where
         I: IntoIterator<Item = CnfExpr>,
     {
-        let clauses = exprs
-            .into_iter()
-            .map(|expr| expr.0)
-            .multi_cartesian_product()
-            .map(|clauses| clauses.concat())
-            .collect::<Vec<Vec<(bool, String)>>>();
+        let clauses = exprs.into_iter().map(|expr| expr.0).multi_cartesian_product().map(|clauses| clauses.concat()).collect::<Vec<Vec<(bool, String)>>>();
         if clauses.is_empty() {
             CnfExpr::contra()
         } else {
@@ -1699,40 +1455,26 @@ impl CnfExpr {
         // iterator over clauses, where each clause is a `Vec<varisat::Lit>`.
         // Basically, this converts each `(bool, String)` in the `CnfExpr` to
         // `varisat::Lit`.
-        let clauses = self.0.iter().map(|clause| {
-            clause
-                .iter()
-                .map(|(is_pos, name)| varisat::Lit::from_var(vars[name], *is_pos))
-                .collect::<Vec<varisat::Lit>>()
-        });
+        let clauses = self.0.iter().map(|clause| clause.iter().map(|(is_pos, name)| varisat::Lit::from_var(vars[name], *is_pos)).collect::<Vec<varisat::Lit>>());
 
         let sat = varisat::CnfFormula::from(clauses);
 
         // Reverse order of `HashMap`. Convert `HashMap<String, varisat::Var>`
         // to `HashMap<varisat::Var, String>`.
-        let vars = vars
-            .into_iter()
-            .map(|(name, var)| (var, name))
-            .collect::<HashMap<varisat::Var, String>>();
+        let vars = vars.into_iter().map(|(name, var)| (var, name)).collect::<HashMap<varisat::Var, String>>();
 
         (sat, vars)
     }
 }
 
-pub fn expressions_for_depth(
-    depth: usize,
-    max_assoc: usize,
-    mut vars: BTreeSet<String>,
-) -> BTreeSet<Expr> {
+pub fn expressions_for_depth(depth: usize, max_assoc: usize, mut vars: BTreeSet<String>) -> BTreeSet<Expr> {
     let mut ret = BTreeSet::new();
     if depth == 0 {
         ret.insert(Expr::Contra);
         ret.insert(Expr::Taut);
         ret.extend(vars.iter().cloned().map(|name| Expr::Var { name }));
     } else {
-        let smaller: Vec<_> = expressions_for_depth(depth - 1, max_assoc, vars.clone())
-            .into_iter()
-            .collect();
+        let smaller: Vec<_> = expressions_for_depth(depth - 1, max_assoc, vars.clone()).into_iter().collect();
         let mut products = vec![];
         for i in 2..=max_assoc {
             products.extend((0..i).map(|_| smaller.clone()).multi_cartesian_product());
@@ -1772,63 +1514,19 @@ mod tests {
     #[test]
     fn test_gen_var() {
         assert_eq!(gen_var("A", &hashset![]), "A");
-        assert_eq!(
-            gen_var(
-                "A",
-                &hashset!["B".to_owned(), "C".to_owned(), "D".to_owned()]
-            ),
-            "A"
-        );
-        assert_eq!(
-            gen_var(
-                "A",
-                &hashset![
-                    "A".to_owned(),
-                    "B".to_owned(),
-                    "C".to_owned(),
-                    "D".to_owned()
-                ]
-            ),
-            "A0"
-        );
-        assert_eq!(
-            gen_var(
-                "A",
-                &hashset![
-                    "A".to_owned(),
-                    "A0".to_owned(),
-                    "A1".to_owned(),
-                    "A2".to_owned(),
-                    "A3".to_owned()
-                ]
-            ),
-            "A4"
-        );
+        assert_eq!(gen_var("A", &hashset!["B".to_owned(), "C".to_owned(), "D".to_owned()]), "A");
+        assert_eq!(gen_var("A", &hashset!["A".to_owned(), "B".to_owned(), "C".to_owned(), "D".to_owned()]), "A0");
+        assert_eq!(gen_var("A", &hashset!["A".to_owned(), "A0".to_owned(), "A1".to_owned(), "A2".to_owned(), "A3".to_owned()]), "A4");
     }
 
     #[test]
     fn test_subst() {
         use crate::parser::parse_unwrap as p;
-        assert_eq!(
-            subst(p("x & forall x, x"), "x", p("y")),
-            p("y & forall x, x")
-        ); // hit (true, _) case in Expr::Quantifier
-        assert_eq!(
-            subst(p("forall x, x & y"), "y", p("x")),
-            p("forall x0, x0 & x")
-        ); // hit (false, true) case in Expr::Quantifier
-        assert_eq!(
-            subst(p("forall x, x & y"), "y", p("z")),
-            p("forall x, x & z")
-        ); // hit (false, false) case in Expr::Quantifier
-        assert_eq!(
-            subst(p("forall f, f(x) & g(y, z)"), "g", p("h")),
-            p("forall f, f(x) & h(y, z)")
-        );
-        assert_eq!(
-            subst(p("forall f, f(x) & g(y, z)"), "g", p("f")),
-            p("forall f0, f0(x) & f(y, z)")
-        );
+        assert_eq!(subst(p("x & forall x, x"), "x", p("y")), p("y & forall x, x")); // hit (true, _) case in Expr::Quantifier
+        assert_eq!(subst(p("forall x, x & y"), "y", p("x")), p("forall x0, x0 & x")); // hit (false, true) case in Expr::Quantifier
+        assert_eq!(subst(p("forall x, x & y"), "y", p("z")), p("forall x, x & z")); // hit (false, false) case in Expr::Quantifier
+        assert_eq!(subst(p("forall f, f(x) & g(y, z)"), "g", p("h")), p("forall f, f(x) & h(y, z)"));
+        assert_eq!(subst(p("forall f, f(x) & g(y, z)"), "g", p("f")), p("forall f0, f0(x) & f(y, z)"));
     }
 
     #[test]
@@ -1837,11 +1535,7 @@ mod tests {
         let u = |s, t| {
             let left = p(s);
             let right = p(t);
-            let ret = unify(
-                vec![Constraint::Equal(left.clone(), right.clone())]
-                .into_iter()
-                .collect(),
-            );
+            let ret = unify(vec![Constraint::Equal(left.clone(), right.clone())].into_iter().collect());
             if let Some(ref ret) = ret {
                 let subst_l = ret.apply(left.clone());
                 let subst_r = ret.apply(right.clone());
@@ -1856,13 +1550,7 @@ mod tests {
         assert_eq!(u("forall x, x", "forall y, y"), Some(Substitution(vec![]))); // should be equal with no substitution since unification is modulo alpha equivalence
         println!("{:?}", u("f(x,y,z)", "g(x,y,y)"));
         println!("{:?}", u("g(x,y,y)", "f(x,y,z)"));
-        println!(
-            "{:?}",
-            u(
-                "forall foo, foo(x,y,z) & bar",
-                "forall bar, bar(x,y,z) & baz"
-            )
-        );
+        println!("{:?}", u("forall foo, foo(x,y,z) & bar", "forall bar, bar(x,y,z) & baz"));
 
         assert_eq!(u("forall x, z", "forall y, y"), None);
         assert_eq!(u("x & y", "x | y"), None);
@@ -1873,11 +1561,7 @@ mod tests {
         use crate::parser::parse_unwrap as p;
         let f = |s: &str| {
             let e = p(s);
-            println!(
-                "association of {} is {}",
-                e,
-                e.clone().combine_associative_ops()
-            );
+            println!("association of {} is {}", e, e.clone().combine_associative_ops());
         };
         f("a & (b & (c | (p -> (q <-> (r <-> s)))) & ((t === u) === (v === ((w | x) | y))))");
         f("a & ((b & c) | (q | r))");

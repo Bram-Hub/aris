@@ -1,0 +1,3 @@
+use_small_heuristics = "max"
+fn_args_layout = "compressed"
+max_width = 2147483647

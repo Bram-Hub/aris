@@ -10,16 +10,10 @@ pub struct ZipperVec<T> {
 
 impl<T> ZipperVec<T> {
     pub fn new() -> Self {
-        ZipperVec {
-            prefix: Vec::new(),
-            suffix_r: Vec::new(),
-        }
+        ZipperVec { prefix: Vec::new(), suffix_r: Vec::new() }
     }
     pub fn from_vec(v: Vec<T>) -> Self {
-        ZipperVec {
-            prefix: v,
-            suffix_r: Vec::new(),
-        }
+        ZipperVec { prefix: v, suffix_r: Vec::new() }
     }
     pub fn cursor_pos(&self) -> usize {
         self.prefix.len()
@@ -87,15 +81,7 @@ impl<T> Default for ZipperVec<T> {
 #[test]
 fn test_zippervec_pop() {
     let a = ZipperVec::from_vec((0usize..10).into_iter().collect());
-    let pop_spec = |i| -> (Option<usize>, Vec<usize>) {
-        (
-            Some(a.iter().cloned().collect::<Vec<usize>>()[i]),
-            a.iter()
-                .enumerate()
-                .filter_map(|(j, y)| if i == j { None } else { Some(*y) })
-                .collect::<Vec<_>>(),
-        )
-    };
+    let pop_spec = |i| -> (Option<usize>, Vec<usize>) { (Some(a.iter().cloned().collect::<Vec<usize>>()[i]), a.iter().enumerate().filter_map(|(j, y)| if i == j { None } else { Some(*y) }).collect::<Vec<_>>()) };
     for i in 0..10 {
         for j in 0..10 {
             let mut b = a.clone();
@@ -121,12 +107,7 @@ impl<T: PartialEq> ZipperVec<T> {
             if after {
                 self.inc_cursor();
             }
-            (if after {
-                &mut self.suffix_r
-            } else {
-                &mut self.prefix
-            })
-            .push(val);
+            (if after { &mut self.suffix_r } else { &mut self.prefix }).push(val);
         }
     }
 }
@@ -137,20 +118,11 @@ fn test_zippervec_insert_relative() {
     println!("{:?}", z);
     z.insert_relative(25, &20, true);
     println!("{:?}", z);
-    assert_eq!(
-        z.iter().cloned().collect::<Vec<usize>>(),
-        vec![0, 10, 20, 25, 30, 40]
-    );
+    assert_eq!(z.iter().cloned().collect::<Vec<usize>>(), vec![0, 10, 20, 25, 30, 40]);
     z.insert_relative(26, &30, false);
     println!("{:?}", z);
-    assert_eq!(
-        z.iter().cloned().collect::<Vec<usize>>(),
-        vec![0, 10, 20, 25, 26, 30, 40]
-    );
+    assert_eq!(z.iter().cloned().collect::<Vec<usize>>(), vec![0, 10, 20, 25, 26, 30, 40]);
     z.insert_relative(15, &10, true);
     println!("{:?}", z);
-    assert_eq!(
-        z.iter().cloned().collect::<Vec<usize>>(),
-        vec![0, 10, 15, 20, 25, 26, 30, 40]
-    );
+    assert_eq!(z.iter().cloned().collect::<Vec<usize>>(), vec![0, 10, 15, 20, 25, 26, 30, 40]);
 }
