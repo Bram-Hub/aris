@@ -1649,22 +1649,30 @@ impl RuleT for RedundantPrepositionalInference {
                     &dep_1,
                     |dep_0, dep_1| {
                         if let Expr::Assoc { op: _, exprs: expression } = dep_0 {
-                            let p = Expr::not(expression[0].clone());
+                            let p = expression[0].clone();
                             let q = expression[1].clone();
-                                if p != *dep_1{
-                                    AnyOrderResult::Err(DoesNotOccur(p, dep_1.clone()))
-                                } else if q != conclusion {
-                                    AnyOrderResult::Err(DoesNotOccur(q, conclusion.clone()))
+                            let res = either_order(&p, &q, |p, q| {
+                                if let Expr::Not { operand: dep1_body } = dep_1 {
+                                    if p != &**dep1_body {
+                                        AnyOrderResult::Err(DoesNotOccur(p.clone(), dep_1.clone()))
+                                    } else if q.clone() != conclusion {
+                                        AnyOrderResult::Err(DoesNotOccur(q.clone(), conclusion.clone()))
+                                    } else {
+                                        AnyOrderResult::Ok
+                                    }
                                 } else {
-                                    AnyOrderResult::Ok
+                                    AnyOrderResult::WrongOrder
                                 }
+                            }, || DepDoesNotExist(Expr::assocplaceholder(Op::Or), true),
+                            );
+                            match res { Ok(()) => AnyOrderResult::Ok, Err(e) => AnyOrderResult::Err(e)}
                         } else {
                             AnyOrderResult::WrongOrder
                         }
                     },
                     || DepDoesNotExist(Expr::assocplaceholder(Op::Or), true),
                 )
-            }
+            } 
             ExcludedMiddle => {
                 // A | ~A
                 let wrong_form_err =
