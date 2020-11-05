@@ -91,7 +91,10 @@ pub enum Expr {
     },
 
     /// Logical negation `¬P`
-    Not { operand: Box<Expr> },
+    Not {
+        /// The operand of the negation `P`
+        operand: Box<Expr>
+    },
 
     /// Logical implication `P → Q`
     Impl {
@@ -140,10 +143,16 @@ pub enum NnfExpr {
     },
 
     /// Sub-expressions OR'ed together
-    Or { exprs: Vec<NnfExpr> },
+    Or {
+        /// The subexpressions which are OR'ed
+        exprs: Vec<NnfExpr>
+    },
 
     /// Sub-expressions AND'ed together
-    And { exprs: Vec<NnfExpr> },
+    And {
+        /// The subexpressions which are AND'ed
+        exprs: Vec<NnfExpr>
+    },
 }
 
 /// An expression in [conjunctive normal form (CNF)][cnf]. This can be obtained
@@ -356,21 +365,32 @@ pub fn subst(expr: Expr, var_to_replace: &str, replacement: Expr) -> Expr {
     }
 }
 
+/// Constraints that should hold for a substitution, maintained in a set during unification
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Equal {
-    pub left: Expr,
-    pub right: Expr,
+pub enum Constraint {
+    /// Require that two subexpressions must be equal
+    Equal(Expr, Expr),
 }
 
+
+/// A substitution of variable names to `Expr`s, meant to be passed to `subst`
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Substitution<A, B>(pub Vec<(A, B)>);
+pub struct Substitution(pub Vec<(String, Expr)>);
+
+impl Substitution {
+    /// Apply all the pairs in a substitution to an expression
+    pub fn apply(&self, expr: Expr) -> Expr {
+        self.0.iter().fold(expr, |z, (x, y)| subst(z, x, y.clone())) 
+    }
+}
+
 /// Unifies a set of equality constraints on expressions, giving a list of substitutions that make constrained expressions equal.
 /// a == b -> unify(HashSet::from_iter(vec![Equal(a, b)])) == Some(vec![])
-pub fn unify(mut c: HashSet<Equal>) -> Option<Substitution<String, Expr>> {
+pub fn unify(mut c: HashSet<Constraint>) -> Option<Substitution> {
     // inspired by TAPL 22.4
     //println!("\t{:?}", c);
     let mut c_ = c.clone();
-    let Equal { left, right } = if let Some(x) = c_.drain().next() {
+    let Constraint::Equal(left, right) = if let Some(x) = c_.drain().next() {
         c.remove(&x);
         x
     } else {
@@ -379,12 +399,8 @@ pub fn unify(mut c: HashSet<Equal>) -> Option<Substitution<String, Expr>> {
     let subst_set = |x, e1: Expr, set: HashSet<_>| {
         set.into_iter()
             .map(
-                |Equal {
-                     left: e2,
-                     right: e3,
-                 }| Equal {
-                    left: subst(e2, x, e1.clone()),
-                    right: subst(e3, x, e1.clone()),
+                |Constraint::Equal(e2, e3)| {
+                    Constraint::Equal(subst(e2, x, e1.clone()), subst(e3, x, e1.clone()))
                 },
             )
             .collect::<_>()
@@ -405,10 +421,7 @@ pub fn unify(mut c: HashSet<Equal>) -> Option<Substitution<String, Expr>> {
             })
         }
         (Expr::Not { operand: s }, Expr::Not { operand: t }) => {
-            c.insert(Equal {
-                left: *s,
-                right: *t,
-            });
+            c.insert(Constraint::Equal(*s, *t));
             unify(c)
         }
         (
@@ -421,37 +434,25 @@ pub fn unify(mut c: HashSet<Equal>) -> Option<Substitution<String, Expr>> {
                 right: tr,
             },
         ) => {
-            c.insert(Equal {
-                left: *sl,
-                right: *tl,
-            });
-            c.insert(Equal {
-                left: *sr,
-                right: *tr,
-            });
+            c.insert(Constraint::Equal(*sl, *tl));
+            c.insert(Constraint::Equal(*sr, *tr));
             unify(c)
         }
         (Expr::Apply { func: sf, args: sa }, Expr::Apply { func: tf, args: ta })
             if sa.len() == ta.len() =>
         {
-            c.insert(Equal {
-                left: *sf,
-                right: *tf,
-            });
+            c.insert(Constraint::Equal(*sf, *tf));
             c.extend(
                 sa.into_iter()
                     .zip(ta.into_iter())
-                    .map(|(x, y)| Equal { left: x, right: y }),
+                    .map(|(x, y)| Constraint::Equal(x, y)),
             );
             unify(c)
         }
         (Expr::Assoc { op: so, exprs: se }, Expr::Assoc { op: to, exprs: te })
             if so == to && se.len() == te.len() =>
         {
-            c.extend(se.iter().zip(te.iter()).map(|(x, y)| Equal {
-                left: x.clone(),
-                right: y.clone(),
-            }));
+            c.extend(se.iter().zip(te.iter()).map(|(x, y)| Constraint::Equal(x.clone(), y.clone())));
             unify(c)
         }
         (
@@ -468,10 +469,7 @@ pub fn unify(mut c: HashSet<Equal>) -> Option<Substitution<String, Expr>> {
         ) if sk == tk => {
             let uv = gen_var("__unification_var", &fvs.union(&fvt).cloned().collect());
             // require that the bodies of the quantifiers are alpha-equal by substituting a fresh constant
-            c.insert(Equal {
-                left: subst(*sb, &sn, Expr::var(&uv)),
-                right: subst(*tb, &tn, Expr::var(&uv)),
-            });
+            c.insert(Constraint::Equal(subst(*sb, &sn, Expr::var(&uv)), subst(*tb, &tn, Expr::var(&uv))));
             // if the constant escapes, then a free variable in one formula unified with a captured variable in the other, so the values don't unify
             unify(c).and_then(|sub| {
                 if sub
@@ -498,41 +496,50 @@ Currently, the parser will never produce Expr::Apply nodes that have a func that
 */
 
 impl Expr {
+    /// Helper for constructing `Var` nodes
     pub fn var(name: &str) -> Expr {
         Expr::Var { name: name.into() }
     }
+    /// Helper for constructing `Apply` nodes
     pub fn apply(func: Expr, args: &[Expr]) -> Expr {
         Expr::Apply {
             func: Box::new(func),
             args: args.to_vec(),
         }
     }
+    /// Helper for constructing `Not` nodes
     pub fn not(expr: Expr) -> Expr {
         Expr::Not {
             operand: Box::new(expr),
         }
     }
+    /// Construct an error message placeholder for an implication
     pub fn impl_place_holder() -> Expr {
         Expr::implies(Expr::var("_"), Expr::var("_"))
     }
+    /// Helper for constructing `Impl` nodes
     pub fn implies(left: Expr, right: Expr) -> Expr {
         Expr::Impl {
             left: Box::new(left),
             right: Box::new(right),
         }
     }
+    /// Helper for constructing `Or` nodes
     pub fn or(l: Expr, r: Expr) -> Expr {
         Expr::assoc(Op::Or, &[l, r])
     }
+    /// Helper for constructing `Assoc` nodes
     pub fn assoc(op: Op, exprs: &[Expr]) -> Expr {
         Expr::Assoc {
             op,
             exprs: exprs.to_vec(),
         }
     }
+    /// Construct an error message placeholder for an associative operator
     pub fn assocplaceholder(op: Op) -> Expr {
         Expr::assoc(op, &[Expr::var("_"), Expr::var("_"), Expr::var("...")])
     }
+    /// Construct an error message placeholder for a quantifier
     pub fn quant_placeholder(kind: QuantKind) -> Expr {
         Expr::Quant {
             kind,
@@ -540,6 +547,7 @@ impl Expr {
             body: Box::new(Expr::var("_")),
         }
     }
+    /// Helper for constructing `Forall` nodes
     pub fn forall(name: &str, body: Expr) -> Expr {
         Expr::Quant {
             kind: QuantKind::Forall,
@@ -547,6 +555,7 @@ impl Expr {
             body: Box::new(body),
         }
     }
+    /// Helper for constructing `Exists` nodes
     pub fn exists(name: &str, body: Expr) -> Expr {
         Expr::Quant {
             kind: QuantKind::Exists,
@@ -554,6 +563,7 @@ impl Expr {
             body: Box::new(body),
         }
     }
+    /// Infer arities (number of arguments) for each variable that occurs free in an expression
     pub fn infer_arities(&self, arities: &mut HashMap<String, usize>) {
         match self {
             Expr::Contra | Expr::Taut => {}
@@ -959,6 +969,7 @@ impl Expr {
         })
     }
 
+    /// View the top-level disjuncts of an Expr, counting contradiction as an empty disjunction. Useful for SAT interopration.
     pub fn disjuncts(&self) -> Vec<Expr> {
         match self {
             Expr::Contra => vec![],
@@ -966,6 +977,7 @@ impl Expr {
             _ => vec![self.clone()],
         }
     }
+    /// Turn a list of disjuncts into an Expr, handling the 0/1 cases in a way that maintains the invariant that Assoc's exprs.len() > 2.
     pub fn from_disjuncts(mut disjuncts: Vec<Expr>) -> Expr {
         match disjuncts.len() {
             0 => Expr::Contra,
@@ -976,6 +988,7 @@ impl Expr {
             },
         }
     }
+    /// View the top-level conjuncts of an Expr, counting tautology as an empty conjunction. Useful for SAT interopration.
     pub fn conjuncts(&self) -> Vec<Expr> {
         match self {
             Expr::Taut => vec![],
@@ -983,6 +996,7 @@ impl Expr {
             _ => vec![self.clone()],
         }
     }
+    /// Turn a list of conjuncts into an Expr, handling the 0/1 cases in a way that maintains the invariant that Assoc's exprs.len() > 2.
     pub fn from_conjuncts(mut conjuncts: Vec<Expr>) -> Expr {
         match conjuncts.len() {
             0 => Expr::Taut,
@@ -993,6 +1007,7 @@ impl Expr {
             },
         }
     }
+    /// Push negation inwards through forall/exists, flipping the quantifier kind in the process
     pub fn negate_quantifiers(self) -> Expr {
         self.transform(&|expr| {
             let gen_opposite = |kind, name, body| Expr::Quant {
@@ -1013,6 +1028,7 @@ impl Expr {
             }
         })
     }
+    /// Remove any quantifiers whose names are unused in their bodies
     pub fn normalize_null_quantifiers(self) -> Expr {
         self.transform(&|expr| {
             match expr {
@@ -1028,6 +1044,8 @@ impl Expr {
             }
         })
     }
+    /// Replace all bound variables with DeBruijn indices, for testing alpha-equivalence
+    /// if `a.replacing_bound_vars() == b.replacing_bound_vars()`, then `a` is alpha-equivalent to `b`
     pub fn replacing_bound_vars(self) -> Expr {
         // replaces the letter names with numbers
         fn aux(expr: Expr, mut gamma: Vec<String>) -> Expr {
@@ -1095,13 +1113,14 @@ impl Expr {
         }
         ret
     }
-    // check for quantifier,
-    // as long as the prefix is the same,
-    // keep pushing variables into a set.
-    // as soon as you reach a non-quantifier,
-    // rewrap all the quantifiers in sorted order
-    // if the sorted set is the same as the initial set, return false
+    /// Sort the names of quantified variables within runs of quantifiers of the same kind
     pub fn swap_quantifiers(self) -> Expr {
+        // check for quantifier,
+        // as long as the prefix is the same,
+        // keep pushing variables into a set.
+        // as soon as you reach a non-quantifier,
+        // rewrap all the quantifiers in sorted order
+        // if the sorted set is the same as the initial set, return false
         self.transform(&|expr| {
             let mut mod_expr = expr.clone();
             let mut stack = vec![];
@@ -1293,6 +1312,7 @@ impl Expr {
         })
     }
 
+    /// Distribute forall/exists into and/or
     pub fn quantifier_distribution(self) -> Expr {
         let push_quantifier_inside = |kind: QuantKind, qname: String, exprs: &mut Vec<Expr>| {
             for iter in exprs.iter_mut() {
@@ -1818,22 +1838,13 @@ mod tests {
             let left = p(s);
             let right = p(t);
             let ret = unify(
-                vec![Equal {
-                    left: left.clone(),
-                    right: right.clone(),
-                }]
+                vec![Constraint::Equal(left.clone(), right.clone())]
                 .into_iter()
                 .collect(),
             );
             if let Some(ref ret) = ret {
-                let subst_l = ret
-                    .0
-                    .iter()
-                    .fold(left.clone(), |z, (x, y)| subst(z, x, y.clone()));
-                let subst_r = ret
-                    .0
-                    .iter()
-                    .fold(right.clone(), |z, (x, y)| subst(z, x, y.clone()));
+                let subst_l = ret.apply(left.clone());
+                let subst_r = ret.apply(right.clone());
                 // TODO: assert alpha_equal(subst_l, subst_r);
                 println!("{} {} {:?} {} {}", left, right, ret, subst_l, subst_r);
             }

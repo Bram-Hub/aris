@@ -4,7 +4,7 @@
 use crate::expr::free_vars;
 use crate::expr::gen_var;
 use crate::expr::subst;
-use crate::expr::Equal;
+use crate::expr::Constraint;
 use crate::expr::Expr;
 
 use std::collections::HashMap;
@@ -183,10 +183,7 @@ fn reduce_transform_func(expr: Expr, patterns: &[(Expr, Expr, HashSet<String>)])
     for (pattern, replace, pattern_vars) in patterns {
         // Unify3D
         let ret = crate::expr::unify(
-            vec![Equal {
-                left: pattern.clone(),
-                right: expr.clone(),
-            }]
+            vec![Constraint::Equal(pattern.clone(), expr.clone())]
             .into_iter()
             .collect(),
         );

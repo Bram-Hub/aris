@@ -110,6 +110,9 @@ typedef struct {
 } Apply_Body;
 
 typedef struct {
+  /**
+   * The operand of the negation `P`
+   */
   Box_Expr operand;
 } Not_Body;
 

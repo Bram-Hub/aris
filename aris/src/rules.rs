@@ -55,7 +55,7 @@ Adding the tests and implementing the rule can be interleaved; it's convenient t
 */
 
 use crate::equivs;
-use crate::expr::Equal;
+use crate::expr::Constraint;
 use crate::expr::Expr;
 use crate::expr::Op;
 use crate::expr::QuantKind;
@@ -79,6 +79,7 @@ use petgraph::algo::tarjan_scc;
 use petgraph::graphmap::DiGraphMap;
 use strum_macros::*;
 
+#[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PrepositionalInference {
     Reit,
@@ -98,6 +99,7 @@ pub enum PrepositionalInference {
     EquivalenceElim,
 }
 
+#[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PredicateInference {
     ForallIntro,
@@ -106,6 +108,7 @@ pub enum PredicateInference {
     ExistsElim,
 }
 
+#[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BooleanEquivalence {
     DeMorgan,
@@ -123,6 +126,7 @@ pub enum BooleanEquivalence {
     Adjacency,
 }
 
+#[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ConditionalEquivalence {
     Complement,
@@ -140,6 +144,7 @@ pub enum ConditionalEquivalence {
     BiconditionalSubstitution,
 }
 
+#[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RedundantPrepositionalInference {
     ModusTollens,
@@ -149,12 +154,14 @@ pub enum RedundantPrepositionalInference {
     ConstructiveDilemma,
 }
 
+#[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AutomationRelatedRules {
     Resolution,
     TautologicalConsequence,
 }
 
+#[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum QuantifierEquivalence {
     QuantifierNegation,
@@ -206,19 +213,23 @@ pub mod RuleM {
         ($([$id:ident, $name:literal, $value:tt]),+) => {
             declare_rules!{ DECLARE_STATICS; $([$id, $value]),+ }
 
+            /// All string constants for the rules declared by `declare_rules!`
             pub static ALL_SERIALIZED_NAMES: &[&'static str] = &[ $($name),+ ];
+            /// All `Rule` enums for the rules declared by `declare_rules!`
             pub static ALL_RULES: &[Rule] = &[$($id),+];
 
+            /// Convert a Rule to a string compatible with the Java enum `edu.rpi.aris.rules.RuleList`
             #[allow(unused_parens)]
             pub fn to_serialized_name(rule: Rule) -> &'static str {
                 declare_rules! { DECLARE_MATCH; on: rule; default: unreachable!(); $([$value, $name]),+ }
             }
+            /// Convert string from the Java enum `edu.rpi.aris.rules.RuleList` to a Rule
             pub fn from_serialized_name(name: &str) -> Option<Rule> {
                 Some(declare_rules! { DECLARE_MATCH; on: name; default: { return None; }; $([$name, $id]),+ })
             }
         };
         (DECLARE_STATICS; [$id: ident, $value:expr]) => {
-            #[allow(unused_parens)]
+            #[allow(unused_parens, missing_docs)]
             pub static $id: Rule = $value;
         };
         (DECLARE_STATICS; [$id: ident, $value:expr], $([$id_rec:ident, $value_rec:expr]),+) => {
@@ -308,6 +319,7 @@ pub mod RuleM {
 }
 
 /// Classifications of rules for displaying in a nested drop-down menu in the GUI
+#[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Display, EnumIter)]
 pub enum RuleClassification {
     Introduction,
@@ -1025,10 +1037,7 @@ impl RuleT for PredicateInference {
             e2: &Expr,
             var: &str,
         ) -> Result<Expr, ProofCheckError<PJRef<P>, P::SubproofReference>> {
-            let constraints = vec![Equal {
-                left: e1.clone(),
-                right: e2.clone(),
-            }]
+            let constraints = vec![Constraint::Equal(e1.clone(), e2.clone())]
             .into_iter()
             .collect();
             if let Some(substitutions) = crate::expr::unify(constraints) {
@@ -2128,18 +2137,30 @@ where
     any_order(deps, check_func, fallthrough_error)
 }
 
+/// Errors that can occur when checking a proof
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ProofCheckError<R, S> {
+    /// A line reference lookup failed
     LineDoesNotExist(R),
+    /// A subproof reference lookup failed
     SubproofDoesNotExist(S),
+    /// The proof is malformed in a way that permits circular references
     ReferencesLaterLine(R, Coproduct<R, Coproduct<S, frunk_core::coproduct::CNil>>),
+    /// The wrong number of line dependencies were provided for a rule
     IncorrectDepCount(Vec<R>, usize),
+    /// The wrong number of subproof dependencies were provided for a rule
     IncorrectSubDepCount(Vec<S>, usize),
+    /// A dependency `.0` was of the wrong form, and a placeholder `.1` was expected
     DepOfWrongForm(Expr, Expr),
+    /// The conclusion of a rule was different from what was expected
     ConclusionOfWrongForm(Expr),
+    /// `.0` should occur in `.1`, but it doesn't
     DoesNotOccur(Expr, Expr),
+    /// A dependency was expected, but wasn't provided. `.1` indicates whether the expected value is approximate
     DepDoesNotExist(Expr, bool),
+    /// Multiple errors apply
     OneOf(BTreeSet<ProofCheckError<R, S>>),
+    /// Escape hatch for custom errors
     Other(String),
 }
 

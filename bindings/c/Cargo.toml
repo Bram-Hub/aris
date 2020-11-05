@@ -9,7 +9,7 @@ aris = { path = "../../aris" }
 
 [lib]
 crate-type = ["cdylib"]
-name = "aris"
+name = "aris_c"
 
 [features]
 workaround_rls_vscode_bug_586 = []
