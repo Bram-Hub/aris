@@ -2856,11 +2856,7 @@ pub fn test_disjunctive_syllogism<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>
         vec![i(r2.clone()), i(r1.clone())],
         vec![],
     ));
-    (
-        prf,
-        vec![i(r4), i(r5)],
-        vec![i(r6), i(r7), i(r8), i(r9)],
-    )
+    (prf, vec![i(r4), i(r5)], vec![i(r6), i(r7), i(r8), i(r9)])
 }
 
 pub fn test_constructive_dilemma<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
