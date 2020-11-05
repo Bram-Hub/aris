@@ -1651,13 +1651,17 @@ impl RuleT for RedundantPrepositionalInference {
                         if let Expr::Assoc { op: _, exprs: expression } = dep_0 {
                             let p = Expr::not(expression[0].clone());
                             let q = expression[1].clone();
-                            if p != *dep_1 {
-                                AnyOrderResult::Err(DoesNotOccur(p, dep_1.clone()))
-                            } else if q != conclusion {
-                                AnyOrderResult::Err(DoesNotOccur(q, conclusion.clone()))
-                            } else {
-                                AnyOrderResult::Ok
-                            }
+                            let res = either_order(&p, &q, |p, q| {
+                                if *p != *dep_1{
+                                    AnyOrderResult::Err(DoesNotOccur(*p, dep_1.clone()))
+                                } else if *q != conclusion {
+                                    AnyOrderResult::Err(DoesNotOccur(*q, conclusion.clone()))
+                                } else {
+                                    AnyOrderResult::Ok
+                                }
+                            }, || DepDoesNotExist(Expr::assocplaceholder(Op::Or), true),
+                            )
+                            match res { Ok(()) => AnyOrderResult::Ok, Err(e) => AnyOrderResult::Err(e)}
                         } else {
                             AnyOrderResult::WrongOrder
                         }
