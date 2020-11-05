@@ -2820,37 +2820,37 @@ pub fn test_disjunctive_syllogism<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>
     let r1 = prf.add_premise(p("~Q"));
     let r2 = prf.add_premise(p("P ∨ Q"));
     let r3 = prf.add_premise(p("P"));
-    let r6 = prf.add_step(Justification(
+    let r4 = prf.add_step(Justification(
         p("P"),
         RuleM::DisjunctiveSyllogism,
         vec![i(r1.clone()), i(r2.clone())],
         vec![],
     ));
-    let r7 = prf.add_step(Justification(
+    let r5 = prf.add_step(Justification(
         p("P"),
         RuleM::DisjunctiveSyllogism,
         vec![i(r2.clone()), i(r1.clone())],
         vec![],
     ));
-    let r9 = prf.add_step(Justification(
-        p("~P"),
+    let r6 = prf.add_step(Justification(
+        p("~Q"),
         RuleM::DisjunctiveSyllogism,
         vec![i(r3.clone()), i(r2.clone())],
         vec![],
     ));
-    let r10 = prf.add_step(Justification(
-        p("~P"),
+    let r7 = prf.add_step(Justification(
+        p("~Q"),
         RuleM::DisjunctiveSyllogism,
         vec![i(r2.clone()), i(r3.clone())],
         vec![],
     ));
-    let r11 = prf.add_step(Justification(
+    let r8 = prf.add_step(Justification(
         p("Q"),
         RuleM::DisjunctiveSyllogism,
         vec![i(r1.clone()), i(r2.clone())],
         vec![],
     ));
-    let r12 = prf.add_step(Justification(
+    let r9 = prf.add_step(Justification(
         p("Q"),
         RuleM::DisjunctiveSyllogism,
         vec![i(r2.clone()), i(r1.clone())],
@@ -2858,8 +2858,8 @@ pub fn test_disjunctive_syllogism<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>
     ));
     (
         prf,
-        vec![i(r6), i(r7), i(r11), i(r12)],
-        vec![i(r9), i(r10)],
+        vec![i(r4), i(r5)],
+        vec![i(r6), i(r7), i(r8), i(r9)],
     )
 }
 
