@@ -1045,6 +1045,8 @@ impl Expr {
         })
     }
 
+    /// ¬∀x (φ(x) → ψ(x)) ⇔ ∃x (φ(x) ∧ ¬ψ(x))
+    /// ¬∃x (φ(x) ∧ ψ(x)) ⇔ ∀x (φ(x) → ¬ψ(x))
     pub fn aristotelean_square(self) -> Expr {
         self.transform(&|expr| {
             let gen_opposite = |kind, name, body| match kind {
