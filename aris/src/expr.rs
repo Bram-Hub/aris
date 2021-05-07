@@ -415,6 +415,24 @@ This also makes sense for eventually supporting lambda expressions using Expr::Q
 Currently, the parser will never produce Expr::Apply nodes that have a func that is not an Expr::Var, and some code depends on this to avoid handling a more difficult general case.
 */
 
+impl std::ops::Not for Expr {
+    type Output = Self;
+
+    /// Helper for constructing `Not` nodes
+    fn not(self) -> Expr {
+        Expr::Not { operand: Box::new(self) }
+    }
+}
+
+impl std::ops::BitOr for Expr {
+    type Output = Self;
+
+    /// Helper for constructing `Or` nodes
+    fn bitor(self, rhs: Expr) -> Expr {
+        Expr::assoc(Op::Or, &[self, rhs])
+    }
+}
+
 impl Expr {
     /// Helper for constructing `Var` nodes
     pub fn var(name: &str) -> Expr {
@@ -424,10 +442,6 @@ impl Expr {
     pub fn apply(func: Expr, args: &[Expr]) -> Expr {
         Expr::Apply { func: Box::new(func), args: args.to_vec() }
     }
-    /// Helper for constructing `Not` nodes
-    pub fn not(expr: Expr) -> Expr {
-        Expr::Not { operand: Box::new(expr) }
-    }
     /// Construct an error message placeholder for an implication
     pub fn impl_place_holder() -> Expr {
         Expr::implies(Expr::var("_"), Expr::var("_"))
@@ -435,10 +449,6 @@ impl Expr {
     /// Helper for constructing `Impl` nodes
     pub fn implies(left: Expr, right: Expr) -> Expr {
         Expr::Impl { left: Box::new(left), right: Box::new(right) }
-    }
-    /// Helper for constructing `Or` nodes
-    pub fn or(l: Expr, r: Expr) -> Expr {
-        Expr::assoc(Op::Or, &[l, r])
     }
     /// Helper for constructing `Assoc` nodes
     pub fn assoc(op: Op, exprs: &[Expr]) -> Expr {

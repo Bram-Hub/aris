@@ -10,7 +10,6 @@ use yew_octicons::Icon;
 use yew_octicons::IconKind;
 
 pub struct FileOpenHelper {
-    filepicker_visible: bool,
     file_open_closure: Closure<dyn FnMut(JsValue)>,
     filename_tx: std::sync::mpsc::Sender<(String, web_sys::FileReader)>,
 }
@@ -29,10 +28,9 @@ impl FileOpenHelper {
                 }
             }
         }) as Box<dyn FnMut(JsValue)>);
-        Self { filepicker_visible: false, file_open_closure, filename_tx }
+        Self { file_open_closure, filename_tx }
     }
     fn fileopen(&mut self, file_list: web_sys::FileList) -> ShouldRender {
-        self.filepicker_visible = false;
         if let Some(file) = file_list.get(0) {
             // MDN (https://developer.mozilla.org/en-US/docs/Web/API/Blob/text) and web-sys (https://docs.rs/web-sys/0.3.36/web_sys/struct.Blob.html#method.text)
             // both document "Blob.text()" as being a thing, but both chrome and firefox say that "getObject(...).text is not a function"
@@ -109,7 +107,6 @@ impl Component for NavBarWidget {
                     anchor.set_href(&url);
                     node.append_child(&anchor).expect("node.append_child failed");
                     anchor.click();
-                    let node = node.clone();
                     Timeout::new(0, move || {
                         node.remove_child(&anchor).expect("node.remove_child failed");
                     })

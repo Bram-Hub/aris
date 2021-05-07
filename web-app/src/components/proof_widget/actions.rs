@@ -9,7 +9,7 @@ use super::ProofItemKind;
 use super::P;
 
 use aris::proofs::pj_to_pjs;
-use aris::proofs::PJRef;
+use aris::proofs::PjRef;
 use aris::proofs::Proof;
 
 /// Information associated with a line action
@@ -34,7 +34,7 @@ pub struct ActionInfo {
 /// ## Parameters:
 ///   * `proof` - the current proof object
 ///   * `line_ref` - reference to the current line
-pub fn valid_actions(proof: &P, line_ref: PJRef<P>) -> impl Iterator<Item = &ActionInfo> {
+pub fn valid_actions(proof: &P, line_ref: PjRef<P>) -> impl Iterator<Item = &ActionInfo> {
     use frunk_core::coproduct::Coproduct::{Inl, Inr};
 
     // Can the current line be deleted?

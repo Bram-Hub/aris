@@ -3,7 +3,7 @@
 use crate::expr::Expr;
 use crate::proofs::pooledproof::PooledProof;
 use crate::proofs::Justification;
-use crate::proofs::PJRef;
+use crate::proofs::PjRef;
 use crate::proofs::Proof;
 use crate::rules::RuleM;
 
@@ -22,9 +22,9 @@ where
     Coproduct::inject(to_insert)
 }
 
-fn run_test<P: Proof + Display + Debug, F: FnOnce() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>)>(f: F)
+fn run_test<P: Proof + Display + Debug, F: FnOnce() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>)>(f: F)
 where
-    PJRef<P>: Debug,
+    PjRef<P>: Debug,
     P::SubproofReference: Debug,
 {
     let (prf, oks, errs) = f();
@@ -97,7 +97,7 @@ enumerate_subproofful_tests! { PooledProof<Hlist![Expr]>, test_subproofful_rules
 pub fn demo_proof_1<P: Proof>() -> P
 where
     P: PartialEq + std::fmt::Debug,
-    PJRef<P>: PartialEq + std::fmt::Debug,
+    PjRef<P>: PartialEq + std::fmt::Debug,
     P::SubproofReference: PartialEq + std::fmt::Debug,
 {
     use self::coproduct_inject as i;
@@ -125,7 +125,7 @@ where
     prf
 }
 
-pub fn test_andelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_andelim<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -138,7 +138,7 @@ pub fn test_andelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r3)], vec![i(r4), i(r5), i(r6)])
 }
 
-pub fn test_contelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_contelim<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -149,7 +149,7 @@ pub fn test_contelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r3)], vec![i(r4)])
 }
 
-pub fn test_orintro<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_orintro<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -160,7 +160,7 @@ pub fn test_orintro<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r2)], vec![i(r3), i(r4)])
 }
 
-pub fn test_reit<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_reit<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -170,7 +170,7 @@ pub fn test_reit<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r2)], vec![i(r3)])
 }
 
-pub fn test_andintro<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_andintro<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -184,7 +184,7 @@ pub fn test_andintro<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r4), i(r7)], vec![i(r5), i(r6)])
 }
 
-pub fn test_contradictionintro<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_contradictionintro<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -201,7 +201,7 @@ pub fn test_contradictionintro<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) 
     (prf, vec![i(r5), i(r6), i(r10)], vec![i(r7), i(r8), i(r9)])
 }
 
-pub fn test_notelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_notelim<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -217,7 +217,7 @@ pub fn test_notelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r5), i(r6)], vec![i(r7), i(r8), i(r9)])
 }
 
-pub fn test_impelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_impelim<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -238,7 +238,7 @@ pub fn test_impelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r6), i(r7), i(r13), i(r14)], vec![i(r8), i(r9), i(r10), i(r11), i(r12)])
 }
 
-pub fn test_biconelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_biconelim<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -270,7 +270,7 @@ pub fn test_biconelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     }
 }
 
-pub fn test_impintro<P: Proof + Debug>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>)
+pub fn test_impintro<P: Proof + Debug>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>)
 where
     P::Subproof: Debug,
 {
@@ -303,7 +303,7 @@ where
     (prf, vec![i(r4), i(r7), i(r9), i(r10)], vec![i(r11)])
 }
 
-pub fn test_notintro<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_notintro<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -318,7 +318,7 @@ pub fn test_notintro<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r5)], vec![i(r6)])
 }
 
-pub fn test_orelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_orelim<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -344,7 +344,7 @@ pub fn test_orelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r11)], vec![i(r12), i(r13)])
 }
 
-pub fn test_biconintro<P: Proof + Debug>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>)
+pub fn test_biconintro<P: Proof + Debug>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>)
 where
     P::Subproof: Debug,
 {
@@ -390,7 +390,7 @@ where
     (prf, vec![i(r7), i(r11), i(r16), i(r19)], vec![i(r8), i(r9), i(r12), i(r13), i(r17)])
 }
 
-pub fn test_equivintro<P: Proof + Debug>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>)
+pub fn test_equivintro<P: Proof + Debug>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>)
 where
     P::Subproof: Debug,
 {
@@ -436,7 +436,7 @@ where
     (prf, vec![i(r7), i(r8), i(r9), i(r11), i(r16), i(r19)], vec![i(r12), i(r13), i(r17)])
 }
 
-pub fn test_equivelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_equivelim<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -451,7 +451,7 @@ pub fn test_equivelim<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r3), i(r4), i(r5), i(r8)], vec![i(r6), i(r7)])
 }
 
-pub fn test_forallelim<P: Proof + Debug>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>)
+pub fn test_forallelim<P: Proof + Debug>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>)
 where
     P::Subproof: Debug,
 {
@@ -465,10 +465,10 @@ where
     (prf, vec![i(r2), i(r4)], vec![i(r3)])
 }
 
-pub fn test_forallintro<P: Proof + Debug>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>)
+pub fn test_forallintro<P: Proof + Debug>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>)
 where
     P::Subproof: Debug,
-    PJRef<P>: Debug,
+    PjRef<P>: Debug,
     P::SubproofReference: Debug,
 {
     use self::coproduct_inject as i;
@@ -533,10 +533,10 @@ where
     (prf, vec![i(r5), i(r6), i(r7), i(r8), i(r11), i(r18), i(r19), i(r22)], vec![i(r9), i(r12), i(r17), i(r23)])
 }
 
-pub fn test_existsintro<P: Proof + Debug>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>)
+pub fn test_existsintro<P: Proof + Debug>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>)
 where
     P::Subproof: Debug,
-    PJRef<P>: Debug,
+    PjRef<P>: Debug,
     P::SubproofReference: Debug,
 {
     use self::coproduct_inject as i;
@@ -558,10 +558,10 @@ where
 
     (prf, vec![i(r3), i(r4), i(r6), i(r7), i(r8), i(r9)], vec![i(r5), i(r10), i(r11), i(r12)])
 }
-pub fn test_existselim<P: Proof + Debug>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>)
+pub fn test_existselim<P: Proof + Debug>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>)
 where
     P::Subproof: Debug,
-    PJRef<P>: Debug,
+    PjRef<P>: Debug,
     P::SubproofReference: Debug,
 {
     use self::coproduct_inject as i;
@@ -628,7 +628,7 @@ where
     (prf, vec![i(r6), i(r7), i(r8), i(r9), i(r10), i(r12), i(s5), i(s6), i(s7), i(s8), i(t1), i(t4), i(t5), i(u4), i(u5), i(u6), i(u7)], vec![i(r11), i(r13), i(t6)])
 }
 
-pub fn test_commutation<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_commutation<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -644,7 +644,7 @@ pub fn test_commutation<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r3), i(r4), i(r6), i(r7), i(r8)], vec![i(r5), i(r9)])
 }
 
-pub fn test_association<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_association<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -654,7 +654,7 @@ pub fn test_association<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r2)], vec![i(r3)])
 }
 
-pub fn test_demorgan<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_demorgan<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -693,7 +693,7 @@ pub fn test_demorgan<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r7), i(r11), i(r15), i(r18), i(r19), i(r20), i(r21), i(r22), i(r23), i(r24), i(r25), i(r26), i(r29)], vec![i(r8), i(r9), i(r10), i(r12), i(r13), i(r14), i(r16), i(r17), i(r27), i(r28), i(r30)])
 }
 
-pub fn test_idempotence<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_idempotence<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -726,7 +726,7 @@ pub fn test_idempotence<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r8), i(r9), i(r10), i(r11), i(r12), i(r16), i(r17), i(r18)], vec![i(r13), i(r14), i(r15), i(r19), i(r20), i(r21), i(r22)])
 }
 
-pub fn test_doublenegation<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_doublenegation<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -748,7 +748,7 @@ pub fn test_doublenegation<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r4), i(r5), i(r6), i(r7), i(r8), i(r9)], vec![i(r10), i(r11)])
 }
 
-pub fn test_distribution<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_distribution<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -765,7 +765,7 @@ pub fn test_distribution<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r1), i(r2), i(r3)], vec![i(r4)])
 }
 
-pub fn test_complement<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_complement<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -800,7 +800,7 @@ pub fn test_complement<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r7), i(r9), i(r12), i(r14), i(r16), i(r17), i(r20), i(r21), i(r22), i(r23), i(r24)], vec![i(r8), i(r10), i(r11), i(r13), i(r15), i(r18), i(r25)])
 }
 
-pub fn test_identity<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_identity<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -830,7 +830,7 @@ pub fn test_identity<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r5), i(r7), i(r9), i(r11), i(r14), i(r18)], vec![i(r6), i(r8), i(r10), i(r12), i(r15), i(r16), i(r19)])
 }
 
-pub fn test_annihilation<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_annihilation<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -856,7 +856,7 @@ pub fn test_annihilation<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r5), i(r7), i(r9), i(r11), i(r14)], vec![i(r6), i(r8), i(r10), i(r12), i(r16)])
 }
 
-pub fn test_inverse<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_inverse<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -877,7 +877,7 @@ pub fn test_inverse<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r6), i(r8), i(r9), i(r11)], vec![i(r5), i(r7), i(r10), i(r12)])
 }
 
-pub fn test_absorption<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_absorption<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -909,7 +909,7 @@ pub fn test_absorption<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r10), i(r11), i(r12), i(r13), i(r14), i(r15), i(r16), i(r17), i(r18)], vec![])
 }
 
-pub fn test_reduction<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_reduction<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -942,7 +942,7 @@ pub fn test_reduction<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r1), i(r2), i(r3), i(r4), i(r5), i(r10), i(r12), i(r13)], vec![i(r6), i(r7), i(r8), i(r9), i(r11)])
 }
 
-pub fn test_adjacency<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_adjacency<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -961,7 +961,7 @@ pub fn test_adjacency<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r1), i(r2), i(r3), i(r4)], vec![i(r5), i(r6)])
 }
 
-pub fn test_resolution<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_resolution<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -986,7 +986,7 @@ pub fn test_resolution<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r1), i(r2), i(r3), i(r4)], vec![i(r5), i(r6), i(r7), i(r8), i(r9)])
 }
 
-pub fn test_tautcon<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_tautcon<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -1020,7 +1020,7 @@ pub fn test_tautcon<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r1), i(r2), i(r3), i(r4), i(r6), i(r9), i(r11), i(r13), i(r15), i(r17)], vec![i(r5), i(r7), i(r8), i(r10), i(r12), i(r14), i(r16)])
 }
 
-pub fn test_empty_rule<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_empty_rule<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -1030,7 +1030,7 @@ pub fn test_empty_rule<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![], vec![i(r1)])
 }
 
-pub fn test_modus_tollens<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_modus_tollens<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -1051,7 +1051,7 @@ pub fn test_modus_tollens<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
     (prf, vec![i(r6), i(r7), i(r13), i(r14)], vec![i(r8), i(r9), i(r10), i(r11), i(r12)])
 }
 
-pub fn test_hypothetical_syllogism<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_hypothetical_syllogism<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -1072,7 +1072,7 @@ pub fn test_hypothetical_syllogism<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P
     (prf, vec![i(r6), i(r7), i(r13), i(r14)], vec![i(r8), i(r9), i(r10), i(r11), i(r12)])
 }
 
-pub fn test_disjunctive_syllogism<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_disjunctive_syllogism<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -1088,7 +1088,7 @@ pub fn test_disjunctive_syllogism<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>
     (prf, vec![i(r4), i(r5)], vec![i(r6), i(r7), i(r8), i(r9)])
 }
 
-pub fn test_constructive_dilemma<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_constructive_dilemma<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
@@ -1108,7 +1108,7 @@ pub fn test_constructive_dilemma<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>
     (prf, vec![i(r6), i(r7)], vec![i(r8), i(r9), i(r10), i(r11), i(r12), i(r13)])
 }
 
-pub fn test_excluded_middle<P: Proof>() -> (P, Vec<PJRef<P>>, Vec<PJRef<P>>) {
+pub fn test_excluded_middle<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();

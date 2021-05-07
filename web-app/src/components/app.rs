@@ -13,7 +13,6 @@ use yew::prelude::*;
 pub struct App {
     link: ComponentLink<Self>,
     tabcontainer_link: Option<ComponentLink<TabbedContainer>>,
-    menuwidget_link: Option<ComponentLink<NavBarWidget>>,
     proofs: HashMap<String, ComponentLink<ProofWidget>>,
 }
 
@@ -30,7 +29,7 @@ impl Component for App {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self { link, tabcontainer_link: None, menuwidget_link: None, proofs: HashMap::new() }
+        Self { link, tabcontainer_link: None, proofs: HashMap::new() }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -42,7 +41,6 @@ impl Component for App {
             AppMsg::NavBarInit(menuwidget_link) => {
                 // create the first blank proof tab
                 menuwidget_link.send_message(NavBarMsg::FileNew);
-                self.menuwidget_link = Some(menuwidget_link);
                 false
             }
             AppMsg::CreateTab { name, content } => {

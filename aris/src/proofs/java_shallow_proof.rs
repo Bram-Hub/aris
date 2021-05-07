@@ -1,8 +1,8 @@
 use crate::expr::Expr;
-use crate::proofs::JSRef;
+use crate::proofs::JsRef;
 use crate::proofs::Justification;
-use crate::proofs::PJRef;
-use crate::proofs::PJSRef;
+use crate::proofs::PjRef;
+use crate::proofs::PjsRef;
 use crate::proofs::Proof;
 use crate::rules::ProofCheckError;
 use crate::rules::RuleM;
@@ -27,7 +27,7 @@ impl Proof for JavaShallowProof {
     fn lookup_premise(&self, r: &Self::PremiseReference) -> Option<Expr> {
         Some(r.clone())
     }
-    fn lookup_step(&self, r: &Self::JustificationReference) -> Option<Justification<Expr, PJRef<Self>, Self::SubproofReference>> {
+    fn lookup_step(&self, r: &Self::JustificationReference) -> Option<Justification<Expr, PjRef<Self>, Self::SubproofReference>> {
         Some(Justification(r.clone(), RuleM::Reit, vec![], vec![]))
     }
     fn lookup_subproof(&self, r: &Self::SubproofReference) -> Option<Self> {
@@ -36,7 +36,7 @@ impl Proof for JavaShallowProof {
     fn with_mut_premise<A, F: FnOnce(&mut Expr) -> A>(&mut self, _: &Self::PremiseReference, _: F) -> Option<A> {
         unimplemented!()
     }
-    fn with_mut_step<A, F: FnOnce(&mut Justification<Expr, PJRef<Self>, Self::SubproofReference>) -> A>(&mut self, _: &Self::JustificationReference, _: F) -> Option<A> {
+    fn with_mut_step<A, F: FnOnce(&mut Justification<Expr, PjRef<Self>, Self::SubproofReference>) -> A>(&mut self, _: &Self::JustificationReference, _: F) -> Option<A> {
         unimplemented!()
     }
     fn with_mut_subproof<A, F: FnOnce(&mut Self::Subproof) -> A>(&mut self, _: &Self::SubproofReference, _: F) -> Option<A> {
@@ -48,19 +48,19 @@ impl Proof for JavaShallowProof {
     fn add_subproof(&mut self) -> Self::SubproofReference {
         JavaShallowProof(vec![])
     }
-    fn add_step(&mut self, just: Justification<Expr, PJRef<Self>, Self::SubproofReference>) -> Self::JustificationReference {
+    fn add_step(&mut self, just: Justification<Expr, PjRef<Self>, Self::SubproofReference>) -> Self::JustificationReference {
         just.0
     }
     fn add_premise_relative(&mut self, e: Expr, _: &Self::PremiseReference, _: bool) -> Self::PremiseReference {
         self.add_premise(e)
     }
-    fn add_subproof_relative(&mut self, _: &JSRef<Self>, _: bool) -> Self::SubproofReference {
+    fn add_subproof_relative(&mut self, _: &JsRef<Self>, _: bool) -> Self::SubproofReference {
         self.add_subproof()
     }
-    fn add_step_relative(&mut self, just: Justification<Expr, PJRef<Self>, Self::SubproofReference>, _: &JSRef<Self>, _: bool) -> Self::JustificationReference {
+    fn add_step_relative(&mut self, just: Justification<Expr, PjRef<Self>, Self::SubproofReference>, _: &JsRef<Self>, _: bool) -> Self::JustificationReference {
         self.add_step(just)
     }
-    fn remove_line(&mut self, _: &PJRef<Self>) {}
+    fn remove_line(&mut self, _: &PjRef<Self>) {}
     fn remove_subproof(&mut self, _: &Self::SubproofReference) {}
     fn premises(&self) -> Vec<Self::PremiseReference> {
         if !self.0.is_empty() {
@@ -69,13 +69,13 @@ impl Proof for JavaShallowProof {
             vec![]
         }
     }
-    fn lines(&self) -> Vec<JSRef<Self>> {
+    fn lines(&self) -> Vec<JsRef<Self>> {
         (1..self.0.len()).map(|i| Coproduct::Inl(self.0[i].clone())).collect()
     }
-    fn parent_of_line(&self, _: &PJSRef<Self>) -> Option<Self::SubproofReference> {
+    fn parent_of_line(&self, _: &PjsRef<Self>) -> Option<Self::SubproofReference> {
         unimplemented!()
     }
-    fn verify_line(&self, r: &PJRef<Self>) -> Result<(), ProofCheckError<PJRef<Self>, Self::SubproofReference>> {
+    fn verify_line(&self, r: &PjRef<Self>) -> Result<(), ProofCheckError<PjRef<Self>, Self::SubproofReference>> {
         use frunk_core::coproduct::Coproduct::{Inl, Inr};
         match self.lookup_pj(r) {
             None => Err(ProofCheckError::LineDoesNotExist(r.clone())),

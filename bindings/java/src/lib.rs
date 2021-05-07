@@ -51,8 +51,8 @@ pub fn with_thrown_errors<A, F: FnOnce(&JNIEnv) -> jni::errors::Result<A> + Unwi
     })
     .unwrap_or_else(|_| {
         // handle panic
-        let msg = rx.recv().unwrap_or(format!("with_thrown_errors: recv failed"));
-        let _ = env.throw_new("java/lang/RuntimeException", &*msg);
+        let msg = rx.recv().unwrap_or_else(|_| "with_thrown_errors: recv failed".to_string());
+        let _ = env.throw_new("java/lang/RuntimeException", msg);
         unsafe { std::mem::zeroed() }
     });
     set_hook(old_hook);

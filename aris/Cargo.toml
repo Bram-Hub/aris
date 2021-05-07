@@ -5,19 +5,19 @@ authors = ["Avi Weinstock <aweinstock314@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-base64 = "0.12.0"
+base64 = "0.13.0"
 lazy_static = "1.4.0"
 nom = "4.1.1"
-petgraph = "0.4.13"
+petgraph = "0.5.1"
 sha2 = "0.8.1"
-varisat = "0.2.1"
-xml-rs = "0.8.0"
-itertools = "0.9.0"
-frunk_core = "0.2.2"
-strum = "0.18.0"
-strum_macros = "0.18.0"
-serde = { version = "^1.0", features = ["derive"] }
+varisat = "0.2.2"
+xml-rs = "0.8.3"
+itertools = "0.10.0"
+frunk_core = "0.3.2"
+strum = "0.20.0"
+strum_macros = "0.20.1"
+serde = { version = "1.0.125", features = ["derive"] }
 maplit = "1.0.2"
 
 [build-dependencies]
-version_check = "0.9"
+version_check = "0.9.3"

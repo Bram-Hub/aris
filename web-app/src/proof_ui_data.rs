@@ -1,7 +1,7 @@
 use crate::util::calculate_lineinfo;
 
 use aris::proofs::js_to_pjs;
-use aris::proofs::PJRef;
+use aris::proofs::PjRef;
 use aris::proofs::Proof;
 
 use std::collections::HashMap;
@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use frunk_core::coproduct::Coproduct;
 
 pub struct ProofUiData<P: Proof> {
-    pub ref_to_line_depth: HashMap<PJRef<P>, (usize, usize)>,
-    pub ref_to_input: HashMap<PJRef<P>, String>,
+    pub ref_to_line_depth: HashMap<PjRef<P>, (usize, usize)>,
+    pub ref_to_input: HashMap<PjRef<P>, String>,
 }
 
 impl<P: Proof> ProofUiData<P> {
@@ -21,8 +21,8 @@ impl<P: Proof> ProofUiData<P> {
     }
 }
 
-fn initialize_inputs<P: Proof>(prf: &P) -> HashMap<PJRef<P>, String> {
-    fn aux<P: Proof>(p: &<P as Proof>::Subproof, out: &mut HashMap<PJRef<P>, String>) {
+fn initialize_inputs<P: Proof>(prf: &P) -> HashMap<PjRef<P>, String> {
+    fn aux<P: Proof>(p: &<P as Proof>::Subproof, out: &mut HashMap<PjRef<P>, String>) {
         use Coproduct::{Inl, Inr};
         for line in p.premises().into_iter().map(Coproduct::inject).chain(p.lines().into_iter().map(js_to_pjs::<P>)) {
             match line {

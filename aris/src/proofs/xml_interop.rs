@@ -1,6 +1,6 @@
 use crate::expr::Expr;
 use crate::proofs::Justification;
-use crate::proofs::PJRef;
+use crate::proofs::PjRef;
 use crate::proofs::Proof;
 use crate::rules::RuleM;
 
@@ -39,7 +39,7 @@ pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Result<(P, ProofMetaData), Str
     //let parse = |s: &str| { let t = format!("{}\n", s); parser::main(&t).unwrap().1 };
     let mut subproofs: HashMap<_, <P as Proof>::SubproofReference> = HashMap::new();
     let mut lines_to_subs = HashMap::new();
-    let mut line_refs: HashMap<_, PJRef<P>> = HashMap::new();
+    let mut line_refs: HashMap<_, PjRef<P>> = HashMap::new();
     let mut last_linenum = "".into();
     let mut proof = P::new();
     let mut current_proof_id = "0".into();
@@ -185,7 +185,7 @@ pub fn xml_from_proof_and_metadata<P: Proof, W: Write>(prf: &P, meta: &ProofMeta
         queue: Vec<(usize, P::SubproofReference)>,
         linenum: usize,
         sproofid: usize,
-        deps_map: HashMap<PJRef<P>, usize>,
+        deps_map: HashMap<PjRef<P>, usize>,
         sdeps_map: HashMap<P::SubproofReference, usize>,
     }
     fn allocate_identifiers<P: Proof>(prf: &P::Subproof, state: &mut SerializationState<P>) {

@@ -43,7 +43,10 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
     };
     let handle_assoc = |op: Op| -> jni::errors::Result<Expr> {
         let mut exprs = vec![];
-        java_iterator_for_each(env, env.get_field(obj, "exprs", "Ljava/util/ArrayList;")?.l()?, |expr| Ok(exprs.push(jobject_to_expr(env, expr)?)))?;
+        java_iterator_for_each(env, env.get_field(obj, "exprs", "Ljava/util/ArrayList;")?.l()?, |expr| {
+            exprs.push(jobject_to_expr(env, expr)?);
+            Ok(())
+        })?;
         Ok(Expr::Assoc { op, exprs })
     };
     let handle_quantifier = |kind: QuantKind| -> jni::errors::Result<Expr> {
@@ -54,7 +57,7 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
     match &*name {
         "edu.rpi.aris.ast.Expression$NotExpression" => {
             let operand = env.get_field(obj, "operand", "Ledu/rpi/aris/ast/Expression;")?.l()?;
-            Ok(Expr::not(jobject_to_expr(env, operand)?))
+            Ok(!jobject_to_expr(env, operand)?)
         }
         "edu.rpi.aris.ast.Expression$VarExpression" => {
             let name = jobject_to_string(env, env.get_field(obj, "name", "Ljava/lang/String;")?.l()?)?;
@@ -74,7 +77,10 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
         "edu.rpi.aris.ast.Expression$ApplyExpression" => {
             let func = jobject_to_expr(env, env.get_field(obj, "func", "Ledu/rpi/aris/ast/Expression;")?.l()?)?;
             let mut args = vec![];
-            java_iterator_for_each(env, env.get_field(obj, "args", "Ljava/util/List;")?.l()?, |arg| Ok(args.push(jobject_to_expr(env, arg)?)))?;
+            java_iterator_for_each(env, env.get_field(obj, "args", "Ljava/util/List;")?.l()?, |arg| {
+                args.push(jobject_to_expr(env, arg)?);
+                Ok(())
+            })?;
             Ok(Expr::apply(func, &args[..]))
         }
         _ => Err(jni::errors::Error::from_kind(jni::errors::ErrorKind::Msg(format!("jobject_to_expr: unknown class {}", name)))),
@@ -104,7 +110,7 @@ pub extern "system" fn Java_edu_rpi_aris_ast_Expression_parseViaRust(env: JNIEnv
 pub fn expr_to_jobject<'a>(env: &'a JNIEnv, e: Expr) -> jni::errors::Result<JObject<'a>> {
     let obj = env.new_object(e.get_class(), "()V", &[])?;
     let jv = |s: &str| -> jni::errors::Result<JValue> { Ok(JObject::from(env.new_string(s)?).into()) };
-    let rec = |e: Expr| -> jni::errors::Result<JValue> { Ok(JObject::from(expr_to_jobject(env, e)?).into()) };
+    let rec = |e: Expr| -> jni::errors::Result<JValue> { Ok(expr_to_jobject(env, e)?.into()) };
     match e {
         Expr::Contra => (),
         Expr::Taut => (),

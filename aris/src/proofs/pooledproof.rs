@@ -109,10 +109,10 @@ While the `[]`s in the `Justification`s are actually `Vec`s and will be that sim
 use crate::expr::Expr;
 use crate::proofs::js_to_pjs;
 use crate::proofs::DisplayIndented;
-use crate::proofs::JSRef;
+use crate::proofs::JsRef;
 use crate::proofs::Justification;
-use crate::proofs::PJRef;
-use crate::proofs::PJSRef;
+use crate::proofs::PjRef;
+use crate::proofs::PjsRef;
 use crate::proofs::Proof;
 use crate::rules::ProofCheckError;
 use crate::rules::RuleT;
@@ -135,13 +135,14 @@ pub struct JustKey(usize);
 pub struct SubKey(usize);
 
 type PooledRef = Coprod!(PremKey, JustKey);
+type PjsKey = Coprod!(PremKey, JustKey, SubKey);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Pools<T> {
     prem_map: BTreeMap<PremKey, T>,
     just_map: BTreeMap<JustKey, Justification<T, PooledRef, SubKey>>,
     sub_map: BTreeMap<SubKey, PooledSubproof<T>>,
-    containing_subproof: BTreeMap<Coproduct<PremKey, Coproduct<JustKey, Coproduct<SubKey, frunk_core::coproduct::CNil>>>, SubKey>,
+    containing_subproof: BTreeMap<PjsKey, SubKey>,
 }
 
 impl<T> Pools<T> {
@@ -150,7 +151,7 @@ impl<T> Pools<T> {
     }
     fn subproof_to_subkey(&self, sub: &PooledSubproof<T>) -> Option<SubKey> {
         for (k, v) in self.sub_map.iter() {
-            if v as *const _ as usize == sub as *const _ as usize {
+            if std::ptr::eq(v as *const _, sub as *const _) {
                 return Some(*k);
             }
         }
@@ -182,7 +183,7 @@ impl<T> Pools<T> {
     }
     fn remove_line_helper(&mut self, idx: &Coprod!(PremKey, JustKey, SubKey)) {
         use frunk_core::coproduct::Coproduct::{Inl, Inr};
-        let just_map = std::mem::replace(&mut self.just_map, BTreeMap::new());
+        let just_map = std::mem::take(&mut self.just_map);
         self.just_map = just_map
             .into_iter()
             .map(|(k, Justification(expr, rule, deps, sdeps))| {
@@ -291,7 +292,7 @@ impl<Tail: Default + Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
     fn lookup_premise(&self, r: &Self::PremiseReference) -> Option<Expr> {
         unsafe { &*self.pools }.prem_map.get(r).map(|x| x.head.clone())
     }
-    fn lookup_step(&self, r: &Self::JustificationReference) -> Option<Justification<Expr, PJRef<Self>, Self::SubproofReference>> {
+    fn lookup_step(&self, r: &Self::JustificationReference) -> Option<Justification<Expr, PjRef<Self>, Self::SubproofReference>> {
         unsafe { &*self.pools }.just_map.get(r).map(|x| x.clone().map0(|y| y.head))
     }
     fn lookup_subproof(&self, r: &Self::SubproofReference) -> Option<Self::Subproof> {
@@ -301,7 +302,7 @@ impl<Tail: Default + Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
         let pools = unsafe { &mut *self.pools };
         pools.prem_map.get_mut(r).map(|p: &mut HCons<Expr, Tail>| f(p.get_mut()))
     }
-    fn with_mut_step<A, F: FnOnce(&mut Justification<Expr, PJRef<Self>, Self::SubproofReference>) -> A>(&mut self, r: &Self::JustificationReference, f: F) -> Option<A> {
+    fn with_mut_step<A, F: FnOnce(&mut Justification<Expr, PjRef<Self>, Self::SubproofReference>) -> A>(&mut self, r: &Self::JustificationReference, f: F) -> Option<A> {
         let pools = unsafe { &mut *self.pools };
         pools.just_map.get_mut(r).map(|j_hcons: &mut Justification<HCons<Expr, Tail>, _, _>| {
             let mut j_expr: Justification<Expr, _, _> = Justification(j_hcons.0.get().clone(), j_hcons.1, j_hcons.2.clone(), j_hcons.3.clone());
@@ -333,7 +334,7 @@ impl<Tail: Default + Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
         self.line_list.push(Coproduct::inject(idx));
         idx
     }
-    fn add_step(&mut self, just: Justification<Expr, PJRef<Self>, Self::SubproofReference>) -> Self::JustificationReference {
+    fn add_step(&mut self, just: Justification<Expr, PjRef<Self>, Self::SubproofReference>) -> Self::JustificationReference {
         let pools = unsafe { &mut *self.pools };
         let idx = pools.next_justkey();
         pools.set_parent(Coproduct::inject(idx), self);
@@ -368,7 +369,7 @@ impl<Tail: Default + Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
         }
         idx
     }
-    fn add_subproof_relative(&mut self, r: &JSRef<Self>, after: bool) -> Self::SubproofReference {
+    fn add_subproof_relative(&mut self, r: &JsRef<Self>, after: bool) -> Self::SubproofReference {
         let pools = unsafe { &mut *self.pools };
         let idx = pools.next_subkey();
         let sub = PooledSubproof::new(pools);
@@ -383,7 +384,7 @@ impl<Tail: Default + Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
         }
         idx
     }
-    fn add_step_relative(&mut self, just: Justification<Expr, PJRef<Self>, Self::SubproofReference>, r: &JSRef<Self>, after: bool) -> Self::JustificationReference {
+    fn add_step_relative(&mut self, just: Justification<Expr, PjRef<Self>, Self::SubproofReference>, r: &JsRef<Self>, after: bool) -> Self::JustificationReference {
         let pools = unsafe { &mut *self.pools };
         let idx = pools.next_justkey();
         // TODO: occurs-before check
@@ -398,7 +399,7 @@ impl<Tail: Default + Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
         }
         idx
     }
-    fn remove_line(&mut self, r: &PJRef<Self>) {
+    fn remove_line(&mut self, r: &PjRef<Self>) {
         let pools = unsafe { &mut *self.pools };
         pools.remove_line(r);
     }
@@ -409,14 +410,14 @@ impl<Tail: Default + Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
     fn premises(&self) -> Vec<Self::PremiseReference> {
         self.premise_list.iter().cloned().collect()
     }
-    fn lines(&self) -> Vec<JSRef<Self>> {
+    fn lines(&self) -> Vec<JsRef<Self>> {
         self.line_list.iter().cloned().collect()
     }
-    fn parent_of_line(&self, r: &PJSRef<Self>) -> Option<Self::SubproofReference> {
+    fn parent_of_line(&self, r: &PjsRef<Self>) -> Option<Self::SubproofReference> {
         let pools = unsafe { &mut *self.pools };
         pools.parent_of(r)
     }
-    fn verify_line(&self, r: &PJRef<Self>) -> Result<(), ProofCheckError<PJRef<Self>, Self::SubproofReference>> {
+    fn verify_line(&self, r: &PjRef<Self>) -> Result<(), ProofCheckError<PjRef<Self>, Self::SubproofReference>> {
         use self::Coproduct::{Inl, Inr};
         match self.lookup_pj(r) {
             None => Err(ProofCheckError::LineDoesNotExist(*r)),
@@ -463,7 +464,7 @@ impl<Tail: Default + Clone> Proof for PooledProof<HCons<Expr, Tail>> {
     fn lookup_premise(&self, r: &Self::PremiseReference) -> Option<Expr> {
         self.proof.lookup_premise(r)
     }
-    fn lookup_step(&self, r: &Self::JustificationReference) -> Option<Justification<Expr, PJRef<Self>, Self::SubproofReference>> {
+    fn lookup_step(&self, r: &Self::JustificationReference) -> Option<Justification<Expr, PjRef<Self>, Self::SubproofReference>> {
         self.proof.lookup_step(r)
     }
     fn lookup_subproof(&self, r: &Self::SubproofReference) -> Option<Self::Subproof> {
@@ -472,7 +473,7 @@ impl<Tail: Default + Clone> Proof for PooledProof<HCons<Expr, Tail>> {
     fn with_mut_premise<A, F: FnOnce(&mut Expr) -> A>(&mut self, r: &Self::PremiseReference, f: F) -> Option<A> {
         self.proof.with_mut_premise(r, f)
     }
-    fn with_mut_step<A, F: FnOnce(&mut Justification<Expr, PJRef<Self>, Self::SubproofReference>) -> A>(&mut self, r: &Self::JustificationReference, f: F) -> Option<A> {
+    fn with_mut_step<A, F: FnOnce(&mut Justification<Expr, PjRef<Self>, Self::SubproofReference>) -> A>(&mut self, r: &Self::JustificationReference, f: F) -> Option<A> {
         self.proof.with_mut_step(r, f)
     }
     fn with_mut_subproof<A, F: FnOnce(&mut Self::Subproof) -> A>(&mut self, r: &Self::SubproofReference, f: F) -> Option<A> {
@@ -487,16 +488,16 @@ impl<Tail: Default + Clone> Proof for PooledProof<HCons<Expr, Tail>> {
     fn add_premise_relative(&mut self, e: Expr, r: &Self::PremiseReference, after: bool) -> Self::PremiseReference {
         self.proof.add_premise_relative(e, r, after)
     }
-    fn add_subproof_relative(&mut self, r: &JSRef<Self>, after: bool) -> Self::SubproofReference {
+    fn add_subproof_relative(&mut self, r: &JsRef<Self>, after: bool) -> Self::SubproofReference {
         self.proof.add_subproof_relative(r, after)
     }
-    fn add_step_relative(&mut self, just: Justification<Expr, PJRef<Self>, Self::SubproofReference>, r: &JSRef<Self>, after: bool) -> Self::JustificationReference {
+    fn add_step_relative(&mut self, just: Justification<Expr, PjRef<Self>, Self::SubproofReference>, r: &JsRef<Self>, after: bool) -> Self::JustificationReference {
         self.proof.add_step_relative(just, r, after)
     }
-    fn add_step(&mut self, just: Justification<Expr, PJRef<Self>, Self::SubproofReference>) -> Self::JustificationReference {
+    fn add_step(&mut self, just: Justification<Expr, PjRef<Self>, Self::SubproofReference>) -> Self::JustificationReference {
         self.proof.add_step(just)
     }
-    fn remove_line(&mut self, r: &PJRef<Self>) {
+    fn remove_line(&mut self, r: &PjRef<Self>) {
         let premise_list = std::mem::replace(&mut self.proof.premise_list, ZipperVec::new());
         self.proof.premise_list = ZipperVec::from_vec(premise_list.iter().filter(|x| Some(x) != r.get().as_ref()).cloned().collect());
         let line_list = std::mem::replace(&mut self.proof.line_list, ZipperVec::new());
@@ -511,13 +512,13 @@ impl<Tail: Default + Clone> Proof for PooledProof<HCons<Expr, Tail>> {
     fn premises(&self) -> Vec<Self::PremiseReference> {
         self.proof.premises()
     }
-    fn lines(&self) -> Vec<JSRef<Self>> {
+    fn lines(&self) -> Vec<JsRef<Self>> {
         self.proof.lines()
     }
-    fn parent_of_line(&self, r: &PJSRef<Self>) -> Option<Self::SubproofReference> {
+    fn parent_of_line(&self, r: &PjsRef<Self>) -> Option<Self::SubproofReference> {
         self.proof.parent_of_line(r)
     }
-    fn verify_line(&self, r: &PJRef<Self>) -> Result<(), ProofCheckError<PJRef<Self>, Self::SubproofReference>> {
+    fn verify_line(&self, r: &PjRef<Self>) -> Result<(), ProofCheckError<PjRef<Self>, Self::SubproofReference>> {
         self.proof.verify_line(r)
     }
 }
