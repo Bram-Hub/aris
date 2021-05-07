@@ -14,17 +14,23 @@ use serde_wasm_bindgen::to_value;
 use wasm_bindgen::prelude::*;
 
 type P = aris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
-type SP = aris::proofs::pooledproof::PooledSubproof<Hlist![Expr]>;
-type JustificationInner = aris::proofs::Justification<Expr, aris::proofs::PJRef<P>, aris::proofs::pooledproof::SubKey>;
+type Sp = aris::proofs::pooledproof::PooledSubproof<Hlist![Expr]>;
+type JustificationInner = aris::proofs::Justification<Expr, aris::proofs::PjRef<P>, aris::proofs::pooledproof::SubKey>;
 
 #[wasm_bindgen]
 pub struct Proof(P);
+
+impl Default for Proof {
+    fn default() -> Self {
+        Self(P::new())
+    }
+}
 
 //#[wasm_bindgen]
 impl Proof {
     //#[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        Self(P::new())
+        Default::default()
     }
 
     pub fn top_level_proof(&self) -> Subproof {
@@ -53,8 +59,7 @@ impl Proof {
             f.call1(&JsValue::NULL, &expr)
         };
         let ret = self.0.with_mut_premise(&r.0, f);
-        let ret = ret.ok_or("aris: premise not found")?;
-        ret
+        ret.ok_or("aris: premise not found")?
     }
 
     pub fn with_step(&mut self, r: JRef, f: js_sys::Function) -> JsResult<JsValue> {
@@ -63,19 +68,17 @@ impl Proof {
             f.call1(&JsValue::NULL, &just)
         };
         let ret = self.0.with_mut_step(&r.0, f);
-        let ret = ret.ok_or("aris: step not found")?;
-        ret
+        ret.ok_or("aris: step not found")?
     }
 
     pub fn with_subproof(&mut self, r: SRef, f: js_sys::Function) -> JsResult<JsValue> {
-        let f = |subproof: &mut SP| -> JsResult<JsValue> {
+        let f = |subproof: &mut Sp| -> JsResult<JsValue> {
             let subproof = Subproof(subproof.clone());
             let subproof = JsValue::from(subproof);
             f.call1(&JsValue::NULL, &subproof)
         };
         let ret = self.0.with_mut_subproof(&r.0, f);
-        let ret = ret.ok_or("aris: step not found")?;
-        ret
+        ret.ok_or("aris: step not found")?
     }
 
     pub fn add_premise(&mut self, expr: JsValue) -> JsResult<PRef> {
@@ -98,15 +101,15 @@ impl Proof {
         Ok(PRef(ret))
     }
 
-    pub fn add_subproof_relative(&mut self, r: JSRef, after: bool) -> SRef {
+    pub fn add_subproof_relative(&mut self, r: JsRef, after: bool) -> SRef {
         SRef(self.0.add_subproof_relative(&r.0, after))
     }
 
-    pub fn add_step_relative(&mut self, just: Justification, r: JSRef, after: bool) -> JRef {
+    pub fn add_step_relative(&mut self, just: Justification, r: JsRef, after: bool) -> JRef {
         JRef(self.0.add_step_relative(just.0, &r.0, after))
     }
 
-    pub fn remove_line(&mut self, r: PJRef) {
+    pub fn remove_line(&mut self, r: PjRef) {
         self.0.remove_line(&r.0);
     }
 
@@ -119,27 +122,27 @@ impl Proof {
     }
 
     pub fn lines(&self) -> Vec<JsValue> {
-        self.0.lines().into_iter().map(|js| JsValue::from(JSRef(js))).collect()
+        self.0.lines().into_iter().map(|js| JsValue::from(JsRef(js))).collect()
     }
 
-    pub fn parent_of_line(&self, r: PJSRef) -> JsResult<SRef> {
+    pub fn parent_of_line(&self, r: PjsRef) -> JsResult<SRef> {
         let ret = self.0.parent_of_line(&r.0);
         let ret = ret.ok_or("aris: failed getting parent of line")?;
         Ok(SRef(ret))
     }
 
-    pub fn verify_line(&self, r: PJRef) -> JsResult<()> {
+    pub fn verify_line(&self, r: PjRef) -> JsResult<()> {
         self.0.verify_line(&r.0).map_err(|err| err.to_string())?;
         Ok(())
     }
 
-    pub fn lookup_expr(&self, r: PJRef) -> JsResult<JsValue> {
+    pub fn lookup_expr(&self, r: PjRef) -> JsResult<JsValue> {
         let ret = self.0.lookup_expr(&r.0).ok_or("aris: failed looking up expression")?;
         let ret = to_value(&ret)?;
         Ok(ret)
     }
 
-    pub fn lookup_expr_or_die(&self, r: PJRef) -> JsResult<JsValue> {
+    pub fn lookup_expr_or_die(&self, r: PjRef) -> JsResult<JsValue> {
         let ret = self.0.lookup_expr_or_die(&r.0).map_err(|err| err.to_string())?;
         let ret = to_value(&ret)?;
         Ok(ret)
@@ -156,7 +159,7 @@ impl Proof {
         Ok(Justification(ret))
     }
 
-    pub fn lookup_pj(&self, r: PJRef) -> JsResult<JsValue> {
+    pub fn lookup_pj(&self, r: PjRef) -> JsResult<JsValue> {
         let ret = self.0.lookup_pj(&r.0).ok_or("aris: failed looking up premise or justification")?;
         ret.fold(hlist![|expr| -> JsResult<JsValue> { Ok(to_value(&expr)?) }, |just| -> JsResult<JsValue> { Ok(JsValue::from(Justification(just))) },])
     }
@@ -171,51 +174,51 @@ impl Proof {
     }
 
     pub fn exprs(&self) -> Vec<JsValue> {
-        self.0.exprs().into_iter().map(|pj| JsValue::from(PJRef(pj))).collect()
+        self.0.exprs().into_iter().map(|pj| JsValue::from(PjRef(pj))).collect()
     }
 
     pub fn contained_justifications(&self, include_premises: bool) -> Vec<JsValue> {
-        self.0.contained_justifications(include_premises).into_iter().map(|pj| JsValue::from(PJRef(pj))).collect::<Vec<JsValue>>()
+        self.0.contained_justifications(include_premises).into_iter().map(|pj| JsValue::from(PjRef(pj))).collect::<Vec<JsValue>>()
     }
 
-    pub fn transitive_dependencies(&self, line: PJRef) -> Vec<JsValue> {
-        self.0.transitive_dependencies(line.0).into_iter().map(|pj| JsValue::from(PJRef(pj))).collect::<Vec<JsValue>>()
+    pub fn transitive_dependencies(&self, line: PjRef) -> Vec<JsValue> {
+        self.0.transitive_dependencies(line.0).into_iter().map(|pj| JsValue::from(PjRef(pj))).collect::<Vec<JsValue>>()
     }
 
-    pub fn depth_of_line(&self, r: PJSRef) -> usize {
+    pub fn depth_of_line(&self, r: PjsRef) -> usize {
         self.0.depth_of_line(&r.0)
     }
 
-    pub fn possible_deps_for_line(&self, r: PJRef) -> Vec<JsValue> {
+    pub fn possible_deps_for_line(&self, r: PjRef) -> Vec<JsValue> {
         let mut deps = HashSet::new();
         let mut sdeps = HashSet::new();
         self.0.possible_deps_for_line(&r.0, &mut deps, &mut sdeps);
-        deps.into_iter().map(|pj| JsValue::from(PJRef(pj))).collect::<Vec<JsValue>>()
+        deps.into_iter().map(|pj| JsValue::from(PjRef(pj))).collect::<Vec<JsValue>>()
     }
 
-    pub fn possible_sdeps_for_line(&self, r: PJRef) -> Vec<JsValue> {
+    pub fn possible_sdeps_for_line(&self, r: PjRef) -> Vec<JsValue> {
         let mut deps = HashSet::new();
         let mut sdeps = HashSet::new();
         self.0.possible_deps_for_line(&r.0, &mut deps, &mut sdeps);
         sdeps.into_iter().map(|s| JsValue::from(SRef(s))).collect::<Vec<JsValue>>()
     }
 
-    pub fn can_reference_dep(&self, r1: PJRef, r2: PJSRef) -> JsResult<bool> {
-        type PJRefInner = aris::proofs::PJRef<P>;
-        type PJSRefAlt = Coprod![PJRefInner, aris::proofs::pooledproof::SubKey];
+    pub fn can_reference_dep(&self, r1: PjRef, r2: PjsRef) -> JsResult<bool> {
+        type PjRefInner = aris::proofs::PjRef<P>;
+        type PjsRefAlt = Coprod![PjRefInner, aris::proofs::pooledproof::SubKey];
         let r2 = r2.0.fold(hlist![
             |p| {
-                let pj: PJRefInner = Coproduct::inject(p);
-                let pjs: PJSRefAlt = Coproduct::inject(pj);
+                let pj: PjRefInner = Coproduct::inject(p);
+                let pjs: PjsRefAlt = Coproduct::inject(pj);
                 pjs
             },
             |j| {
-                let pj: PJRefInner = Coproduct::inject(j);
-                let pjs: PJSRefAlt = Coproduct::inject(pj);
+                let pj: PjRefInner = Coproduct::inject(j);
+                let pjs: PjsRefAlt = Coproduct::inject(pj);
                 pjs
             },
             |s| {
-                let pjs: PJSRefAlt = Coproduct::inject(s);
+                let pjs: PjsRefAlt = Coproduct::inject(s);
                 pjs
             },
         ]);
@@ -225,7 +228,7 @@ impl Proof {
 }
 
 #[wasm_bindgen]
-pub struct Subproof(SP);
+pub struct Subproof(Sp);
 
 #[wasm_bindgen]
 pub struct PRef(aris::proofs::pooledproof::PremKey);
@@ -237,13 +240,13 @@ pub struct JRef(aris::proofs::pooledproof::JustKey);
 pub struct SRef(aris::proofs::pooledproof::SubKey);
 
 #[wasm_bindgen]
-pub struct PJRef(aris::proofs::PJRef<P>);
+pub struct PjRef(aris::proofs::PjRef<P>);
 
 #[wasm_bindgen]
-pub struct JSRef(aris::proofs::JSRef<P>);
+pub struct JsRef(aris::proofs::JsRef<P>);
 
 #[wasm_bindgen]
-pub struct PJSRef(aris::proofs::PJSRef<P>);
+pub struct PjsRef(aris::proofs::PjsRef<P>);
 
 #[wasm_bindgen]
 pub struct Justification(JustificationInner);
@@ -264,8 +267,8 @@ impl Justification {
         };
         let deps = deps
             .into_iter()
-            .map(|dep| dep.dyn_into::<PJRef>())
-            .collect::<JsResult<Vec<PJRef>>>()?;
+            .map(|dep| dep.dyn_into::<PjRef>())
+            .collect::<JsResult<Vec<PjRef>>>()?;
         let sdeps = sdeps
             .into_iter()
             .map(|dep| dep.dyn_into::<SRef>())

@@ -182,14 +182,15 @@ pub trait DisplayIndented {
     fn display_indented(&self, fmt: &mut std::fmt::Formatter, indent: usize, linecount: &mut usize) -> Result<(), std::fmt::Error>;
 }
 
-pub type PJRef<P> = Coprod!(<P as Proof>::PremiseReference, <P as Proof>::JustificationReference);
-pub type JSRef<P> = Coprod!(<P as Proof>::JustificationReference, <P as Proof>::SubproofReference);
-pub type PJSRef<P> = Coprod!(<P as Proof>::PremiseReference, <P as Proof>::JustificationReference, <P as Proof>::SubproofReference);
+pub type PjRef<P> = Coprod!(<P as Proof>::PremiseReference, <P as Proof>::JustificationReference);
+pub type JsRef<P> = Coprod!(<P as Proof>::JustificationReference, <P as Proof>::SubproofReference);
+pub type PjsRef<P> = Coprod!(<P as Proof>::PremiseReference, <P as Proof>::JustificationReference, <P as Proof>::SubproofReference);
+type JustVal<P> = Justification<Expr, PjRef<P>, <P as Proof>::SubproofReference>;
 
-pub fn js_to_pjs<P: Proof>(js: JSRef<P>) -> PJSRef<P> {
+pub fn js_to_pjs<P: Proof>(js: JsRef<P>) -> PjsRef<P> {
     js.fold(hlist![|x| Coproduct::inject(x), |x| Coproduct::inject(x)])
 }
-pub fn pj_to_pjs<P: Proof>(pj: PJRef<P>) -> PJSRef<P> {
+pub fn pj_to_pjs<P: Proof>(pj: PjRef<P>) -> PjsRef<P> {
     pj.fold(hlist![|x| Coproduct::inject(x), |x| Coproduct::inject(x)])
 }
 
@@ -202,55 +203,55 @@ pub trait Proof: Sized {
     fn new() -> Self;
     fn top_level_proof(&self) -> &Self::Subproof;
     fn lookup_premise(&self, r: &Self::PremiseReference) -> Option<Expr>;
-    fn lookup_step(&self, r: &Self::JustificationReference) -> Option<Justification<Expr, PJRef<Self>, Self::SubproofReference>>;
+    fn lookup_step(&self, r: &Self::JustificationReference) -> Option<Justification<Expr, PjRef<Self>, Self::SubproofReference>>;
     fn lookup_subproof(&self, r: &Self::SubproofReference) -> Option<Self::Subproof>;
     fn with_mut_premise<A, F: FnOnce(&mut Expr) -> A>(&mut self, r: &Self::PremiseReference, f: F) -> Option<A>;
-    fn with_mut_step<A, F: FnOnce(&mut Justification<Expr, PJRef<Self>, Self::SubproofReference>) -> A>(&mut self, r: &Self::JustificationReference, f: F) -> Option<A>;
+    fn with_mut_step<A, F: FnOnce(&mut Justification<Expr, PjRef<Self>, Self::SubproofReference>) -> A>(&mut self, r: &Self::JustificationReference, f: F) -> Option<A>;
     fn with_mut_subproof<A, F: FnOnce(&mut Self::Subproof) -> A>(&mut self, r: &Self::SubproofReference, f: F) -> Option<A>;
     fn add_premise(&mut self, e: Expr) -> Self::PremiseReference;
     fn add_subproof(&mut self) -> Self::SubproofReference;
-    fn add_step(&mut self, just: Justification<Expr, PJRef<Self>, Self::SubproofReference>) -> Self::JustificationReference;
-    fn prepend_step(&mut self, just: Justification<Expr, PJRef<Self>, Self::SubproofReference>) -> Self::JustificationReference {
+    fn add_step(&mut self, just: Justification<Expr, PjRef<Self>, Self::SubproofReference>) -> Self::JustificationReference;
+    fn prepend_step(&mut self, just: Justification<Expr, PjRef<Self>, Self::SubproofReference>) -> Self::JustificationReference {
         match self.lines().first() {
             Some(first_step) => self.add_step_relative(just, first_step, false),
             None => self.add_step(just),
         }
     }
     fn add_premise_relative(&mut self, e: Expr, r: &Self::PremiseReference, after: bool) -> Self::PremiseReference;
-    fn add_subproof_relative(&mut self, r: &JSRef<Self>, after: bool) -> Self::SubproofReference;
-    fn add_step_relative(&mut self, just: Justification<Expr, PJRef<Self>, Self::SubproofReference>, r: &JSRef<Self>, after: bool) -> Self::JustificationReference;
-    fn remove_line(&mut self, r: &PJRef<Self>);
+    fn add_subproof_relative(&mut self, r: &JsRef<Self>, after: bool) -> Self::SubproofReference;
+    fn add_step_relative(&mut self, just: Justification<Expr, PjRef<Self>, Self::SubproofReference>, r: &JsRef<Self>, after: bool) -> Self::JustificationReference;
+    fn remove_line(&mut self, r: &PjRef<Self>);
     fn remove_subproof(&mut self, r: &Self::SubproofReference);
     fn premises(&self) -> Vec<Self::PremiseReference>;
-    fn lines(&self) -> Vec<JSRef<Self>>;
-    fn parent_of_line(&self, r: &PJSRef<Self>) -> Option<Self::SubproofReference>;
-    fn verify_line(&self, r: &PJRef<Self>) -> Result<(), ProofCheckError<PJRef<Self>, Self::SubproofReference>>;
+    fn lines(&self) -> Vec<JsRef<Self>>;
+    fn parent_of_line(&self, r: &PjsRef<Self>) -> Option<Self::SubproofReference>;
+    fn verify_line(&self, r: &PjRef<Self>) -> Result<(), ProofCheckError<PjRef<Self>, Self::SubproofReference>>;
 
-    fn lookup_expr(&self, r: &PJRef<Self>) -> Option<Expr> {
+    fn lookup_expr(&self, r: &PjRef<Self>) -> Option<Expr> {
         r.clone().fold(hlist![|pr| self.lookup_premise(&pr), |jr| self.lookup_step(&jr).map(|x| x.0)])
     }
-    fn lookup_expr_or_die(&self, r: &PJRef<Self>) -> Result<Expr, ProofCheckError<PJRef<Self>, Self::SubproofReference>> {
+    fn lookup_expr_or_die(&self, r: &PjRef<Self>) -> Result<Expr, ProofCheckError<PjRef<Self>, Self::SubproofReference>> {
         self.lookup_expr(r).ok_or_else(|| ProofCheckError::LineDoesNotExist(r.clone()))
     }
-    fn lookup_premise_or_die(&self, r: &Self::PremiseReference) -> Result<Expr, ProofCheckError<PJRef<Self>, Self::SubproofReference>> {
+    fn lookup_premise_or_die(&self, r: &Self::PremiseReference) -> Result<Expr, ProofCheckError<PjRef<Self>, Self::SubproofReference>> {
         self.lookup_premise(r).ok_or_else(|| ProofCheckError::LineDoesNotExist(Coproduct::inject(r.clone())))
     }
-    fn lookup_justification_or_die(&self, r: &Self::JustificationReference) -> Result<Justification<Expr, PJRef<Self>, Self::SubproofReference>, ProofCheckError<PJRef<Self>, Self::SubproofReference>> {
+    fn lookup_justification_or_die(&self, r: &Self::JustificationReference) -> Result<JustVal<Self>, ProofCheckError<PjRef<Self>, Self::SubproofReference>> {
         self.lookup_step(r).ok_or_else(|| ProofCheckError::LineDoesNotExist(Coproduct::inject(r.clone())))
     }
-    fn lookup_pj(&self, r: &PJRef<Self>) -> Option<Coprod!(Expr, Justification<Expr, PJRef<Self>, Self::SubproofReference>)> {
+    fn lookup_pj(&self, r: &PjRef<Self>) -> Option<Coprod!(Expr, JustVal<Self>)> {
         r.clone().fold(hlist![|pr| self.lookup_premise(&pr).map(Coproduct::inject), |jr| self.lookup_step(&jr).map(Coproduct::inject)])
     }
-    fn lookup_subproof_or_die(&self, r: &Self::SubproofReference) -> Result<Self::Subproof, ProofCheckError<PJRef<Self>, Self::SubproofReference>> {
+    fn lookup_subproof_or_die(&self, r: &Self::SubproofReference) -> Result<Self::Subproof, ProofCheckError<PjRef<Self>, Self::SubproofReference>> {
         self.lookup_subproof(r).ok_or_else(|| ProofCheckError::SubproofDoesNotExist(r.clone()))
     }
     fn direct_lines(&self) -> Vec<Self::JustificationReference> {
         self.lines().iter().filter_map(|x| Coproduct::uninject::<Self::JustificationReference, _>(x.clone()).ok()).collect()
     }
-    fn exprs(&self) -> Vec<PJRef<Self>> {
+    fn exprs(&self) -> Vec<PjRef<Self>> {
         self.premises().into_iter().map(Coproduct::inject).chain(self.direct_lines().into_iter().map(Coproduct::inject)).collect()
     }
-    fn contained_justifications(&self, include_premises: bool) -> HashSet<PJRef<Self>> {
+    fn contained_justifications(&self, include_premises: bool) -> HashSet<PjRef<Self>> {
         let mut ret = self.lines().into_iter().filter_map(|x| x.fold(hlist![|r: Self::JustificationReference| Some(vec![r].into_iter().map(Coproduct::inject).collect()), |r: Self::SubproofReference| self.lookup_subproof(&r).map(|sub| sub.contained_justifications(include_premises)),])).fold(HashSet::new(), |mut x, y| {
             x.extend(y.into_iter());
             x
@@ -260,10 +261,10 @@ pub trait Proof: Sized {
         }
         ret
     }
-    fn transitive_dependencies(&self, line: PJRef<Self>) -> HashSet<PJRef<Self>> {
+    fn transitive_dependencies(&self, line: PjRef<Self>) -> HashSet<PjRef<Self>> {
         use frunk_core::coproduct::Coproduct::{Inl, Inr};
         // TODO: cycle detection
-        let mut stack: Vec<PJSRef<Self>> = vec![pj_to_pjs::<Self>(line)];
+        let mut stack: Vec<PjsRef<Self>> = vec![pj_to_pjs::<Self>(line)];
         let mut result = HashSet::new();
         while let Some(r) = stack.pop() {
             match r {
@@ -287,7 +288,7 @@ pub trait Proof: Sized {
         }
         result
     }
-    fn depth_of_line(&self, r: &PJSRef<Self>) -> usize {
+    fn depth_of_line(&self, r: &PjsRef<Self>) -> usize {
         let mut result = 0;
         let mut current = r.clone();
         while let Some(parent) = self.parent_of_line(&current) {
@@ -297,13 +298,13 @@ pub trait Proof: Sized {
         result
     }
 
-    fn possible_deps_for_line(&self, r: &PJRef<Self>, deps: &mut HashSet<PJRef<Self>>, sdeps: &mut HashSet<Self::SubproofReference>) {
+    fn possible_deps_for_line(&self, r: &PjRef<Self>, deps: &mut HashSet<PjRef<Self>>, sdeps: &mut HashSet<Self::SubproofReference>) {
         // r1 can reference r2 if all of the following hold:
         // 1) r2 occurs before r1
         // 2) if r2 is a line, r2 cannot be deeper in a subproof (e.g. r2 must occur before r1 in the same subproof, or in one of the parent subproofs)
         // 3) if r2 is a subproof reference, r1 must be outside r2's subproof
         // we compute the set of lines satisfying these properties by walking backwards starting from the subproof that r1 is in, adding lines that respect these rules
-        fn aux<P: Proof>(top: &P, sr: Option<P::SubproofReference>, r: &PJSRef<P>, deps: &mut HashSet<PJRef<P>>, sdeps: &mut HashSet<P::SubproofReference>) {
+        fn aux<P: Proof>(top: &P, sr: Option<P::SubproofReference>, r: &PjsRef<P>, deps: &mut HashSet<PjRef<P>>, sdeps: &mut HashSet<P::SubproofReference>) {
             use frunk_core::coproduct::Coproduct::{Inl, Inr};
             let prf = sr.and_then(|sr| Some((sr.clone(), top.lookup_subproof(&sr)?)));
             match prf {
@@ -352,7 +353,7 @@ pub trait Proof: Sized {
 
         aux(self, self.parent_of_line(&pj_to_pjs::<Self>(r.clone())), &pj_to_pjs::<Self>(r.clone()), deps, sdeps);
     }
-    fn can_reference_dep(&self, r1: &PJRef<Self>, r2: &Coprod!(PJRef<Self>, Self::SubproofReference)) -> bool {
+    fn can_reference_dep(&self, r1: &PjRef<Self>, r2: &Coprod!(PjRef<Self>, Self::SubproofReference)) -> bool {
         use self::Coproduct::{Inl, Inr};
         let mut valid_deps = HashSet::new();
         let mut valid_sdeps = HashSet::new();

@@ -6,7 +6,7 @@
 /**
  * Associative operators. All of these operations are associative.
  */
-typedef enum {
+typedef enum Op {
   /**
    * Logical and `∧`
    */
@@ -36,7 +36,7 @@ typedef enum {
 /**
  * Kinds of quantifiers
  */
-typedef enum {
+typedef enum QuantKind {
   /**
    * Universal quantifier `∀`
    */
@@ -56,7 +56,7 @@ typedef struct Vec_Expr Vec_Expr;
 /**
  * A logical expression
  */
-typedef enum {
+typedef enum Expr_Tag {
   /**
    * Contradiction `⊥`
    */
@@ -91,69 +91,69 @@ typedef enum {
   Quant,
 } Expr_Tag;
 
-typedef struct {
+typedef struct Var_Body {
   /**
    * Name of the variable
    */
-  String name;
+  struct String name;
 } Var_Body;
 
-typedef struct {
+typedef struct Apply_Body {
   /**
    * The function `P` being called
    */
-  Box_Expr func;
+  struct Box_Expr func;
   /**
    * Arguments `A, B, C` passed to the function
    */
-  Vec_Expr args;
+  struct Vec_Expr args;
 } Apply_Body;
 
-typedef struct {
+typedef struct Not_Body {
   /**
    * The operand of the negation `P`
    */
-  Box_Expr operand;
+  struct Box_Expr operand;
 } Not_Body;
 
-typedef struct {
+typedef struct Impl_Body {
   /**
    * The left expression `P`
    */
-  Box_Expr left;
+  struct Box_Expr left;
   /**
    * The right expression `Q`
    */
-  Box_Expr right;
+  struct Box_Expr right;
 } Impl_Body;
 
-typedef struct {
+typedef struct Assoc_Body {
   /**
    * The operator `<OP>`
    */
-  Op op;
+  enum Op op;
   /**
    * The expressions `P, Q, R`
    */
-  Vec_Expr exprs;
+  struct Vec_Expr exprs;
 } Assoc_Body;
 
-typedef struct {
+typedef struct Quant_Body {
   /**
    * The kind of quantifier `<KIND>`
    */
-  QuantKind kind;
+  enum QuantKind kind;
   /**
    * The quantified variable `A`
    */
-  String name;
+  struct String name;
   /**
    * The quantifier body `P`
    */
-  Box_Expr body;
+  struct Box_Expr body;
 } Quant_Body;
 
-typedef struct {
+typedef struct Expr {
   Expr_Tag tag;
   union {
     Var_Body var;
@@ -165,4 +165,4 @@ typedef struct {
   };
 } Expr;
 
-Expr *aris_expr_parse(const int8_t *e);
+struct Expr *aris_expr_parse(const int8_t *e);

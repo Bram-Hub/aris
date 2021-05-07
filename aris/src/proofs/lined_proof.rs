@@ -1,6 +1,6 @@
 use crate::expr::Expr;
 use crate::proofs::Justification;
-use crate::proofs::PJRef;
+use crate::proofs::PjRef;
 use crate::proofs::Proof;
 use crate::rules::RuleM;
 use crate::zipper_vec::ZipperVec;
@@ -12,7 +12,7 @@ use frunk_core::coproduct::Coproduct;
 pub struct Line<P: Proof> {
     pub raw_expr: String,
     pub is_premise: bool,
-    pub reference: PJRef<P>,
+    pub reference: PjRef<P>,
     pub subreference: Option<P::SubproofReference>, // None for toplevel lines
 }
 
@@ -30,7 +30,7 @@ impl<P: Proof> PartialEq for Line<P> {
 
 impl<P: Proof + Debug> Debug for Line<P>
 where
-    PJRef<P>: Debug,
+    PjRef<P>: Debug,
     P::SubproofReference: Debug,
 {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -39,7 +39,7 @@ where
 }
 
 impl<P: Proof> Line<P> {
-    fn new(raw_expr: String, is_premise: bool, reference: PJRef<P>, subreference: Option<P::SubproofReference>) -> Self {
+    fn new(raw_expr: String, is_premise: bool, reference: PjRef<P>, subreference: Option<P::SubproofReference>) -> Self {
         Line { raw_expr, is_premise, reference, subreference }
     }
 }
@@ -52,7 +52,7 @@ pub struct LinedProof<P: Proof> {
 
 impl<P: Proof + Debug> Debug for LinedProof<P>
 where
-    PJRef<P>: Debug,
+    PjRef<P>: Debug,
     P::SubproofReference: Debug,
 {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -62,7 +62,7 @@ where
 
 impl<P: Proof + Debug> Default for LinedProof<P>
 where
-    PJRef<P>: Debug,
+    PjRef<P>: Debug,
     P::SubproofReference: Debug,
 {
     fn default() -> Self {
@@ -72,7 +72,7 @@ where
 
 impl<P: Proof + Debug> LinedProof<P>
 where
-    PJRef<P>: Debug,
+    PjRef<P>: Debug,
     P::SubproofReference: Debug,
 {
     pub fn new() -> Self {

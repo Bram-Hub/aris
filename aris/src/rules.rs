@@ -59,14 +59,13 @@ use crate::expr::Constraint;
 use crate::expr::Expr;
 use crate::expr::Op;
 use crate::expr::QuantKind;
-use crate::proofs::PJRef;
+use crate::proofs::PjRef;
 use crate::proofs::Proof;
 use crate::rewrite_rules::RewriteRule;
 
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::iter::FromIterator;
 use std::string::ToString;
 
 use frunk_core::coproduct::Coproduct;
@@ -341,7 +340,7 @@ pub trait RuleT {
     /// num_subdeps is used by SharedChecks to ensure that the right number of subproof dependencies are provided, None indicates that no checking is done (e.g. for variadic rules)
     fn num_subdeps(&self) -> Option<usize>;
     /// check that expr is a valid conclusion of the rule given the corresponding lists of dependencies and subproof dependencies, returning Ok(()) on success, and an error to display in the GUI on failure
-    fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<PJRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>>;
+    fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<PjRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>>;
 }
 
 impl<A: RuleT, B: RuleT> RuleT for Coproduct<A, B> {
@@ -369,7 +368,7 @@ impl<A: RuleT, B: RuleT> RuleT for Coproduct<A, B> {
             Inr(x) => x.num_subdeps(),
         }
     }
-    fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<PJRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
+    fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<PjRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
         match self {
             Inl(x) => x.check(p, expr, deps, sdeps),
             Inr(x) => x.check(p, expr, deps, sdeps),
@@ -389,7 +388,7 @@ impl RuleT for frunk_core::coproduct::CNil {
     fn num_subdeps(&self) -> Option<usize> {
         match *self {}
     }
-    fn check<P: Proof>(self, _p: &P, _expr: Expr, _deps: Vec<PJRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
+    fn check<P: Proof>(self, _p: &P, _expr: Expr, _deps: Vec<PjRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
         match self {}
     }
 }
@@ -407,7 +406,7 @@ impl<T: RuleT> RuleT for SharedChecks<T> {
     fn num_subdeps(&self) -> Option<usize> {
         self.0.num_subdeps()
     }
-    fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<PJRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
+    fn check<P: Proof>(self, p: &P, expr: Expr, deps: Vec<PjRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
         use ProofCheckError::*;
         if let Some(directs) = self.num_deps() {
             if deps.len() != directs {
@@ -424,7 +423,7 @@ impl<T: RuleT> RuleT for SharedChecks<T> {
     }
 }
 
-pub fn do_expressions_contradict<P: Proof>(prem1: &Expr, prem2: &Expr) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
+pub fn do_expressions_contradict<P: Proof>(prem1: &Expr, prem2: &Expr) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
     either_order(
         prem1,
         prem2,
@@ -496,7 +495,7 @@ impl RuleT for PrepositionalInference {
             OrElim | BiconditionalIntro | EquivalenceIntro => None,
         }
     }
-    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PJRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
+    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
         use PrepositionalInference::*;
         use ProofCheckError::*;
 
@@ -514,13 +513,13 @@ impl RuleT for PrepositionalInference {
                     // ensure each dep appears in exprs
                     for d in deps.iter() {
                         let e = p.lookup_expr_or_die(&d)?;
-                        if exprs.iter().find(|x| x == &&e).is_none() {
+                        if !exprs.iter().any(|x| x == &e) {
                             return Err(DoesNotOccur(e, conclusion.clone()));
                         }
                     }
                     // ensure each expr has a dep
                     for e in exprs {
-                        if deps.iter().find(|&d| p.lookup_expr(&d).map(|de| &de == e).unwrap_or(false)).is_none() {
+                        if !deps.iter().any(|d| p.lookup_expr(&d).map(|de| &de == e).unwrap_or(false)) {
                             return Err(DepDoesNotExist(e.clone(), false));
                         }
                     }
@@ -546,7 +545,7 @@ impl RuleT for PrepositionalInference {
             OrIntro => {
                 let prem = p.lookup_expr_or_die(&deps[0])?;
                 if let Expr::Assoc { op: Op::Or, ref exprs } = conclusion {
-                    if exprs.iter().find(|e| e == &&prem).is_none() {
+                    if !exprs.iter().any(|e| e == &prem) {
                         return Err(DoesNotOccur(prem, conclusion.clone()));
                     }
                     Ok(())
@@ -581,7 +580,7 @@ impl RuleT for PrepositionalInference {
                         return Err(DoesNotOccur(*left.clone(), prem[0].clone()));
                     }
                     let conc = sproof.lines().into_iter().filter_map(|x| x.get::<P::JustificationReference, _>().cloned()).map(|r| p.lookup_expr_or_die(&Coproduct::inject(r))).collect::<Result<Vec<Expr>, _>>()?;
-                    if conc.iter().find(|c| *c == &**right).is_none() {
+                    if !conc.iter().any(|c| c == &**right) {
                         return Err(DepDoesNotExist(*right.clone(), false));
                     }
                     Ok(())
@@ -628,12 +627,12 @@ impl RuleT for PrepositionalInference {
                         return Err(DoesNotOccur(*operand.clone(), prem[0].clone()));
                     }
                     let conc = sproof.lines().into_iter().filter_map(|x| x.get::<P::JustificationReference, _>().cloned()).map(|r| p.lookup_expr_or_die(&Coproduct::inject(r))).collect::<Result<Vec<Expr>, _>>()?;
-                    if conc.iter().find(|x| **x == Expr::Contra).is_none() {
+                    if !conc.iter().any(|x| *x == Expr::Contra) {
                         return Err(DepDoesNotExist(Expr::Contra, false));
                     }
                     Ok(())
                 } else {
-                    Err(ConclusionOfWrongForm(Expr::not(Expr::var("_"))))
+                    Err(ConclusionOfWrongForm(!Expr::var("_")))
                 }
             }
             NotElim => {
@@ -643,12 +642,12 @@ impl RuleT for PrepositionalInference {
                         if **operand == conclusion {
                             return Ok(());
                         }
-                        Err(ConclusionOfWrongForm({ Expr::not(Expr::not(Expr::var("_"))) }))
+                        Err(ConclusionOfWrongForm(!(!(Expr::var("_")))))
                     } else {
-                        Err(DepDoesNotExist(Expr::not(Expr::not(Expr::var("_"))), true))
+                        Err(DepDoesNotExist(!(!(Expr::var("_"))), true))
                     }
                 } else {
-                    Err(DepDoesNotExist(Expr::not(Expr::not(Expr::var("_"))), true))
+                    Err(DepDoesNotExist(!(!(Expr::var("_"))), true))
                 }
             }
             ContradictionIntro => {
@@ -693,7 +692,7 @@ impl RuleT for PrepositionalInference {
                             if conclusion != expected {
                                 return AnyOrderResult::Err(DoesNotOccur(conclusion.clone(), expected));
                             }
-                            return AnyOrderResult::Ok;
+                            AnyOrderResult::Ok
                         } else {
                             AnyOrderResult::WrongOrder
                         }
@@ -785,10 +784,10 @@ impl RuleT for PrepositionalInference {
                     |i, j| {
                         if let Expr::Assoc { op: Op::Equiv, ref exprs } = i {
                             // TODO: Negation?
-                            if exprs.iter().find(|x| x == &j).is_none() {
+                            if !exprs.iter().any(|x| x == j) {
                                 return AnyOrderResult::Err(DoesNotOccur(j.clone(), i.clone()));
                             }
-                            if exprs.iter().find(|x| x == &&conclusion).is_none() {
+                            if !exprs.iter().any(|x| x == &conclusion) {
                                 return AnyOrderResult::Err(DoesNotOccur(conclusion.clone(), i.clone()));
                             }
                             AnyOrderResult::Ok
@@ -838,10 +837,10 @@ impl RuleT for PredicateInference {
             ForallIntro | ExistsElim => Some(1),
         }
     }
-    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PJRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
+    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
         use PredicateInference::*;
         use ProofCheckError::*;
-        fn unifies_wrt_var<P: Proof>(e1: &Expr, e2: &Expr, var: &str) -> Result<Expr, ProofCheckError<PJRef<P>, P::SubproofReference>> {
+        fn unifies_wrt_var<P: Proof>(e1: &Expr, e2: &Expr, var: &str) -> Result<Expr, ProofCheckError<PjRef<P>, P::SubproofReference>> {
             let constraints = vec![Constraint::Equal(e1.clone(), e2.clone())].into_iter().collect();
             if let Some(substitutions) = crate::expr::unify(constraints) {
                 if substitutions.0.is_empty() {
@@ -862,7 +861,7 @@ impl RuleT for PredicateInference {
                 Err(Other(format!("No substitution found between {} and {}.", e1, e2)))
             }
         }
-        fn generalizable_variable_counterexample<P: Proof>(sproof: &P, line: PJRef<P>, var: &str) -> Option<Expr> {
+        fn generalizable_variable_counterexample<P: Proof>(sproof: &P, line: PjRef<P>, var: &str) -> Option<Expr> {
             let contained = sproof.contained_justifications(true);
             //println!("gvc contained {:?}", contained.iter().map(|x| sproof.lookup_expr(&x)).collect::<Vec<_>>());
             let reachable = sproof.transitive_dependencies(line);
@@ -967,7 +966,7 @@ impl RuleT for PredicateInference {
     }
 }
 
-fn check_by_normalize_first_expr<F, P: Proof>(p: &P, deps: Vec<PJRef<P>>, conclusion: Expr, commutative: bool, normalize_fn: F) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>>
+fn check_by_normalize_first_expr<F, P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion: Expr, commutative: bool, normalize_fn: F) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>>
 where
     F: Fn(Expr) -> Expr,
 {
@@ -985,11 +984,11 @@ where
     }
 }
 
-fn check_by_rewrite_rule_confl<P: Proof>(p: &P, deps: Vec<PJRef<P>>, conclusion: Expr, commutative: bool, rule: &RewriteRule) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
+fn check_by_rewrite_rule_confl<P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion: Expr, commutative: bool, rule: &RewriteRule) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
     check_by_normalize_first_expr(p, deps, conclusion, commutative, |e| rule.reduce(e))
 }
 
-fn check_by_rewrite_rule_non_confl<P: Proof>(p: &P, deps: Vec<PJRef<P>>, conclusion: Expr, commutative: bool, rule: &RewriteRule) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
+fn check_by_rewrite_rule_non_confl<P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion: Expr, commutative: bool, rule: &RewriteRule) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
     let premise = p.lookup_expr_or_die(&deps[0])?;
     let premise_set = rule.reduce_set(premise.clone());
     let conclusion_set = rule.reduce_set(conclusion.clone());
@@ -1037,7 +1036,7 @@ impl RuleT for BooleanEquivalence {
     fn num_subdeps(&self) -> Option<usize> {
         Some(0)
     }
-    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PJRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
+    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
         use BooleanEquivalence::*;
         match self {
             DeMorgan => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.normalize_demorgans()),
@@ -1089,7 +1088,7 @@ impl RuleT for ConditionalEquivalence {
     fn num_subdeps(&self) -> Option<usize> {
         Some(0)
     }
-    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PJRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
+    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
         use ConditionalEquivalence::*;
         match self {
             Complement => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_COMPLEMENT),
@@ -1135,7 +1134,7 @@ impl RuleT for RedundantPrepositionalInference {
     fn num_subdeps(&self) -> Option<usize> {
         Some(0)
     }
-    fn check<P: Proof>(self, proof: &P, conclusion: Expr, deps: Vec<PJRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
+    fn check<P: Proof>(self, proof: &P, conclusion: Expr, deps: Vec<PjRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
         use ProofCheckError::*;
         use RedundantPrepositionalInference::*;
 
@@ -1152,8 +1151,8 @@ impl RuleT for RedundantPrepositionalInference {
                     &dep_1,
                     |dep_0, dep_1| {
                         if let Expr::Impl { left: p, right: q } = dep_0 {
-                            let not_p = Expr::not(*p.clone());
-                            let not_q = Expr::not(*q.clone());
+                            let not_p = !(*p.clone());
+                            let not_q = !(*q.clone());
                             if not_q != *dep_1 {
                                 AnyOrderResult::Err(DoesNotOccur(not_q, dep_1.clone()))
                             } else if not_p != conclusion {
@@ -1239,7 +1238,7 @@ impl RuleT for RedundantPrepositionalInference {
             }
             ExcludedMiddle => {
                 // A | ~A
-                let wrong_form_err = ConclusionOfWrongForm(Expr::or(Expr::var("_"), Expr::not(Expr::var("_"))));
+                let wrong_form_err = ConclusionOfWrongForm(Expr::var("_") | !Expr::var("_"));
                 let operands = match conclusion {
                     Expr::Assoc { op: Op::Or, exprs } => exprs,
                     _ => return Err(wrong_form_err),
@@ -1251,7 +1250,7 @@ impl RuleT for RedundantPrepositionalInference {
                 };
 
                 let not_a_0 = not_a.clone();
-                let not_a_1 = Expr::not(a.clone());
+                let not_a_1 = !(a.clone());
 
                 if not_a_0 == not_a_1 {
                     Ok(())
@@ -1267,22 +1266,22 @@ impl RuleT for RedundantPrepositionalInference {
                 any_order(
                     &deps,
                     |deps| {
-                        let (dep_0, dep_1, dep_2) = deps.into_iter().collect_tuple().unwrap();
+                        let (dep_0, dep_1, dep_2) = deps.iter().collect_tuple().unwrap();
                         if let (Expr::Impl { left: p_0, right: q_0 }, Expr::Impl { left: r_0, right: s_0 }, Expr::Assoc { op: Op::Or, exprs: p_r }, Expr::Assoc { op: Op::Or, exprs: q_s }) = (dep_0, dep_1, dep_2, &conclusion) {
                             let p_0 = *p_0.clone();
                             let q_0 = *q_0.clone();
                             let r_0 = *r_0.clone();
                             let s_0 = *s_0.clone();
-                            let dep_2 = dep_2.clone().clone();
+                            let dep_2 = (*dep_2).clone();
                             let conclusion = conclusion.clone();
 
-                            let (p_1, r_1) = match p_r.into_iter().collect_tuple() {
+                            let (p_1, r_1) = match p_r.iter().collect_tuple() {
                                 Some((p_1, r_1)) => (p_1, r_1),
-                                None => return AnyOrderResult::Err(DoesNotOccur(Expr::or(p_0, r_0), dep_2)),
+                                None => return AnyOrderResult::Err(DoesNotOccur(p_0 | r_0, dep_2)),
                             };
-                            let (q_1, s_1) = match q_s.into_iter().collect_tuple() {
+                            let (q_1, s_1) = match q_s.iter().collect_tuple() {
                                 Some((q_1, s_1)) => (q_1, s_1),
-                                None => return AnyOrderResult::Err(DoesNotOccur(Expr::or(q_0, s_0), conclusion)),
+                                None => return AnyOrderResult::Err(DoesNotOccur(q_0 | s_0, conclusion)),
                             };
 
                             let p_1 = p_1.clone();
@@ -1334,7 +1333,7 @@ impl RuleT for AutomationRelatedRules {
             AutomationRelatedRules::Resolution | AutomationRelatedRules::TautologicalConsequence => Some(0),
         }
     }
-    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PJRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
+    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
         match self {
             AutomationRelatedRules::Resolution => {
                 let prem0 = p.lookup_expr_or_die(&deps[0])?;
@@ -1342,7 +1341,7 @@ impl RuleT for AutomationRelatedRules {
                 let mut premise_disjuncts = HashSet::new();
                 premise_disjuncts.extend(prem0.disjuncts());
                 premise_disjuncts.extend(prem1.disjuncts());
-                let conclusion_disjuncts = HashSet::from_iter(conclusion.disjuncts().into_iter());
+                let conclusion_disjuncts = conclusion.disjuncts().into_iter().collect::<HashSet<_>>();
                 let mut remainder = premise_disjuncts.difference(&conclusion_disjuncts).cloned().collect::<Vec<Expr>>();
                 //println!("resolution remainder of {:?} and {:?} is {:?}", premise_disjuncts, conclusion_disjuncts, remainder);
                 remainder.sort();
@@ -1371,7 +1370,7 @@ impl RuleT for AutomationRelatedRules {
 
                 // Create `varisat` formula of `~(P -> Q)`. If this is
                 // unsatisfiable, then we've proven `P -> Q`.
-                let sat = Expr::not(Expr::implies(premise, conclusion));
+                let sat = !(Expr::implies(premise, conclusion));
                 let (sat, vars) = into_cnf(sat)?.to_varisat();
                 let mut solver = varisat::Solver::new();
                 solver.add_formula(&sat);
@@ -1428,7 +1427,7 @@ impl RuleT for QuantifierEquivalence {
     fn num_subdeps(&self) -> Option<usize> {
         Some(0)
     }
-    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PJRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
+    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
         use QuantifierEquivalence::*;
         match self {
             QuantifierNegation => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::negate_quantifiers),
@@ -1455,7 +1454,7 @@ impl RuleT for EmptyRule {
     fn num_subdeps(&self) -> Option<usize> {
         None
     }
-    fn check<P: Proof>(self, _: &P, _: Expr, _: Vec<PJRef<P>>, _: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PJRef<P>, P::SubproofReference>> {
+    fn check<P: Proof>(self, _: &P, _: Expr, _: Vec<PjRef<P>>, _: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
         Err(ProofCheckError::Other("No rule selected".to_string()))
     }
 }
@@ -1509,7 +1508,7 @@ where
 {
     // Iterator over the check results of all the permutations that weren't
     // `AnyOrderResult::WrongOrder`
-    let mut results = deps.into_iter().permutations(deps.len()).map(|deps| check_func(&deps)).filter_map(|result: AnyOrderResult<R, S>| match result {
+    let mut results = deps.iter().permutations(deps.len()).map(|deps| check_func(&deps)).filter_map(|result: AnyOrderResult<R, S>| match result {
         AnyOrderResult::Ok => Some(Ok(())),
         AnyOrderResult::Err(err) => Some(Err(err)),
         AnyOrderResult::WrongOrder => None,
@@ -1544,7 +1543,7 @@ where
     let deps = &[dep_1.clone(), dep_2.clone()];
     // Convert `check_func` so it takes `&[&Expr]` instead of `&Expr, &Expr`
     let check_func = |deps: &[&Expr]| {
-        let (dep_1, dep_2) = deps.into_iter().collect_tuple().unwrap();
+        let (dep_1, dep_2) = deps.iter().collect_tuple().unwrap();
         check_func(dep_1, dep_2)
     };
     any_order(deps, check_func, fallthrough_error)
@@ -1621,7 +1620,7 @@ mod tests {
         let dep_2 = p("(A & B)");
         let conclusion = p("C");
 
-        let result = either_order::<PJRef<P>, SRef, _, _>(
+        let result = either_order::<PjRef<P>, SRef, _, _>(
             &dep_1,
             &dep_2,
             |i, j| {

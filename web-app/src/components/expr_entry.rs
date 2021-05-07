@@ -120,9 +120,9 @@ impl ExprEntry {
 
         // Convert left and right text back into regular `Strings` and expand
         // macros
-        let left = left.into_iter().collect::<String>();
+        let left = left.iter().collect::<String>();
         let left = aris::macros::expand(&left);
-        let right = right.into_iter().collect::<String>();
+        let right = right.iter().collect::<String>();
         let right = aris::macros::expand(&right);
 
         // Compute new cursor position

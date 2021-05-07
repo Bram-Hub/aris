@@ -86,12 +86,12 @@ fn permute_ops(e: Expr) -> Vec<Expr> {
                 .permutations(len)
                 .flat_map(|args| {
                     // Permuting every expression in the current list of args
-                    let permutations = args.into_iter().map(|arg| permute_ops(arg.clone())).collect::<Vec<_>>();
+                    let permutations = args.into_iter().map(permute_ops).collect::<Vec<_>>();
                     // Convert the Vec<Vec<Expr>> to a Vec<Vec<&Expr>>
-                    let ref_perms = permutations.iter().map(|l| l.iter().collect::<Vec<_>>()).collect::<Vec<_>>();
+                    let ref_perms = permutations.iter().map(|l| l.iter().collect::<Vec<_>>());
                     // Then get a cartesian product of all permutations (this is the slow part)
                     // Gives you a list of new argument lists
-                    let product = ref_perms.into_iter().multi_cartesian_product();
+                    let product = ref_perms.multi_cartesian_product();
                     // Then just turn everything from that list into an assoc binop
                     // The `collect()` is necessary to maintain the borrows from permutations
                     product.into_iter().map(|args| Expr::Assoc { op, exprs: args.into_iter().cloned().collect::<Vec<_>>() }).collect::<Vec<_>>()
@@ -241,12 +241,12 @@ mod tests {
         // DeMorgan's for and/or that have only two parameters
 
         // ~(phi & psi) ==> ~phi | ~psi
-        let pattern1 = Expr::not(Expr::assoc(Op::And, &[Expr::var("phi"), Expr::var("psi")]));
-        let replace1 = Expr::assoc(Op::Or, &[Expr::not(Expr::var("phi")), Expr::not(Expr::var("psi"))]);
+        let pattern1 = !Expr::assoc(Op::And, &[Expr::var("phi"), Expr::var("psi")]);
+        let replace1 = Expr::assoc(Op::Or, &[!Expr::var("phi"), !Expr::var("psi")]);
 
         // ~(phi | psi) ==> ~phi & ~psi
-        let pattern2 = Expr::not(Expr::assoc(Op::Or, &[Expr::var("phi"), Expr::var("psi")]));
-        let replace2 = Expr::assoc(Op::And, &[Expr::not(Expr::var("phi")), Expr::not(Expr::var("psi"))]);
+        let pattern2 = !Expr::assoc(Op::Or, &[Expr::var("phi"), Expr::var("psi")]);
+        let replace2 = Expr::assoc(Op::And, &[!Expr::var("phi"), !Expr::var("psi")]);
 
         let patterns = vec![(pattern1, replace1), (pattern2, replace2)];
         reduce_pattern(Expr::var("some_expr"), &patterns);

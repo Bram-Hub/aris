@@ -6,4 +6,4 @@ edition = "2018"
 
 [dependencies]
 aris = { path = "../aris" }
-frunk_core = "0.2.2"
+frunk_core = "0.3.2"

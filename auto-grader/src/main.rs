@@ -4,7 +4,7 @@
 use aris::expr::Expr;
 use aris::proofs::lined_proof::LinedProof;
 use aris::proofs::xml_interop::proof_from_xml;
-use aris::proofs::{Justification, PJRef, Proof};
+use aris::proofs::{Justification, PjRef, Proof};
 use aris::rules::ProofCheckError;
 
 use std::collections::HashSet;
@@ -16,9 +16,11 @@ use std::path::Path;
 use frunk_core::coproduct::Coproduct;
 use frunk_core::Hlist;
 
-fn validate_recursive<P: Proof>(proof: &P, line: PJRef<P>) -> Result<(), (PJRef<P>, ProofCheckError<PJRef<P>, P::SubproofReference>)>
+type ValidateError<P> = (PjRef<P>, ProofCheckError<PjRef<P>, <P as Proof>::SubproofReference>);
+
+fn validate_recursive<P: Proof>(proof: &P, line: PjRef<P>) -> Result<(), ValidateError<P>>
 where
-    PJRef<P>: Debug,
+    PjRef<P>: Debug,
     P::SubproofReference: Debug,
 {
     use Coproduct::{Inl, Inr};
@@ -36,7 +38,7 @@ where
 
         match line {
             None => {
-                return Err((r.clone(), LineDoesNotExist(r.clone())));
+                return Err((r.clone(), LineDoesNotExist(r)));
             }
             Some(Inl(_)) => {}
             Some(Inr(Inl(Justification(_, _, deps, sdeps)))) => {
@@ -97,7 +99,7 @@ fn main() -> Result<(), String> {
 
     // Verify that the goals are in the student lines and that the instructor's conclusion line matches some student's conclusion, and that the student's conclusion checks out using DFS.
     for i_goal in i_meta.goals {
-        if let Some(i) = student_lines.iter().find(|i| s_prf.lookup_expr(&Coproduct::inject(*i.clone())).as_ref() == Some(&i_goal)) {
+        if let Some(i) = student_lines.iter().find(|i| s_prf.lookup_expr(&Coproduct::inject(**i)).as_ref() == Some(&i_goal)) {
             match validate_recursive(&s_prf, Coproduct::inject(*i)) {
                 Ok(()) => {}
                 Err((r, e)) => {
