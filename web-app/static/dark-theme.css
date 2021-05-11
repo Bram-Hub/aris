@@ -1,0 +1,157 @@
+[theme="dark"] body {
+    color: white;
+    background-color: black;
+}
+
+[theme="dark"] a {
+    color: #a2cfff;
+}
+
+[theme="dark"] a:hover {
+    color: #007bff;
+}
+
+[theme="dark"] pre {
+    color: white;
+}
+
+[theme="dark"] .form-control {
+    background-color: #373737;
+    border: 1px solid dimgray;
+}
+
+[theme="dark"] .form-control:focus {
+    color: white;
+    background-color: #4c4c4c;
+    border-color: black;
+    box-shadow: 0 0 0 0.2rem rgb(0, 123, 255);
+}
+
+[theme="dark"] .table-info,
+[theme="dark"] .table-info > td,
+[theme="dark"] .table-info > th {
+    background-color: #009db5;
+}
+
+[theme="dark"] .table-secondary,
+[theme="dark"] .table-secondary > td,
+[theme="dark"] .table-secondary > th {
+    background-color: #8c6b5a;
+}
+
+[theme="dark"] .alert {
+    border: 1px solid black;
+}
+
+[theme="dark"] .alert-primary {
+    color: white;
+    background-color: #3c5e83;
+    border-color: #3c5e83;
+}
+
+[theme="dark"] .alert-secondary {
+    background-color: #575757;
+    border-color: #262626;
+}
+
+[theme="dark"] .alert-success {
+    color: white;
+    background-color: rgb(0, 76, 29);
+    border-color: rgb(20, 139, 49);
+}
+
+[theme="dark"] .dropdown-menu {
+    background-color: black;
+    border: 1px solid dimgray;
+}
+
+[theme="dark"] .modal-content {
+    background-color: black;
+    border: 1px solid dimgray;
+}
+
+[theme="dark"] .table {
+    color: white;
+}
+
+[theme="dark"] .close {
+    color: white;
+}
+
+[theme="dark"] .close:hover {
+    color: gray;
+}
+
+[theme="dark"] .table-bordered td,
+[theme="dark"] .table-bordered th {
+    border: 1px solid gray;
+}
+
+[theme="dark"] .modal-header {
+    border-bottom: 1px solid gray;
+}
+
+[theme="dark"] .bg-secondary {
+    background-color: #4c4c4c !important;
+}
+
+[theme="dark"] .btn {
+    color: white;
+}
+
+[theme="dark"] .btn-primary {
+    border-color: black;
+}
+
+[theme="dark"] .btn-secondary {
+    background-color: #4c4c4c;
+    border-color: #292929;
+}
+
+[theme="dark"] .btn-danger {
+    border-color: black;
+}
+
+[theme="dark"] .table thead th {
+    border-bottom: 2px solid gray;
+}
+
+[theme="dark"] .dropdown-item {
+    color: white;
+}
+
+[theme="dark"] .dropdown-item:hover {
+    color: white;
+    background-color: #3c3b3b;
+}
+
+[theme="dark"] kbd {
+    background-color: #4c4c4c;
+}
+
+[theme="dark"] .popover {
+    background-color: black;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border: 1px solid dimgray;
+}
+
+[theme="dark"] .popover-body {
+    color: white;
+}
+
+[theme="dark"] .bs-popover-right > .arrow::before {
+    border-right-color: dimgray;
+}
+
+[theme="dark"] .bs-popover-auto[x-placement^="right"] > .arrow::after,
+[theme="dark"] .bs-popover-right > .arrow::after {
+    border-right-color: black;
+}
+
+[theme="dark"] .text-input-custom {
+    color: white;
+}
+
+[theme="dark"] .card {
+    background-color: black;
+}
