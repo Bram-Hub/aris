@@ -125,6 +125,10 @@
     background-color: #3c3b3b;
 }
 
+[theme="dark"] .dropdown-item:focus {
+    background-color: #3b394a;
+}
+
 [theme="dark"] kbd {
     background-color: #4c4c4c;
 }
