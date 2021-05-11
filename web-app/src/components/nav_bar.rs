@@ -58,6 +58,7 @@ pub enum NavBarMsg {
     FileOpen(web_sys::FileList),
     FileSave,
     NewExprTree,
+    ToggleTheme,
     Nop,
 }
 #[derive(Properties, Clone)]
@@ -124,6 +125,14 @@ impl Component for NavBarWidget {
                 self.next_tab_idx += 1;
                 false
             }
+            NavBarMsg::ToggleTheme => {
+                match theme().as_str() {
+                    "light" => document_element().set_attribute("theme", "dark").expect("failed setting dark theme"),
+                    "dark" => document_element().set_attribute("theme", "light").expect("failed setting light theme"),
+                    theme => unreachable!("unknown theme {}", theme),
+                }
+                true
+            }
             NavBarMsg::Nop => false,
         }
     }
@@ -162,6 +171,12 @@ impl Component for NavBarWidget {
             </ul>
         };
 
+        let theme_icon_kind = match theme().as_str() {
+            "light" => IconKind::Sun,
+            "dark" => IconKind::Moon,
+            theme => unreachable!("unknown theme {}", theme),
+        };
+
         let navbar = html! {
             // Bootstrap navbar
             // https://getbootstrap.com/docs/4.5/components/navbar/
@@ -171,8 +186,14 @@ impl Component for NavBarWidget {
 
                 { file_menu }
 
-                // Help menu
                 <ul class="navbar-nav ml-auto">
+                    // Theme toggle
+                    <li class="nav-item">
+                        <a class="nav-link" onclick=self.link.callback(|_| NavBarMsg::ToggleTheme)>
+                            { Icon::new_big(theme_icon_kind) }
+                        </a>
+                    </li>
+                    // Help menu
                     <li class="nav-item">
                         <a class="nav-link" data-toggle="modal" data-target="#help-modal">
                             { Icon::new_big(IconKind::Question) }
@@ -189,6 +210,18 @@ impl Component for NavBarWidget {
             </>
         }
     }
+}
+
+/// Shortcut for `window.document.documentElement`, panicing on error
+fn document_element() -> web_sys::Element {
+    let window = web_sys::window().expect("window()");
+    let document = window.document().expect("window.document()");
+    document.document_element().expect("document.document_element()")
+}
+
+/// Get the name of the current theme, or panic if the theme attribute doesn't exist.
+fn theme() -> String {
+    document_element().get_attribute("theme").expect("failed querying theme")
 }
 
 fn render_help_modal() -> Html {
