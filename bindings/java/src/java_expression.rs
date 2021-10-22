@@ -8,7 +8,7 @@ use aris::expr::QuantKind;
 #[allow(non_snake_case)]
 pub extern "system" fn Java_edu_rpi_aris_ast_Expression_toDebugString(env: JNIEnv, obj: JObject) -> jstring {
     with_thrown_errors(&env, |env| {
-        let expr = jobject_to_expr(&env, obj);
+        let expr = jobject_to_expr(env, obj);
         Ok(env.new_string(format!("{:?}", expr?))?.into_inner())
     })
 }
@@ -17,7 +17,7 @@ pub extern "system" fn Java_edu_rpi_aris_ast_Expression_toDebugString(env: JNIEn
 #[allow(non_snake_case)]
 pub extern "system" fn Java_edu_rpi_aris_ast_Expression_toString(env: JNIEnv, obj: JObject) -> jstring {
     with_thrown_errors(&env, |env| {
-        let expr = jobject_to_expr(&env, obj);
+        let expr = jobject_to_expr(env, obj);
         Ok(env.new_string(format!("{}", expr?))?.into_inner())
     })
 }
@@ -91,12 +91,12 @@ pub fn jobject_to_expr(env: &JNIEnv, obj: JObject) -> jni::errors::Result<Expr> 
 #[allow(non_snake_case)]
 pub extern "system" fn Java_edu_rpi_aris_ast_Expression_parseViaRust(env: JNIEnv, _cls: JClass, e: JString) -> jobject {
     with_thrown_errors(&env, |env| {
-        if let Ok(e) = JavaStr::from_env(&env, e)?.to_str() {
+        if let Ok(e) = JavaStr::from_env(env, e)?.to_str() {
             //println!("received {:?}", e);
-            let parsed = aris::parser::parse(&e);
+            let parsed = aris::parser::parse(e);
             //println!("parse: {:?}", parsed);
             if let Some(expr) = parsed {
-                let r = expr_to_jobject(&env, expr)?;
+                let r = expr_to_jobject(env, expr)?;
                 Ok(r.into_inner())
             } else {
                 Ok(std::ptr::null_mut())

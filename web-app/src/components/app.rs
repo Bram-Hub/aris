@@ -45,7 +45,7 @@ impl Component for App {
             }
             AppMsg::CreateTab { name, content } => {
                 if let Some(tabcontainer_link) = &self.tabcontainer_link {
-                    tabcontainer_link.send_message(TabbedContainerMsg::CreateTab { name, content });
+                    tabcontainer_link.send_message(TabbedContainerMsg::Create { name, content });
                 }
                 true
             }
@@ -56,7 +56,7 @@ impl Component for App {
             AppMsg::GetProofFromCurrentTab(f) => {
                 if let Some(tabcontainer_link) = &self.tabcontainer_link {
                     let proofs = self.proofs.clone();
-                    tabcontainer_link.send_message(TabbedContainerMsg::GetCurrentTab(Box::new(move |_, name| {
+                    tabcontainer_link.send_message(TabbedContainerMsg::GetCurrent(Box::new(move |_, name| {
                         if let Some(link) = proofs.get(&*name) {
                             link.send_message(ProofWidgetMsg::CallOnProof(Box::new(move |prf| f(name, prf))));
                         }

@@ -203,7 +203,7 @@ impl ProofWidget {
         // Iterator over line dependency badges, for rendering list of
         // dependencies
         let dep_badges = just.2.iter().map(|dep| {
-            let (dep_line, _) = self.pud.ref_to_line_depth[&dep];
+            let (dep_line, _) = self.pud.ref_to_line_depth[dep];
             html! {
                 <span class="badge badge-dark m-1"> { dep_line } </span>
             }
@@ -211,7 +211,7 @@ impl ProofWidget {
 
         // Iterator over subproof dependency badges, for rendering list of
         // dependencies
-        let sdep_badges = just.3.iter().filter_map(|sdep| self.prf.lookup_subproof(&sdep)).map(|sub| {
+        let sdep_badges = just.3.iter().filter_map(|sdep| self.prf.lookup_subproof(sdep)).map(|sub| {
             let (mut lo, mut hi) = (usize::max_value(), usize::min_value());
             for line in sub.premises().into_iter().map(Coproduct::inject).chain(sub.direct_lines().into_iter().map(Coproduct::inject)) {
                 if let Some((i, _)) = self.pud.ref_to_line_depth.get(&line) {
@@ -254,7 +254,7 @@ impl ProofWidget {
             }
             Some(x) => x,
         };
-        match parse(&raw_line).map(|_| self.prf.verify_line(&proofref)) {
+        match parse(raw_line).map(|_| self.prf.verify_line(&proofref)) {
             None => {
                 html! { <span class="alert alert-warning small-alert s1">{ "Parse error" }</span> }
             }
@@ -445,7 +445,7 @@ impl ProofWidget {
                 Inr(Inl(sr)) => {
                     *depth += 1;
                     //output.push(row_spacer.clone());
-                    output.push((self.render_proof(&prf.lookup_subproof(&sr).unwrap(), Some(*sr), line, depth), false));
+                    output.push((self.render_proof(&prf.lookup_subproof(sr).unwrap(), Some(*sr), line, depth), false));
                     //output.push(row_spacer.clone());
                     *depth -= 1;
                 }
@@ -738,7 +738,7 @@ impl Component for ProofWidget {
             }
             ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule }, proofref) => {
                 if let Inr(Inl(jr)) = &proofref {
-                    self.prf.with_mut_step(&jr, |j| j.1 = rule);
+                    self.prf.with_mut_step(jr, |j| j.1 = rule);
                 }
                 self.select_line(proofref);
                 ret = true;
@@ -749,7 +749,7 @@ impl Component for ProofWidget {
             }
             ProofWidgetMsg::LineAction(LineActionKind::ToggleDependency { dep }, proofref) => {
                 if let Inr(Inl(jr)) = &proofref {
-                    self.prf.with_mut_step(&jr, |j| {
+                    self.prf.with_mut_step(jr, |j| {
                         fn toggle_dep_or_sdep<T: Ord>(dep: T, deps: &mut Vec<T>) {
                             let mut dep_set: BTreeSet<T> = mem::take(deps).into_iter().collect();
                             if dep_set.contains(&dep) {

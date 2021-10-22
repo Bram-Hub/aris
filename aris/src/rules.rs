@@ -512,14 +512,14 @@ impl RuleT for PrepositionalInference {
                 if let Expr::Assoc { op: Op::And, ref exprs } = conclusion {
                     // ensure each dep appears in exprs
                     for d in deps.iter() {
-                        let e = p.lookup_expr_or_die(&d)?;
+                        let e = p.lookup_expr_or_die(d)?;
                         if !exprs.iter().any(|x| x == &e) {
                             return Err(DoesNotOccur(e, conclusion.clone()));
                         }
                     }
                     // ensure each expr has a dep
                     for e in exprs {
-                        if !deps.iter().any(|d| p.lookup_expr(&d).map(|de| &de == e).unwrap_or(false)) {
+                        if !deps.iter().any(|d| p.lookup_expr(d).map(|de| &de == e).unwrap_or(false)) {
                             return Err(DepDoesNotExist(e.clone(), false));
                         }
                     }
@@ -558,7 +558,7 @@ impl RuleT for PrepositionalInference {
                 if let Expr::Assoc { op: Op::Or, ref exprs } = prem {
                     let sproofs = sdeps.into_iter().map(|r| p.lookup_subproof_or_die(&r)).collect::<Result<Vec<_>, _>>()?;
                     // if not all the subproofs have lines whose expressions contain the conclusion, return an error
-                    let all_sproofs_have_conclusion = sproofs.iter().all(|sproof| sproof.lines().into_iter().filter_map(|x| x.get::<P::JustificationReference, _>().and_then(|y| p.lookup_step(&y)).map(|y| y.0)).any(|c| c == conclusion));
+                    let all_sproofs_have_conclusion = sproofs.iter().all(|sproof| sproof.lines().into_iter().filter_map(|x| x.get::<P::JustificationReference, _>().and_then(|y| p.lookup_step(y)).map(|y| y.0)).any(|c| c == conclusion));
                     if !all_sproofs_have_conclusion {
                         return Err(DepDoesNotExist(conclusion, false));
                     }
@@ -682,7 +682,7 @@ impl RuleT for PrepositionalInference {
                                 s.insert(j.clone());
                             }
                             for prem in s.iter() {
-                                if exprs.iter().find(|x| x == &prem).is_none() {
+                                if !exprs.iter().any(|x| x == prem) {
                                     return AnyOrderResult::Err(DoesNotOccur(prem.clone(), i.clone()));
                                 }
                             }
@@ -868,19 +868,19 @@ impl RuleT for PredicateInference {
             //println!("gvc reachable {:?}", reachable.iter().map(|x| sproof.lookup_expr(&x)).collect::<Vec<_>>());
             let outside = reachable.difference(&contained);
             //println!("gvc outside {:?}", outside.clone().map(|x| sproof.lookup_expr(&x)).collect::<Vec<_>>());
-            outside.filter_map(|x| sproof.lookup_expr(&x)).find(|e| crate::expr::free_vars(e).contains(var))
+            outside.filter_map(|x| sproof.lookup_expr(x)).find(|e| crate::expr::free_vars(e).contains(var))
         }
         match self {
             ForallIntro => {
                 let sproof = p.lookup_subproof_or_die(&sdeps[0])?;
                 if let Expr::Quant { kind: QuantKind::Forall, name, body } = &conclusion {
                     for (r, expr) in sproof.exprs().into_iter().map(|r| sproof.lookup_expr_or_die(&r).map(|e| (r, e))).collect::<Result<Vec<_>, _>>()? {
-                        if let Ok(Expr::Var { name: constant }) = unifies_wrt_var::<P>(&body, &expr, &name) {
+                        if let Ok(Expr::Var { name: constant }) = unifies_wrt_var::<P>(body, &expr, name) {
                             println!("ForallIntro constant {:?}", constant);
                             if let Some(dangling) = generalizable_variable_counterexample(&sproof, r.clone(), &constant) {
                                 return Err(Other(format!("The constant {} occurs in dependency {} that's outside the subproof.", constant, dangling)));
                             } else {
-                                let expected = crate::expr::subst(*body.clone(), &constant, Expr::var(&name));
+                                let expected = crate::expr::subst(*body.clone(), &constant, Expr::var(name));
                                 if expected != **body {
                                     return Err(Other(format!("Not all free occurrences of {} are replaced with {} in {}.", constant, name, body)));
                                 }

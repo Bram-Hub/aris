@@ -520,9 +520,9 @@ impl Expr {
             Expr::Var { name } => env[name][0], // variables are 0-arity functions
             Expr::Apply { func, args } => match &**func {
                 Expr::Var { name } => {
-                    let evaled_args: Vec<bool> = args.iter().map(|arg| arg.eval(env)).collect();
+                    let evaled_args = args.iter().map(|arg| arg.eval(env));
                     let mut index: usize = 0;
-                    for (i, x) in evaled_args.into_iter().enumerate() {
+                    for (i, x) in evaled_args.enumerate() {
                         index |= (x as usize) << i;
                     }
                     env[&*name][index]
@@ -980,7 +980,7 @@ impl Expr {
             // if the binder doesn't occur in `all_free` (the union of all the arms freevars), it won't induce capturing
             let mut all_free = HashSet::new();
             for expr in &exprs {
-                all_free.extend(free_vars(&expr));
+                all_free.extend(free_vars(expr));
             }
             let mut found = None;
             let mut others = vec![];
@@ -1506,7 +1506,7 @@ pub fn expressions_for_depth(depth: usize, max_assoc: usize, mut vars: BTreeSet<
         }
         for op in &[Op::And, Op::Or, Op::Bicon, Op::Equiv, Op::Add, Op::Mult] {
             for arglist in products.iter() {
-                ret.insert(Expr::assoc(*op, &arglist));
+                ret.insert(Expr::assoc(*op, arglist));
             }
         }
         let x = format!("x{}", depth);

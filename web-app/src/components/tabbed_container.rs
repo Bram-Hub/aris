@@ -7,9 +7,9 @@ pub struct TabbedContainer {
 }
 
 pub enum TabbedContainerMsg {
-    SwitchTab(usize),
-    CreateTab { name: String, content: Html },
-    GetCurrentTab(Box<dyn FnOnce(usize, String)>),
+    Switch(usize),
+    Create { name: String, content: Html },
+    GetCurrent(Box<dyn FnOnce(usize, String)>),
 }
 
 #[derive(Clone, Properties)]
@@ -31,17 +31,17 @@ impl Component for TabbedContainer {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            TabbedContainerMsg::SwitchTab(idx) => {
+            TabbedContainerMsg::Switch(idx) => {
                 self.current_tab = idx;
                 true
             }
-            TabbedContainerMsg::CreateTab { name, content } => {
+            TabbedContainerMsg::Create { name, content } => {
                 self.tabs.push((name, content));
                 // Switch to new tab
                 self.current_tab = self.tabs.len() - 1;
                 true
             }
-            TabbedContainerMsg::GetCurrentTab(f) => {
+            TabbedContainerMsg::GetCurrent(f) => {
                 f(self.current_tab, self.tabs[self.current_tab].0.clone());
                 false
             }
@@ -56,7 +56,7 @@ impl Component for TabbedContainer {
         let mut tab_links = yew::virtual_dom::VList::new();
         let mut out = yew::virtual_dom::VList::new();
         for (i, (name, data)) in self.tabs.iter().enumerate() {
-            let onclick = self.link.callback(move |_| TabbedContainerMsg::SwitchTab(i));
+            let onclick = self.link.callback(move |_| TabbedContainerMsg::Switch(i));
             let link_class = if i == self.current_tab { "nav-link active" } else { "nav-link" };
             tab_links.add_child(html! {
                 <li class="nav-item">

@@ -45,7 +45,7 @@ where
                 q.extend(deps);
 
                 for sdep in sdeps.iter() {
-                    let sub = proof.lookup_subproof_or_die(&sdep).map_err(|e| (r.clone(), e))?;
+                    let sub = proof.lookup_subproof_or_die(sdep).map_err(|e| (r.clone(), e))?;
                     q.extend(sub.direct_lines().into_iter().map(Coproduct::inject));
                 }
             }
