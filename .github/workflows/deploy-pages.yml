@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Pull source
         uses: actions/checkout@v1
+      - name: Update Rust
+        run: rustup update
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - name: Build Aris with wasm-pack
