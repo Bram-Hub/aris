@@ -26,8 +26,8 @@ fn custom_error<A, B>(a: A, x: u32) -> nom::IResult<A, B> {
 /// in nom5, the "verify" combinator does this properly, in nom4, the "verify" macro's predicate requires ownership of the return value
 fn variable(s: &str) -> nom::IResult<&str, String> {
     let r = variable_(s);
-    if let Ok((ref rest, ref var)) = r {
-        if let Ok((_, _)) = keyword(&var) {
+    if let Ok((rest, ref var)) = r {
+        if let Ok((_, _)) = keyword(var) {
             return custom_error(rest, 0);
         }
     }

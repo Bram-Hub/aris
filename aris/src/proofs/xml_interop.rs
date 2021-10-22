@@ -174,10 +174,10 @@ pub fn xml_from_proof_and_metadata<P: Proof, W: Write>(prf: &P, meta: &ProofMeta
 
     ew.write(XmlEvent::start_element("metadata"))?;
     if let Some(author) = &meta.author {
-        leaf_tag(&mut ew, "author", &author)?;
+        leaf_tag(&mut ew, "author", author)?;
     }
     if let Some(hash) = &meta.hash {
-        leaf_tag(&mut ew, "hash", &hash)?;
+        leaf_tag(&mut ew, "hash", hash)?;
     }
     ew.write(XmlEvent::end_element().name("metadata"))?;
 
@@ -227,7 +227,7 @@ pub fn xml_from_proof_and_metadata<P: Proof, W: Write>(prf: &P, meta: &ProofMeta
                     let just = prf.lookup_step(&jr).unwrap();
                     ew.write(XmlEvent::start_element("step").attr("linenum", &format!("{}", state.deps_map[&Coproduct::inject(jr.clone())])))?;
                     leaf_tag(ew, "raw", &format!("{}", just.0))?;
-                    leaf_tag(ew, "rule", &RuleM::to_serialized_name(just.1))?;
+                    leaf_tag(ew, "rule", RuleM::to_serialized_name(just.1))?;
                     for dep in just.2 {
                         leaf_tag(ew, "premise", &format!("{}", state.deps_map[&dep]))?;
                     }

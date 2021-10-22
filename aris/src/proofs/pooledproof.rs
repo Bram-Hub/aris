@@ -551,7 +551,7 @@ impl<Tail> DisplayIndented for PooledProof<HCons<Expr, Tail>> {
             }
             Ok(())
         }
-        aux(&self, fmt, indent, linecount, &self.proof)
+        aux(self, fmt, indent, linecount, &self.proof)
     }
 }
 
