@@ -9,6 +9,8 @@ jobs:
     steps:
       - name: Pull source
         uses: actions/checkout@v2
+      - name: Update Rust
+        run: rustup update
       - name: Run cargo test
         run: cargo test
         env:
@@ -21,6 +23,8 @@ jobs:
     steps:
       - name: Pull source
         uses: actions/checkout@v2
+      - name: Update Rust
+        run: rustup update
       - name: Run cargo fmt
         run: cargo fmt --all -- --check
 
@@ -30,6 +34,8 @@ jobs:
     steps:
       - name: Pull source
         uses: actions/checkout@v2
+      - name: Update Rust
+        run: rustup update
       - name: Run cargo clippy
         run: cargo clippy
         env:
