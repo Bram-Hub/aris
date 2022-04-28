@@ -24,7 +24,6 @@ pub enum ExprEntryMsg {
 /// Properties for `ExprEntry`
 #[derive(Clone, Properties)]
 pub struct ExprEntryProps {
-
     /// Callback to call when text field is changed, with the first parameter
     /// being the new text
     pub oninput: Callback<String>,
@@ -47,7 +46,6 @@ pub struct ExprEntryProps {
 
     /// An ID to use for our strings
     pub id: String,
-    
 }
 
 impl Component for ExprEntry {

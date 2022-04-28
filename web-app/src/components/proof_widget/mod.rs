@@ -400,7 +400,7 @@ impl ProofWidget {
             }
             Inr(Inr(void)) => match void {},
         };
-        let id_num = format!("{}{}{}",self.id,&"line-number-",&line.to_string());
+        let id_num = format!("{}{}{}", self.id, &"line-number-", &line.to_string());
         html! {
             <tr class=class>
                 <td> { line_num_dep_checkbox } </td>
@@ -504,11 +504,9 @@ impl ProofWidget {
             None => return ProofWidgetMsg::Nop,
         };
 
-
         // All keyboard shortcuts have the control key held. Do nothing if the
         // control key isn't pressed.
         if !key_event.ctrl_key() {
-
             // Change focus on ArrowDown or ArrowUp
             if key_event.key() == "ArrowDown" || key_event.key() == "ArrowUp" {
                 // Get our current id to find the others.
@@ -521,7 +519,7 @@ impl ProofWidget {
                     "ArrowUp" => -1,
                     _ => return ProofWidgetMsg::Nop,
                 };
-                let signature = format!("{}{}",self.id,"line-number-");
+                let signature = format!("{}{}", self.id, "line-number-");
                 let length = signature.chars().count();
                 // Verify that our selected element is the one we will work with.
                 if focused_elem_id.chars().count() < length {
@@ -529,7 +527,7 @@ impl ProofWidget {
                 }
                 let num = &focused_elem_id[length..].parse::<i32>().unwrap() + up_down;
                 //let new_id = "#line-number-".to_owned() + &num.to_string();
-                let _focused_input = match document().get_element_by_id(&format!("{}{}",signature,&num.to_string())) {
+                let _focused_input = match document().get_element_by_id(&format!("{}{}", signature, &num.to_string())) {
                     Some(_focused_input) => _focused_input.unchecked_into::<HtmlElement>().focus(),
                     None => return ProofWidgetMsg::Nop,
                 };
@@ -638,9 +636,9 @@ impl Component for ProofWidget {
             }
         };
 
-        let id: String= ((random()*10000.0) as i32).to_string(); 
+        let id: String = ((random() * 10000.0) as i32).to_string();
 
-        let mut tmp = Self { link, prf, pud, selected_line: None, open_error: error, preblob: "".into(), props , id};
+        let mut tmp = Self { link, prf, pud, selected_line: None, open_error: error, preblob: "".into(), props, id };
         tmp.update(ProofWidgetMsg::Nop);
         tmp
     }
