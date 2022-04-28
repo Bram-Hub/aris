@@ -369,6 +369,7 @@ impl ProofWidget {
         } else {
             "proof-line"
         };
+        let id = "line-number-".to_owned() + &line.to_string();
         let feedback_and_just_widgets = match proofref {
             Inl(_) => {
                 // Premise
@@ -392,7 +393,7 @@ impl ProofWidget {
             Inr(Inr(void)) => match void {},
         };
         html! {
-            <tr class=class>
+            <tr class=class id=id>
                 <td> { line_num_dep_checkbox } </td>
                 <td>
                     { indentation }
