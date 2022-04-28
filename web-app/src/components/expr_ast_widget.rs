@@ -61,7 +61,8 @@ impl Component for ExprAstWidget {
                 <h2> { "Enter Expression:" } </h2>
                 <ExprEntry
                     oninput=self.link.callback(|value| value)
-                    init_value={ &self.current_input } />
+                    init_value={ &self.current_input }
+                    id=""/>
                 <hr />
                 <h5> { &self.last_good_parse } </h5>
                 { expr_debug }
