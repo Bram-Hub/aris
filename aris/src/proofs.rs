@@ -187,9 +187,11 @@ pub type JsRef<P> = Coprod!(<P as Proof>::JustificationReference, <P as Proof>::
 pub type PjsRef<P> = Coprod!(<P as Proof>::PremiseReference, <P as Proof>::JustificationReference, <P as Proof>::SubproofReference);
 type JustVal<P> = Justification<Expr, PjRef<P>, <P as Proof>::SubproofReference>;
 
+#[allow(clippy::redundant_closure)]
 pub fn js_to_pjs<P: Proof>(js: JsRef<P>) -> PjsRef<P> {
     js.fold(hlist![|x| Coproduct::inject(x), |x| Coproduct::inject(x)])
 }
+#[allow(clippy::redundant_closure)]
 pub fn pj_to_pjs<P: Proof>(pj: PjRef<P>) -> PjsRef<P> {
     pj.fold(hlist![|x| Coproduct::inject(x), |x| Coproduct::inject(x)])
 }
