@@ -24,6 +24,7 @@ pub enum ExprEntryMsg {
 /// Properties for `ExprEntry`
 #[derive(Clone, Properties)]
 pub struct ExprEntryProps {
+
     /// Callback to call when text field is changed, with the first parameter
     /// being the new text
     pub oninput: Callback<String>,
@@ -43,6 +44,10 @@ pub struct ExprEntryProps {
 
     /// Initial text in text field when it is loaded
     pub init_value: String,
+
+    /// An ID to use for our strings
+    pub id: String,
+    
 }
 
 impl Component for ExprEntry {
@@ -74,6 +79,7 @@ impl Component for ExprEntry {
             <input
                 ref=self.node_ref.clone()
                 type="text"
+                id=self.props.id
                 class="form-control text-input-custom"
                 oninput=self.link.callback(|_| ExprEntryMsg::OnEdit)
                 onfocus=self.link.callback(|_| ExprEntryMsg::OnFocus)
