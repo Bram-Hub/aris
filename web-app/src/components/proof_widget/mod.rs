@@ -525,7 +525,7 @@ impl ProofWidget {
                 if focused_elem_id.chars().count() < length {
                     return ProofWidgetMsg::Nop;
                 }
-                let num = &focused_elem_id[length..].parse::<i32>().unwrap() + up_down;
+                let num = focused_elem_id[length..].parse::<i32>().unwrap() + up_down;
                 //let new_id = "#line-number-".to_owned() + &num.to_string();
                 let _focused_input = match document().get_element_by_id(&format!("{}{}", signature, &num.to_string())) {
                     Some(_focused_input) => _focused_input.unchecked_into::<HtmlElement>().focus(),
