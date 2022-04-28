@@ -26,6 +26,13 @@ use frunk_core::coproduct::Coproduct;
 use frunk_core::Coprod;
 use strum::IntoEnumIterator;
 use yew::prelude::*;
+use yew::utils::document;
+
+use web_sys::HtmlElement;
+
+use wasm_bindgen::JsCast;
+
+use js_sys::Math::random;
 
 /// Data stored for the currently selected line
 struct SelectedLine {
@@ -58,6 +65,8 @@ pub struct ProofWidget {
     preblob: String,
 
     props: ProofWidgetProps,
+
+    id: String,
 }
 
 /// A kind of proof structure item
@@ -369,7 +378,6 @@ impl ProofWidget {
         } else {
             "proof-line"
         };
-        let id = "line-number-".to_owned() + &line.to_string();
         let feedback_and_just_widgets = match proofref {
             Inl(_) => {
                 // Premise
@@ -392,8 +400,9 @@ impl ProofWidget {
             }
             Inr(Inr(void)) => match void {},
         };
+        let id_num = format!("{}{}{}",self.id,&"line-number-",&line.to_string());
         html! {
-            <tr class=class id=id>
+            <tr class=class>
                 <td> { line_num_dep_checkbox } </td>
                 <td>
                     { indentation }
@@ -401,7 +410,8 @@ impl ProofWidget {
                         oninput=handle_input
                         onfocus=select_line
                         focus=is_selected_line
-                        init_value=init_value />
+                        init_value=init_value
+                        id=id_num/>
                 </td>
                 { feedback_and_just_widgets }
                 <td>{ action_selector }</td>
@@ -494,9 +504,37 @@ impl ProofWidget {
             None => return ProofWidgetMsg::Nop,
         };
 
+
         // All keyboard shortcuts have the control key held. Do nothing if the
         // control key isn't pressed.
         if !key_event.ctrl_key() {
+
+            // Change focus on ArrowDown or ArrowUp
+            if key_event.key() == "ArrowDown" || key_event.key() == "ArrowUp" {
+                // Get our current id to find the others.
+                let focused_elem_id = match document().active_element() {
+                    Some(focused_elem_id) => focused_elem_id.id(),
+                    None => return ProofWidgetMsg::Nop,
+                };
+                let up_down = match key_event.key().as_str() {
+                    "ArrowDown" => 1,
+                    "ArrowUp" => -1,
+                    _ => return ProofWidgetMsg::Nop,
+                };
+                let signature = format!("{}{}",self.id,"line-number-");
+                let length = signature.chars().count();
+                // Verify that our selected element is the one we will work with.
+                if focused_elem_id.chars().count() < length {
+                    return ProofWidgetMsg::Nop;
+                }
+                let num = &focused_elem_id[length..].parse::<i32>().unwrap() + up_down;
+                //let new_id = "#line-number-".to_owned() + &num.to_string();
+                let _focused_input = match document().get_element_by_id(&format!("{}{}",signature,&num.to_string())) {
+                    Some(_focused_input) => _focused_input.unchecked_into::<HtmlElement>().focus(),
+                    None => return ProofWidgetMsg::Nop,
+                };
+            }
+
             return ProofWidgetMsg::Nop;
         }
 
@@ -600,7 +638,9 @@ impl Component for ProofWidget {
             }
         };
 
-        let mut tmp = Self { link, prf, pud, selected_line: None, open_error: error, preblob: "".into(), props };
+        let id: String= ((random()*10000.0) as i32).to_string(); 
+
+        let mut tmp = Self { link, prf, pud, selected_line: None, open_error: error, preblob: "".into(), props , id};
         tmp.update(ProofWidgetMsg::Nop);
         tmp
     }
