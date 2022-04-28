@@ -55,6 +55,7 @@ impl Component for TabbedContainer {
     fn view(&self) -> Html {
         let mut tab_links = yew::virtual_dom::VList::new();
         let mut out = yew::virtual_dom::VList::new();
+
         for (i, (name, data)) in self.tabs.iter().enumerate() {
             let onclick = self.link.callback(move |_| TabbedContainerMsg::Switch(i));
             let link_class = if i == self.current_tab { "nav-link active" } else { "nav-link" };
