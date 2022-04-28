@@ -495,8 +495,6 @@ impl RuleT for PrepositionalInference {
             OrElim | BiconditionalIntro | EquivalenceIntro => None,
         }
     }
-
-    #[allow(clippy::redundant_closure)]
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
         use PrepositionalInference::*;
         use ProofCheckError::*;
