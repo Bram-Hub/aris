@@ -46,9 +46,3 @@ html, body {
     width: 112px;
     text-align: center;
 }
-
-/* Add margin above and below tab links */
-.nav-pills {
-    margin-bottom: 10px;
-    margin-top: 10px;
-}
