@@ -1207,7 +1207,7 @@ impl Expr {
             Expr::Assoc { op, exprs } => match op {
                 Op::And => map_nnf(exprs).map(|exprs| NnfExpr::And { exprs }),
                 Op::Or => map_nnf(exprs).map(|exprs| NnfExpr::Or { exprs }),
-                Op::Bicon => exprs.into_iter().map(Self::into_nnf).collect::<Option<Vec<NnfExpr>>>()?.into_iter().fold1(NnfExpr::bicon),
+                Op::Bicon => exprs.into_iter().map(Self::into_nnf).collect::<Option<Vec<NnfExpr>>>()?.into_iter().reduce(NnfExpr::bicon),
                 Op::Equiv | Op::Add | Op::Mult => None,
             },
         }
