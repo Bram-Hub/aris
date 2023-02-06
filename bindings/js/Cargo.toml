@@ -9,9 +9,9 @@ crate-type = ["cdylib"]
 
 [dependencies]
 aris = { path = "../../aris" }
-wasm-bindgen = { version = "0.2.73", features = ["serde-serialize"] }
+wasm-bindgen = { version = "0.2.84", features = ["serde-serialize"] }
 frunk_core = "0.3.2"
-js-sys = "0.3.50"
+js-sys = "0.3.61"
 
 # This crate allows propagating `serde` errors with the `?` operator, which is
 # safer than `wasm_bindgen::UnwrapThrowExt`, because `UnwrapThrowExt` doesn't

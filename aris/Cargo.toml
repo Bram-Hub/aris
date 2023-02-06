@@ -5,19 +5,19 @@ authors = ["Avi Weinstock <aweinstock314@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-base64 = "0.13.0"
+base64 = "0.13.1"
 lazy_static = "1.4.0"
-nom = "4.1.1"
+nom = "4.2.3"
 petgraph = "0.5.1"
-sha2 = "0.8.1"
+sha2 = "0.8.2"
 varisat = "0.2.2"
-xml-rs = "0.8.3"
-itertools = "0.10.0"
+xml-rs = "0.8.4"
+itertools = "0.10.5"
 frunk_core = "0.3.2"
 strum = "0.20.0"
 strum_macros = "0.20.1"
-serde = { version = "1.0.125", features = ["derive"] }
+serde = { version = "1.0.152", features = ["derive"] }
 maplit = "1.0.2"
 
 [build-dependencies]
-version_check = "0.9.3"
+version_check = "0.9.4"
