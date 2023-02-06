@@ -165,4 +165,10 @@ typedef struct Expr {
   };
 } Expr;
 
+/**
+ * Parse a string to an expression
+ *
+ * # Safety
+ * This function is safe when `e` is a valid C string.
+ */
 struct Expr *aris_expr_parse(const int8_t *e);
