@@ -264,6 +264,7 @@ pub fn xml_from_proof_and_metadata<P: Proof, W: Write>(prf: &P, meta: &ProofMeta
 }
 
 pub fn xml_from_proof_and_metadata_with_hash<P: Proof, W: Write>(prf: &P, meta: &ProofMetaData, out: W) -> xml::writer::Result<()> {
+    use base64::Engine;
     use sha2::Digest;
     let mut meta = meta.clone();
     meta.hash = None;
@@ -276,7 +277,7 @@ pub fn xml_from_proof_and_metadata_with_hash<P: Proof, W: Write>(prf: &P, meta: 
         ctx.input(author);
     }
     let hash = ctx.result();
-    meta.hash = Some(base64::encode(&hash[..]));
+    meta.hash = Some(base64::engine::general_purpose::STANDARD.encode(&hash[..]));
     xml_from_proof_and_metadata(prf, &meta, out)
 }
 
