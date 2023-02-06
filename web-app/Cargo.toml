@@ -13,7 +13,7 @@ wee_alloc = "0.4.5"
 js-sys = "0.3.61"
 web-sys = { version = "0.3.61", features = ["HtmlAnchorElement"] }
 frunk_core = "0.3.2"
-strum = "0.20.0"
+strum = "0.24.1"
 yew-octicons = "0.1.1"
 
 [lib]
