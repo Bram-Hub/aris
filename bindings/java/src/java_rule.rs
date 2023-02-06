@@ -15,14 +15,14 @@ pub extern "system" fn Java_edu_rpi_aris_rules_Rule_fromRule(env: JNIEnv, _: JOb
         let classname = String::from(env.get_string(JString::from(env.call_method(cls, "getName", "()Ljava/lang/String;", &[])?.l()?))?);
         //println!("Rule.fromRule, rule class: {:?}", classname);
         if classname != "edu.rpi.aris.rules.RuleList" {
-            return Err(jni::errors::Error::from_kind(jni::errors::ErrorKind::Msg(format!("Rule::fromRule: unknown class {}", classname))));
+            return Err(jni::errors::Error::from_kind(jni::errors::ErrorKind::Msg(format!("Rule::fromRule: unknown class {classname}"))));
         }
 
         let name = String::from(env.get_string(JString::from(env.call_method(rule, "name", "()Ljava/lang/String;", &[])?.l()?))?);
-        println!("Rule.fromRule, rule enum name: {:?}", name);
+        println!("Rule.fromRule, rule enum name: {name:?}");
         let rule = match RuleM::from_serialized_name(&name) {
             Some(rule) => rule,
-            _ => return Err(jni::errors::Error::from_kind(jni::errors::ErrorKind::Msg(format!("Rule::fromRule: unknown enum name {}", name)))),
+            _ => return Err(jni::errors::Error::from_kind(jni::errors::ErrorKind::Msg(format!("Rule::fromRule: unknown enum name {name}")))),
         };
         let boxed_rule = Box::into_raw(Box::new(rule)); // prevent boxed_rule from being freed, since it's to be referenced through the java heap
 
@@ -38,7 +38,7 @@ pub extern "system" fn Java_edu_rpi_aris_rules_Rule_toString(env: JNIEnv, obj: J
     with_thrown_errors(&env, |env| {
         let ptr: jni::sys::jlong = env.get_field(obj, "pointerToRustHeap", "J")?.j()?;
         let rule: &Rule = unsafe { &*(ptr as *mut Rule) };
-        Ok(env.new_string(format!("{:?}", rule))?.into_inner())
+        Ok(env.new_string(format!("{rule:?}"))?.into_inner())
     })
 }
 
@@ -117,7 +117,7 @@ pub extern "system" fn Java_edu_rpi_aris_rules_Rule_verifyClaim(env: JNIEnv, rul
         let rule: &Rule = unsafe { &*(ptr as *mut Rule) };
         let conc = jobject_to_expr(env, conclusion)?;
         let prem_len = env.get_array_length(premises)?;
-        println!("Rule::verifyClaim conclusion: {:?}, {} premises", conc, prem_len);
+        println!("Rule::verifyClaim conclusion: {conc:?}, {prem_len} premises");
         let mut deps = vec![];
         let mut sdeps = vec![];
         for i in 0..prem_len {
@@ -135,9 +135,9 @@ pub extern "system" fn Java_edu_rpi_aris_rules_Rule_verifyClaim(env: JNIEnv, rul
                 deps.push(Coproduct::Inl(jobject_to_expr(env, env.call_method(prem, "getPremise", "()Ledu/rpi/aris/ast/Expression;", &[])?.l()?)?));
             }
         }
-        println!("Rule::verifyClaim deps: {:?} {:?}", deps, sdeps);
+        println!("Rule::verifyClaim deps: {deps:?} {sdeps:?}");
         if let Err(e) = rule.check(&JavaShallowProof(vec![]), conc, deps, sdeps) {
-            Ok(env.new_string(format!("{}", e))?.into_inner())
+            Ok(env.new_string(format!("{e}"))?.into_inner())
         } else {
             Ok(std::ptr::null_mut())
         }

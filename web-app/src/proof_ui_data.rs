@@ -28,12 +28,12 @@ fn initialize_inputs<P: Proof>(prf: &P) -> HashMap<PjRef<P>, String> {
             match line {
                 Inl(pr) => {
                     if let Some(e) = p.lookup_expr(&Coproduct::inject(pr.clone())) {
-                        out.insert(Coproduct::inject(pr.clone()), format!("{}", e));
+                        out.insert(Coproduct::inject(pr.clone()), format!("{e}"));
                     }
                 }
                 Inr(Inl(jr)) => {
                     if let Some(e) = p.lookup_expr(&Coproduct::inject(jr.clone())) {
-                        out.insert(Coproduct::inject(jr.clone()), format!("{}", e));
+                        out.insert(Coproduct::inject(jr.clone()), format!("{e}"));
                     }
                 }
                 Inr(Inr(Inl(sr))) => aux::<P>(&p.lookup_subproof(&sr).unwrap(), out),

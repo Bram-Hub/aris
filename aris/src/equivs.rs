@@ -223,13 +223,13 @@ mod tests {
         let rules: Vec<&RewriteRule> = vec![&*DOUBLE_NEGATION, &*DISTRIBUTION, &*COMPLEMENT, &*IDENTITY, &*ANNIHILATION, &*INVERSE, &*ABSORPTION, &*REDUCTION, &*ADJACENCY, &*CONDITIONAL_ANNIHILATION, &*CONDITIONAL_IMPLICATION, &*CONDITIONAL_CONTRAPOSITION, &*CONDITIONAL_CURRYING, &*CONDITIONAL_COMPLEMENT, &*CONDITIONAL_IDENTITY, &*CONDITIONAL_BIIMPLICATION, &*CONDITIONAL_DISTRIBUTION, &*CONDITIONAL_REDUCTION, &*KNIGHTS_AND_KNAVES, &*CONDITIONAL_IDEMPOTENCE, &*BICONDITIONAL_NEGATION, &*BICONDITIONAL_COMMUTATION, &*BICONDITIONAL_ASSOCIATION, &*BICONDITIONAL_SUBSTITUTION];
         for rule in rules {
             for (lhs, rhs) in rule.reductions.iter() {
-                println!("Testing {} -> {}", lhs, rhs);
-                let mut fvs: Vec<String> = free_vars(&lhs).union(&free_vars(&rhs)).cloned().collect();
+                println!("Testing {lhs} -> {rhs}");
+                let mut fvs: Vec<String> = free_vars(lhs).union(&free_vars(rhs)).cloned().collect();
                 fvs.sort();
                 let mut arities = HashMap::new();
                 lhs.infer_arities(&mut arities);
                 rhs.infer_arities(&mut arities);
-                println!("Inferred arities: {:?}", arities);
+                println!("Inferred arities: {arities:?}");
                 let total_arity = arities.values().map(|v| 2usize.pow(*v as _)).sum();
                 for_each_truthtable(total_arity, |table| {
                     let mut env = HashMap::new();
@@ -239,7 +239,7 @@ mod tests {
                         env.insert(fv, table[i..i + n].to_vec());
                         i += n;
                     }
-                    println!("{:?} {:?}", table, env);
+                    println!("{table:?} {env:?}");
                     assert_eq!(lhs.eval(&env), rhs.eval(&env));
                 });
                 println!("-----");

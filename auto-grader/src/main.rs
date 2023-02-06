@@ -74,8 +74,8 @@ fn main() -> Result<(), String> {
     let instructor_path = Path::new(&args[1]);
     let student_path = Path::new(&args[2]);
 
-    let instructor_file = File::open(&instructor_path).expect("Could not open instructor file");
-    let student_file = File::open(&student_path).expect("Could not open student file");
+    let instructor_file = File::open(instructor_path).expect("Could not open instructor file");
+    let student_file = File::open(student_path).expect("Could not open student file");
 
     type P = aris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
 
@@ -107,7 +107,7 @@ fn main() -> Result<(), String> {
                         // Create a lined proof to get line numbers from line reference via linear search
                         let s_prf_with_lines = LinedProof::from_proof(s_prf.clone());
                         let (index, _) = s_prf_with_lines.lines.iter().enumerate().find(|(_, rl)| rl.reference == r).expect("Failed to find line number for building error message (BAD!!)");
-                        eprintln!("{}", s_prf);
+                        eprintln!("{s_prf}");
                         Err(format!("validate_recursive failed for line {}: {}", index + 1, e))
                     };
                 }

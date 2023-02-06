@@ -228,7 +228,7 @@ impl ProofWidget {
                     hi = std::cmp::max(hi, *i);
                 }
             }
-            let sdep_line = format!("{}-{}", lo, hi);
+            let sdep_line = format!("{lo}-{hi}");
             html! {
                 <span class="badge badge-secondary m-1"> { sdep_line } </span>
             }
@@ -645,7 +645,7 @@ impl Component for ProofWidget {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         let mut ret = false;
         if self.props.verbose {
-            self.preblob += &format!("{:?}\n", msg);
+            self.preblob += &format!("{msg:?}\n");
             ret = true;
         }
         use Coproduct::{Inl, Inr};
