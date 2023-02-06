@@ -435,7 +435,7 @@ pub fn do_expressions_contradict<P: Proof>(prem1: &Expr, prem2: &Expr) -> Result
             }
             AnyOrderResult::WrongOrder
         },
-        || ProofCheckError::Other(format!("Expected one of {{{}, {}}} to be the negation of the other.", prem1, prem2,)),
+        || ProofCheckError::Other(format!("Expected one of {{{prem1}, {prem2}}} to be the negation of the other.",)),
     )
 }
 
@@ -751,19 +751,19 @@ impl RuleT for PrepositionalInference {
                         }
                         let rslab = slab.into_iter().map(|(k, v)| (v, k)).collect::<HashMap<_, _>>();
                         let sccs = tarjan_scc(&g).iter().map(|x| x.iter().map(|i| rslab[i].clone()).collect()).collect::<Vec<HashSet<_>>>();
-                        println!("sccs: {:?}", sccs);
+                        println!("sccs: {sccs:?}");
                         if sccs.iter().any(|s| exprs.iter().all(|e| s.contains(e))) {
                             return Ok(());
                         } else {
                             let mut errstring = "Not all elements of the conclusion are mutually implied by the premises.".to_string();
                             if let Some(e) = exprs.iter().find(|e| !sccs.iter().any(|s| s.contains(e))) {
-                                errstring += &format!("\nThe expression {} occurs in the conclusion, but not in any of the premises.", e);
+                                errstring += &format!("\nThe expression {e} occurs in the conclusion, but not in any of the premises.");
                             } else {
                                 exprs.iter().any(|e1| {
                                     exprs.iter().any(|e2| {
                                         for i in 0..sccs.len() {
                                             if sccs[i].contains(e2) && !sccs[i..].iter().any(|s| s.contains(e1)) {
-                                                errstring += &format!("\nThe expression {} is unreachable from {} by the premises.", e2, e1);
+                                                errstring += &format!("\nThe expression {e2} is unreachable from {e1} by the premises.");
                                                 return true;
                                             }
                                         }
@@ -857,10 +857,10 @@ impl RuleT for PredicateInference {
                         Err(Other(format!("Attempted to substitute for a variable other than the binder: {}", substitutions.0[0].0)))
                     }
                 } else {
-                    Err(Other(format!("More than one variable was substituted: {:?}", substitutions)))
+                    Err(Other(format!("More than one variable was substituted: {substitutions:?}")))
                 }
             } else {
-                Err(Other(format!("No substitution found between {} and {}.", e1, e2)))
+                Err(Other(format!("No substitution found between {e1} and {e2}.")))
             }
         }
         fn generalizable_variable_counterexample<P: Proof>(sproof: &P, line: PjRef<P>, var: &str) -> Option<Expr> {
@@ -878,13 +878,13 @@ impl RuleT for PredicateInference {
                 if let Expr::Quant { kind: QuantKind::Forall, name, body } = &conclusion {
                     for (r, expr) in sproof.exprs().into_iter().map(|r| sproof.lookup_expr_or_die(&r).map(|e| (r, e))).collect::<Result<Vec<_>, _>>()? {
                         if let Ok(Expr::Var { name: constant }) = unifies_wrt_var::<P>(body, &expr, name) {
-                            println!("ForallIntro constant {:?}", constant);
+                            println!("ForallIntro constant {constant:?}");
                             if let Some(dangling) = generalizable_variable_counterexample(&sproof, r.clone(), &constant) {
-                                return Err(Other(format!("The constant {} occurs in dependency {} that's outside the subproof.", constant, dangling)));
+                                return Err(Other(format!("The constant {constant} occurs in dependency {dangling} that's outside the subproof.")));
                             } else {
                                 let expected = crate::expr::subst(*body.clone(), &constant, Expr::var(name));
                                 if expected != **body {
-                                    return Err(Other(format!("Not all free occurrences of {} are replaced with {} in {}.", constant, name, body)));
+                                    return Err(Other(format!("Not all free occurrences of {constant} are replaced with {name} in {body}.")));
                                 }
                                 let tdeps = sproof.transitive_dependencies(r);
                                 if sproof.premises().into_iter().any(|subprem| tdeps.contains(&Coproduct::inject(subprem))) {
@@ -894,7 +894,7 @@ impl RuleT for PredicateInference {
                             }
                         }
                     }
-                    Err(Other(format!("Couldn't find a subproof line that unifies with the conclusion ({}).", conclusion)))
+                    Err(Other(format!("Couldn't find a subproof line that unifies with the conclusion ({conclusion}).")))
                 } else {
                     Err(ConclusionOfWrongForm(Expr::quant_placeholder(QuantKind::Forall)))
                 }
@@ -944,7 +944,7 @@ impl RuleT for PredicateInference {
                         if let Ok(Expr::Var { name: skolemname }) = unifies_wrt_var::<P>(body, &subprem, name) {
                             skolemname
                         } else {
-                            return Err(Other(format!("Premise {} doesn't unify with the body of dependency {}", subprem, prem)));
+                            return Err(Other(format!("Premise {subprem} doesn't unify with the body of dependency {prem}")));
                         }
                     } else {
                         return Err(DepOfWrongForm(prem, Expr::quant_placeholder(QuantKind::Exists)));
@@ -952,17 +952,17 @@ impl RuleT for PredicateInference {
                 };
                 for (r, expr) in sproof.exprs().into_iter().map(|r| sproof.lookup_expr_or_die(&r).map(|e| (r, e))).collect::<Result<Vec<_>, _>>()? {
                     if expr == conclusion {
-                        println!("ExistsElim conclusion {:?} skolemname {:?}", conclusion, skolemname);
+                        println!("ExistsElim conclusion {conclusion:?} skolemname {skolemname:?}");
                         if let Some(dangling) = generalizable_variable_counterexample(&sproof, r, &skolemname) {
-                            return Err(Other(format!("The skolem constant {} occurs in dependency {} that's outside the subproof.", skolemname, dangling)));
+                            return Err(Other(format!("The skolem constant {skolemname} occurs in dependency {dangling} that's outside the subproof.")));
                         }
                         if crate::expr::free_vars(&conclusion).contains(&skolemname) {
-                            return Err(Other(format!("The skolem constant {} escapes to the conclusion {}.", skolemname, conclusion)));
+                            return Err(Other(format!("The skolem constant {skolemname} escapes to the conclusion {conclusion}.")));
                         }
                         return Ok(());
                     }
                 }
-                Err(Other(format!("Couldn't find a subproof line equal to the conclusion ({}).", conclusion)))
+                Err(Other(format!("Couldn't find a subproof line equal to the conclusion ({conclusion}).")))
             }
         }
     }
@@ -982,7 +982,7 @@ where
     if p == q {
         Ok(())
     } else {
-        Err(ProofCheckError::Other(format!("{} and {} are not equal.", p, q)))
+        Err(ProofCheckError::Other(format!("{p} and {q} are not equal.")))
     }
 }
 
@@ -1005,7 +1005,7 @@ fn check_by_rewrite_rule_non_confl<P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclus
     if is_eq {
         Ok(())
     } else {
-        Err(ProofCheckError::Other(format!("{} and {} are not equal.", premise, conclusion)))
+        Err(ProofCheckError::Other(format!("{premise} and {conclusion} are not equal.")))
     }
 }
 
@@ -1355,7 +1355,7 @@ impl RuleT for AutomationRelatedRules {
                             pretty_remainder += &format!("{}{}", expr, if i != remainder.len() - 1 { ", " } else { "" });
                         }
                         pretty_remainder += "}";
-                        Err(ProofCheckError::Other(format!("Difference between premise disjuncts and conclusion disjuncts ({}) should be exactly 2 expressions that produce a contradiction.", pretty_remainder)))
+                        Err(ProofCheckError::Other(format!("Difference between premise disjuncts and conclusion disjuncts ({pretty_remainder}) should be exactly 2 expressions that produce a contradiction.")))
                     }
                 }
             }
@@ -1392,12 +1392,12 @@ impl RuleT for AutomationRelatedRules {
                             .map(|lit| {
                                 let name = vars.get(&lit.var()).expect("taut con vars map error");
                                 let val = if lit.is_positive() { 'T' } else { 'F' };
-                                format!("{} = {}", name, val)
+                                format!("{name} = {val}")
                             })
                             .collect::<Vec<String>>()
                             .join(", ");
 
-                        Err(ProofCheckError::Other(format!("Not true by tautological consequence; Counterexample: {}", model)))
+                        Err(ProofCheckError::Other(format!("Not true by tautological consequence; Counterexample: {model}")))
                     }
                     None => Ok(()),
                 }
@@ -1582,24 +1582,24 @@ impl<R: std::fmt::Debug, S: std::fmt::Debug> std::fmt::Display for ProofCheckErr
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         use ProofCheckError::*;
         match self {
-            LineDoesNotExist(r) => write!(f, "The referenced line {:?} does not exist.", r),
-            SubproofDoesNotExist(s) => write!(f, "The referenced subproof {:?} does not exist.", s),
-            ReferencesLaterLine(line, dep) => write!(f, "The dependency {:?} is after the step that uses it ({:?}).", dep, line),
+            LineDoesNotExist(r) => write!(f, "The referenced line {r:?} does not exist."),
+            SubproofDoesNotExist(s) => write!(f, "The referenced subproof {s:?} does not exist."),
+            ReferencesLaterLine(line, dep) => write!(f, "The dependency {dep:?} is after the step that uses it ({line:?})."),
             IncorrectDepCount(deps, n) => write!(f, "Too {} dependencies (expected: {}, provided: {}).", if deps.len() > *n { "many" } else { "few" }, n, deps.len()),
             IncorrectSubDepCount(sdeps, n) => write!(f, "Too {} subproof dependencies (expected: {}, provided: {}).", if sdeps.len() > *n { "many" } else { "few" }, n, sdeps.len()),
-            DepOfWrongForm(x, y) => write!(f, "A dependency ({}) is of the wrong form, expected {}.", x, y),
-            ConclusionOfWrongForm(kind) => write!(f, "The conclusion is of the wrong form, expected {}.", kind),
-            DoesNotOccur(x, y) => write!(f, "{} does not occur in {}.", x, y),
+            DepOfWrongForm(x, y) => write!(f, "A dependency ({x}) is of the wrong form, expected {y}."),
+            ConclusionOfWrongForm(kind) => write!(f, "The conclusion is of the wrong form, expected {kind}."),
+            DoesNotOccur(x, y) => write!(f, "{x} does not occur in {y}."),
             DepDoesNotExist(x, approx) => write!(f, "{}{} is required as a dependency, but it does not exist.", if *approx { "Something of the shape " } else { "" }, x),
             OneOf(errs) => {
                 assert!(errs.len() > 1);
                 writeln!(f, "One of the following requirements was not met:")?;
                 for err in errs {
-                    writeln!(f, "{}", err)?;
+                    writeln!(f, "{err}")?;
                 }
                 Ok(())
             }
-            Other(msg) => write!(f, "{}", msg),
+            Other(msg) => write!(f, "{msg}"),
         }
     }
 }

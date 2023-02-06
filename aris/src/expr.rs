@@ -206,8 +206,8 @@ where
     O: fmt::Display,
     E: fmt::Display,
 {
-    let s = exprs.iter().map(E::to_string).collect::<Vec<String>>().join(&format!(" {} ", op));
-    write!(f, "({})", s)
+    let s = exprs.iter().map(E::to_string).collect::<Vec<String>>().join(&format!(" {op} "));
+    write!(f, "({s})")
 }
 
 impl fmt::Display for Expr {
@@ -215,12 +215,12 @@ impl fmt::Display for Expr {
         match self {
             Expr::Contra => write!(f, "⊥"),
             Expr::Taut => write!(f, "⊤"),
-            Expr::Var { name } => write!(f, "{}", name),
+            Expr::Var { name } => write!(f, "{name}"),
             Expr::Apply { func, args } => write!(f, "{}({})", func, args.iter().map(|x| x.to_string()).collect::<Vec<String>>().join(", ")),
-            Expr::Not { operand } => write!(f, "¬{}", operand),
-            Expr::Impl { left, right } => write!(f, "({} → {})", left, right),
+            Expr::Not { operand } => write!(f, "¬{operand}"),
+            Expr::Impl { left, right } => write!(f, "({left} → {right})"),
             Expr::Assoc { op, exprs } => assoc_display_helper(f, op, exprs),
-            Expr::Quant { kind, name, body } => write!(f, "({} {}, {})", kind, name, body),
+            Expr::Quant { kind, name, body } => write!(f, "({kind} {name}, {body})"),
         }
     }
 }
@@ -230,7 +230,7 @@ impl fmt::Display for NnfExpr {
         match self {
             NnfExpr::Lit { polarity, name } => {
                 let neg = if *polarity { "" } else { "¬" };
-                write!(f, "{}{}", neg, name)
+                write!(f, "{neg}{name}")
             }
             NnfExpr::And { exprs } => assoc_display_helper(f, "∧", exprs),
             NnfExpr::Or { exprs } => assoc_display_helper(f, "∨", exprs),
@@ -276,7 +276,7 @@ pub fn gen_var(prefix: &str, avoid: &HashSet<String>) -> String {
     }
 
     for i in 0u64.. {
-        let ret = format!("{}{}", prefix, i);
+        let ret = format!("{prefix}{i}");
         if !avoid.contains(&ret) {
             return ret;
         }
@@ -525,7 +525,7 @@ impl Expr {
                     for (i, x) in evaled_args.enumerate() {
                         index |= (x as usize) << i;
                     }
-                    env[&*name][index]
+                    env[name][index]
                 }
                 _ => panic!("See note apply_non_literal"),
             },
@@ -884,7 +884,7 @@ impl Expr {
                 Expr::Var { name } => {
                     // look up the name in gamma, get the index
                     let i = gamma.into_iter().enumerate().find(|(_, n)| n == &name).unwrap().0;
-                    Expr::Var { name: format!("{}", i) }
+                    Expr::Var { name: format!("{i}") }
                 }
                 // push the name onto gamma from the actual quantifier,
                 // Example: for forall x, P(x)
@@ -924,7 +924,7 @@ impl Expr {
         // at this point, we've numbered all the vars, including the free ones
         // replace the free vars with their original names
         for (i, name) in gamma.into_iter().enumerate() {
-            ret = subst(ret, &format!("{}", i), Expr::Var { name });
+            ret = subst(ret, &format!("{i}"), Expr::Var { name });
         }
         ret
     }
@@ -1509,7 +1509,7 @@ pub fn expressions_for_depth(depth: usize, max_assoc: usize, mut vars: BTreeSet<
                 ret.insert(Expr::assoc(*op, arglist));
             }
         }
-        let x = format!("x{}", depth);
+        let x = format!("x{depth}");
         vars.insert(x.clone());
         for body in expressions_for_depth(depth - 1, max_assoc, vars).into_iter() {
             ret.insert(Expr::forall(&x, body.clone()));
@@ -1552,7 +1552,7 @@ mod tests {
                 let subst_l = ret.apply(left.clone());
                 let subst_r = ret.apply(right.clone());
                 // TODO: assert alpha_equal(subst_l, subst_r);
-                println!("{} {} {:?} {} {}", left, right, ret, subst_l, subst_r);
+                println!("{left} {right} {ret:?} {subst_l} {subst_r}");
             }
             ret
         };
@@ -1587,9 +1587,9 @@ mod tests {
         let vars = BTreeSet::from_iter(vec!["a".into()]);
         for depth in 0..3 {
             let set = expressions_for_depth(depth, 2, vars.clone());
-            println!("Depth: {}", depth);
+            println!("Depth: {depth}");
             for expr in set {
-                println!("\t{}", expr);
+                println!("\t{expr}");
             }
         }
     }

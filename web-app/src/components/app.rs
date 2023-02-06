@@ -19,8 +19,15 @@ pub struct App {
 pub enum AppMsg {
     TabbedContainerInit(ComponentLink<TabbedContainer>),
     NavBarInit(ComponentLink<NavBarWidget>),
-    CreateTab { name: String, content: Html },
-    RegisterProofName { name: String, link: ComponentLink<ProofWidget> },
+    CreateTab {
+        name: String,
+        content: Html,
+    },
+    RegisterProofName {
+        name: String,
+        link: ComponentLink<ProofWidget>,
+    },
+    #[allow(clippy::type_complexity)]
     GetProofFromCurrentTab(Box<dyn FnOnce(String, &P)>),
 }
 

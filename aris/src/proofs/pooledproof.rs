@@ -348,7 +348,7 @@ impl<Tail: Default + Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
         let tps = pools.transitive_parents(Coproduct::inject(idx));
         let Justification(e, r, deps, mut sdeps) = just;
         // silently remove sdeps that are invalid due to this pattern, as they show up naturally when parsing Aris's xml due to an ambiguity between deps and sdeps
-        sdeps = sdeps.into_iter().filter(|x| !tps.contains(x)).collect();
+        sdeps.retain(|x| !tps.contains(x));
 
         self.line_list.push(Coproduct::inject(idx));
         pools.just_map.insert(idx, Justification(HCons { head: e, tail: Tail::default() }, r, deps, sdeps));
@@ -427,7 +427,7 @@ impl<Tail: Default + Clone> Proof for PooledSubproof<HCons<Expr, Tail>> {
                 let mut valid_deps = HashSet::new();
                 let mut valid_sdeps = HashSet::new();
                 self.possible_deps_for_line(r, &mut valid_deps, &mut valid_sdeps);
-                println!("possible_deps_for_line: {:?} {:?} {:?}", r, valid_deps, valid_sdeps);
+                println!("possible_deps_for_line: {r:?} {valid_deps:?} {valid_sdeps:?}");
 
                 for dep in deps.iter() {
                     let dep_co = Coproduct::inject(*dep);
@@ -528,7 +528,7 @@ impl<Tail> DisplayIndented for PooledProof<HCons<Expr, Tail>> {
         fn aux<Tail>(p: &PooledProof<HCons<Expr, Tail>>, fmt: &mut std::fmt::Formatter, indent: usize, linecount: &mut usize, sub: &PooledSubproof<HCons<Expr, Tail>>) -> std::result::Result<(), std::fmt::Error> {
             for idx in sub.premise_list.iter() {
                 let premise = p.pools.prem_map.get(idx).unwrap();
-                write!(fmt, "{}:\t", linecount)?;
+                write!(fmt, "{linecount}:\t")?;
                 for _ in 0..indent {
                     write!(fmt, "| ")?;
                 }
@@ -574,8 +574,8 @@ mod tests {
         use crate::parser::parse_unwrap as p;
         let mut prf = PooledProof::<Hlist![Expr]>::new();
         let r1 = prf.add_premise(p("A"));
-        let r2 = prf.add_step(Justification(p("A & A"), RuleM::AndIntro, vec![Coproduct::inject(r1.clone())], vec![]));
-        println!("{}", prf);
+        let r2 = prf.add_step(Justification(p("A & A"), RuleM::AndIntro, vec![Coproduct::inject(r1)], vec![]));
+        println!("{prf}");
         prf.with_mut_premise(&r1, |e| {
             *e = p("B");
         })
@@ -585,13 +585,13 @@ mod tests {
             j.1 = RuleM::OrIntro;
         })
         .unwrap();
-        println!("{}", prf);
+        println!("{prf}");
     }
 
     #[test]
     fn prettyprint_pool() {
         let prf: PooledProof<Hlist![Expr]> = crate::proofs::proof_tests::demo_proof_1();
-        println!("{:?}\n{}\n", prf, prf);
+        println!("{prf:?}\n{prf}\n");
         println!("{:?}\n{:?}\n", prf.premises(), prf.lines());
     }
 }

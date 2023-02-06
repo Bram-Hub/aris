@@ -108,7 +108,7 @@ pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Result<(P, ProofMetaData), Str
                         last_raw = contents.clone();
                     }
                     "assumption" => {
-                        on_current_proof! { proof, { let p = proof.add_premise(parse!(&last_raw)); line_refs.insert(last_linenum.clone(), Coproduct::inject(p)).ok_or(format!("Multiple assumptions with line number {}", last_linenum)) } }
+                        on_current_proof! { proof, { let p = proof.add_premise(parse!(&last_raw)); line_refs.insert(last_linenum.clone(), Coproduct::inject(p)).ok_or(format!("Multiple assumptions with line number {last_linenum}")) } }
                     }
                     "rule" => {
                         last_rule = contents.clone();
@@ -148,7 +148,7 @@ pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Result<(P, ProofMetaData), Str
             Ok(EndDocument) => break,
             Ok(_) => (),
             Err(e) => {
-                return Err(format!("Error parsing xml document: {:?}", e));
+                return Err(format!("Error parsing xml document: {e:?}"));
             }
         }
     }
@@ -212,11 +212,11 @@ pub fn xml_from_proof_and_metadata<P: Proof, W: Write>(prf: &P, meta: &ProofMeta
     }
 
     fn aux<P: Proof, W: Write>(prf: &P::Subproof, proofid: usize, state: &mut SerializationState<P>, ew: &mut EventWriter<W>) -> xml::writer::Result<()> {
-        ew.write(XmlEvent::start_element("proof").attr("id", &format!("{}", proofid)))?;
+        ew.write(XmlEvent::start_element("proof").attr("id", &format!("{proofid}")))?;
         for prem in prf.premises() {
             ew.write(XmlEvent::start_element("assumption").attr("linenum", &format!("{}", state.deps_map[&Coproduct::inject(prem.clone())])))?;
             if let Some(expr) = prf.lookup_premise(&prem) {
-                leaf_tag(ew, "raw", &format!("{}", expr))?;
+                leaf_tag(ew, "raw", &format!("{expr}"))?;
             }
             ew.write(XmlEvent::end_element())?;
         }
@@ -273,7 +273,7 @@ pub fn xml_from_proof_and_metadata_with_hash<P: Proof, W: Write>(prf: &P, meta: 
     ctx.input(&payload[..]);
     ctx.input(b"\n");
     if let Some(author) = &meta.author {
-        ctx.input(&author);
+        ctx.input(author);
     }
     let hash = ctx.result();
     meta.hash = Some(base64::encode(&hash[..]));
@@ -339,12 +339,12 @@ mod tests {
         let sub = prf.lookup_subproof(&lines[0].get::<<P as Proof>::SubproofReference, _>().unwrap().clone()).unwrap();
         assert_eq!(prf.lookup_premise(&sub.premises()[0]), Some(Expr::var("A")));
         let sub_lines = sub.lines();
-        let Justification(e1, r1, d1, s1) = prf.lookup_pj(&Coproduct::inject(sub_lines[0].get::<<P as Proof>::JustificationReference, _>().unwrap().clone())).unwrap().get::<Justification<_, _, _>, _>().unwrap().clone();
+        let Justification(e1, r1, d1, s1) = prf.lookup_pj(&Coproduct::inject(*sub_lines[0].get::<<P as Proof>::JustificationReference, _>().unwrap())).unwrap().get::<Justification<_, _, _>, _>().unwrap().clone();
         assert_eq!(e1, Expr::var("A"));
         assert_eq!(r1, RuleM::Reit);
         assert_eq!(d1.len(), 1);
         assert_eq!(s1.len(), 0);
-        let Justification(e2, r2, d2, s2) = prf.lookup_pj(&Coproduct::inject(lines[1].get::<<P as Proof>::JustificationReference, _>().unwrap().clone())).unwrap().get::<Justification<_, _, _>, _>().unwrap().clone();
+        let Justification(e2, r2, d2, s2) = prf.lookup_pj(&Coproduct::inject(*lines[1].get::<<P as Proof>::JustificationReference, _>().unwrap())).unwrap().get::<Justification<_, _, _>, _>().unwrap().clone();
         assert_eq!(e2, Expr::implies(Expr::var("A"), Expr::var("A")));
         assert_eq!(r2, RuleM::ImpIntro);
         assert_eq!(d2.len(), 0);
@@ -356,7 +356,7 @@ mod tests {
         let xml = b"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<bram>\n  <program>Aris</program>\n  <version>0.0.187</version>\n  <metadata>\n    <author>UNKNOWN</author>\n    <hash>aCDnd1IQS0y8QoTmgj7xeVpBG9o1A3m6tZWd0HXkwjg=</hash>\n  </metadata>\n  <proof id=\"0\">\n    <assumption linenum=\"0\">\n      <sen>p</sen>\n      <raw>p</raw>\n    </assumption>\n    <step linenum=\"1\">\n      <sen>p</sen>\n      <raw>p</raw>\n      <rule>REITERATION</rule>\n      <premise>0</premise>\n    </step>\n    <goal>\n      <sen/>\n      <raw/>\n    </goal>\n  </proof>\n</bram>\n";
         type P = PooledProof<Hlist![Expr]>;
         let (prf, metadata) = proof_from_xml::<P, _>(&xml[..]).unwrap();
-        println!("{}", prf);
-        println!("{:?}", metadata);
+        println!("{prf}");
+        println!("{metadata:?}");
     }
 }

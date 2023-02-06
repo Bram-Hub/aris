@@ -34,10 +34,10 @@ pub fn with_thrown_errors<A, F: FnOnce(&JNIEnv) -> jni::errors::Result<A> + Unwi
     set_hook(Box::new(move |info: &PanicInfo| {
         let mut msg = format!("Panic at {:?}", info.location());
         if let Some(e) = info.payload().downcast_ref::<&str>() {
-            msg += &*format!(": {:?}", e);
+            msg += &*format!(": {e:?}");
         }
         if let Some(e) = info.payload().downcast_ref::<String>() {
-            msg += &*format!(": {:?}", e);
+            msg += &*format!(": {e:?}");
         }
         if let Ok(tx) = mtx.lock() {
             let _ = tx.send(msg);
@@ -45,7 +45,7 @@ pub fn with_thrown_errors<A, F: FnOnce(&JNIEnv) -> jni::errors::Result<A> + Unwi
     }));
     let ret = catch_unwind(|| {
         f(env).unwrap_or_else(|e| {
-            let _ = env.throw_new("java/lang/RuntimeException", &*format!("{:?}", e));
+            let _ = env.throw_new("java/lang/RuntimeException", &*format!("{e:?}"));
             unsafe { std::mem::zeroed() }
         }) // handle Result::Err
     })

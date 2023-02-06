@@ -89,7 +89,7 @@ where
             use frunk_core::coproduct::Coproduct::{Inl, Inr};
             for prem in p.premises() {
                 let e = p.lookup_premise(&prem).unwrap();
-                ret.lines.push(Line::new(format!("{}", e), true, Inl(prem), current_sub.clone()));
+                ret.lines.push(Line::new(format!("{e}"), true, Inl(prem), current_sub.clone()));
             }
             for line in p.lines() {
                 match line {
@@ -112,7 +112,7 @@ where
     }
     pub fn add_line(&mut self, i: usize, is_premise: bool, subproof_level: usize) {
         use frunk_core::coproduct::Coproduct::{Inl, Inr};
-        println!("add_line {:?} {:?} {:?}", i, is_premise, subproof_level);
+        println!("add_line {i:?} {is_premise:?} {subproof_level:?}");
         let const_true = Expr::Taut;
         let line: Option<Line<P>> = self.lines.get(i).cloned();
         match line {
@@ -125,7 +125,7 @@ where
                     (true, Inl(pr)) => Inl(self.proof.add_premise_relative(const_true, &pr, true)),
                     (false, Inr(Inl(jr))) => Inr(Inl(self.proof.add_step_relative(Justification(const_true, RuleM::Reit, vec![], vec![]), &Coproduct::inject(jr), true))),
                     (_, Inr(Inr(void))) => match void {},
-                    (b, r) => panic!("LinedProof::add_line, is_premise was {}, but the line reference was {:?}", b, r),
+                    (b, r) => panic!("LinedProof::add_line, is_premise was {b}, but the line reference was {r:?}"),
                 };
                 self.lines.insert_relative(Line { raw_expr: "".into(), is_premise, reference: r, subreference: None /* TODO */ }, &line, true);
             }
@@ -134,16 +134,16 @@ where
         println!("{:?}", self.proof);
     }
     pub fn set_expr(&mut self, i: usize, text: String) {
-        println!("set_expr {:?} {:?}", i, text);
+        println!("set_expr {i:?} {text:?}");
     }
     pub fn move_cursor(&mut self, i: usize) {
-        println!("move_cursor {:?}", i);
+        println!("move_cursor {i:?}");
         self.lines.move_cursor(i);
     }
     pub fn delete(&mut self, i: usize) {
         if (i >= 1 || self.proof.premises().len() > 1) && i < self.lines.len() {
             let line = self.lines.pop(i).unwrap();
-            println!("Deleting {:?}", line);
+            println!("Deleting {line:?}");
             self.proof.remove_line(&line.reference);
             if let Some(subreference) = line.subreference {
                 if let Some(sub) = self.proof.lookup_subproof(&subreference) {

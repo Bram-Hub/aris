@@ -8,14 +8,14 @@ use nom::*;
 
 /// parser::parse parses a string slice into an Expr AST, returning None if there's an error
 pub fn parse(input: &str) -> Option<Expr> {
-    let newlined = format!("{}\n", input);
+    let newlined = format!("{input}\n");
     main(&newlined).map(|(_, expr)| expr).ok()
 }
 
 /// parser::parse_unwrap is a convenience function used in the tests, and panics if the input doesn't parse
 /// for handling user input, call parser::parse instead and handle the None case
 pub fn parse_unwrap(input: &str) -> Expr {
-    parse(input).unwrap_or_else(|| panic!("failed parsing: {}", input))
+    parse(input).unwrap_or_else(|| panic!("failed parsing: {input}"))
 }
 
 fn custom_error<A, B>(a: A, x: u32) -> nom::IResult<A, B> {
@@ -103,11 +103,11 @@ fn test_parser() {
     println!("{:?}", expr("forall a, (b & c)\n"));
     let e = expr("exists x, (Tet(x) & SameCol(x, b)) -> ~forall x, (Tet(x) -> LeftOf(x, b))\n");
     let fv = e.clone().map(|x| free_vars(&x.1));
-    println!("{:?} {:?}", e, fv);
+    println!("{e:?} {fv:?}");
     let e = expr("forall a, forall b, ((forall x, in(x,a) <-> in(x,b)) -> eq(a,b))\n");
     let fv = e.clone().map(|x| free_vars(&x.1));
     assert_eq!(fv, Ok(["eq", "in"].iter().map(|x| String::from(*x)).collect()));
-    println!("{:?} {:?}", e, fv);
+    println!("{e:?} {fv:?}");
     named!(f<&str, Vec<&str>>, many1!(tag!("a")));
     println!("{:?}", f("aa\n"));
 }
