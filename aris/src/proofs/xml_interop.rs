@@ -271,12 +271,12 @@ pub fn xml_from_proof_and_metadata_with_hash<P: Proof, W: Write>(prf: &P, meta: 
     let mut payload = vec![];
     xml_from_proof_and_metadata(prf, &meta, &mut payload)?;
     let mut ctx = sha2::Sha256::new();
-    ctx.input(&payload[..]);
-    ctx.input(b"\n");
+    ctx.update(&payload[..]);
+    ctx.update(b"\n");
     if let Some(author) = &meta.author {
-        ctx.input(author);
+        ctx.update(author);
     }
-    let hash = ctx.result();
+    let hash = ctx.finalize();
     meta.hash = Some(base64::engine::general_purpose::STANDARD.encode(&hash[..]));
     xml_from_proof_and_metadata(prf, &meta, out)
 }
