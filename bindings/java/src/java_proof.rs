@@ -13,7 +13,7 @@ pub extern "system" fn Java_edu_rpi_aris_proof_RustProof_toString(env: JNIEnv, o
     with_thrown_errors(&env, |env| {
         let ptr: jni::sys::jlong = env.get_field(obj, "pointerToRustHeap", "J")?.j()?;
         let prf: &LinedProof<PooledProof<Hlist![Expr]>> = unsafe { &*(ptr as *mut LinedProof<PooledProof<Hlist![Expr]>>) };
-        Ok(env.new_string(format!("{:?}", prf))?.into_inner())
+        Ok(env.new_string(format!("{prf:?}"))?.into_inner())
     })
 }
 
@@ -69,9 +69,9 @@ pub extern "system" fn Java_edu_rpi_aris_proof_RustProof_moveCursor(env: JNIEnv,
 pub extern "system" fn Java_edu_rpi_aris_proof_RustProof_fromXml(env: JNIEnv, _: JObject, jxml: JString) -> jobject {
     with_thrown_errors(&env, |env| {
         let xml = String::from(env.get_string(jxml)?);
-        println!("{:?}", xml);
+        println!("{xml:?}");
         if let Ok((prf, _)) = aris::proofs::xml_interop::proof_from_xml::<PooledProof<Hlist![Expr]>, _>(xml.as_bytes()) {
-            println!("{}", prf);
+            println!("{prf}");
             let prf = Box::into_raw(Box::new(LinedProof::<PooledProof<Hlist![Expr]>>::from_proof(prf)));
             let jprf = env.new_object("edu/rpi/aris/proof/RustProof", "(J)V", &[JValue::from(prf as jni::sys::jlong)])?;
             Ok(jprf.into_inner())
@@ -87,15 +87,15 @@ pub extern "system" fn Java_edu_rpi_aris_proof_RustProof_checkRuleAtLine(env: JN
     with_thrown_errors(&env, |env| {
         let ptr: jni::sys::jlong = env.get_field(this, "pointerToRustHeap", "J")?.j()?;
         let self_: &mut LinedProof<PooledProof<Hlist![Expr]>> = unsafe { &mut *(ptr as *mut _) };
-        println!("RustProof::checkRuleAtLine {:?}", self_);
+        println!("RustProof::checkRuleAtLine {self_:?}");
         if let Some(line) = self_.lines.get(linenum as _) {
             if let Err(e) = self_.proof.verify_line(&line.reference) {
-                Ok(env.new_string(&format!("{}", e))?.into_inner())
+                Ok(env.new_string(&format!("{e}"))?.into_inner())
             } else {
                 Ok(std::ptr::null_mut())
             }
         } else {
-            Ok(env.new_string(&format!("Failed to dereference line {} in {:?}", linenum, self_))?.into_inner())
+            Ok(env.new_string(&format!("Failed to dereference line {linenum} in {self_:?}"))?.into_inner())
         }
     })
 }

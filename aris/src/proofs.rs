@@ -384,7 +384,7 @@ pub trait JustificationExprDisplay {
 }
 impl JustificationExprDisplay for Expr {
     fn fmt_expr(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(fmt, "{}", self)
+        write!(fmt, "{self}")
     }
 }
 impl<Tail> JustificationExprDisplay for frunk_core::hlist::HCons<Expr, Tail> {
@@ -396,15 +396,15 @@ impl<Tail> JustificationExprDisplay for frunk_core::hlist::HCons<Expr, Tail> {
 impl<T: JustificationExprDisplay, R: std::fmt::Debug, S: std::fmt::Debug> DisplayIndented for Justification<T, R, S> {
     fn display_indented(&self, fmt: &mut std::fmt::Formatter, indent: usize, linecount: &mut usize) -> std::result::Result<(), std::fmt::Error> {
         let &Justification(expr, rule, deps, sdeps) = &self;
-        write!(fmt, "{}:\t", linecount)?;
+        write!(fmt, "{linecount}:\t")?;
         *linecount += 1;
         for _ in 0..indent {
             write!(fmt, "| ")?;
         }
         expr.fmt_expr(fmt)?;
-        write!(fmt, "; {:?}; ", rule)?;
+        write!(fmt, "; {rule:?}; ")?;
         for (i, dep) in deps.iter().enumerate() {
-            write!(fmt, "{:?}", dep)?;
+            write!(fmt, "{dep:?}")?;
             if i != deps.len() - 1 {
                 write!(fmt, ", ")?;
             }
@@ -413,7 +413,7 @@ impl<T: JustificationExprDisplay, R: std::fmt::Debug, S: std::fmt::Debug> Displa
             write!(fmt, "; ")?;
         }
         for (i, dep) in sdeps.iter().enumerate() {
-            write!(fmt, "{:?}", dep)?;
+            write!(fmt, "{dep:?}")?;
             if i != sdeps.len() - 1 {
                 write!(fmt, ", ")?;
             }
