@@ -47,8 +47,6 @@ typedef enum QuantKind {
   Exists,
 } QuantKind;
 
-typedef struct Box_Expr Box_Expr;
-
 typedef struct String String;
 
 typedef struct Vec_Expr Vec_Expr;
@@ -102,7 +100,7 @@ typedef struct Apply_Body {
   /**
    * The function `P` being called
    */
-  struct Box_Expr func;
+  struct Expr *func;
   /**
    * Arguments `A, B, C` passed to the function
    */
@@ -113,18 +111,18 @@ typedef struct Not_Body {
   /**
    * The operand of the negation `P`
    */
-  struct Box_Expr operand;
+  struct Expr *operand;
 } Not_Body;
 
 typedef struct Impl_Body {
   /**
    * The left expression `P`
    */
-  struct Box_Expr left;
+  struct Expr *left;
   /**
    * The right expression `Q`
    */
-  struct Box_Expr right;
+  struct Expr *right;
 } Impl_Body;
 
 typedef struct Assoc_Body {
@@ -150,7 +148,7 @@ typedef struct Quant_Body {
   /**
    * The quantifier body `P`
    */
-  struct Box_Expr body;
+  struct Expr *body;
 } Quant_Body;
 
 typedef struct Expr {
