@@ -1,10 +1,27 @@
 //! Parse infix logical expressions into an AST
 
+use nom::branch::alt;
+use nom::bytes::complete::tag;
+use nom::character::complete::newline;
+use nom::character::complete::one_of;
+use nom::combinator::map;
+use nom::combinator::recognize;
+use nom::combinator::value;
+use nom::combinator::verify;
+use nom::multi::many0;
+use nom::multi::many1;
+use nom::multi::separated_list0;
+use nom::sequence::delimited;
+use nom::sequence::pair;
+use nom::sequence::preceded;
+use nom::sequence::separated_pair;
+use nom::sequence::terminated;
+use nom::sequence::tuple;
+use nom::IResult;
+
 use crate::expr::Expr;
 use crate::expr::Op;
 use crate::expr::QuantKind;
-
-use nom::*;
 
 /// parser::parse parses a string slice into an Expr AST, returning None if there's an error
 pub fn parse(input: &str) -> Option<Expr> {
@@ -18,81 +35,129 @@ pub fn parse_unwrap(input: &str) -> Expr {
     parse(input).unwrap_or_else(|| panic!("failed parsing: {input}"))
 }
 
-fn custom_error<A, B>(a: A, x: u32) -> nom::IResult<A, B> {
-    Err(nom::Err::Error(nom::Context::Code(a, nom::ErrorKind::Custom(x))))
+fn custom_error<A, B>(a: A) -> nom::IResult<A, B> {
+    Err(nom::Err::Error(nom::error::Error { input: a, code: nom::error::ErrorKind::Fail }))
 }
 
-/// variable is implemented as a function instead of via nom's macros in order to more conveniently reject keywords as variables
-/// in nom5, the "verify" combinator does this properly, in nom4, the "verify" macro's predicate requires ownership of the return value
-fn variable(s: &str) -> nom::IResult<&str, String> {
-    let r = variable_(s);
-    if let Ok((rest, ref var)) = r {
-        if let Ok((_, _)) = keyword(var) {
-            return custom_error(rest, 0);
-        }
-    }
-    r
+fn variable(input: &str) -> nom::IResult<&str, String> {
+    verify(variable_, |v| keyword(v).is_err())(input)
 }
 
-// All the `named!` things below can be thought of as grammar productions interleaved with code that constructs the AST value associated with each production.
-// `alt!` corresponds to alternation/choice in an EBNF grammar
-// `do_parse!` corresponds to sequencing, and optionally provides names for the parts of the sequence that build up the AST value
-// `tag!` is used for literal string values, and supports unicode
+// All the functions below can be thought of as grammar productions interleaved with code that constructs the AST value associated with each production.
+// `alt` corresponds to alternation/choice in an EBNF grammar
+// `tag` is used for literal string values, and supports unicode
 
-named!(space<&str, ()>, do_parse!(many0!(one_of!(" \t")) >> (())));
-named!(variable_<&str, String>, do_parse!(x: many1!(one_of!("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")) >> ({let mut y = String::new(); for c in x { y.push(c); }; y})));
-named!(keyword<&str, &str>, alt!(tag!("forall") | tag!("exists")));
+fn space(input: &str) -> IResult<&str, ()> {
+    value((), many0(one_of(" \t")))(input)
+}
 
-named!(contradiction<&str, Expr>, do_parse!(alt!(tag!("_|_") | tag!("⊥")) >> (Expr::Contra)));
-named!(tautology<&str, Expr>, do_parse!(alt!(tag!("^|^") | tag!("⊤")) >> (Expr::Taut)));
+fn variable_(input: &str) -> IResult<&str, String> {
+    map(recognize(many1(one_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"))), |v: &str| v.to_owned())(input)
+}
 
-named!(notterm<&str, Expr>, do_parse!(alt!(tag!("~") | tag!("¬")) >> e: paren_expr >> (Expr::Not { operand: Box::new(e) })));
+fn keyword(input: &str) -> IResult<&str, &str> {
+    alt((tag("forall"), tag("exists")))(input)
+}
 
-named!(predicate<&str, Expr>, alt!(
-do_parse!(space >> name: variable >> space >> tag!("(") >> space >> args: separated_list!(do_parse!(space >> tag!(",") >> space >> (())), expr) >> tag!(")") >> (Expr::Apply { func: Box::new(Expr::Var { name }), args })) |
-do_parse!(space >> name: variable >> space >> (Expr::Var { name }))
-));
+fn contradiction(input: &str) -> IResult<&str, Expr> {
+    value(Expr::Contra, alt((tag("_|_"), tag("⊥"))))(input)
+}
 
-named!(forall_quantifier<&str, QuantKind>, do_parse!(alt!(tag!("forall ") | tag!("∀")) >> (QuantKind::Forall)));
-named!(exists_quantifier<&str, QuantKind>, do_parse!(alt!(tag!("exists ") | tag!("∃")) >> (QuantKind::Exists)));
-named!(quantifier<&str, QuantKind>, alt!(forall_quantifier | exists_quantifier));
-named!(binder<&str, Expr>, do_parse!(space >> kind: quantifier >> space >> name: variable >> space >> tag!(",") >> space >> body: expr >> (Expr::Quant { kind, name, body: Box::new(body) })));
+fn tautology(input: &str) -> IResult<&str, Expr> {
+    value(Expr::Taut, alt((tag("^|^"), tag("⊤"))))(input)
+}
 
-named!(impl_term<&str, Expr>, do_parse!(left: paren_expr >> space >> alt!(tag!("->") | tag!("→")) >> space >> right: paren_expr >> (Expr::Impl { left: Box::new(left), right: Box::new(right) })));
+fn notterm(input: &str) -> IResult<&str, Expr> {
+    map(preceded(alt((tag("~"), tag("¬"))), paren_expr), |e| Expr::Not { operand: Box::new(e) })(input)
+}
 
-named!(andrepr<&str, Op>, do_parse!(alt!(tag!("&") | tag!("∧") | tag!("/\\")) >> (Op::And)));
-named!(orrepr<&str, Op>, do_parse!(alt!(tag!("|") | tag!("∨") | tag!("\\/")) >> (Op::Or)));
-named!(biconrepr<&str, Op>, do_parse!(alt!(tag!("<->") | tag!("↔")) >> (Op::Bicon)));
-named!(equivrepr<&str, Op>, do_parse!(alt!(tag!("===") | tag!("≡")) >> (Op::Equiv)));
-named!(plusrepr<&str, Op>, do_parse!(tag!("+") >> (Op::Add)));
-named!(multrepr<&str, Op>, do_parse!(tag!("*") >> (Op::Mult)));
+fn predicate(input: &str) -> IResult<&str, Expr> {
+    alt((map(pair(delimited(space, variable, space), delimited(tag("("), separated_list0(tuple((space, tag(","), space)), expr), tag(")"))), |(name, args)| Expr::Apply { func: Box::new(Expr::Var { name }), args }), map(delimited(space, variable, space), |name| Expr::Var { name })))(input)
+}
 
-named!(assoc_term_aux<&str, (Vec<Expr>, Vec<Op>)>, alt!(
-do_parse!(space >> e: paren_expr >> space >> sym: alt!(andrepr | orrepr | biconrepr | equivrepr | plusrepr | multrepr) >> space >> rec: assoc_term_aux >> ({ let (mut es, mut syms) = rec; es.push(e); syms.push(sym); (es, syms) })) |
-do_parse!(e: paren_expr >> (vec![e], vec![]))
-));
+fn forall_quantifier(input: &str) -> IResult<&str, QuantKind> {
+    value(QuantKind::Forall, alt((tag("forall "), tag("∀"))))(input)
+}
 
-/// assocterm is implemented as a function instead of using nom's macros because
-/// enforcing that all the symbols are the same is more easily done with iterators.
+fn exists_quantifier(input: &str) -> IResult<&str, QuantKind> {
+    value(QuantKind::Exists, alt((tag("exists "), tag("∃"))))(input)
+}
+
+fn quantifier(input: &str) -> IResult<&str, QuantKind> {
+    alt((forall_quantifier, exists_quantifier))(input)
+}
+
+fn binder(input: &str) -> IResult<&str, Expr> {
+    map(tuple((preceded(space, quantifier), preceded(space, variable), preceded(tuple((space, tag(","), space)), expr))), |(kind, name, body)| Expr::Quant { kind, name, body: Box::new(body) })(input)
+}
+
+fn impl_term(input: &str) -> IResult<&str, Expr> {
+    map(separated_pair(paren_expr, tuple((space, alt((tag("->"), tag("→"))), space)), paren_expr), |(left, right)| Expr::Impl { left: Box::new(left), right: Box::new(right) })(input)
+}
+
+fn andrepr(input: &str) -> IResult<&str, Op> {
+    value(Op::And, alt((tag("&"), tag("∧"), tag("/\\"))))(input)
+}
+
+fn orrepr(input: &str) -> IResult<&str, Op> {
+    value(Op::Or, alt((tag("|"), tag("∨"), tag("\\/"))))(input)
+}
+
+fn biconrepr(input: &str) -> IResult<&str, Op> {
+    value(Op::Bicon, alt((tag("<->"), tag("↔"))))(input)
+}
+
+fn equivrepr(input: &str) -> IResult<&str, Op> {
+    value(Op::Equiv, alt((tag("==="), tag("≡"))))(input)
+}
+
+fn plusrepr(input: &str) -> IResult<&str, Op> {
+    value(Op::Add, tag("+"))(input)
+}
+
+fn multrepr(input: &str) -> IResult<&str, Op> {
+    value(Op::Mult, tag("*"))(input)
+}
+
+fn assoc_term_aux(input: &str) -> IResult<&str, (Vec<Expr>, Vec<Op>)> {
+    alt((
+        map(tuple((paren_expr, delimited(space, alt((andrepr, orrepr, biconrepr, equivrepr, plusrepr, multrepr)), space), assoc_term_aux)), |(e, sym, (mut es, mut syms))| {
+            es.push(e);
+            syms.push(sym);
+            (es, syms)
+        }),
+        map(paren_expr, |e| (vec![e], vec![])),
+    ))(input)
+}
+
+/// Enforce that all symbols are the same.
 /// This check is what rules out `(a /\ b \/ c)` without further parenthesization.
 fn assoc_term(s: &str) -> nom::IResult<&str, Expr> {
     let (rest, (mut exprs, syms)) = assoc_term_aux(s)?;
     assert_eq!(exprs.len(), syms.len() + 1);
     if exprs.len() == 1 {
-        return custom_error(rest, 0);
+        return custom_error(rest);
     }
     let op = syms[0];
     if !syms.iter().all(|x| x == &op) {
-        return custom_error(rest, 0);
+        return custom_error(rest);
     }
     exprs.reverse();
     Ok((rest, Expr::Assoc { op, exprs }))
 }
 
 // paren_expr is a factoring of expr that eliminates left-recursion, which parser combinators have trouble with
-named!(paren_expr<&str, Expr>, alt!(contradiction | tautology | predicate | notterm | binder | do_parse!(space >> tag!("(") >> space >> e: expr >> space >> tag!(")") >> space >> (e))));
-named!(expr<&str, Expr>, alt!(assoc_term | impl_term | paren_expr));
-named!(main<&str, Expr>, do_parse!(e: expr >> tag!("\n") >> (e)));
+fn paren_expr(input: &str) -> IResult<&str, Expr> {
+    alt((contradiction, tautology, predicate, notterm, binder, delimited(tuple((space, tag("("), space)), expr, tuple((space, tag(")"), space)))))(input)
+}
+
+fn expr(input: &str) -> IResult<&str, Expr> {
+    alt((assoc_term, impl_term, paren_expr))(input)
+}
+
+fn main(input: &str) -> IResult<&str, Expr> {
+    terminated(expr, newline)(input)
+}
 
 #[test]
 fn test_parser() {
@@ -101,13 +166,15 @@ fn test_parser() {
     println!("{:?}", predicate("s(s(s(s(s(z)))))"));
     println!("{:?}", expr("a & b & c(x,y)\n"));
     println!("{:?}", expr("forall a, (b & c)\n"));
-    let e = expr("exists x, (Tet(x) & SameCol(x, b)) -> ~forall x, (Tet(x) -> LeftOf(x, b))\n");
-    let fv = e.clone().map(|x| free_vars(&x.1));
+    let e = expr("exists x, (Tet(x) & SameCol(x, b)) -> ~forall x, (Tet(x) -> LeftOf(x, b))\n").unwrap();
+    let fv = free_vars(&e.1);
     println!("{e:?} {fv:?}");
-    let e = expr("forall a, forall b, ((forall x, in(x,a) <-> in(x,b)) -> eq(a,b))\n");
-    let fv = e.clone().map(|x| free_vars(&x.1));
-    assert_eq!(fv, Ok(["eq", "in"].iter().map(|x| String::from(*x)).collect()));
+    let e = expr("forall a, forall b, ((forall x, in(x,a) <-> in(x,b)) -> eq(a,b))\n").unwrap();
+    let fv = free_vars(&e.1);
+    assert_eq!(fv, ["eq", "in"].iter().map(|x| String::from(*x)).collect());
     println!("{e:?} {fv:?}");
-    named!(f<&str, Vec<&str>>, many1!(tag!("a")));
+    fn f(input: &str) -> IResult<&str, Vec<&str>> {
+        many1(tag("a"))(input)
+    }
     println!("{:?}", f("aa\n"));
 }
