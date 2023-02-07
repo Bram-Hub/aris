@@ -5,7 +5,7 @@ Data structures for representing natural deduction style proofs
 This module houses different proof representations with different performance/simplicity tradeoffs.
 
 # Concrete proof types
-You probably want `type P1 = aris::proofs::pooledproof::PooledProof<Hlist![Expr]>;` if you want to interactively mutate a proof, and
+You probably want `type P1 = aris::proofs::pooledproof::PooledProof<HList![Expr]>;` if you want to interactively mutate a proof, and
 `type P2 = aris::proofs::lined_proof::LinedProof<P1>;` if you want to display line numbers for a finalized proof.
 
 The rest of the types are either experiments that didn't pan out or are internal shims
@@ -33,7 +33,7 @@ The test running apparatus expects you to return the proof, a list of line refer
 use aris::expr::Expr;
 use aris::proofs::xml_interop::proof_from_xml;
 let data = &include_bytes!("../../example-proofs/propositional_logic_arguments_for_proofs_ii_problem_10.bram")[..];
-type P = aris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
+type P = aris::proofs::pooledproof::PooledProof<HList![Expr]>;
 let (prf, metadata) = proof_from_xml::<P, _>(data).unwrap();
 ```
 
@@ -80,7 +80,7 @@ fn contraposition_demo<P: Proof>() -> P {
     prf
 }
 
-type P = aris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
+type P = aris::proofs::pooledproof::PooledProof<HList![Expr]>;
 let concrete_proof = contraposition_demo::<P>();
 ```
 
@@ -94,7 +94,7 @@ use aris::parser::parse_unwrap as p;
 use aris::proofs::{Proof, Justification, pooledproof::PooledProof};
 use aris::rules::RuleM;
 
-let mut prf = PooledProof::<Hlist![Expr]>::new();
+let mut prf = PooledProof::<HList![Expr]>::new();
 let r1 = prf.add_premise(p("A"));
 let r2 = prf.add_step(Justification(p("A & A"), RuleM::AndIntro, vec![Coproduct::inject(r1.clone())], vec![]));
 assert_eq!(format!("{}", prf),
@@ -121,7 +121,7 @@ This is prevented by the fact that the lifetime parameter of the subproof refere
 use aris::proofs::{Proof, pooledproof::PooledProof};
 use aris::expr::Expr;
 fn should_fail_with_lifetime_error() {
-    let mut p = PooledProof::<Hlist![Expr]>::new();
+    let mut p = PooledProof::<HList![Expr]>::new();
     let r = p.add_subproof();
     let s = p.with_mut_subproof(&r, |x| x);
 }
