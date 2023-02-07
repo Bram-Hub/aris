@@ -16,4 +16,4 @@ js-sys = "0.3.61"
 # This crate allows propagating `serde` errors with the `?` operator, which is
 # safer than `wasm_bindgen::UnwrapThrowExt`, because `UnwrapThrowExt` doesn't
 # run destructors and can cause memory leaks.
-serde-wasm-bindgen = "0.1.3"
+serde-wasm-bindgen = "0.4.5"
