@@ -13,7 +13,7 @@ use std::fmt::Display;
 
 use frunk_core::coproduct::CoprodInjector;
 use frunk_core::coproduct::Coproduct;
-use frunk_core::Hlist;
+use frunk_core::HList;
 
 fn coproduct_inject<T, Index, Head, Tail>(to_insert: T) -> Coproduct<Head, Tail>
 where
@@ -91,8 +91,8 @@ macro_rules! enumerate_subproofful_tests {
     };
 }
 
-enumerate_subproofless_tests! { PooledProof<Hlist![Expr]>, test_subproofless_rules_on_pooledproof }
-enumerate_subproofful_tests! { PooledProof<Hlist![Expr]>, test_subproofful_rules_on_pooledproof }
+enumerate_subproofless_tests! { PooledProof<HList![Expr]>, test_subproofless_rules_on_pooledproof }
+enumerate_subproofful_tests! { PooledProof<HList![Expr]>, test_subproofful_rules_on_pooledproof }
 
 pub fn demo_proof_1<P: Proof>() -> P
 where

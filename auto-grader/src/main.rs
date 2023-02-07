@@ -14,7 +14,7 @@ use std::fs::File;
 use std::path::Path;
 
 use frunk_core::coproduct::Coproduct;
-use frunk_core::Hlist;
+use frunk_core::HList;
 
 type ValidateError<P> = (PjRef<P>, ProofCheckError<PjRef<P>, <P as Proof>::SubproofReference>);
 
@@ -77,7 +77,7 @@ fn main() -> Result<(), String> {
     let instructor_file = File::open(instructor_path).expect("Could not open instructor file");
     let student_file = File::open(student_path).expect("Could not open student file");
 
-    type P = aris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
+    type P = aris::proofs::pooledproof::PooledProof<HList![Expr]>;
 
     let (i_prf, i_meta) = proof_from_xml::<P, _>(&instructor_file).unwrap();
     let (s_prf, _) = proof_from_xml::<P, _>(&student_file).unwrap();

@@ -1608,14 +1608,14 @@ impl<R: std::fmt::Debug, S: std::fmt::Debug> std::fmt::Display for ProofCheckErr
 mod tests {
     use super::*;
 
-    use frunk_core::Hlist;
+    use frunk_core::HList;
 
     #[test]
     fn test_either_order() {
         use crate::parser::parse_unwrap as p;
         use ProofCheckError::*;
 
-        type P = crate::proofs::pooledproof::PooledProof<Hlist![Expr]>;
+        type P = crate::proofs::pooledproof::PooledProof<HList![Expr]>;
         type SRef = <P as Proof>::SubproofReference;
 
         let dep_1 = p("(A & B) -> C");

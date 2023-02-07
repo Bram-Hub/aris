@@ -287,12 +287,12 @@ mod tests {
 
     use crate::proofs::pooledproof::PooledProof;
 
-    use frunk_core::Hlist;
+    use frunk_core::HList;
 
     #[test]
     fn test_xml() {
         let data = &include_bytes!("../../../example-proofs/propositional_logic_arguments_for_proofs_ii_problem_10.bram")[..];
-        type P = PooledProof<Hlist![Expr]>;
+        type P = PooledProof<HList![Expr]>;
         let (prf, metadata) = proof_from_xml::<P, _>(data).unwrap();
         println!("{:?} {:?}\n{}", metadata.author, metadata.hash, prf);
         let mut reserialized = vec![];
@@ -334,7 +334,7 @@ mod tests {
             </proof>
         </bram>
         "#;
-        type P = PooledProof<Hlist![Expr]>;
+        type P = PooledProof<HList![Expr]>;
         let (prf, metadata) = proof_from_xml::<P, _>(&xml[..]).unwrap();
         println!("{:?} {:?}\n{}", metadata.author, metadata.hash, prf);
         let lines = prf.lines();
@@ -356,7 +356,7 @@ mod tests {
     #[test]
     fn test_xml3() {
         let xml = b"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<bram>\n  <program>Aris</program>\n  <version>0.0.187</version>\n  <metadata>\n    <author>UNKNOWN</author>\n    <hash>aCDnd1IQS0y8QoTmgj7xeVpBG9o1A3m6tZWd0HXkwjg=</hash>\n  </metadata>\n  <proof id=\"0\">\n    <assumption linenum=\"0\">\n      <sen>p</sen>\n      <raw>p</raw>\n    </assumption>\n    <step linenum=\"1\">\n      <sen>p</sen>\n      <raw>p</raw>\n      <rule>REITERATION</rule>\n      <premise>0</premise>\n    </step>\n    <goal>\n      <sen/>\n      <raw/>\n    </goal>\n  </proof>\n</bram>\n";
-        type P = PooledProof<Hlist![Expr]>;
+        type P = PooledProof<HList![Expr]>;
         let (prf, metadata) = proof_from_xml::<P, _>(&xml[..]).unwrap();
         println!("{prf}");
         println!("{metadata:?}");

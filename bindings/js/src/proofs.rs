@@ -8,13 +8,13 @@ use std::collections::HashSet;
 use frunk_core::coproduct::Coproduct;
 use frunk_core::hlist;
 use frunk_core::Coprod;
-use frunk_core::Hlist;
+use frunk_core::HList;
 use serde_wasm_bindgen::from_value;
 use serde_wasm_bindgen::to_value;
 use wasm_bindgen::prelude::*;
 
-type P = aris::proofs::pooledproof::PooledProof<Hlist![Expr]>;
-type Sp = aris::proofs::pooledproof::PooledSubproof<Hlist![Expr]>;
+type P = aris::proofs::pooledproof::PooledProof<HList![Expr]>;
+type Sp = aris::proofs::pooledproof::PooledSubproof<HList![Expr]>;
 type JustificationInner = aris::proofs::Justification<Expr, aris::proofs::PjRef<P>, aris::proofs::pooledproof::SubKey>;
 
 #[wasm_bindgen]

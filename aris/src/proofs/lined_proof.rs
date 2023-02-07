@@ -162,11 +162,11 @@ mod tests {
 
     use crate::proofs::pooledproof::PooledProof;
 
-    use frunk_core::Hlist;
+    use frunk_core::HList;
 
     #[test]
     fn test_from_proof() {
-        let (p, _, _) = crate::proofs::proof_tests::test_forallintro::<PooledProof<Hlist![Expr]>>();
+        let (p, _, _) = crate::proofs::proof_tests::test_forallintro::<PooledProof<HList![Expr]>>();
         let mut lp = LinedProof::from_proof(p);
         println!("{:?}\n{}", lp, lp.proof);
         let mut f = |i: usize| {

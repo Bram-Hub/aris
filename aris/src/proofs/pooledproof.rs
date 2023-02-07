@@ -567,12 +567,12 @@ mod tests {
 
     use crate::rules::RuleM;
 
-    use frunk_core::Hlist;
+    use frunk_core::HList;
 
     #[test]
     fn test_pooledproof_mutating_lines() {
         use crate::parser::parse_unwrap as p;
-        let mut prf = PooledProof::<Hlist![Expr]>::new();
+        let mut prf = PooledProof::<HList![Expr]>::new();
         let r1 = prf.add_premise(p("A"));
         let r2 = prf.add_step(Justification(p("A & A"), RuleM::AndIntro, vec![Coproduct::inject(r1)], vec![]));
         println!("{prf}");
@@ -590,7 +590,7 @@ mod tests {
 
     #[test]
     fn prettyprint_pool() {
-        let prf: PooledProof<Hlist![Expr]> = crate::proofs::proof_tests::demo_proof_1();
+        let prf: PooledProof<HList![Expr]> = crate::proofs::proof_tests::demo_proof_1();
         println!("{prf:?}\n{prf}\n");
         println!("{:?}\n{:?}\n", prf.premises(), prf.lines());
     }
