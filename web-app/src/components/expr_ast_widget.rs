@@ -5,13 +5,12 @@ use aris::expr::Expr;
 use yew::prelude::*;
 
 pub struct ExprAstWidget {
-    link: ComponentLink<Self>,
     current_input: String,
     last_good_parse: String,
     current_expr: Option<Expr>,
 }
 
-#[derive(Clone, Properties)]
+#[derive(Clone, Properties, PartialEq)]
 pub struct ExprAstWidgetProps {
     pub initial_contents: String,
 }
@@ -19,12 +18,12 @@ pub struct ExprAstWidgetProps {
 impl Component for ExprAstWidget {
     type Message = String;
     type Properties = ExprAstWidgetProps;
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let mut ret = Self { link, current_expr: None, current_input: props.initial_contents.clone(), last_good_parse: "".into() };
-        ret.update(props.initial_contents);
+    fn create(ctx: &Context<Self>) -> Self {
+        let mut ret = Self { current_expr: None, current_input: ctx.props().initial_contents.clone(), last_good_parse: "".into() };
+        Component::update(&mut ret, ctx, ctx.props().initial_contents.clone());
         ret
     }
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, _: &Context<Self>, msg: Self::Message) -> bool {
         use aris::parser::parse;
         self.current_input = msg.clone();
         self.current_expr = parse(&msg);
@@ -33,10 +32,10 @@ impl Component for ExprAstWidget {
         }
         true
     }
-    fn change(&mut self, _: Self::Properties) -> ShouldRender {
+    fn changed(&mut self, _: &Context<Self>, _: &Self::Properties) -> bool {
         false
     }
-    fn view(&self) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
         // Convert expression to debug string
         let expr_debug = self.current_expr.as_ref().map(|e| format!("{e:#?}"));
 
@@ -60,8 +59,8 @@ impl Component for ExprAstWidget {
             <div class="alert alert-primary m-4">
                 <h2> { "Enter Expression:" } </h2>
                 <ExprEntry
-                    oninput=self.link.callback(|value| value)
-                    init_value={ &self.current_input }
+                    oninput={ ctx.link().callback(|value| value) }
+                    init_value={ self.current_input.clone() }
                     id=""/>
                 <hr />
                 <h5> { &self.last_good_parse } </h5>

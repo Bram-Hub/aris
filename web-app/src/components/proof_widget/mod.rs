@@ -17,6 +17,10 @@ use aris::rules::Rule;
 use aris::rules::RuleClassification;
 use aris::rules::RuleM;
 use aris::rules::RuleT;
+use gloo::events::EventListener;
+use gloo::events::EventListenerOptions;
+use wasm_bindgen::UnwrapThrowExt;
+use yew::html::Scope;
 
 use std::collections::BTreeSet;
 use std::fmt;
@@ -26,13 +30,16 @@ use frunk_core::coproduct::Coproduct;
 use frunk_core::Coprod;
 use strum::IntoEnumIterator;
 use yew::prelude::*;
-use yew::utils::document;
 
 use web_sys::HtmlElement;
 
 use wasm_bindgen::JsCast;
 
 use js_sys::Math::random;
+
+fn document() -> web_sys::Document {
+    web_sys::window().expect_throw("window is undefined").document().expect_throw("document is undefined")
+}
 
 /// Data stored for the currently selected line
 struct SelectedLine {
@@ -41,13 +48,11 @@ struct SelectedLine {
 
     /// Handle for listening for keyboard shortcuts
     #[allow(dead_code)]
-    key_listener: yew::services::keyboard::KeyListenerHandle,
+    key_listener: EventListener,
 }
 
 /// Component for editing proofs
 pub struct ProofWidget {
-    link: ComponentLink<Self>,
-
     /// The proof being edited with this widget
     prf: P,
 
@@ -63,8 +68,6 @@ pub struct ProofWidget {
     open_error: Option<String>,
 
     preblob: String,
-
-    props: ProofWidgetProps,
 
     id: String,
 }
@@ -113,15 +116,15 @@ impl fmt::Debug for ProofWidgetMsg {
     }
 }
 
-#[derive(Clone, Properties)]
+#[derive(Clone, Properties, PartialEq)]
 pub struct ProofWidgetProps {
     pub verbose: bool,
     pub data: Option<Vec<u8>>,
-    pub oncreate: Callback<ComponentLink<ProofWidget>>,
+    pub oncreate: Callback<Scope<ProofWidget>>,
 }
 
 impl ProofWidget {
-    fn render_line_num_dep_checkbox(&self, line: Option<usize>, proofref: Coprod!(PjRef<P>, <P as Proof>::SubproofReference)) -> Html {
+    fn render_line_num_dep_checkbox(&self, ctx: &Context<Self>, line: Option<usize>, proofref: Coprod!(PjRef<P>, <P as Proof>::SubproofReference)) -> Html {
         let line = match line {
             Some(line) => line.to_string(),
             None => "".to_string(),
@@ -130,13 +133,13 @@ impl ProofWidget {
             use Coproduct::{Inl, Inr};
             if let Inr(Inl(_)) = selected_line.line_ref {
                 let line_ref = selected_line.line_ref;
-                let toggle_dep = self.link.callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::ToggleDependency { dep: proofref }, line_ref));
+                let toggle_dep = ctx.link().callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::ToggleDependency { dep: proofref }, line_ref));
                 if self.prf.can_reference_dep(&line_ref, &proofref) {
                     return html! {
                         <button
                             type="button"
                             class="btn btn-secondary"
-                            onclick=toggle_dep>
+                            onclick={ toggle_dep }>
 
                             { line }
                         </button>
@@ -162,7 +165,7 @@ impl ProofWidget {
     ///   + `cur_rule_name` - name of the current selected rule
     ///
     /// [lib]: https://github.com/vsn4ik/bootstrap-submenu
-    fn render_rules_menu(&self, jref: <P as Proof>::JustificationReference, cur_rule_name: &str) -> Html {
+    fn render_rules_menu(&self, ctx: &Context<Self>, jref: <P as Proof>::JustificationReference, cur_rule_name: &str) -> Html {
         // Create menu items for rule classes
         let menu = RuleClassification::iter()
             .map(|rule_class| {
@@ -173,13 +176,13 @@ impl ProofWidget {
                         let pjref = Coproduct::inject(jref);
                         // Create menu item for rule
                         html! {
-                            <button class="dropdown-item" type="button" onclick=self.link.callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule }, pjref))>
+                            <button class="dropdown-item" type="button" onclick={ ctx.link().callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule }, pjref)) }>
                                 { rule.get_name() }
                             </button>
                         }
                     })
                     .collect::<Vec<yew::virtual_dom::VNode>>();
-                let rules = yew::virtual_dom::VList::new_with_children(rules, None);
+                let rules = yew::virtual_dom::VList::with_children(rules, None);
                 // Create sub-menu for rule class
                 html! {
                     <div class="dropdown dropright dropdown-submenu">
@@ -189,7 +192,7 @@ impl ProofWidget {
                 }
             })
             .collect::<Vec<yew::virtual_dom::VNode>>();
-        let menu = yew::virtual_dom::VList::new_with_children(menu, None);
+        let menu = yew::virtual_dom::VList::with_children(menu, None);
 
         // Create top-level menu button
         html! {
@@ -206,7 +209,7 @@ impl ProofWidget {
             </div>
         }
     }
-    fn render_justification_widget(&self, jref: <P as Proof>::JustificationReference) -> Html {
+    fn render_justification_widget(&self, ctx: &Context<Self>, jref: <P as Proof>::JustificationReference) -> Html {
         let just = self.prf.lookup_justification_or_die(&jref).expect("proofref should exist in self.prf");
 
         // Iterator over line dependency badges, for rendering list of
@@ -239,7 +242,7 @@ impl ProofWidget {
         let all_dep_badges = dep_badges.chain(sdep_badges).collect::<Html>();
 
         let cur_rule_name = just.1.get_name();
-        let rule_selector = self.render_rules_menu(jref, &cur_rule_name);
+        let rule_selector = self.render_rules_menu(ctx, jref, &cur_rule_name);
         html! {
             <>
                 <td>
@@ -280,7 +283,7 @@ impl ProofWidget {
             Some(Err(err)) => {
                 html! {
                     <>
-                        <button type="button" class="btn btn-danger s1" data-toggle="popover" data-content=err>
+                        <button type="button" class="btn btn-danger s1" data-toggle="popover" data-content={ err.to_string() }>
                             { "Error" }
                         </button>
                         <script>
@@ -291,9 +294,9 @@ impl ProofWidget {
             }
         }
     }
-    fn render_proof_line(&self, line: usize, depth: usize, proofref: PjRef<P>, edge_decoration: &str) -> Html {
+    fn render_proof_line(&self, ctx: &Context<Self>, line: usize, depth: usize, proofref: PjRef<P>, edge_decoration: &str) -> Html {
         use Coproduct::{Inl, Inr};
-        let line_num_dep_checkbox = self.render_line_num_dep_checkbox(Some(line), Coproduct::inject(proofref));
+        let line_num_dep_checkbox = self.render_line_num_dep_checkbox(ctx, Some(line), Coproduct::inject(proofref));
         let mut indentation = yew::virtual_dom::VList::new();
         for _ in 0..depth {
             //indentation.add_child(html! { <span style="background-color:black">{"-"}</span>});
@@ -301,8 +304,8 @@ impl ProofWidget {
             indentation.add_child(html! { <span class="indent"> { box_chars::VERT } </span>});
         }
         indentation.add_child(html! { <span class="indent">{edge_decoration}</span>});
-        let handle_input = self.link.callback(move |value: String| ProofWidgetMsg::LineChanged(proofref, value));
-        let select_line = self.link.callback(move |()| ProofWidgetMsg::LineAction(LineActionKind::Select, proofref));
+        let handle_input = ctx.link().callback(move |value: String| ProofWidgetMsg::LineChanged(proofref, value));
+        let select_line = ctx.link().callback(move |()| ProofWidgetMsg::LineAction(LineActionKind::Select, proofref));
 
         // Menu for selecting a line action
         let action_selector = {
@@ -312,7 +315,7 @@ impl ProofWidget {
                     let lak = action_info.line_action_kind.clone();
 
                     // Callback triggering line action
-                    let onclick = self.link.callback(move |_| ProofWidgetMsg::LineAction(lak.clone(), proofref));
+                    let onclick = ctx.link().callback(move |_| ProofWidgetMsg::LineAction(lak.clone(), proofref));
 
                     // Badge showing keyboard shortcut of action, if any
                     let keyboard_shortcut = match action_info.keyboard_shortcut {
@@ -332,7 +335,7 @@ impl ProofWidget {
 
                     // Item in line actions menu
                     html! {
-                        <a class="dropdown-item" href="#" onclick=onclick>
+                        <a class="dropdown-item" href="#" onclick={ onclick }>
                             { action_info.description }
                             { ' ' }
                             { keyboard_shortcut }
@@ -394,7 +397,7 @@ impl ProofWidget {
                 html! {
                     <>
                         <td> { rule_feedback } </td>
-                        { self.render_justification_widget(jref) }
+                        { self.render_justification_widget(ctx, jref) }
                     </>
                 }
             }
@@ -402,16 +405,16 @@ impl ProofWidget {
         };
         let id_num = format!("{}{}{}", self.id, &"line-number-", &line.to_string());
         html! {
-            <tr class=class>
+            <tr class={ class }>
                 <td> { line_num_dep_checkbox } </td>
                 <td>
                     { indentation }
                     <ExprEntry
-                        oninput=handle_input
-                        onfocus=select_line
-                        focus=is_selected_line
-                        init_value=init_value
-                        id=id_num/>
+                        oninput={ handle_input }
+                        onfocus={ select_line }
+                        focus={ is_selected_line }
+                        init_value={ init_value }
+                        id={ id_num }/>
                 </td>
                 { feedback_and_just_widgets }
                 <td>{ action_selector }</td>
@@ -419,16 +422,16 @@ impl ProofWidget {
         }
     }
 
-    fn render_proof(&self, prf: &<P as Proof>::Subproof, sref: Option<<P as Proof>::SubproofReference>, line: &mut usize, depth: &mut usize) -> Html {
+    fn render_proof(&self, ctx: &Context<Self>, prf: &<P as Proof>::Subproof, sref: Option<<P as Proof>::SubproofReference>, line: &mut usize, depth: &mut usize) -> Html {
         // output has a bool tag to prune subproof spacers with, because VNode's PartialEq doesn't do the right thing
         let mut output: Vec<(Html, bool)> = Vec::new();
         for prem in prf.premises().iter() {
             let edge_decoration = { box_chars::VERT }.to_string();
-            output.push((self.render_proof_line(*line, *depth, Coproduct::inject(*prem), &edge_decoration), false));
+            output.push((self.render_proof_line(ctx, *line, *depth, Coproduct::inject(*prem), &edge_decoration), false));
             *line += 1;
         }
         let dep_checkbox = match sref {
-            Some(sr) => self.render_line_num_dep_checkbox(None, Coproduct::inject(sr)),
+            Some(sr) => self.render_line_num_dep_checkbox(ctx, None, Coproduct::inject(sr)),
             None => yew::virtual_dom::VNode::from(yew::virtual_dom::VList::new()),
         };
         let mut spacer = yew::virtual_dom::VList::new();
@@ -450,13 +453,13 @@ impl ProofWidget {
             let edge_decoration = if i == prf_lines.len() - 1 { box_chars::UP_RIGHT } else { box_chars::VERT }.to_string();
             match lineref {
                 Inl(r) => {
-                    output.push((self.render_proof_line(*line, *depth, Coproduct::inject(*r), &edge_decoration), false));
+                    output.push((self.render_proof_line(ctx, *line, *depth, Coproduct::inject(*r), &edge_decoration), false));
                     *line += 1;
                 }
                 Inr(Inl(sr)) => {
                     *depth += 1;
                     //output.push(row_spacer.clone());
-                    output.push((self.render_proof(&prf.lookup_subproof(sr).unwrap(), Some(*sr), line, depth), false));
+                    output.push((self.render_proof(ctx, &prf.lookup_subproof(sr).unwrap(), Some(*sr), line, depth), false));
                     //output.push(row_spacer.clone());
                     *depth -= 1;
                 }
@@ -476,7 +479,7 @@ impl ProofWidget {
             }
         }
         let output: Vec<Html> = output.into_iter().map(|(x, _)| x).collect();
-        let output = yew::virtual_dom::VList::new_with_children(output, None);
+        let output = yew::virtual_dom::VList::with_children(output, None);
         if *depth == 0 {
             html! { <table>{ output }</table> }
         } else {
@@ -486,8 +489,13 @@ impl ProofWidget {
 
     /// Select the line referenced in `line_ref`. Also, set up a listener for
     /// line action keyboard shortcuts
-    fn select_line(&mut self, line_ref: PjRef<P>) {
-        let key_listener = yew::services::keyboard::KeyboardService::register_key_down(&yew::utils::window(), self.link.callback(ProofWidgetMsg::Keypress));
+    fn select_line(&mut self, ctx: &Context<Self>, line_ref: PjRef<P>) {
+        let callback = ctx.link().callback(ProofWidgetMsg::Keypress);
+
+        let key_listener = EventListener::new_with_options(&document(), "keydown", EventListenerOptions::enable_prevent_default(), move |event: &Event| {
+            let event = event.dyn_ref::<web_sys::KeyboardEvent>().unwrap_throw().clone();
+            callback.emit(event)
+        });
 
         self.selected_line = Some(SelectedLine { line_ref, key_listener });
     }
@@ -614,9 +622,9 @@ fn new_empty_proof() -> (P, ProofUiData<P>) {
 impl Component for ProofWidget {
     type Message = ProofWidgetMsg;
     type Properties = ProofWidgetProps;
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        props.oncreate.emit(link.clone());
-        let (prf, pud, error) = match &props.data {
+    fn create(ctx: &Context<Self>) -> Self {
+        ctx.props().oncreate.emit(ctx.link().clone());
+        let (prf, pud, error) = match &ctx.props().data {
             Some(data) => {
                 let result = aris::proofs::xml_interop::proof_from_xml::<P, _>(&data[..]);
                 match result {
@@ -638,13 +646,13 @@ impl Component for ProofWidget {
 
         let id: String = ((random() * 10000.0) as i32).to_string();
 
-        let mut tmp = Self { link, prf, pud, selected_line: None, open_error: error, preblob: "".into(), props, id };
-        tmp.update(ProofWidgetMsg::Nop);
+        let mut tmp = Self { prf, pud, selected_line: None, open_error: error, preblob: "".into(), id };
+        Component::update(&mut tmp, ctx, ProofWidgetMsg::Nop);
         tmp
     }
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         let mut ret = false;
-        if self.props.verbose {
+        if ctx.props().verbose {
             self.preblob += &format!("{msg:?}\n");
             ret = true;
         }
@@ -733,7 +741,7 @@ impl Component for ProofWidget {
                             .expect("Subproof doesn't exist after creating it");
                     }
                 }
-                self.select_line(to_select);
+                self.select_line(ctx, to_select);
                 self.preblob += &format!("{:?}\n", self.prf.premises());
                 ret = true;
             }
@@ -779,11 +787,11 @@ impl Component for ProofWidget {
                 if let Inr(Inl(jr)) = &proofref {
                     self.prf.with_mut_step(jr, |j| j.1 = rule);
                 }
-                self.select_line(proofref);
+                self.select_line(ctx, proofref);
                 ret = true;
             }
             ProofWidgetMsg::LineAction(LineActionKind::Select, proofref) => {
-                self.select_line(proofref);
+                self.select_line(ctx, proofref);
                 ret = true;
             }
             ProofWidgetMsg::LineAction(LineActionKind::ToggleDependency { dep }, proofref) => {
@@ -812,7 +820,7 @@ impl Component for ProofWidget {
             }
             ProofWidgetMsg::Keypress(key_event) => {
                 let msg = self.process_key_shortcut(key_event);
-                ret = self.update(msg);
+                ret = Component::update(self, ctx, msg);
             }
         }
         if ret {
@@ -820,14 +828,13 @@ impl Component for ProofWidget {
         }
         ret
     }
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        self.props = props;
+    fn changed(&mut self, _: &Context<Self>, _: &Self::Properties) -> bool {
         true
     }
-    fn view(&self) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
         let widget = match &self.open_error {
             Some(err) => render_open_error(err),
-            None => self.render_proof(self.prf.top_level_proof(), None, &mut 1, &mut 0),
+            None => self.render_proof(ctx, self.prf.top_level_proof(), None, &mut 1, &mut 0),
         };
         html! {
             <div>

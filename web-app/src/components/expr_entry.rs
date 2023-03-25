@@ -2,12 +2,6 @@ use yew::prelude::*;
 
 /// A text field for entering expressions
 pub struct ExprEntry {
-    /// Link to self
-    link: ComponentLink<Self>,
-
-    /// Properties
-    props: ExprEntryProps,
-
     /// Reference to `<input>` node
     node_ref: NodeRef,
 }
@@ -22,7 +16,7 @@ pub enum ExprEntryMsg {
 }
 
 /// Properties for `ExprEntry`
-#[derive(Clone, Properties)]
+#[derive(Clone, Properties, PartialEq)]
 pub struct ExprEntryProps {
     /// Callback to call when text field is changed, with the first parameter
     /// being the new text
@@ -51,41 +45,40 @@ pub struct ExprEntryProps {
 impl Component for ExprEntry {
     type Message = ExprEntryMsg;
     type Properties = ExprEntryProps;
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self { link, props, node_ref: NodeRef::default() }
+    fn create(_: &Context<Self>) -> Self {
+        Self { node_ref: NodeRef::default() }
     }
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             ExprEntryMsg::OnEdit => {
-                self.handle_edit();
+                self.handle_edit(ctx);
                 false
             }
             ExprEntryMsg::OnFocus => {
-                if let Some(onfocus) = &self.props.onfocus {
+                if let Some(onfocus) = &ctx.props().onfocus {
                     onfocus.emit(())
                 }
                 false
             }
         }
     }
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        self.props = props;
+    fn changed(&mut self, _: &Context<Self>, _: &Self::Properties) -> bool {
         true
     }
-    fn view(&self) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
             <input
-                ref=self.node_ref.clone()
+                ref={ self.node_ref.clone() }
                 type="text"
-                id=self.props.id
+                id={ ctx.props().id.clone() }
                 class="form-control text-input-custom"
-                oninput=self.link.callback(|_| ExprEntryMsg::OnEdit)
-                onfocus=self.link.callback(|_| ExprEntryMsg::OnFocus)
-                value=self.props.init_value />
+                oninput={ ctx.link().callback(|_| ExprEntryMsg::OnEdit) }
+                onfocus={ ctx.link().callback(|_| ExprEntryMsg::OnFocus) }
+                value={ ctx.props().init_value.clone() } />
         }
     }
-    fn rendered(&mut self, _first_render: bool) {
-        self.update_focus()
+    fn rendered(&mut self, ctx: &Context<Self>, _first_render: bool) {
+        self.update_focus(ctx)
     }
 }
 
@@ -96,10 +89,10 @@ impl ExprEntry {
     }
 
     /// Sync the focus of the text field with the `focus` property
-    fn update_focus(&self) {
+    fn update_focus(&self, ctx: &Context<Self>) {
         let input = self.input_element();
 
-        match self.props.focus {
+        match ctx.props().focus {
             Some(true) => input.focus().expect("failed focusing expr entry"),
             Some(false) => input.blur().expect("failed unfocusing expr entry"),
             None => {}
@@ -109,7 +102,7 @@ impl ExprEntry {
     /// Handle an edit of the expression text field by expanding macros with
     /// `aris::macros::expand()`. To preserve the cursor position, the strings
     /// to the left and right of the cursor are expanded separately.
-    fn handle_edit(&self) {
+    fn handle_edit(&self, ctx: &Context<Self>) {
         let input_elem = self.input_element();
 
         // Get cursor position in text field
@@ -140,6 +133,6 @@ impl ExprEntry {
         input_elem.set_selection_start(Some(cursor_pos)).expect("failed setting selection start");
         input_elem.set_selection_end(Some(cursor_pos)).expect("failed setting selection end");
 
-        self.props.oninput.emit(value);
+        ctx.props().oninput.emit(value);
     }
 }

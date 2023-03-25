@@ -8,24 +8,24 @@ use crate::util::P;
 
 use std::collections::HashMap;
 
+use yew::html::Scope;
 use yew::prelude::*;
 
 pub struct App {
-    link: ComponentLink<Self>,
-    tabcontainer_link: Option<ComponentLink<TabbedContainer>>,
-    proofs: HashMap<String, ComponentLink<ProofWidget>>,
+    tabcontainer_link: Option<Scope<TabbedContainer>>,
+    proofs: HashMap<String, Scope<ProofWidget>>,
 }
 
 pub enum AppMsg {
-    TabbedContainerInit(ComponentLink<TabbedContainer>),
-    NavBarInit(ComponentLink<NavBarWidget>),
+    TabbedContainerInit(Scope<TabbedContainer>),
+    NavBarInit(Scope<NavBarWidget>),
     CreateTab {
         name: String,
         content: Html,
     },
     RegisterProofName {
         name: String,
-        link: ComponentLink<ProofWidget>,
+        link: Scope<ProofWidget>,
     },
     #[allow(clippy::type_complexity)]
     GetProofFromCurrentTab(Box<dyn FnOnce(String, &P)>),
@@ -35,11 +35,11 @@ impl Component for App {
     type Message = AppMsg;
     type Properties = ();
 
-    fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self { link, tabcontainer_link: None, proofs: HashMap::new() }
+    fn create(_: &Context<Self>) -> Self {
+        Self { tabcontainer_link: None, proofs: HashMap::new() }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, _: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             AppMsg::TabbedContainerInit(tabcontainer_link) => {
                 self.tabcontainer_link = Some(tabcontainer_link);
@@ -74,21 +74,21 @@ impl Component for App {
         }
     }
 
-    fn change(&mut self, _: Self::Properties) -> ShouldRender {
+    fn changed(&mut self, _: &Context<Self>, _: &Self::Properties) -> bool {
         false
     }
 
-    fn view(&self) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
         let resolution_fname: String = "resolution_example.bram".into();
         let resolution_fname_ = resolution_fname.clone();
         let tabview = html! {
-            <TabbedContainer tab_ids=vec![resolution_fname.clone(), "Parser demo".into()] oncreate=self.link.callback(|link| AppMsg::TabbedContainerInit(link))>
-                <ProofWidget verbose=true data=Some(include_bytes!("../../../example-proofs/resolution_example.bram").to_vec()) oncreate=self.link.callback(move |link| AppMsg::RegisterProofName { name: resolution_fname_.clone(), link }) />
+            <TabbedContainer tab_ids={ vec![resolution_fname, "Parser demo".into()] } oncreate={ ctx.link().callback(AppMsg::TabbedContainerInit) }>
+                <ProofWidget verbose=true data={ Some(include_bytes!("../../../example-proofs/resolution_example.bram").to_vec()) } oncreate={ ctx.link().callback(move |link| AppMsg::RegisterProofName { name: resolution_fname_.clone(), link }) } />
             </TabbedContainer>
         };
         html! {
             <div>
-                <NavBarWidget parent=self.link.clone() oncreate=self.link.callback(|link| AppMsg::NavBarInit(link)) />
+                <NavBarWidget parent={ ctx.link().clone() } oncreate={ ctx.link().callback(AppMsg::NavBarInit) } />
                 { tabview }
             </div>
         }
