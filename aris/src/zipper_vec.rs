@@ -80,7 +80,7 @@ impl<T> Default for ZipperVec<T> {
 
 #[test]
 fn test_zippervec_pop() {
-    let a = ZipperVec::from_vec((0usize..10).into_iter().collect());
+    let a = ZipperVec::from_vec((0usize..10).collect());
     let pop_spec = |i| -> (Option<usize>, Vec<usize>) { (Some(a.iter().cloned().collect::<Vec<usize>>()[i]), a.iter().enumerate().filter_map(|(j, y)| if i == j { None } else { Some(*y) }).collect::<Vec<_>>()) };
     for i in 0..10 {
         for j in 0..10 {
