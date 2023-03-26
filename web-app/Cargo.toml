@@ -7,7 +7,7 @@ edition = "2021"
 [dependencies]
 aris = { path = "../aris" }
 yew = { version = "0.20.0", features = ["csr"] }
-gloo = "0.2.1"
+gloo = "0.8.0"
 wasm-bindgen = "0.2.84"
 js-sys = "0.3.61"
 web-sys = { version = "0.3.61", features = ["HtmlAnchorElement"] }
