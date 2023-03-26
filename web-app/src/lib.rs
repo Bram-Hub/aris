@@ -9,9 +9,6 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(start)]
 pub fn run_app() -> Result<(), JsValue> {
-    #[global_allocator]
-    static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
     yew::Renderer::<components::app::App>::new().render();
     Ok(())
 }
