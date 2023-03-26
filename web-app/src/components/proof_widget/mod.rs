@@ -203,9 +203,6 @@ impl ProofWidget {
                 <div class="dropdown-menu">
                     { menu }
                 </div>
-                <script>
-                    { "$('[data-submenu]').submenupicker()" }
-                </script>
             </div>
         }
     }
@@ -282,14 +279,9 @@ impl ProofWidget {
             },
             Some(Err(err)) => {
                 html! {
-                    <>
-                        <button type="button" class="btn btn-danger s1" data-toggle="popover" data-content={ err.to_string() }>
-                            { "Error" }
-                        </button>
-                        <script>
-                            { "$('[data-toggle=popover]').popover()" }
-                        </script>
-                    </>
+                    <button type="button" class="btn btn-danger s1" data-toggle="popover" data-content={ err.to_string() }>
+                        { "Error" }
+                    </button>
                 }
             }
         }
@@ -847,5 +839,8 @@ impl Component for ProofWidget {
                 </div>
             </div>
         }
+    }
+    fn rendered(&mut self, _: &Context<Self>, _: bool) {
+        js_sys::eval("$('[data-submenu]').submenupicker(); $('[data-toggle=popover]').popover()").unwrap_throw();
     }
 }
