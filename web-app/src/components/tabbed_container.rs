@@ -1,7 +1,6 @@
-use yew::prelude::*;
+use yew::{html::Scope, prelude::*};
 
 pub struct TabbedContainer {
-    link: ComponentLink<Self>,
     tabs: Vec<(String, Html)>,
     current_tab: usize,
 }
@@ -12,33 +11,33 @@ pub enum TabbedContainerMsg {
     GetCurrent(Box<dyn FnOnce(usize, String)>),
 }
 
-#[derive(Clone, Properties)]
+#[derive(Clone, Properties, PartialEq)]
 pub struct TabbedContainerProps {
     pub tab_ids: Vec<String>,
     pub children: Children,
-    pub oncreate: Callback<ComponentLink<TabbedContainer>>,
+    pub oncreate: Callback<Scope<TabbedContainer>>,
 }
 
 impl Component for TabbedContainer {
     type Message = TabbedContainerMsg;
     type Properties = TabbedContainerProps;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let tabs: Vec<(String, Html)> = props.tab_ids.into_iter().zip(props.children.into_iter()).collect();
-        props.oncreate.emit(link.clone());
-        Self { link, tabs, current_tab: 0 }
+    fn create(ctx: &Context<Self>) -> Self {
+        let tabs: Vec<(String, Html)> = ctx.props().tab_ids.iter().cloned().zip(ctx.props().children.iter()).collect();
+        ctx.props().oncreate.emit(ctx.link().clone());
+        Self { tabs, current_tab: 0 }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, _: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             TabbedContainerMsg::Switch(idx) => {
                 self.current_tab = idx;
                 true
             }
             TabbedContainerMsg::Create { name, content } => {
-                self.tabs.push((name, content));
+                self.tabs.insert(0, (name, content));
                 // Switch to new tab
-                self.current_tab = self.tabs.len() - 1;
+                self.current_tab = 0;
                 true
             }
             TabbedContainerMsg::GetCurrent(f) => {
@@ -48,19 +47,19 @@ impl Component for TabbedContainer {
         }
     }
 
-    fn change(&mut self, _: Self::Properties) -> ShouldRender {
+    fn changed(&mut self, _: &Context<Self>, _: &Self::Properties) -> bool {
         false
     }
 
-    fn view(&self) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
         let mut tab_links = yew::virtual_dom::VList::new();
         let mut out = yew::virtual_dom::VList::new();
         for (i, (name, data)) in self.tabs.iter().enumerate() {
-            let onclick = self.link.callback(move |_| TabbedContainerMsg::Switch(i));
+            let onclick = ctx.link().callback(move |_| TabbedContainerMsg::Switch(i));
             let link_class = if i == self.current_tab { "nav-link active" } else { "nav-link" };
             tab_links.add_child(html! {
                 <li class="nav-item">
-                    <a class=link_class href="#" onclick=onclick>
+                    <a class={ link_class } href="#" onclick={ onclick }>
                         { name }
                     </a>
                 </li>

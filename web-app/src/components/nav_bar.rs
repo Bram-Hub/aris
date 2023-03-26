@@ -3,8 +3,11 @@ use crate::components::app::AppMsg;
 use crate::components::expr_ast_widget::ExprAstWidget;
 use crate::components::proof_widget::ProofWidget;
 
+use derivative::Derivative;
 use gloo::timers::callback::Timeout;
 use wasm_bindgen::{closure::Closure, JsCast, JsValue};
+use web_sys::HtmlInputElement;
+use yew::html::Scope;
 use yew::prelude::*;
 use yew_octicons::Icon;
 use yew_octicons::IconKind;
@@ -15,7 +18,7 @@ pub struct FileOpenHelper {
 }
 
 impl FileOpenHelper {
-    fn new(parent: ComponentLink<App>) -> Self {
+    fn new(parent: Scope<App>) -> Self {
         let (filename_tx, filename_rx) = std::sync::mpsc::channel::<(String, web_sys::FileReader)>();
         let file_open_closure = Closure::wrap(Box::new(move |_| {
             if let Ok((fname, reader)) = filename_rx.recv() {
@@ -23,14 +26,14 @@ impl FileOpenHelper {
                     if let Some(contents) = contents.as_string() {
                         let fname_ = fname.clone();
                         let oncreate = parent.callback(move |link| AppMsg::RegisterProofName { name: fname_.clone(), link });
-                        parent.send_message(AppMsg::CreateTab { name: fname, content: html! { <ProofWidget verbose=true data=Some(contents.into_bytes()) oncreate=oncreate /> } });
+                        parent.send_message(AppMsg::CreateTab { name: fname, content: html! { <ProofWidget verbose=true data={ Some(contents.into_bytes()) } oncreate={ oncreate } /> } });
                     }
                 }
             }
         }) as Box<dyn FnMut(JsValue)>);
         Self { file_open_closure, filename_tx }
     }
-    fn fileopen(&mut self, file_list: web_sys::FileList) -> ShouldRender {
+    fn fileopen(&mut self, file_list: web_sys::FileList) -> bool {
         if let Some(file) = file_list.get(0) {
             // MDN (https://developer.mozilla.org/en-US/docs/Web/API/Blob/text) and web-sys (https://docs.rs/web-sys/0.3.36/web_sys/struct.Blob.html#method.text)
             // both document "Blob.text()" as being a thing, but both chrome and firefox say that "getObject(...).text is not a function"
@@ -46,8 +49,6 @@ impl FileOpenHelper {
 }
 
 pub struct NavBarWidget {
-    link: ComponentLink<Self>,
-    props: NavBarProps,
     node_ref: NodeRef,
     next_tab_idx: usize,
     file_open_helper: FileOpenHelper,
@@ -61,36 +62,38 @@ pub enum NavBarMsg {
     ToggleTheme,
     Nop,
 }
-#[derive(Properties, Clone)]
+#[derive(Properties, Clone, Derivative)]
+#[derivative(PartialEq)]
 pub struct NavBarProps {
-    pub parent: ComponentLink<App>,
-    pub oncreate: Callback<ComponentLink<NavBarWidget>>,
+    #[derivative(PartialEq = "ignore")]
+    pub parent: Scope<App>,
+    pub oncreate: Callback<Scope<NavBarWidget>>,
 }
 
 impl Component for NavBarWidget {
     type Message = NavBarMsg;
     type Properties = NavBarProps;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        props.oncreate.emit(link.clone());
-        let file_open_helper = FileOpenHelper::new(props.parent.clone());
-        Self { link, props, node_ref: NodeRef::default(), next_tab_idx: 1, file_open_helper }
+    fn create(ctx: &Context<Self>) -> Self {
+        ctx.props().oncreate.emit(ctx.link().clone());
+        let file_open_helper = FileOpenHelper::new(ctx.props().parent.clone());
+        Self { node_ref: NodeRef::default(), next_tab_idx: 1, file_open_helper }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             NavBarMsg::FileNew => {
                 let fname = format!("Untitled proof {}", self.next_tab_idx);
                 let fname_ = fname.clone();
-                let oncreate = self.props.parent.callback(move |link| AppMsg::RegisterProofName { name: fname_.clone(), link });
-                self.props.parent.send_message(AppMsg::CreateTab { name: fname, content: html! { <ProofWidget verbose=true data=None oncreate=oncreate /> } });
+                let oncreate = ctx.props().parent.callback(move |link| AppMsg::RegisterProofName { name: fname_.clone(), link });
+                ctx.props().parent.send_message(AppMsg::CreateTab { name: fname, content: html! { <ProofWidget verbose=true data={ None } oncreate={ oncreate } /> } });
                 self.next_tab_idx += 1;
                 false
             }
             NavBarMsg::FileOpen(file_list) => self.file_open_helper.fileopen(file_list),
             NavBarMsg::FileSave => {
                 let node = self.node_ref.get().expect("NavBarWidget::node_ref failed");
-                self.props.parent.send_message(AppMsg::GetProofFromCurrentTab(Box::new(move |name, prf| {
+                ctx.props().parent.send_message(AppMsg::GetProofFromCurrentTab(Box::new(move |name, prf| {
                     use aris::proofs::xml_interop;
                     let mut data = vec![];
                     let metadata = xml_interop::ProofMetaData { author: Some("ARIS-YEW-UI".into()), hash: None, goals: vec![] };
@@ -116,7 +119,7 @@ impl Component for NavBarWidget {
                 false
             }
             NavBarMsg::NewExprTree => {
-                self.props.parent.send_message(AppMsg::CreateTab {
+                ctx.props().parent.send_message(AppMsg::CreateTab {
                     name: format!("Expr Tree {}", self.next_tab_idx),
                     content: html! {
                         <ExprAstWidget initial_contents="forall A, ((exists B, A -> B) & C & f(x, y | z)) <-> Q <-> R" />
@@ -137,34 +140,39 @@ impl Component for NavBarWidget {
         }
     }
 
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        self.props = props;
+    fn changed(&mut self, _: &Context<Self>, _: &Self::Properties) -> bool {
         true
     }
 
-    fn view(&self) -> Html {
-        let handle_open_file = self.link.callback(move |e| if let ChangeData::Files(file_list) = e { NavBarMsg::FileOpen(file_list) } else { NavBarMsg::Nop });
+    fn view(&self, ctx: &Context<Self>) -> Html {
+        let handle_open_file = ctx.link().callback(move |e: Event| {
+            let input: HtmlInputElement = e.target_unchecked_into();
+            match input.files() {
+                Some(file_list) => NavBarMsg::FileOpen(file_list),
+                None => NavBarMsg::Nop,
+            }
+        });
 
         let file_menu = html! {
             <ul class="navbar-nav">
-                <li ref=self.node_ref.clone() class="nav-item dropdown show">
+                <li ref={ self.node_ref.clone() } class="nav-item dropdown show">
                     <a class="nav-link dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{"File"}</a>
                     <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
                         <div>
                             <label for="file-menu-new-proof" class="dropdown-item">{"New blank proof"}</label>
-                            <input id="file-menu-new-proof" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::FileNew) />
+                            <input id="file-menu-new-proof" style="display:none" type="button" onclick={ ctx.link().callback(|_| NavBarMsg::FileNew) } />
                         </div>
                         <div>
                             <label for="file-menu-open-proof" class="dropdown-item">{"Open proof"}</label>
-                            <input id="file-menu-open-proof" style="display:none" type="file" onchange=handle_open_file />
+                            <input id="file-menu-open-proof" style="display:none" type="file" onchange={ handle_open_file } />
                         </div>
                         <div>
                             <label for="file-menu-save-proof" class="dropdown-item">{"Save proof"}</label>
-                            <input id="file-menu-save-proof" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::FileSave) />
+                            <input id="file-menu-save-proof" style="display:none" type="button" onclick={ ctx.link().callback(|_| NavBarMsg::FileSave) } />
                         </div>
                         <div>
                             <label for="file-menu-new-expr-tree" class="dropdown-item">{"New expression tree"}</label>
-                            <input id="file-menu-new-expr-tree" style="display:none" type="button" onclick=self.link.callback(|_| NavBarMsg::NewExprTree) />
+                            <input id="file-menu-new-expr-tree" style="display:none" type="button" onclick={ ctx.link().callback(|_| NavBarMsg::NewExprTree) } />
                         </div>
                     </div>
                 </li>
@@ -189,7 +197,7 @@ impl Component for NavBarWidget {
                 <ul class="navbar-nav ml-auto">
                     // Theme toggle
                     <li class="nav-item">
-                        <a class="nav-link" onclick=self.link.callback(|_| NavBarMsg::ToggleTheme)>
+                        <a class="nav-link" onclick={ ctx.link().callback(|_| NavBarMsg::ToggleTheme) }>
                             { Icon::new_big(theme_icon_kind) }
                         </a>
                     </li>
@@ -277,7 +285,7 @@ fn render_help_body() -> Html {
                 <thead>
                     <tr>
                         <th> { "Symbol" } </th>
-                        <th colspan=max_col_span> { "Macros" } </th>
+                        <th colspan={ max_col_span.to_string() }> { "Macros" } </th>
                     </tr>
                 </thead>
                 <tbody>

@@ -12,6 +12,6 @@ pub fn run_app() -> Result<(), JsValue> {
     #[global_allocator]
     static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-    yew::start_app::<components::app::App>();
+    yew::Renderer::<components::app::App>::new().render();
     Ok(())
 }
