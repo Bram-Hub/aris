@@ -9,5 +9,5 @@ crate-type = ["cdylib"]
 
 [dependencies]
 aris = { path = "../../aris" }
-jni = "0.10.2"
+jni = "0.21.1"
 frunk_core = "0.4.1"
