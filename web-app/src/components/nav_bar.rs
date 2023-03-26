@@ -5,8 +5,10 @@ use crate::components::proof_widget::ProofWidget;
 
 use derivative::Derivative;
 use gloo::timers::callback::Timeout;
+use wasm_bindgen::UnwrapThrowExt;
 use wasm_bindgen::{closure::Closure, JsCast, JsValue};
 use web_sys::HtmlInputElement;
+use yew::html::Html;
 use yew::html::Scope;
 use yew::prelude::*;
 use yew_octicons::Icon;
@@ -185,6 +187,43 @@ impl Component for NavBarWidget {
             theme => unreachable!("unknown theme {}", theme),
         };
 
+        let logic_symbol_buttons = aris::macros::TABLE
+            .iter()
+            .map(|(symbol, _)| symbol)
+            .map(|symbol| {
+                let onmousedown = Callback::from(|e: MouseEvent| {
+                    if let Some(active_input_element) = document().active_element().and_then(|elem| elem.dyn_into::<HtmlInputElement>().ok()) {
+                        e.prevent_default();
+
+                        // Get cursor position in text field
+                        let cursor_pos = active_input_element.selection_start().unwrap_throw().unwrap_or_default() as usize;
+
+                        // Get text to the left and right of cursor position
+                        //
+                        // NOTE: The cursor position is measured in characters, not bytes, so
+                        // the `String` must be converted to `Vec<char>`.
+                        let value = active_input_element.value().chars().collect::<Vec<char>>();
+                        let (left, right) = value.split_at(cursor_pos);
+
+                        // Insert symbol
+                        let symbol = symbol.chars().collect::<Vec<char>>();
+                        let value = left.iter().chain(symbol.iter()).chain(right).collect::<String>();
+                        active_input_element.set_value(&value);
+                        let cursor_pos = (cursor_pos + symbol.len()) as u32;
+                        active_input_element.set_selection_start(Some(cursor_pos)).unwrap_throw();
+
+                        // Trigger `oninput` callback
+                        active_input_element.dispatch_event(&Event::new("input").unwrap_throw()).unwrap_throw();
+                    }
+                });
+                html! {
+                    <button type="button" class="btn btn-secondary" { onmousedown }>
+                        { symbol }
+                    </button>
+                }
+            })
+            .collect::<Html>();
+
         let navbar = html! {
             // Bootstrap navbar
             // https://getbootstrap.com/docs/4.5/components/navbar/
@@ -193,6 +232,13 @@ impl Component for NavBarWidget {
                 <a class="navbar-brand" href="#"> { "Aris" } </a>
 
                 { file_menu }
+
+                // Palette of logic symbols
+                <div class="container">
+                    <div class="btn-group" role="group" aria-label="Palette of logic symbols">
+                        { logic_symbol_buttons }
+                    </div>
+                </div>
 
                 <ul class="navbar-nav ml-auto">
                     // Theme toggle
@@ -220,11 +266,14 @@ impl Component for NavBarWidget {
     }
 }
 
+fn document() -> web_sys::Document {
+    let window = web_sys::window().expect_throw("window()");
+    window.document().expect_throw("window.document()")
+}
+
 /// Shortcut for `window.document.documentElement`, panicing on error
 fn document_element() -> web_sys::Element {
-    let window = web_sys::window().expect("window()");
-    let document = window.document().expect("window.document()");
-    document.document_element().expect("document.document_element()")
+    document().document_element().expect_throw("document.document_element()")
 }
 
 /// Get the name of the current theme, or panic if the theme attribute doesn't exist.
