@@ -74,6 +74,7 @@ use frunk_core::coproduct::Coproduct::Inr;
 use frunk_core::Coprod;
 use itertools::Itertools;
 use maplit::btreeset;
+use maplit::hashset;
 use petgraph::algo::tarjan_scc;
 use petgraph::graphmap::DiGraphMap;
 use strum_macros::*;
@@ -172,6 +173,12 @@ pub enum QuantifierEquivalence {
     PrenexLaws,
 }
 
+#[allow(missing_docs)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Induction {
+    Weak,
+}
+
 /// This should be the default rule when creating a new step in a UI. It
 /// always fails, and isn't part of any `RuleClassification`s.
 ///
@@ -189,7 +196,7 @@ pub struct EmptyRule;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SharedChecks<T>(T);
 
-pub type Rule = SharedChecks<Coprod!(PrepositionalInference, PredicateInference, BooleanEquivalence, ConditionalEquivalence, RedundantPrepositionalInference, AutomationRelatedRules, QuantifierEquivalence, EmptyRule)>;
+pub type Rule = SharedChecks<Coprod!(PrepositionalInference, PredicateInference, BooleanEquivalence, ConditionalEquivalence, RedundantPrepositionalInference, AutomationRelatedRules, QuantifierEquivalence, Induction, EmptyRule)>;
 
 /// Conveniences for constructing rules of the appropriate type, primarily for testing.
 /// The non-standard naming conventions here are because a module is being used to pretend to be an enum.
@@ -302,7 +309,10 @@ pub mod RuleM {
         [AristoteleanSquare, "ARISTOTELEAN_SQUARE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::AristoteleanSquare)))))))))],
         [QuantifierDistribution, "QUANTIFIER_DISTRIBUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::QuantifierDistribution)))))))))],
         [PrenexLaws, "PRENEX_LAWS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::PrenexLaws)))))))))],
-        [EmptyRule, "EMPTY_RULE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(super::EmptyRule))))))))))]
+
+        [WeakInduction, "WEAK_INDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Induction::Weak))))))))))],
+
+        [EmptyRule, "EMPTY_RULE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(super::EmptyRule)))))))))))]
     }
 }
 
@@ -1439,6 +1449,82 @@ impl RuleT for QuantifierEquivalence {
             AristoteleanSquare => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::aristotelean_square),
             QuantifierDistribution => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::quantifier_distribution),
             PrenexLaws => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::normalize_prenex_laws),
+        }
+    }
+}
+
+impl RuleT for Induction {
+    fn get_name(&self) -> String {
+        match self {
+            Induction::Weak => "Weak induction",
+        }
+        .into()
+    }
+
+    fn get_classifications(&self) -> HashSet<RuleClassification> {
+        hashset![RuleClassification::MiscInference]
+    }
+
+    fn num_deps(&self) -> Option<usize> {
+        match self {
+            Induction::Weak => Some(2),
+        }
+    }
+
+    fn num_subdeps(&self) -> Option<usize> {
+        match self {
+            Induction::Weak => Some(0),
+        }
+    }
+
+    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
+        match self {
+            Induction::Weak => {
+                // Check conclusion
+                let (quantified_var, property) = match &conclusion {
+                    Expr::Quant { kind: QuantKind::Forall, name, body } => (name, &**body),
+                    _ => return Err(ProofCheckError::ConclusionOfWrongForm(Expr::quant_placeholder(QuantKind::Forall))),
+                };
+
+                let prem1 = p.lookup_expr_or_die(&deps[0])?;
+                let prem2 = p.lookup_expr_or_die(&deps[1])?;
+                either_order(
+                    &prem1,
+                    &prem2,
+                    |base_case, inductive_case| {
+                        let zero = Expr::var("0");
+                        let succ = Expr::var("s");
+
+                        let expected_base_case = crate::expr::subst(property.clone(), quantified_var, zero);
+                        if base_case != &expected_base_case {
+                            return AnyOrderResult::Err(ProofCheckError::DepOfWrongForm(base_case.clone(), expected_base_case));
+                        }
+                        let (induction_var, induction_impl) = if let Expr::Quant { kind: QuantKind::Forall, name, body } = inductive_case {
+                            (name, &**body)
+                        } else {
+                            return AnyOrderResult::Err(ProofCheckError::DepOfWrongForm(inductive_case.clone(), Expr::quant_placeholder(QuantKind::Forall)));
+                        };
+                        if crate::expr::free_vars(&conclusion).contains(induction_var) {
+                            return AnyOrderResult::Err(ProofCheckError::Other(format!("Induction variable '{induction_var}' is a free variable in the conclusion")));
+                        }
+                        let (inductive_premise, inductive_conclusion) = if let Expr::Impl { left, right } = induction_impl {
+                            (&**left, &**right)
+                        } else {
+                            return AnyOrderResult::Err(ProofCheckError::DepOfWrongForm(inductive_case.clone(), Expr::forall("_", Expr::impl_place_holder())));
+                        };
+                        let expected_inductive_premise = crate::expr::subst(property.clone(), quantified_var, Expr::var(induction_var));
+                        if inductive_premise != &expected_inductive_premise {
+                            return AnyOrderResult::Err(ProofCheckError::DepOfWrongForm(inductive_premise.clone(), expected_inductive_premise));
+                        }
+                        let expected_inductive_conclusion = crate::expr::subst(property.clone(), quantified_var, Expr::apply(succ, &[Expr::var(induction_var)]));
+                        if inductive_conclusion != &expected_inductive_conclusion {
+                            return AnyOrderResult::Err(ProofCheckError::DepOfWrongForm(inductive_conclusion.clone(), expected_inductive_conclusion));
+                        }
+                        AnyOrderResult::Ok
+                    },
+                    || unreachable!(),
+                )
+            }
         }
     }
 }
