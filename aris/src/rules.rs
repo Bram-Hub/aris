@@ -1497,7 +1497,7 @@ impl RuleT for Induction {
 
                         let expected_base_case = crate::expr::subst(property.clone(), quantified_var, zero);
                         if base_case != &expected_base_case {
-                            return AnyOrderResult::Err(ProofCheckError::DepOfWrongForm(base_case.clone(), expected_base_case));
+                            return AnyOrderResult::WrongOrder;
                         }
                         let (induction_var, induction_impl) = if let Expr::Quant { kind: QuantKind::Forall, name, body } = inductive_case {
                             (name, &**body)
@@ -1522,7 +1522,7 @@ impl RuleT for Induction {
                         }
                         AnyOrderResult::Ok
                     },
-                    || unreachable!(),
+                    || ProofCheckError::Other("Failed finding base case that matches conclusion".into()),
                 )
             }
         }
