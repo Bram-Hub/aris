@@ -69,7 +69,7 @@ macro_rules! enumerate_subproofless_tests {
             test_inverse, test_absorption, test_reduction, test_adjacency, test_resolution,
             test_tautcon, test_empty_rule, test_modus_tollens, test_hypothetical_syllogism,
             test_disjunctive_syllogism, test_constructive_dilemma, test_excluded_middle,
-            test_weak_induction,
+            test_weak_induction, test_strong_induction,
         }
     };
 }
@@ -1136,4 +1136,19 @@ pub fn test_weak_induction<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     let r8 = prf.add_step(Justification(p("forall x, Equals(x,x)"), RuleM::WeakInduction, vec![i(r3.clone()), i(r4.clone())], vec![]));
     let r9 = prf.add_step(Justification(p("forall x, Equals(x,0)"), RuleM::WeakInduction, vec![i(r3.clone()), i(r4.clone())], vec![]));
     (prf, vec![i(r1), i(r2), i(r3), i(r4), i(r5), i(r6), i(r7), i(r8)], vec![i(r9)])
+}
+
+pub fn test_strong_induction<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
+    use self::coproduct_inject as i;
+    use crate::parser::parse_unwrap as p;
+    let mut prf = P::new();
+    let r1 = prf.add_premise(p("forall n, (forall x, LessThan(x, n) -> P(x)) -> P(n)"));
+    let r2 = prf.add_premise(p("forall n, (forall x, LessThan(x, n) -> P(x,n)) -> P(n,n)"));
+    let r3 = prf.add_step(Justification(p("forall x, P(x)"), RuleM::StrongInduction, vec![i(r1.clone())], vec![]));
+    let r4 = prf.add_step(Justification(p("forall n, P(n)"), RuleM::StrongInduction, vec![i(r1.clone())], vec![]));
+    let r5 = prf.add_step(Justification(p("forall n, P(n)"), RuleM::StrongInduction, vec![i(r2.clone())], vec![]));
+    let r6 = prf.add_step(Justification(p("forall x, P(x,n)"), RuleM::StrongInduction, vec![i(r1.clone())], vec![]));
+    let r7 = prf.add_step(Justification(p("forall x, P(x,n)"), RuleM::StrongInduction, vec![i(r2.clone())], vec![]));
+    let r8 = prf.add_step(Justification(p("forall a, P(a)"), RuleM::StrongInduction, vec![i(r1.clone())], vec![]));
+    (prf, vec![i(r1), i(r2), i(r3), i(r4), i(r8)], vec![i(r5), i(r6), i(r7)])
 }

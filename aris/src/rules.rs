@@ -177,6 +177,7 @@ pub enum QuantifierEquivalence {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Induction {
     Weak,
+    Strong,
 }
 
 /// This should be the default rule when creating a new step in a UI. It
@@ -311,6 +312,7 @@ pub mod RuleM {
         [PrenexLaws, "PRENEX_LAWS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::PrenexLaws)))))))))],
 
         [WeakInduction, "WEAK_INDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Induction::Weak))))))))))],
+        [StrongInduction, "STRONG_INDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Induction::Strong))))))))))],
 
         [EmptyRule, "EMPTY_RULE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(super::EmptyRule)))))))))))]
     }
@@ -1457,6 +1459,7 @@ impl RuleT for Induction {
     fn get_name(&self) -> String {
         match self {
             Induction::Weak => "Weak induction",
+            Induction::Strong => "Strong induction",
         }
         .into()
     }
@@ -1468,24 +1471,23 @@ impl RuleT for Induction {
     fn num_deps(&self) -> Option<usize> {
         match self {
             Induction::Weak => Some(2),
+            Induction::Strong => Some(1),
         }
     }
 
     fn num_subdeps(&self) -> Option<usize> {
-        match self {
-            Induction::Weak => Some(0),
-        }
+        Some(0)
     }
 
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
+        // Check conclusion
+        let (quantified_var, property) = match &conclusion {
+            Expr::Quant { kind: QuantKind::Forall, name, body } => (name, &**body),
+            _ => return Err(ProofCheckError::ConclusionOfWrongForm(Expr::quant_placeholder(QuantKind::Forall))),
+        };
+
         match self {
             Induction::Weak => {
-                // Check conclusion
-                let (quantified_var, property) = match &conclusion {
-                    Expr::Quant { kind: QuantKind::Forall, name, body } => (name, &**body),
-                    _ => return Err(ProofCheckError::ConclusionOfWrongForm(Expr::quant_placeholder(QuantKind::Forall))),
-                };
-
                 let prem1 = p.lookup_expr_or_die(&deps[0])?;
                 let prem2 = p.lookup_expr_or_die(&deps[1])?;
                 either_order(
@@ -1524,6 +1526,39 @@ impl RuleT for Induction {
                     },
                     || ProofCheckError::Other("Failed finding base case that matches conclusion".into()),
                 )
+            }
+            Induction::Strong => {
+                // ∀ n, (∀ x, x < n → property(x)) → property(n)
+                // ----
+                // ∀ quantified_var, property(quantified_var)
+                let prem = p.lookup_expr_or_die(&deps[0])?;
+                let (n, e) = if let Expr::Quant { kind: QuantKind::Forall, name, body } = prem { (name, *body) } else { return Err(ProofCheckError::DepOfWrongForm(prem, Expr::quant_placeholder(QuantKind::Forall))) };
+                let (e, property_n) = if let Expr::Impl { left, right } = e { (*left, *right) } else { return Err(ProofCheckError::DepOfWrongForm(e, Expr::impl_place_holder())) };
+                if crate::expr::free_vars(&conclusion).contains(&n) {
+                    return Err(ProofCheckError::Other(format!("Variable '{n}' is free in '{conclusion}'")));
+                }
+                let expected_property_n = crate::expr::subst(property.clone(), quantified_var, Expr::var(&n));
+                if property_n != expected_property_n {
+                    return Err(ProofCheckError::DepOfWrongForm(property_n, expected_property_n));
+                }
+                let (x, e) = if let Expr::Quant { kind: QuantKind::Forall, name, body } = e { (name, *body) } else { return Err(ProofCheckError::DepOfWrongForm(e, Expr::quant_placeholder(QuantKind::Forall))) };
+                let (x_lt_n, property_x) = if let Expr::Impl { left, right } = e {
+                    (*left, *right)
+                } else {
+                    return Err(ProofCheckError::DepOfWrongForm(e, Expr::impl_place_holder()));
+                };
+                if crate::expr::free_vars(&conclusion).contains(&x) {
+                    return Err(ProofCheckError::Other(format!("Variable '{x}' is free in '{conclusion}'")));
+                }
+                let expected_x_lt_n = Expr::apply(Expr::var("LessThan"), &[Expr::var(&x), Expr::var(&n)]);
+                if x_lt_n != expected_x_lt_n {
+                    return Err(ProofCheckError::DepOfWrongForm(x_lt_n, expected_x_lt_n));
+                }
+                let expected_property_x = crate::expr::subst(property.clone(), quantified_var, Expr::var(&x));
+                if property_x != expected_property_x {
+                    return Err(ProofCheckError::DepOfWrongForm(property_x, expected_property_x));
+                }
+                Ok(())
             }
         }
     }
