@@ -16,7 +16,7 @@ itertools = "0.10.5"
 frunk_core = "0.4.1"
 strum = "0.24.1"
 strum_macros = "0.24.3"
-serde = { version = "1.0.160", features = ["derive"] }
+serde = { version = "1.0.163", features = ["derive"] }
 maplit = "1.0.2"
 
 [build-dependencies]
