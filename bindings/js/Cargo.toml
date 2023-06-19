@@ -9,7 +9,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 aris = { path = "../../aris" }
-wasm-bindgen = { version = "0.2.84", features = ["serde-serialize"] }
+wasm-bindgen = { version = "0.2.87", features = ["serde-serialize"] }
 frunk_core = "0.4.1"
 js-sys = "0.3.61"
 
