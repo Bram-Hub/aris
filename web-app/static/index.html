@@ -34,6 +34,13 @@
         import init from './pkg/aris_web_app.js';
         init();
     </script>
+    <script> //enable tooltips for the logic rules 
+    //Adapted from: 
+    // * https://www.w3schools.com/bootstrap/bootstrap_tooltip.asp 
+    // * https://stackoverflow.com/questions/31483302/how-to-display-an-image-inside-bootstrap-tooltip 
+    // * https://stackoverflow.com/questions/24655291/how-to-bind-bootstrap-tooltip-on-dynamic-elements 
+    $('body').tooltip({ selector: '[data-toggle="tooltip"]', html:true}); 
+    </script>
 </body>
 
 </html>

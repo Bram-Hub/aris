@@ -135,7 +135,7 @@
 
 [theme="dark"] .popover {
     background-color: black;
-    border: 1px solid rgba(0, 0, 0, 0.2);
+    border: 1px solid black;
     border: 1px solid dimgray;
 }
 
@@ -159,3 +159,4 @@
 [theme="dark"] .card {
     background-color: black;
 }
+

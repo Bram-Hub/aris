@@ -132,8 +132,14 @@ impl Component for NavBarWidget {
             }
             NavBarMsg::ToggleTheme => {
                 match theme().as_str() {
-                    "light" => document_element().set_attribute("theme", "dark").expect("failed setting dark theme"),
-                    "dark" => document_element().set_attribute("theme", "light").expect("failed setting light theme"),
+                    "light" => {
+                        document_element().set_attribute("theme", "dark").expect("failed setting dark theme");
+                        // document.get_element_by_id("rule-img").src = img.src.replace("_dark", "_light");
+                    }
+                    "dark" => {
+                        document_element().set_attribute("theme", "light").expect("failed setting light theme");
+                        // document.get_element_by_id("rule-img").src = img.src.replace("_light", "_dark");
+                    }
                     theme => unreachable!("unknown theme {}", theme),
                 }
                 true
@@ -277,7 +283,7 @@ fn document_element() -> web_sys::Element {
 }
 
 /// Get the name of the current theme, or panic if the theme attribute doesn't exist.
-fn theme() -> String {
+pub fn theme() -> String {
     document_element().get_attribute("theme").expect("failed querying theme")
 }
 
