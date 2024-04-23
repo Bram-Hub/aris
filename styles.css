@@ -2,6 +2,7 @@
    Bootstrap popovers requires this. */
 html, body {
     height: 100%;
+    background-color: white;
 }
 
 .indent {
@@ -51,4 +52,26 @@ html, body {
 .nav-pills {
     margin-bottom: 10px;
     margin-top: 10px;
+}
+
+.tooltip-inner {
+    max-width: 100%;
+    background-color: #0062cc; 
+}
+
+.tooltip.show {
+    opacity: 1;
+}
+
+.bs-tooltip-bottom .arrow::before{
+    border-bottom-color: #0062cc;
+}
+.bs-tooltip-top .arrow::before{
+    border-top-color: #0062cc;
+}
+.bs-tooltip-left .arrow::before{
+    border-left-color: #0062cc;
+}
+.bs-tooltip-right  .arrow::before{
+    border-right-color: #0062cc;
 }
