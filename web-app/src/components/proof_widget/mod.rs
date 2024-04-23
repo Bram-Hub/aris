@@ -179,10 +179,9 @@ impl ProofWidget {
                         //tooltip portion addapted from: 
                         // * https://stackoverflow.com/questions/31483302/how-to-display-an-image-inside-bootstrap-tooltip 
                         // * https://getbootstrap.com/docs/4.1/components/tooltips/ 
-
-                        html! {
-                            <button class="dropdown-item" type="button" data-toggle="tooltip" data-placement="right" title={format!("<img id='rule-img' src='proofImages_light/{}.png' width=100% border-radius:4px/>", rule.get_name())} onclick={ ctx.link().callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule }, pjref)) }>
-                                { rule.get_name() }
+                      html! {
+                            <button class="dropdown-item" type="button" data-toggle="tooltip" data-placement="right" title={format!("<img id='rule-img' src='proofImages_light/{}.png'/>", rule.get_name())} onclick={ ctx.link().callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule }, pjref)) }>
+                            { rule.get_name() }
                             </button>
                         }
                     })

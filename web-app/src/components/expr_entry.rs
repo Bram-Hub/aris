@@ -126,7 +126,7 @@ impl ExprEntry {
         let cursor_pos = left.chars().count() as u32;
 
         // Update text field value
-        let value = [[left, right].concat(), " ".to_string()].concat();
+        let value = [left, right].concat();
         input_elem.set_value(&value);
 
         // Update cursor position
