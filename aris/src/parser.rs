@@ -87,8 +87,12 @@ fn quantifier(input: &str) -> IResult<&str, QuantKind> {
     alt((forall_quantifier, exists_quantifier))(input)
 }
 
+fn space_after_quantifier(input: &str) -> IResult<&str, ()> {
+    value((), many1(one_of(" \t")))(input)
+}
+
 fn binder(input: &str) -> IResult<&str, Expr> {
-    map(tuple((preceded(space, quantifier), preceded(space, variable), preceded(tuple((space, tag(","), space)), expr))), |(kind, name, body)| Expr::Quant { kind, name, body: Box::new(body) })(input)
+    map(tuple((preceded(space, quantifier), preceded(space, variable), preceded(space_after_quantifier, expr))), |(kind, name, body)| Expr::Quant { kind, name, body: Box::new(body) })(input)
 }
 
 fn impl_term(input: &str) -> IResult<&str, Expr> {
