@@ -145,7 +145,7 @@ pub fn test_contelim<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     let mut prf = P::new();
     let r1 = prf.add_premise(p("_|_"));
     let r2 = prf.add_premise(p("A & B"));
-    let r3 = prf.add_step(Justification(p("forall x, x & ~ x"), RuleM::ContradictionElim, vec![i(r1)], vec![]));
+    let r3 = prf.add_step(Justification(p("forall x x & ~ x"), RuleM::ContradictionElim, vec![i(r1)], vec![]));
     let r4 = prf.add_step(Justification(p("Q"), RuleM::ContradictionElim, vec![i(r2)], vec![]));
     (prf, vec![i(r3)], vec![i(r4)])
 }
@@ -459,7 +459,7 @@ where
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
-    let r1 = prf.add_premise(p("forall x, p(x)"));
+    let r1 = prf.add_premise(p("forall x p(x)"));
     let r2 = prf.add_step(Justification(p("p(a)"), RuleM::ForallElim, vec![i(r1.clone())], vec![]));
     let r3 = prf.add_step(Justification(p("q(x)"), RuleM::ForallElim, vec![i(r1.clone())], vec![]));
     let r4 = prf.add_step(Justification(p("p(A & B & C & D)"), RuleM::ForallElim, vec![i(r1)], vec![]));
@@ -475,8 +475,8 @@ where
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
-    let r1 = prf.add_premise(p("forall x, p(x)"));
-    let r2 = prf.add_premise(p("forall x, q(x)"));
+    let r1 = prf.add_premise(p("forall x p(x)"));
+    let r2 = prf.add_premise(p("forall x q(x)"));
     let r3 = prf.add_premise(p("r(c)"));
     let r4 = prf.add_subproof();
     let (r5, r6, r7) = prf
@@ -487,8 +487,8 @@ where
             (r5, r6, r7)
         })
         .unwrap();
-    let r8 = prf.add_step(Justification(p("forall y, p(y) & q(y)"), RuleM::ForallIntro, vec![], vec![r4.clone()]));
-    let r9 = prf.add_step(Justification(p("forall y, p(a) & q(y)"), RuleM::ForallIntro, vec![], vec![r4.clone()]));
+    let r8 = prf.add_step(Justification(p("forall y p(y) & q(y)"), RuleM::ForallIntro, vec![], vec![r4.clone()]));
+    let r9 = prf.add_step(Justification(p("forall y p(a) & q(y)"), RuleM::ForallIntro, vec![], vec![r4.clone()]));
     let r10 = prf.add_subproof();
     let r11 = prf
         .with_mut_subproof(&r10, |sub| {
@@ -499,7 +499,7 @@ where
             r11
         })
         .unwrap();
-    let r12 = prf.add_step(Justification(p("forall y, r(y)"), RuleM::ForallIntro, vec![], vec![r10.clone()]));
+    let r12 = prf.add_step(Justification(p("forall y r(y)"), RuleM::ForallIntro, vec![], vec![r10.clone()]));
     let r13 = prf.add_subproof();
     let (r17, r18, r19) = prf
         .with_mut_subproof(&r13, |sub1| {
@@ -508,11 +508,11 @@ where
                 .with_mut_subproof(&r14, |sub2| {
                     let r15 = sub2.add_subproof();
                     let r17 = sub2.with_mut_subproof(&r15, |sub3| sub3.add_step(Justification(p("s(a, b)"), RuleM::Reit, vec![], vec![]))).unwrap();
-                    let r18 = sub2.add_step(Justification(p("forall y, s(a, y)"), RuleM::ForallIntro, vec![], vec![r15]));
+                    let r18 = sub2.add_step(Justification(p("forall y s(a, y)"), RuleM::ForallIntro, vec![], vec![r15]));
                     (r17, r18)
                 })
                 .unwrap();
-            let r19 = sub1.add_step(Justification(p("forall x, forall y, s(x, y)"), RuleM::ForallIntro, vec![], vec![r14]));
+            let r19 = sub1.add_step(Justification(p("forall x forall y s(x, y)"), RuleM::ForallIntro, vec![], vec![r14]));
             (r17, r18, r19)
         })
         .unwrap();
@@ -525,7 +525,7 @@ where
             sub.add_step(Justification(p("a"), RuleM::Reit, vec![i(r21)], vec![]))
         })
         .unwrap();
-    let r23 = prf.add_step(Justification(p("forall x, x"), RuleM::ForallIntro, vec![], vec![r20]));
+    let r23 = prf.add_step(Justification(p("forall x x"), RuleM::ForallIntro, vec![], vec![r20]));
     (prf, vec![i(r5), i(r6), i(r7), i(r8), i(r11), i(r18), i(r19), i(r22)], vec![i(r9), i(r12), i(r17), i(r23)])
 }
 
@@ -541,16 +541,16 @@ where
 
     let r1 = prf.add_premise(p("p(a)"));
     let r2 = prf.add_step(Justification(p("p(b) & p(b)"), RuleM::Reit, vec![], vec![]));
-    let r3 = prf.add_step(Justification(p("exists x, p(x)"), RuleM::ExistsIntro, vec![i(r1.clone())], vec![]));
-    let r4 = prf.add_step(Justification(p("exists x, p(a)"), RuleM::ExistsIntro, vec![i(r1.clone())], vec![]));
-    let r5 = prf.add_step(Justification(p("exists x, p(b)"), RuleM::ExistsIntro, vec![i(r1)], vec![]));
-    let r6 = prf.add_step(Justification(p("exists x, p(x) & p(x)"), RuleM::ExistsIntro, vec![i(r2.clone())], vec![]));
-    let r7 = prf.add_step(Justification(p("exists x, p(b) & p(x)"), RuleM::ExistsIntro, vec![i(r2.clone())], vec![]));
-    let r8 = prf.add_step(Justification(p("exists x, p(x) & p(b)"), RuleM::ExistsIntro, vec![i(r2.clone())], vec![]));
-    let r9 = prf.add_step(Justification(p("exists x, p(b) & p(b)"), RuleM::ExistsIntro, vec![i(r2.clone())], vec![]));
-    let r10 = prf.add_step(Justification(p("exists x, p(y) & p(b)"), RuleM::ExistsIntro, vec![i(r2.clone())], vec![]));
-    let r11 = prf.add_step(Justification(p("exists x, p(a) & p(b)"), RuleM::ExistsIntro, vec![i(r2.clone())], vec![]));
-    let r12 = prf.add_step(Justification(p("exists x, p(y) & p(x)"), RuleM::ExistsIntro, vec![i(r2)], vec![]));
+    let r3 = prf.add_step(Justification(p("exists x p(x)"), RuleM::ExistsIntro, vec![i(r1.clone())], vec![]));
+    let r4 = prf.add_step(Justification(p("exists x p(a)"), RuleM::ExistsIntro, vec![i(r1.clone())], vec![]));
+    let r5 = prf.add_step(Justification(p("exists x p(b)"), RuleM::ExistsIntro, vec![i(r1)], vec![]));
+    let r6 = prf.add_step(Justification(p("exists x p(x) & p(x)"), RuleM::ExistsIntro, vec![i(r2.clone())], vec![]));
+    let r7 = prf.add_step(Justification(p("exists x p(b) & p(x)"), RuleM::ExistsIntro, vec![i(r2.clone())], vec![]));
+    let r8 = prf.add_step(Justification(p("exists x p(x) & p(b)"), RuleM::ExistsIntro, vec![i(r2.clone())], vec![]));
+    let r9 = prf.add_step(Justification(p("exists x p(b) & p(b)"), RuleM::ExistsIntro, vec![i(r2.clone())], vec![]));
+    let r10 = prf.add_step(Justification(p("exists x p(y) & p(b)"), RuleM::ExistsIntro, vec![i(r2.clone())], vec![]));
+    let r11 = prf.add_step(Justification(p("exists x p(a) & p(b)"), RuleM::ExistsIntro, vec![i(r2.clone())], vec![]));
+    let r12 = prf.add_step(Justification(p("exists x p(y) & p(x)"), RuleM::ExistsIntro, vec![i(r2)], vec![]));
 
     (prf, vec![i(r3), i(r4), i(r6), i(r7), i(r8), i(r9)], vec![i(r5), i(r10), i(r11), i(r12)])
 }
@@ -563,9 +563,9 @@ where
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
-    let r1 = prf.add_premise(p("exists x, p(x)"));
+    let r1 = prf.add_premise(p("exists x p(x)"));
     let r2 = prf.add_premise(p("p(a) -> q(a)"));
-    let r3 = prf.add_premise(p("forall b, (p(b) -> r(b))"));
+    let r3 = prf.add_premise(p("forall b (p(b) -> r(b))"));
     let r4 = prf.add_subproof();
     let (r6, r7, r8, r9, r10) = prf
         .with_mut_subproof(&r4, |sub| {
@@ -573,28 +573,28 @@ where
             let r6 = sub.add_step(Justification(p("q(a)"), RuleM::ImpElim, vec![i(r2.clone()), i(r5.clone())], vec![]));
             let r7 = sub.add_step(Justification(p("p(a) -> r(a)"), RuleM::ForallElim, vec![i(r3.clone())], vec![]));
             let r8 = sub.add_step(Justification(p("r(a)"), RuleM::ImpElim, vec![i(r7.clone()), i(r5)], vec![]));
-            let r9 = sub.add_step(Justification(p("exists x, q(x)"), RuleM::ExistsIntro, vec![i(r6.clone())], vec![]));
-            let r10 = sub.add_step(Justification(p("exists x, r(x)"), RuleM::ExistsIntro, vec![i(r8.clone())], vec![]));
+            let r9 = sub.add_step(Justification(p("exists x q(x)"), RuleM::ExistsIntro, vec![i(r6.clone())], vec![]));
+            let r10 = sub.add_step(Justification(p("exists x r(x)"), RuleM::ExistsIntro, vec![i(r8.clone())], vec![]));
             (r6, r7, r8, r9, r10)
         })
         .unwrap();
-    let r11 = prf.add_step(Justification(p("exists x, q(x)"), RuleM::ExistsElim, vec![i(r1.clone())], vec![r4.clone()]));
-    let r12 = prf.add_step(Justification(p("exists x, r(x)"), RuleM::ExistsElim, vec![i(r1.clone())], vec![r4.clone()]));
+    let r11 = prf.add_step(Justification(p("exists x q(x)"), RuleM::ExistsElim, vec![i(r1.clone())], vec![r4.clone()]));
+    let r12 = prf.add_step(Justification(p("exists x r(x)"), RuleM::ExistsElim, vec![i(r1.clone())], vec![r4.clone()]));
     let r13 = prf.add_step(Justification(p("r(a)"), RuleM::ExistsElim, vec![i(r1.clone())], vec![r4.clone()]));
 
-    let s1 = prf.add_premise(p("forall y, man(y) → mortal(y)"));
-    let s2 = prf.add_premise(p("exists x, man(x)"));
+    let s1 = prf.add_premise(p("forall y man(y) → mortal(y)"));
+    let s2 = prf.add_premise(p("exists x man(x)"));
     let s3 = prf.add_subproof();
     let (s5, s6, s7) = prf
         .with_mut_subproof(&s3, |sub| {
             let s4 = sub.add_premise(p("man(socrates)"));
             let s5 = sub.add_step(Justification(p("man(socrates) → mortal(socrates)"), RuleM::ForallElim, vec![i(s1.clone())], vec![]));
             let s6 = sub.add_step(Justification(p("mortal(socrates)"), RuleM::ImpElim, vec![i(s4), i(s5.clone())], vec![]));
-            let s7 = sub.add_step(Justification(p("exists foo, mortal(foo)"), RuleM::ExistsIntro, vec![i(s6.clone())], vec![]));
+            let s7 = sub.add_step(Justification(p("exists foo mortal(foo)"), RuleM::ExistsIntro, vec![i(s6.clone())], vec![]));
             (s5, s6, s7)
         })
         .unwrap();
-    let s8 = prf.add_step(Justification(p("exists foo, mortal(foo)"), RuleM::ExistsElim, vec![i(s2)], vec![s3.clone()]));
+    let s8 = prf.add_step(Justification(p("exists foo mortal(foo)"), RuleM::ExistsElim, vec![i(s2)], vec![s3.clone()]));
 
     let t1 = prf.add_step(Justification(p("p(a) -> r(a)"), RuleM::ForallElim, vec![i(r3.clone())], vec![]));
     let t2 = prf.add_subproof();
@@ -602,18 +602,18 @@ where
         .with_mut_subproof(&t2, |sub| {
             let t3 = sub.add_premise(p("p(a)"));
             let t4 = sub.add_step(Justification(p("r(a)"), RuleM::ImpElim, vec![i(t1.clone()), i(t3)], vec![]));
-            let t5 = sub.add_step(Justification(p("exists x, r(x)"), RuleM::ExistsIntro, vec![i(t4.clone())], vec![]));
+            let t5 = sub.add_step(Justification(p("exists x r(x)"), RuleM::ExistsIntro, vec![i(t4.clone())], vec![]));
             (t4, t5)
         })
         .unwrap();
-    let t6 = prf.add_step(Justification(p("exists x, r(x)"), RuleM::ExistsElim, vec![i(r1.clone())], vec![t2.clone()]));
+    let t6 = prf.add_step(Justification(p("exists x r(x)"), RuleM::ExistsElim, vec![i(r1.clone())], vec![t2.clone()]));
 
     let u1 = prf.add_subproof();
-    let u2 = prf.add_premise(p("forall c, forall d, p(c) -> s(d)"));
+    let u2 = prf.add_premise(p("forall c forall d p(c) -> s(d)"));
     let (u4, u5, u6) = prf
         .with_mut_subproof(&u1, |sub| {
             let u3 = sub.add_premise(p("p(a)"));
-            let u4 = sub.add_step(Justification(p("forall d, p(a) -> s(d)"), RuleM::ForallElim, vec![i(u2.clone())], vec![]));
+            let u4 = sub.add_step(Justification(p("forall d p(a) -> s(d)"), RuleM::ForallElim, vec![i(u2.clone())], vec![]));
             let u5 = sub.add_step(Justification(p("p(a) -> s(foo)"), RuleM::ForallElim, vec![i(u4.clone())], vec![])); // TODO: generalized forall?
             let u6 = sub.add_step(Justification(p("s(foo)"), RuleM::ImpElim, vec![i(u3), i(u5.clone())], vec![]));
             (u4, u5, u6)
@@ -770,8 +770,8 @@ pub fn test_complement<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     let r2 = prf.add_premise(p("~A & A"));
     let r3 = prf.add_premise(p("A | ~A"));
     let r4 = prf.add_premise(p("~A | A"));
-    let r5 = prf.add_premise(p("~(forall A, A) | (forall B, B)"));
-    let r6 = prf.add_premise(p("~(forall A, A) & (forall B, B)"));
+    let r5 = prf.add_premise(p("~(forall A A) | (forall B B)"));
+    let r6 = prf.add_premise(p("~(forall A A) & (forall B B)"));
     let r19 = prf.add_premise(p("(A -> A) & (B <-> B) & (C <-> ~C) & (~D <-> D)"));
     let r7 = prf.add_step(Justification(p("_|_"), RuleM::Complement, vec![i(r1.clone())], vec![]));
     let r8 = prf.add_step(Justification(p("^|^"), RuleM::Complement, vec![i(r1)], vec![]));
@@ -914,7 +914,7 @@ pub fn test_reduction<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     let p2 = prf.add_premise(p("(~~A | B) & ~A"));
     let p3 = prf.add_premise(p("(B & ~A) | A"));
     let p4 = prf.add_premise(p("~B | (A & ~~B)"));
-    let p5 = prf.add_premise(p("(forall A, (A & (~A | B))) | (~(forall A, (A & (~A | B))) & C)"));
+    let p5 = prf.add_premise(p("(forall A (A & (~A | B))) | (~(forall A (A & (~A | B))) & C)"));
     let p6 = prf.add_premise(p("B & (C | (~C & ~A))"));
     let p7 = prf.add_premise(p("A | (~A & (~~A | B))"));
     let p8 = prf.add_premise(p("D | (~A & (~~A | B))"));
@@ -923,7 +923,7 @@ pub fn test_reduction<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     let r2 = prf.add_step(Justification(p("~A & B"), RuleM::Reduction, vec![i(p2.clone())], vec![]));
     let r3 = prf.add_step(Justification(p("A | B"), RuleM::Reduction, vec![i(p3.clone())], vec![]));
     let r4 = prf.add_step(Justification(p("~B | A"), RuleM::Reduction, vec![i(p4.clone())], vec![]));
-    let r5 = prf.add_step(Justification(p("(forall A, (A & B)) | C"), RuleM::Reduction, vec![i(p5)], vec![]));
+    let r5 = prf.add_step(Justification(p("(forall A (A & B)) | C"), RuleM::Reduction, vec![i(p5)], vec![]));
 
     let r6 = prf.add_step(Justification(p("A"), RuleM::Reduction, vec![i(p1)], vec![]));
     let r7 = prf.add_step(Justification(p("A | B"), RuleM::Reduction, vec![i(p2)], vec![]));
@@ -1118,7 +1118,7 @@ pub fn test_excluded_middle<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     let r8 = prf.add_step(Justification(p("B"), RuleM::ExcludedMiddle, vec![], vec![]));
     let r9 = prf.add_step(Justification(p("R -> P"), RuleM::ExcludedMiddle, vec![], vec![]));
     let r10 = prf.add_step(Justification(p("R -> T"), RuleM::ExcludedMiddle, vec![], vec![]));
-    let r11 = prf.add_step(Justification(p("(A & B & C & forall P, P) | ~(A & B & C & forall P, P)"), RuleM::ExcludedMiddle, vec![], vec![]));
+    let r11 = prf.add_step(Justification(p("(A & B & C & forall P P) | ~(A & B & C & forall P P)"), RuleM::ExcludedMiddle, vec![], vec![]));
     (prf, vec![i(r1), i(r4), i(r5), i(r11)], vec![i(r2), i(r3), i(r6), i(r7), i(r8), i(r9), i(r10)])
 }
 
@@ -1127,14 +1127,14 @@ pub fn test_weak_induction<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("~LessThan(0,0)"));
-    let r2 = prf.add_premise(p("forall x, ~LessThan(x,x) -> ~LessThan(s(x),s(x))"));
+    let r2 = prf.add_premise(p("forall x ~LessThan(x,x) -> ~LessThan(s(x),s(x))"));
     let r3 = prf.add_premise(p("Equals(0,0)"));
-    let r4 = prf.add_premise(p("forall 0, Equals(0,0) -> Equals(s(0),s(0))"));
-    let r5 = prf.add_step(Justification(p("forall x, ~LessThan(x,x)"), RuleM::WeakInduction, vec![i(r1.clone()), i(r2.clone())], vec![]));
-    let r6 = prf.add_step(Justification(p("forall x, ~LessThan(x,x)"), RuleM::WeakInduction, vec![i(r2.clone()), i(r1.clone())], vec![]));
-    let r7 = prf.add_step(Justification(p("forall n, ~LessThan(n,n)"), RuleM::WeakInduction, vec![i(r1.clone()), i(r2.clone())], vec![]));
-    let r8 = prf.add_step(Justification(p("forall x, Equals(x,x)"), RuleM::WeakInduction, vec![i(r3.clone()), i(r4.clone())], vec![]));
-    let r9 = prf.add_step(Justification(p("forall x, Equals(x,0)"), RuleM::WeakInduction, vec![i(r3.clone()), i(r4.clone())], vec![]));
+    let r4 = prf.add_premise(p("forall 0 Equals(0,0) -> Equals(s(0),s(0))"));
+    let r5 = prf.add_step(Justification(p("forall x ~LessThan(x,x)"), RuleM::WeakInduction, vec![i(r1.clone()), i(r2.clone())], vec![]));
+    let r6 = prf.add_step(Justification(p("forall x ~LessThan(x,x)"), RuleM::WeakInduction, vec![i(r2.clone()), i(r1.clone())], vec![]));
+    let r7 = prf.add_step(Justification(p("forall n ~LessThan(n,n)"), RuleM::WeakInduction, vec![i(r1.clone()), i(r2.clone())], vec![]));
+    let r8 = prf.add_step(Justification(p("forall x Equals(x,x)"), RuleM::WeakInduction, vec![i(r3.clone()), i(r4.clone())], vec![]));
+    let r9 = prf.add_step(Justification(p("forall x Equals(x,0)"), RuleM::WeakInduction, vec![i(r3.clone()), i(r4.clone())], vec![]));
     (prf, vec![i(r1), i(r2), i(r3), i(r4), i(r5), i(r6), i(r7), i(r8)], vec![i(r9)])
 }
 
@@ -1142,13 +1142,13 @@ pub fn test_strong_induction<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
-    let r1 = prf.add_premise(p("forall n, (forall x, LessThan(x, n) -> P(x)) -> P(n)"));
-    let r2 = prf.add_premise(p("forall n, (forall x, LessThan(x, n) -> P(x,n)) -> P(n,n)"));
-    let r3 = prf.add_step(Justification(p("forall x, P(x)"), RuleM::StrongInduction, vec![i(r1.clone())], vec![]));
-    let r4 = prf.add_step(Justification(p("forall n, P(n)"), RuleM::StrongInduction, vec![i(r1.clone())], vec![]));
-    let r5 = prf.add_step(Justification(p("forall n, P(n)"), RuleM::StrongInduction, vec![i(r2.clone())], vec![]));
-    let r6 = prf.add_step(Justification(p("forall x, P(x,n)"), RuleM::StrongInduction, vec![i(r1.clone())], vec![]));
-    let r7 = prf.add_step(Justification(p("forall x, P(x,n)"), RuleM::StrongInduction, vec![i(r2.clone())], vec![]));
-    let r8 = prf.add_step(Justification(p("forall a, P(a)"), RuleM::StrongInduction, vec![i(r1.clone())], vec![]));
+    let r1 = prf.add_premise(p("forall n (forall x LessThan(x, n) -> P(x)) -> P(n)"));
+    let r2 = prf.add_premise(p("forall n (forall x LessThan(x, n) -> P(x,n)) -> P(n,n)"));
+    let r3 = prf.add_step(Justification(p("forall x P(x)"), RuleM::StrongInduction, vec![i(r1.clone())], vec![]));
+    let r4 = prf.add_step(Justification(p("forall n P(n)"), RuleM::StrongInduction, vec![i(r1.clone())], vec![]));
+    let r5 = prf.add_step(Justification(p("forall n P(n)"), RuleM::StrongInduction, vec![i(r2.clone())], vec![]));
+    let r6 = prf.add_step(Justification(p("forall x P(x,n)"), RuleM::StrongInduction, vec![i(r1.clone())], vec![]));
+    let r7 = prf.add_step(Justification(p("forall x P(x,n)"), RuleM::StrongInduction, vec![i(r2.clone())], vec![]));
+    let r8 = prf.add_step(Justification(p("forall a P(a)"), RuleM::StrongInduction, vec![i(r1.clone())], vec![]));
     (prf, vec![i(r1), i(r2), i(r3), i(r4), i(r8)], vec![i(r5), i(r6), i(r7)])
 }
