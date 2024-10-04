@@ -12,7 +12,6 @@ pub fn rule_names() -> JsResult<Vec<JsValue>> {
 }
 
 #[wasm_bindgen]
-#[allow(dead_code)]
 pub struct Rule(aris::rules::Rule);
 
 #[wasm_bindgen]

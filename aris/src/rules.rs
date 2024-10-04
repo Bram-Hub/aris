@@ -202,8 +202,8 @@ pub type Rule = SharedChecks<Coprod!(PrepositionalInference, PredicateInference,
 /// Conveniences for constructing rules of the appropriate type, primarily for testing.
 /// The non-standard naming conventions here are because a module is being used to pretend to be an enum.
 #[allow(non_snake_case)]
-#[allow(non_upper_case_globals)]
 pub mod RuleM {
+    #![allow(non_upper_case_globals)]
     use super::*;
     macro_rules! declare_rules {
         ($([$id:ident, $name:literal, $value:tt]),+) => {
