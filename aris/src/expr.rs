@@ -389,7 +389,7 @@ pub fn unify(mut c: HashSet<Constraint>) -> Option<Substitution> {
         }
         (Expr::Apply { func: sf, args: sa }, Expr::Apply { func: tf, args: ta }) if sa.len() == ta.len() => {
             c.insert(Constraint::Equal(*sf, *tf));
-            c.extend(sa.into_iter().zip(ta.into_iter()).map(|(x, y)| Constraint::Equal(x, y)));
+            c.extend(sa.into_iter().zip(ta).map(|(x, y)| Constraint::Equal(x, y)));
             unify(c)
         }
         (Expr::Assoc { op: so, exprs: se }, Expr::Assoc { op: to, exprs: te }) if so == to && se.len() == te.len() => {
