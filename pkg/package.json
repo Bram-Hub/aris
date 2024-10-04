@@ -1,5 +1,6 @@
 {
   "name": "aris-web-app",
+  "type": "module",
   "collaborators": [
     "Avi Weinstock <aweinstock314@gmail.com>"
   ],
@@ -9,7 +10,7 @@
     "aris_web_app.js",
     "aris_web_app.d.ts"
   ],
-  "module": "aris_web_app.js",
+  "main": "aris_web_app.js",
   "types": "aris_web_app.d.ts",
   "sideEffects": [
     "./snippets/*"
