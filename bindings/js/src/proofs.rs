@@ -228,7 +228,6 @@ impl Proof {
 }
 
 #[wasm_bindgen]
-#[allow(dead_code)]
 pub struct Subproof(Sp);
 
 #[wasm_bindgen]

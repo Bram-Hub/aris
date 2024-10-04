@@ -255,7 +255,7 @@ pub trait Proof: Sized {
     }
     fn contained_justifications(&self, include_premises: bool) -> HashSet<PjRef<Self>> {
         let mut ret = self.lines().into_iter().filter_map(|x| x.fold(hlist![|r: Self::JustificationReference| Some(vec![r].into_iter().map(Coproduct::inject).collect()), |r: Self::SubproofReference| self.lookup_subproof(&r).map(|sub| sub.contained_justifications(include_premises)),])).fold(HashSet::new(), |mut x, y| {
-            x.extend(y);
+            x.extend(y.into_iter());
             x
         });
         if include_premises {
