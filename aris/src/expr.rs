@@ -8,7 +8,7 @@ Parsing an expression that's statically known to be valid:
 ```
 use aris::parser::parse_unwrap as p;
 
-let expr1 = p("forall x, p(x) -> (Q & R)");
+let expr1 = p("forall x p(x) -> (Q & R)");
 ```
 
 Parsing a potentially malformed expression (e.g. user input):
@@ -887,7 +887,7 @@ impl Expr {
                     Expr::Var { name: format!("{i}") }
                 }
                 // push the name onto gamma from the actual quantifier,
-                // Example: for forall x, P(x)
+                // Example: for forall x P(x)
                 // push x onto gamma
                 // save the length of gamma before recursing, to use as the new name
                 Expr::Quant { kind, name, body } => {
@@ -966,14 +966,14 @@ impl Expr {
         })
     }
 
-    /// 7a1. forall x, (phi(x) ∧ psi) == (forall x, phi(x)) ∧ psi
-    /// 7a2. exists x, (phi(x) ∧ psi) == (exists x, phi(x)) ∧ psi
-    /// 7b1. forall x, (phi(x) ∨ psi) == (forall x, phi(x)) ∨ psi
-    /// 7b2. exists x, (phi(x) ∨ psi) == (exists x, phi(x)) ∨ psi
-    /// 7c1. forall x, (phi(x) → psi) == (exists x, phi(x)) → psi (! Expr::Quantifier changes!)
-    /// 7c2. exists x, (phi(x) → psi) == (forall x, phi(x)) → psi (! Expr::Quantifier changes!)
-    /// 7d1. forall x, (psi → phi(x)) == psi → (forall x, phi(x))
-    /// 7d2. exists x, (psi → phi(x)) == psi → (exists x, phi(x))
+    /// 7a1. forall x (phi(x) ∧ psi) == (forall x phi(x)) ∧ psi
+    /// 7a2. exists x (phi(x) ∧ psi) == (exists x phi(x)) ∧ psi
+    /// 7b1. forall x (phi(x) ∨ psi) == (forall x phi(x)) ∨ psi
+    /// 7b2. exists x (phi(x) ∨ psi) == (exists x phi(x)) ∨ psi
+    /// 7c1. forall x (phi(x) → psi) == (exists x phi(x)) → psi (! Expr::Quantifier changes!)
+    /// 7c2. exists x (phi(x) → psi) == (forall x phi(x)) → psi (! Expr::Quantifier changes!)
+    /// 7d1. forall x (psi → phi(x)) == psi → (forall x phi(x))
+    /// 7d2. exists x (psi → phi(x)) == psi → (exists x phi(x))
     pub fn normalize_prenex_laws(self) -> Expr {
         let transform_7ab = |op: Op, exprs: Vec<Expr>| {
             // hoist a forall out of an and/or when the binder won't capture any of the other arms
@@ -1534,11 +1534,11 @@ mod tests {
     #[test]
     fn test_subst() {
         use crate::parser::parse_unwrap as p;
-        assert_eq!(subst(p("x & forall x, x"), "x", p("y")), p("y & forall x, x")); // hit (true, _) case in Expr::Quantifier
-        assert_eq!(subst(p("forall x, x & y"), "y", p("x")), p("forall x0, x0 & x")); // hit (false, true) case in Expr::Quantifier
-        assert_eq!(subst(p("forall x, x & y"), "y", p("z")), p("forall x, x & z")); // hit (false, false) case in Expr::Quantifier
-        assert_eq!(subst(p("forall f, f(x) & g(y, z)"), "g", p("h")), p("forall f, f(x) & h(y, z)"));
-        assert_eq!(subst(p("forall f, f(x) & g(y, z)"), "g", p("f")), p("forall f0, f0(x) & f(y, z)"));
+        assert_eq!(subst(p("x & forall x x"), "x", p("y")), p("y & forall x x")); // hit (true, _) case in Expr::Quantifier
+        assert_eq!(subst(p("forall x x & y"), "y", p("x")), p("forall x0 x0 & x")); // hit (false, true) case in Expr::Quantifier
+        assert_eq!(subst(p("forall x x & y"), "y", p("z")), p("forall x x & z")); // hit (false, false) case in Expr::Quantifier
+        assert_eq!(subst(p("forall f f(x) & g(y, z)"), "g", p("h")), p("forall f f(x) & h(y, z)"));
+        assert_eq!(subst(p("forall f f(x) & g(y, z)"), "g", p("f")), p("forall f0 f0(x) & f(y, z)"));
     }
 
     #[test]
@@ -1556,15 +1556,15 @@ mod tests {
             }
             ret
         };
-        println!("{:?}", u("x", "forall y, y"));
-        println!("{:?}", u("forall y, y", "y"));
+        println!("{:?}", u("x", "forall y y"));
+        println!("{:?}", u("forall y y", "y"));
         println!("{:?}", u("x", "x"));
-        assert_eq!(u("forall x, x", "forall y, y"), Some(Substitution(vec![]))); // should be equal with no substitution since unification is modulo alpha equivalence
+        assert_eq!(u("forall x x", "forall y y"), Some(Substitution(vec![]))); // should be equal with no substitution since unification is modulo alpha equivalence
         println!("{:?}", u("f(x,y,z)", "g(x,y,y)"));
         println!("{:?}", u("g(x,y,y)", "f(x,y,z)"));
-        println!("{:?}", u("forall foo, foo(x,y,z) & bar", "forall bar, bar(x,y,z) & baz"));
+        println!("{:?}", u("forall foo foo(x,y,z) & bar", "forall bar bar(x,y,z) & baz"));
 
-        assert_eq!(u("forall x, z", "forall y, y"), None);
+        assert_eq!(u("forall x z", "forall y y"), None);
         assert_eq!(u("x & y", "x | y"), None);
     }
 

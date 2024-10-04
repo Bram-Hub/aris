@@ -90,12 +90,12 @@ pub extern "system" fn Java_edu_rpi_aris_proof_RustProof_checkRuleAtLine(env: JN
         println!("RustProof::checkRuleAtLine {self_:?}");
         if let Some(line) = self_.lines.get(linenum as _) {
             if let Err(e) = self_.proof.verify_line(&line.reference) {
-                Ok(env.new_string(&format!("{e}"))?.into_inner())
+                Ok(env.new_string(format!("{e}"))?.into_inner())
             } else {
                 Ok(std::ptr::null_mut())
             }
         } else {
-            Ok(env.new_string(&format!("Failed to dereference line {linenum} in {self_:?}"))?.into_inner())
+            Ok(env.new_string(format!("Failed to dereference line {linenum} in {self_:?}"))?.into_inner())
         }
     })
 }
