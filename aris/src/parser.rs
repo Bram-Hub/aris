@@ -169,11 +169,11 @@ fn test_parser() {
     println!("{:?}", predicate("a(   b, c)"));
     println!("{:?}", predicate("s(s(s(s(s(z)))))"));
     println!("{:?}", expr("a & b & c(x,y)\n"));
-    println!("{:?}", expr("forall a, (b & c)\n"));
-    let e = expr("exists x, (Tet(x) & SameCol(x, b)) -> ~forall x, (Tet(x) -> LeftOf(x, b))\n").unwrap();
+    println!("{:?}", expr("forall a (b & c)\n"));
+    let e = expr("exists x (Tet(x) & SameCol(x, b)) -> ~forall x (Tet(x) -> LeftOf(x, b))\n").unwrap();
     let fv = free_vars(&e.1);
     println!("{e:?} {fv:?}");
-    let e = expr("forall a, forall b, ((forall x, in(x,a) <-> in(x,b)) -> eq(a,b))\n").unwrap();
+    let e = expr("forall a forall b ((forall x in(x,a) <-> in(x,b)) -> eq(a,b))\n").unwrap();
     let fv = free_vars(&e.1);
     assert_eq!(fv, ["eq", "in"].iter().map(|x| String::from(*x)).collect());
     println!("{e:?} {fv:?}");
