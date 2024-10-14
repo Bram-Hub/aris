@@ -124,7 +124,7 @@ impl Component for NavBarWidget {
                 ctx.props().parent.send_message(AppMsg::CreateTab {
                     name: format!("Expr Tree {}", self.next_tab_idx),
                     content: html! {
-                        <ExprAstWidget initial_contents="forall A, ((exists B, A -> B) & C & f(x, y | z)) <-> Q <-> R" />
+                        <ExprAstWidget initial_contents="forall A ((exists B, A -> B) & C & f(x, y | z)) <-> Q <-> R" />
                     },
                 });
                 self.next_tab_idx += 1;
@@ -134,11 +134,9 @@ impl Component for NavBarWidget {
                 match theme().as_str() {
                     "light" => {
                         document_element().set_attribute("theme", "dark").expect("failed setting dark theme");
-                        // document.get_element_by_id("rule-img").src = img.src.replace("_dark", "_light");
                     }
                     "dark" => {
                         document_element().set_attribute("theme", "light").expect("failed setting light theme");
-                        // document.get_element_by_id("rule-img").src = img.src.replace("_light", "_dark");
                     }
                     theme => unreachable!("unknown theme {}", theme),
                 }
