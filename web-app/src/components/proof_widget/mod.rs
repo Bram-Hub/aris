@@ -2,6 +2,7 @@ mod actions;
 
 use crate::box_chars;
 use crate::components::expr_entry::ExprEntry;
+use crate::components::nav_bar::theme;
 use crate::proof_ui_data::ProofUiData;
 use crate::util::calculate_lineinfo;
 use crate::util::P;
@@ -165,27 +166,76 @@ impl ProofWidget {
     ///
     /// [lib]: https://github.com/vsn4ik/bootstrap-submenu
     fn render_rules_menu(&self, ctx: &Context<Self>, jref: <P as Proof>::JustificationReference, cur_rule_name: &str) -> Html {
-        // Create menu items for rule classes
         let menu = RuleClassification::iter()
             .map(|rule_class| {
-                // Create menu items for rules in class
                 let rules = rule_class
                     .rules()
                     .map(|rule| {
                         let pjref = Coproduct::inject(jref);
-                        // Create menu item for rule
-                        //tooltip portion addapted from:
-                        // * https://stackoverflow.com/questions/31483302/how-to-display-an-image-inside-bootstrap-tooltip
-                        // * https://getbootstrap.com/docs/4.1/components/tooltips/
+                        
+                        // Determine the folder for the current theme
+                        let get_folder = || {
+                            if theme() == "dark" {
+                                "proofImages_dark"
+                            } else {
+                                "proofImages_light"
+                            }
+                        };
+                        let image_src = format!("{}/{}.png", get_folder(), rule.get_name());
+    
                         html! {
-                            <button class="dropdown-item" type="button" data-toggle="tooltip" data-placement="right" title={format!("<img id='rule-img' src='proofImages_light/{}.png'/>", rule.get_name())} onclick={ ctx.link().callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule }, pjref)) }>
-                            { rule.get_name() }
-                            </button>
+                            <div class="dropdown-item-wrapper" style="position: relative;">
+                                <button 
+                                    class="dropdown-item" 
+                                    type="button" 
+                                    onclick={ ctx.link().callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule }, pjref)) }
+                                    onmouseover={ctx.link().callback(move |_| {
+                                        let js = format!(
+                                            r#"
+                                            var tooltipImg = document.getElementById('tooltip-img-{0}');
+                                            tooltipImg.style.display = 'block';
+                                            "#, rule.get_name()
+                                        );
+                                        js_sys::eval(&js).unwrap_throw();
+                                        ProofWidgetMsg::Nop
+                                    })}
+                                    onmouseout={ctx.link().callback(move |_| {
+                                        let js = format!(
+                                            r#"
+                                            var tooltipImg = document.getElementById('tooltip-img-{0}');
+                                            tooltipImg.style.display = 'none';
+                                            "#, rule.get_name()
+                                        );
+                                        js_sys::eval(&js).unwrap_throw();
+                                        ProofWidgetMsg::Nop
+                                    })}
+                                >
+                                    { rule.get_name() }
+                                </button>
+                                <img 
+                                    id={format!("tooltip-img-{}", rule.get_name())} 
+                                    src={image_src} 
+                                    alt={rule.get_name()} 
+                                    style="
+                                        display: none; 
+                                        position: absolute; 
+                                        max-width: auto; 
+                                        max-height: 600px;
+                                        right: 110%; 
+                                        top: 50%; 
+                                        transform: translateY(-50%);
+                                        border: 2px solid black;
+                                        border-radius: 5px;
+                                        padding: 5px;
+                                        background-color: white;" 
+                                />
+                            </div>
                         }
                     })
                     .collect::<Vec<yew::virtual_dom::VNode>>();
+    
                 let rules = yew::virtual_dom::VList::with_children(rules, None);
-                // Create sub-menu for rule class
+    
                 html! {
                     <div class="dropdown dropright dropdown-submenu">
                         <button class="dropdown-item dropdown-toggle" type="button" data-toggle="dropdown"> { rule_class } </button>
@@ -195,8 +245,7 @@ impl ProofWidget {
             })
             .collect::<Vec<yew::virtual_dom::VNode>>();
         let menu = yew::virtual_dom::VList::with_children(menu, None);
-
-        // Create top-level menu button
+    
         html! {
             <div class="dropright">
                 <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown" data-submenu="">
@@ -208,6 +257,7 @@ impl ProofWidget {
             </div>
         }
     }
+
     fn render_justification_widget(&self, ctx: &Context<Self>, jref: <P as Proof>::JustificationReference) -> Html {
         let just = self.prf.lookup_justification_or_die(&jref).expect("proofref should exist in self.prf");
 
@@ -842,7 +892,23 @@ impl Component for ProofWidget {
             </div>
         }
     }
-    fn rendered(&mut self, _: &Context<Self>, _: bool) {
+    fn rendered(&mut self, _: &Context<Self>, first_render: bool) {
         js_sys::eval("$('[data-submenu]').submenupicker(); $('[data-toggle=popover]').popover()").unwrap_throw();
+        if !first_render {
+            // Use JavaScript to reinitialize the hover events for tooltips
+            let js = r#"
+                document.querySelectorAll('.dropdown-item').forEach(item => {
+                    const imgId = `tooltip-img-${item.innerText}`;
+                    const imgElem = document.getElementById(imgId);
+                    item.addEventListener('mouseover', function() {
+                        imgElem.style.display = 'block';
+                    });
+                    item.addEventListener('mouseout', function() {
+                        imgElem.style.display = 'none';
+                    });
+                });
+            "#;
+            js_sys::eval(js).unwrap_throw();
+        }
     }
 }

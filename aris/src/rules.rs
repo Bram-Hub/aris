@@ -324,14 +324,14 @@ pub mod RuleM {
 pub enum RuleClassification {
     Introduction,
     Elimination,
+    #[strum(to_string = "Misc. Inference")]
+    MiscInference,
     #[strum(to_string = "Boolean Equivalence")]
     BooleanEquivalence,
     #[strum(to_string = "Conditional Equivalence")]
     ConditionalEquivalence,
     #[strum(to_string = "Quantifier Equivalence")]
     QuantifierEquivalence,
-    #[strum(to_string = "Misc. Inference")]
-    MiscInference,
 }
 
 impl RuleClassification {
@@ -1458,8 +1458,8 @@ impl RuleT for QuantifierEquivalence {
 impl RuleT for Induction {
     fn get_name(&self) -> String {
         match self {
-            Induction::Weak => "Weak induction",
-            Induction::Strong => "Strong induction",
+            Induction::Weak => "Weak Induction",
+            Induction::Strong => "Strong Induction",
         }
         .into()
     }

@@ -17,4 +17,4 @@ yew-octicons = "0.4.0"
 derivative = "2.2.0"
 
 [lib]
-crate_type = ["cdylib", "rlib"]
+crate-type = ["cdylib", "rlib"]
