@@ -172,7 +172,7 @@ impl ProofWidget {
                     .rules()
                     .map(|rule| {
                         let pjref = Coproduct::inject(jref);
-                        
+
                         // Determine the folder for the current theme
                         let get_folder = || {
                             if theme() == "dark" {
@@ -182,12 +182,12 @@ impl ProofWidget {
                             }
                         };
                         let image_src = format!("{}/{}.png", get_folder(), rule.get_name());
-    
+
                         html! {
                             <div class="dropdown-item-wrapper" style="position: relative;">
-                                <button 
-                                    class="dropdown-item" 
-                                    type="button" 
+                                <button
+                                    class="dropdown-item"
+                                    type="button"
                                     onclick={ ctx.link().callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule }, pjref)) }
                                     onmouseover={ctx.link().callback(move |_| {
                                         let js = format!(
@@ -212,10 +212,10 @@ impl ProofWidget {
                                 >
                                     { rule.get_name() }
                                 </button>
-                                <img 
-                                    id={format!("tooltip-img-{}", rule.get_name())} 
-                                    src={image_src} 
-                                    alt={rule.get_name()} 
+                                <img
+                                    id={format!("tooltip-img-{}", rule.get_name())}
+                                    src={image_src}
+                                    alt={rule.get_name()}
                                     style="
                                         display: none; 
                                         position: absolute; 
@@ -233,9 +233,9 @@ impl ProofWidget {
                         }
                     })
                     .collect::<Vec<yew::virtual_dom::VNode>>();
-    
+
                 let rules = yew::virtual_dom::VList::with_children(rules, None);
-    
+
                 html! {
                     <div class="dropdown dropright dropdown-submenu">
                         <button class="dropdown-item dropdown-toggle" type="button" data-toggle="dropdown"> { rule_class } </button>
@@ -245,7 +245,7 @@ impl ProofWidget {
             })
             .collect::<Vec<yew::virtual_dom::VNode>>();
         let menu = yew::virtual_dom::VList::with_children(menu, None);
-    
+
         html! {
             <div class="dropright">
                 <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown" data-submenu="">
