@@ -545,15 +545,25 @@ impl RuleT for PrepositionalInference {
             AndElim => {
                 let prem = p.lookup_expr_or_die(&deps[0])?;
                 if let Expr::Assoc { op: Op::And, ref exprs } = prem {
-                    for e in exprs.iter() {
-                        if e == &conclusion {
-                            return Ok(());
+                    let premise_set: HashSet<_> = exprs.iter().collect();
+                    // If the conclusion is a conjunction of many terms 
+                    if let Expr::Assoc { op: Op::And, ref exprs } = conclusion {
+                        // Check if every term in the conclusion exists in the premise
+                        for ce in exprs.iter() {
+                            if !premise_set.contains(ce) {
+                                return Err(DoesNotOccur(conclusion.clone(), prem.clone()));
+                            }
+                        }
+                        Ok(())
+                    } else { // If the conclusion is a single term
+                        if premise_set.contains(&conclusion) {
+                            Ok(())
+                        } else {
+                            return Err(DoesNotOccur(conclusion.clone(), prem.clone()));
                         }
                     }
-                    // TODO: allow `A /\ B /\ C |- C /\ A /\ C`, etc
-                    Err(DoesNotOccur(conclusion, prem.clone()))
                 } else {
-                    Err(DepDoesNotExist(Expr::assocplaceholder(Op::And), true))
+                    return Err(DepDoesNotExist(Expr::assocplaceholder(Op::And), true));
                 }
             }
             OrIntro => {
