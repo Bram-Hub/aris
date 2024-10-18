@@ -133,13 +133,20 @@ pub enum ConditionalEquivalence {
     Identity,
     Annihilation,
     Implication,
-    BiImplication,
     Contraposition,
     Currying,
     ConditionalDistribution,
     ConditionalReduction,
     KnightsAndKnaves,
     ConditionalIdempotence,
+}
+
+#[allow(missing_docs)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BiconditionalEquivalence {
+    BiconditionalAssociation,
+    BiconditionalCommutation,
+    BiconditionalEquivalenceRule,
     BiconditionalNegation,
     BiconditionalSubstitution,
 }
@@ -158,7 +165,7 @@ pub enum RedundantPrepositionalInference {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AutomationRelatedRules {
     Resolution,
-    TautologicalConsequence,
+    TruthFunctionalConsequence,
 }
 
 #[allow(missing_docs)]
@@ -197,7 +204,7 @@ pub struct EmptyRule;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SharedChecks<T>(T);
 
-pub type Rule = SharedChecks<Coprod!(PrepositionalInference, PredicateInference, BooleanEquivalence, ConditionalEquivalence, RedundantPrepositionalInference, AutomationRelatedRules, QuantifierEquivalence, Induction, EmptyRule)>;
+pub type Rule = SharedChecks<Coprod!(PrepositionalInference, PredicateInference, BooleanEquivalence, ConditionalEquivalence, BiconditionalEquivalence, RedundantPrepositionalInference, AutomationRelatedRules, QuantifierEquivalence, Induction, EmptyRule)>;
 
 /// Conveniences for constructing rules of the appropriate type, primarily for testing.
 /// The non-standard naming conventions here are because a module is being used to pretend to be an enum.
@@ -266,12 +273,6 @@ pub mod RuleM {
         [ExistsIntro, "EXISTENTIAL_GENERALIZATION", (SharedChecks(Inr(Inl(PredicateInference::ExistsIntro))))],
         [ExistsElim, "EXISTENTIAL_INSTANTIATION", (SharedChecks(Inr(Inl(PredicateInference::ExistsElim))))],
 
-        [ModusTollens, "MODUS_TOLLENS", (SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ModusTollens)))))))],
-        [HypotheticalSyllogism, "HYPOTHETICAL_SYLLOGISM", (SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::HypotheticalSyllogism)))))))],
-        [DisjunctiveSyllogism, "DISJUNCTIVE_SYLLOGISM", (SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::DisjunctiveSyllogism)))))))],
-        [ExcludedMiddle, "EXCLUDED_MIDDLE", (SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ExcludedMiddle)))))))],
-        [ConstructiveDilemma, "CONSTRUCTIVE_DILEMMA", (SharedChecks(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ConstructiveDilemma)))))))],
-
         [Association, "ASSOCIATION", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Association)))))],
         [Commutation, "COMMUTATION", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Commutation)))))],
         [Idempotence, "IDEMPOTENCE", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Idempotence)))))],
@@ -290,31 +291,40 @@ pub mod RuleM {
         [CondIdentity, "CONDITIONAL_IDENTITY", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Identity))))))],
         [CondAnnihilation, "CONDITIONAL_ANNIHILATION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Annihilation))))))],
         [Implication, "IMPLICATION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Implication))))))],
-        [BiImplication, "BI_IMPLICATION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiImplication))))))],
         [Contraposition, "CONTRAPOSITION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Contraposition))))))],
         [Currying, "CURRYING", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Currying))))))],
         [ConditionalDistribution, "CONDITIONAL_DISTRIBUTION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalDistribution))))))],
         [ConditionalReduction, "CONDITIONAL_REDUCTION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalReduction))))))],
         [KnightsAndKnaves, "KNIGHTS_AND_KNAVES", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::KnightsAndKnaves))))))],
         [ConditionalIdempotence, "CONDITIONAL_IDEMPOTENCE", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalIdempotence))))))],
-        [BiconditionalNegation, "BICONDITIONAL_NEGATION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiconditionalNegation))))))],
-        [BiconditionalSubstitution, "BICONDITIONAL_SUBSTITUTION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::BiconditionalSubstitution))))))],
 
-        [Resolution, "RESOLUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::Resolution))))))))],
-        [TautologicalConsequence, "TAUTOLOGICAL_CONSEQUENCE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::TautologicalConsequence))))))))],
+        [BiconditionalAssociation, "BICONDITIONAL_ASSOCIATION", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalAssociation)))))))],
+        [BiconditionalCommutation, "BICONDITIONAL_COMMUTATION", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalCommutation)))))))],
+        [BiconditionalEquivalenceRule, "BICONDITIONAL_EQUIVALENCE", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalEquivalenceRule)))))))],
+        [BiconditionalNegation, "BICONDITIONAL_NEGATION", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalNegation)))))))],
+        [BiconditionalSubstitution, "BICONDITIONAL_SUBSTITUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalSubstitution)))))))],
 
-        [QuantifierNegation, "QUANTIFIER_NEGATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::QuantifierNegation)))))))))],
-        [NullQuantification, "NULL_QUANTIFICATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::NullQuantification)))))))))],
-        [ReplacingBoundVars, "REPLACING_BOUND_VARS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::ReplacingBoundVars)))))))))],
-        [SwappingQuantifiers, "SWAPPING_QUANTIFIERS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::SwappingQuantifiers)))))))))],
-        [AristoteleanSquare, "ARISTOTELEAN_SQUARE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::AristoteleanSquare)))))))))],
-        [QuantifierDistribution, "QUANTIFIER_DISTRIBUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::QuantifierDistribution)))))))))],
-        [PrenexLaws, "PRENEX_LAWS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::PrenexLaws)))))))))],
+        [ModusTollens, "MODUS_TOLLENS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ModusTollens))))))))],
+        [HypotheticalSyllogism, "HYPOTHETICAL_SYLLOGISM", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::HypotheticalSyllogism))))))))],
+        [DisjunctiveSyllogism, "DISJUNCTIVE_SYLLOGISM", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::DisjunctiveSyllogism))))))))],
+        [ExcludedMiddle, "EXCLUDED_MIDDLE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ExcludedMiddle))))))))],
+        [ConstructiveDilemma, "CONSTRUCTIVE_DILEMMA", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ConstructiveDilemma))))))))],
 
-        [WeakInduction, "WEAK_INDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Induction::Weak))))))))))],
-        [StrongInduction, "STRONG_INDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Induction::Strong))))))))))],
+        [Resolution, "RESOLUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::Resolution)))))))))],
+        [TruthFunctionalConsequence, "TRUTHFUNCTIONAL_CONSEQUENCE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::TruthFunctionalConsequence)))))))))],
 
-        [EmptyRule, "EMPTY_RULE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(super::EmptyRule)))))))))))]
+        [QuantifierNegation, "QUANTIFIER_NEGATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::QuantifierNegation))))))))))],
+        [NullQuantification, "NULL_QUANTIFICATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::NullQuantification))))))))))],
+        [ReplacingBoundVars, "REPLACING_BOUND_VARS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::ReplacingBoundVars))))))))))],
+        [SwappingQuantifiers, "SWAPPING_QUANTIFIERS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::SwappingQuantifiers))))))))))],
+        [AristoteleanSquare, "ARISTOTELEAN_SQUARE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::AristoteleanSquare))))))))))],
+        [QuantifierDistribution, "QUANTIFIER_DISTRIBUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::QuantifierDistribution))))))))))],
+        [PrenexLaws, "PRENEX_LAWS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::PrenexLaws))))))))))],
+
+        [WeakInduction, "WEAK_INDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Induction::Weak)))))))))))],
+        [StrongInduction, "STRONG_INDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Induction::Strong)))))))))))],
+
+        [EmptyRule, "EMPTY_RULE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(super::EmptyRule))))))))))))]
     }
 }
 
@@ -330,6 +340,8 @@ pub enum RuleClassification {
     BooleanEquivalence,
     #[strum(to_string = "Conditional Equivalence")]
     ConditionalEquivalence,
+    #[strum(to_string = "Biconditional Equivalence")]
+    BiconditionalEquivalence,
     #[strum(to_string = "Quantifier Equivalence")]
     QuantifierEquivalence,
 }
@@ -546,7 +558,7 @@ impl RuleT for PrepositionalInference {
                 let prem = p.lookup_expr_or_die(&deps[0])?;
                 if let Expr::Assoc { op: Op::And, ref exprs } = prem {
                     let premise_set: HashSet<_> = exprs.iter().collect();
-                    // If the conclusion is a conjunction of many terms 
+                    // If the conclusion is a conjunction of many terms
                     if let Expr::Assoc { op: Op::And, ref exprs } = conclusion {
                         // Check if every term in the conclusion exists in the premise
                         for ce in exprs.iter() {
@@ -555,7 +567,8 @@ impl RuleT for PrepositionalInference {
                             }
                         }
                         Ok(())
-                    } else { // If the conclusion is a single term
+                    } else {
+                        // If the conclusion is a single term
                         if premise_set.contains(&conclusion) {
                             Ok(())
                         } else {
@@ -990,7 +1003,7 @@ impl RuleT for PredicateInference {
     }
 }
 
-fn check_by_normalize_first_expr<F, P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion: Expr, commutative: bool, normalize_fn: F) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>>
+fn check_by_normalize_first_expr<F, P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion: Expr, commutative: bool, normalize_fn: F, restriction: &str) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>>
 where
     F: Fn(Expr) -> Expr,
 {
@@ -998,8 +1011,8 @@ where
     let mut p = normalize_fn(premise);
     let mut q = normalize_fn(conclusion);
     if commutative {
-        p = p.sort_commutative_ops();
-        q = q.sort_commutative_ops();
+        p = p.sort_commutative_ops(restriction);
+        q = q.sort_commutative_ops(restriction);
     }
     if p == q {
         Ok(())
@@ -1008,16 +1021,16 @@ where
     }
 }
 
-fn check_by_rewrite_rule_confl<P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion: Expr, commutative: bool, rule: &RewriteRule) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
-    check_by_normalize_first_expr(p, deps, conclusion, commutative, |e| rule.reduce(e))
+fn check_by_rewrite_rule_confl<P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion: Expr, commutative: bool, rule: &RewriteRule, restriction: &str) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
+    check_by_normalize_first_expr(p, deps, conclusion, commutative, |e| rule.reduce(e), restriction)
 }
 
-fn check_by_rewrite_rule_non_confl<P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion: Expr, commutative: bool, rule: &RewriteRule) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
+fn check_by_rewrite_rule_non_confl<P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion: Expr, commutative: bool, rule: &RewriteRule, restriction: &str) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
     let premise = p.lookup_expr_or_die(&deps[0])?;
     let premise_set = rule.reduce_set(premise.clone());
     let conclusion_set = rule.reduce_set(conclusion.clone());
     let (premise_set, conclusion_set) = if commutative {
-        let sort_ops = |set: HashSet<Expr>| set.into_iter().map(Expr::sort_commutative_ops).collect();
+        let sort_ops = |set: HashSet<Expr>| set.into_iter().map(|expr| expr.sort_commutative_ops(restriction)).collect();
         (sort_ops(premise_set), sort_ops(conclusion_set))
     } else {
         (premise_set, conclusion_set)
@@ -1063,22 +1076,22 @@ impl RuleT for BooleanEquivalence {
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
         use BooleanEquivalence::*;
         match self {
-            DeMorgan => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.normalize_demorgans()),
-            Association => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.combine_associative_ops()),
-            Commutation => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.sort_commutative_ops()),
-            Idempotence => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.normalize_idempotence()),
-            DoubleNegation => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::DOUBLE_NEGATION),
+            DeMorgan => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.normalize_demorgans(), "none"),
+            Association => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.combine_associative_ops("bool"), "bool"),
+            Commutation => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.sort_commutative_ops("bool"), "bool"),
+            Idempotence => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.normalize_idempotence(), "none"),
+            DoubleNegation => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::DOUBLE_NEGATION, "none"),
             // Distribution and Reduction have outputs containing binops that need commutative sorting
             // because we can't expect people to know the specific order of outputs that our definition
             // of the rules uses
-            Distribution => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::DISTRIBUTION),
-            Complement => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::COMPLEMENT),
-            Identity => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::IDENTITY),
-            Annihilation => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::ANNIHILATION),
-            Inverse => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::INVERSE),
-            Absorption => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::ABSORPTION),
-            Reduction => check_by_rewrite_rule_non_confl(p, deps, conclusion, true, &equivs::REDUCTION),
-            Adjacency => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::ADJACENCY),
+            Distribution => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::DISTRIBUTION, "none"),
+            Complement => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::COMPLEMENT, "none"),
+            Identity => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::IDENTITY, "none"),
+            Annihilation => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::ANNIHILATION, "none"),
+            Inverse => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::INVERSE, "none"),
+            Absorption => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::ABSORPTION, "none"),
+            Reduction => check_by_rewrite_rule_non_confl(p, deps, conclusion, true, &equivs::REDUCTION, "none"),
+            Adjacency => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::ADJACENCY, "none"),
         }
     }
 }
@@ -1091,15 +1104,12 @@ impl RuleT for ConditionalEquivalence {
             Identity => "Conditional Identity",
             Annihilation => "Conditional Annihilation",
             Implication => "Implication",
-            BiImplication => "Biconditional Equivalence",
             Contraposition => "Contraposition",
             Currying => "Exportation",
             ConditionalDistribution => "Conditional Distribution",
             ConditionalReduction => "Conditional Reduction",
             KnightsAndKnaves => "Knights and Knaves",
             ConditionalIdempotence => "Conditional Idempotence",
-            BiconditionalNegation => "Biconditional Negation",
-            BiconditionalSubstitution => "Biconditional Substitution",
         }
         .into()
     }
@@ -1115,19 +1125,49 @@ impl RuleT for ConditionalEquivalence {
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
         use ConditionalEquivalence::*;
         match self {
-            Complement => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_COMPLEMENT),
-            Identity => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_IDENTITY),
-            Annihilation => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_ANNIHILATION),
-            Implication => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_IMPLICATION),
-            BiImplication => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_BIIMPLICATION),
-            Contraposition => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_CONTRAPOSITION),
-            Currying => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_CURRYING),
-            ConditionalDistribution => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::CONDITIONAL_DISTRIBUTION),
-            ConditionalReduction => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::CONDITIONAL_REDUCTION),
-            KnightsAndKnaves => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::KNIGHTS_AND_KNAVES),
-            ConditionalIdempotence => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::CONDITIONAL_IDEMPOTENCE),
-            BiconditionalNegation => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::BICONDITIONAL_NEGATION),
-            BiconditionalSubstitution => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::BICONDITIONAL_SUBSTITUTION),
+            Complement => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_COMPLEMENT, "none"),
+            Identity => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_IDENTITY, "none"),
+            Annihilation => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_ANNIHILATION, "none"),
+            Implication => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_IMPLICATION, "none"),
+            Contraposition => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_CONTRAPOSITION, "none"),
+            Currying => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_CURRYING, "none"),
+            ConditionalDistribution => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::CONDITIONAL_DISTRIBUTION, "none"),
+            ConditionalReduction => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::CONDITIONAL_REDUCTION, "none"),
+            KnightsAndKnaves => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::KNIGHTS_AND_KNAVES, "none"),
+            ConditionalIdempotence => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::CONDITIONAL_IDEMPOTENCE, "none"),
+        }
+    }
+}
+
+impl RuleT for BiconditionalEquivalence {
+    fn get_name(&self) -> String {
+        use BiconditionalEquivalence::*;
+        match self {
+            BiconditionalAssociation => "Biconditional Association",
+            BiconditionalCommutation => "Biconditional Commutation",
+            BiconditionalEquivalenceRule => "Biconditional Equivalence",
+            BiconditionalNegation => "Biconditional Negation",
+            BiconditionalSubstitution => "Biconditional Substitution",
+        }
+        .into()
+    }
+    fn get_classifications(&self) -> HashSet<RuleClassification> {
+        [RuleClassification::BiconditionalEquivalence].iter().cloned().collect()
+    }
+    fn num_deps(&self) -> Option<usize> {
+        Some(1)
+    } // all equivalence rules rewrite a single statement
+    fn num_subdeps(&self) -> Option<usize> {
+        Some(0)
+    }
+    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
+        use BiconditionalEquivalence::*;
+        match self {
+            BiconditionalAssociation => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.combine_associative_ops("bicon"), "bicon"),
+            BiconditionalCommutation => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.sort_commutative_ops("bicon"), "bicon"),
+            BiconditionalEquivalenceRule => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::BICONDITIONAL_EQUIVALENCE, "none"),
+            BiconditionalNegation => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::BICONDITIONAL_NEGATION, "none"),
+            BiconditionalSubstitution => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::BICONDITIONAL_SUBSTITUTION, "none"),
         }
     }
 }
@@ -1339,7 +1379,7 @@ impl RuleT for AutomationRelatedRules {
     fn get_name(&self) -> String {
         match self {
             AutomationRelatedRules::Resolution => "Resolution",
-            AutomationRelatedRules::TautologicalConsequence => "Tautological Consequence",
+            AutomationRelatedRules::TruthFunctionalConsequence => "Truth-Functional Consequence",
         }
         .into()
     }
@@ -1349,12 +1389,12 @@ impl RuleT for AutomationRelatedRules {
     fn num_deps(&self) -> Option<usize> {
         match self {
             AutomationRelatedRules::Resolution => Some(2),
-            AutomationRelatedRules::TautologicalConsequence => None,
+            AutomationRelatedRules::TruthFunctionalConsequence => None,
         }
     }
     fn num_subdeps(&self) -> Option<usize> {
         match self {
-            AutomationRelatedRules::Resolution | AutomationRelatedRules::TautologicalConsequence => Some(0),
+            AutomationRelatedRules::Resolution | AutomationRelatedRules::TruthFunctionalConsequence => Some(0),
         }
     }
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
@@ -1381,7 +1421,7 @@ impl RuleT for AutomationRelatedRules {
                     }
                 }
             }
-            AutomationRelatedRules::TautologicalConsequence => {
+            AutomationRelatedRules::TruthFunctionalConsequence => {
                 // Closure for making CNF conversion errors
                 let cnf_error = || ProofCheckError::Other("Failed converting to CNF; the propositions for this rule should not use quantifiers, arithmetic, or application.".to_string());
 
@@ -1419,7 +1459,7 @@ impl RuleT for AutomationRelatedRules {
                             .collect::<Vec<String>>()
                             .join(", ");
 
-                        Err(ProofCheckError::Other(format!("Not true by tautological consequence; Counterexample: {model}")))
+                        Err(ProofCheckError::Other(format!("Not true by truth-functional consequence; Counterexample: {model}")))
                     }
                     None => Ok(()),
                 }
@@ -1454,13 +1494,13 @@ impl RuleT for QuantifierEquivalence {
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
         use QuantifierEquivalence::*;
         match self {
-            QuantifierNegation => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::negate_quantifiers),
-            NullQuantification => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::normalize_null_quantifiers),
-            ReplacingBoundVars => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::replacing_bound_vars),
-            SwappingQuantifiers => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::swap_quantifiers),
-            AristoteleanSquare => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::aristotelean_square),
-            QuantifierDistribution => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::quantifier_distribution),
-            PrenexLaws => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::normalize_prenex_laws),
+            QuantifierNegation => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::negate_quantifiers, "none"),
+            NullQuantification => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::normalize_null_quantifiers, "none"),
+            ReplacingBoundVars => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::replacing_bound_vars, "none"),
+            SwappingQuantifiers => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::swap_quantifiers, "none"),
+            AristoteleanSquare => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::aristotelean_square, "none"),
+            QuantifierDistribution => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::quantifier_distribution, "none"),
+            PrenexLaws => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::normalize_prenex_laws, "none"),
         }
     }
 }
