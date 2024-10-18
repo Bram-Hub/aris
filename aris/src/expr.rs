@@ -114,7 +114,7 @@ pub enum Expr {
         exprs: Vec<Expr>,
     },
 
-    /// A quantifier expression `<KIND> A, P`
+    /// A quantifier expression `<KIND> A P`
     Quant {
         /// The kind of quantifier `<KIND>`
         kind: QuantKind,
@@ -220,7 +220,7 @@ impl fmt::Display for Expr {
             Expr::Not { operand } => write!(f, "¬{operand}"),
             Expr::Impl { left, right } => write!(f, "({left} → {right})"),
             Expr::Assoc { op, exprs } => assoc_display_helper(f, op, exprs),
-            Expr::Quant { kind, name, body } => write!(f, "({kind} {name}, {body})"),
+            Expr::Quant { kind, name, body } => write!(f, "({kind} {name} {body})"),
         }
     }
 }
@@ -550,10 +550,12 @@ impl Expr {
         }
     }
     /// Sort all commutative associative operators to normalize expressions in the case of arbitrary ordering
+    /// Supports only boolean association (AND/OR) when t = "bool"
+    /// Supports only biconditional association (<->) when t = "bicon"
     /// Eg (B & A) ==> (A & B)
-    pub fn sort_commutative_ops(self) -> Expr {
+    pub fn sort_commutative_ops(self, t: &str) -> Expr {
         self.transform(&|e| match e {
-            Expr::Assoc { op, mut exprs } => {
+            Expr::Assoc { op, mut exprs } if (t == "bool" && op != Op::Bicon) || (t == "bicon" && op == Op::Bicon) || (t == "none") => {
                 let is_sorted = exprs.windows(2).all(|xy| xy[0] <= xy[1]);
                 if !is_sorted {
                     exprs.sort();
@@ -567,25 +569,32 @@ impl Expr {
     }
 
     /// Combine associative operators such that nesting is flattened
-    /// Eg (A & (B & C)) ==> (A & B & C)
-    pub fn combine_associative_ops(self) -> Expr {
-        self.transform(&|e| match e {
+    /// Supports only boolean association (AND/OR) when t = "bool"
+    /// Supports only biconditional association (<->) when t = "bicon"
+    /// Eg (A <-> (B <-> C)) ==> (A <-> B <-> C)
+    pub fn combine_associative_ops(self, t: &str) -> Expr {
+        self.transform(&|e| match e.clone() {
             Expr::Assoc { op: op_1, exprs: exprs_1 } => {
                 let mut result = vec![];
                 let mut combined = false;
-                for expr in exprs_1 {
-                    if let Expr::Assoc { op: op_2, exprs: exprs_2 } = expr {
-                        if op_1 == op_2 {
-                            result.extend(exprs_2);
-                            combined = true;
+
+                if (t == "bool" && op_1 != Op::Bicon) || (t == "bicon" && op_1 == Op::Bicon) {
+                    for expr in exprs_1 {
+                        if let Expr::Assoc { op: op_2, exprs: exprs_2 } = expr {
+                            if op_1 == op_2 && ((t == "bool" && op_2 != Op::Bicon) || (t == "bicon" && op_2 == Op::Bicon)) {
+                                result.extend(exprs_2);
+                                combined = true;
+                            } else {
+                                result.push(Expr::Assoc { op: op_2, exprs: exprs_2 });
+                            }
                         } else {
-                            result.push(Expr::Assoc { op: op_2, exprs: exprs_2 });
+                            result.push(expr);
                         }
-                    } else {
-                        result.push(expr);
                     }
+                    (Expr::Assoc { op: op_1, exprs: result }, combined)
+                } else {
+                    (e, false)
                 }
-                (Expr::Assoc { op: op_1, exprs: result }, combined)
             }
             _ => (e, false),
         })
@@ -1569,11 +1578,23 @@ mod tests {
     }
 
     #[test]
-    pub fn test_combine_associative_ops() {
+    pub fn test_combine_associative_ops_bool() {
         use crate::parser::parse_unwrap as p;
         let f = |s: &str| {
             let e = p(s);
-            println!("association of {} is {}", e, e.clone().combine_associative_ops());
+            println!("association of {} is {}", e, e.clone().combine_associative_ops("bool"));
+        };
+        f("a & (b & (c | (p -> (q <-> (r <-> s)))) & ((t === u) === (v === ((w | x) | y))))");
+        f("a & ((b & c) | (q | r))");
+        f("(a & (b & c)) | (q | r)");
+    }
+
+    #[test]
+    pub fn test_combine_associative_ops_bicon() {
+        use crate::parser::parse_unwrap as p;
+        let f = |s: &str| {
+            let e = p(s);
+            println!("association of {} is {}", e, e.clone().combine_associative_ops("bicon"));
         };
         f("a & (b & (c | (p -> (q <-> (r <-> s)))) & ((t === u) === (v === ((w | x) | y))))");
         f("a & ((b & c) | (q | r))");

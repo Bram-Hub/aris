@@ -84,7 +84,7 @@ typedef enum Expr_Tag {
    */
   Assoc,
   /**
-   * A quantifier expression `<KIND> A, P`
+   * A quantifier expression `<KIND> A P`
    */
   Quant,
 } Expr_Tag;

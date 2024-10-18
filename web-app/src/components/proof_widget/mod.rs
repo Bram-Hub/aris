@@ -193,17 +193,22 @@ impl ProofWidget {
                                         let js = format!(
                                             r#"
                                             var tooltipImg = document.getElementById('tooltip-img-{0}');
-                                            tooltipImg.style.display = 'block';
+                                            if (tooltipImg !== null) {{
+                                                tooltipImg.style.display = 'block';
+                                            }}
                                             "#, rule.get_name()
                                         );
                                         js_sys::eval(&js).unwrap_throw();
                                         ProofWidgetMsg::Nop
                                     })}
+
                                     onmouseout={ctx.link().callback(move |_| {
                                         let js = format!(
                                             r#"
                                             var tooltipImg = document.getElementById('tooltip-img-{0}');
-                                            tooltipImg.style.display = 'none';
+                                            if (tooltipImg !== null) {{
+                                                tooltipImg.style.display = 'none';
+                                            }}
                                             "#, rule.get_name()
                                         );
                                         js_sys::eval(&js).unwrap_throw();
@@ -226,7 +231,7 @@ impl ProofWidget {
                                         transform: translateY(-50%);
                                         border: 2px solid black;
                                         border-radius: 5px;
-                                        padding: 5px;
+                                        padding: 2px;
                                         background-color: white;" 
                                 />
                             </div>
@@ -895,16 +900,19 @@ impl Component for ProofWidget {
     fn rendered(&mut self, _: &Context<Self>, first_render: bool) {
         js_sys::eval("$('[data-submenu]').submenupicker(); $('[data-toggle=popover]').popover()").unwrap_throw();
         if !first_render {
-            // Use JavaScript to reinitialize the hover events for tooltips
             let js = r#"
                 document.querySelectorAll('.dropdown-item').forEach(item => {
-                    const imgId = `tooltip-img-${item.innerText}`;
+                    const imgId = `tooltip-img-${item.innerText.trim().replace(/\s+/g, '_')}`;
                     const imgElem = document.getElementById(imgId);
                     item.addEventListener('mouseover', function() {
-                        imgElem.style.display = 'block';
+                        if (imgElem) {
+                            imgElem.style.display = 'block';
+                        }
                     });
                     item.addEventListener('mouseout', function() {
-                        imgElem.style.display = 'none';
+                        if (imgElem) {
+                            imgElem.style.display = 'none';
+                        }
                     });
                 });
             "#;

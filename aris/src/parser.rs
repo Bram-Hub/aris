@@ -5,6 +5,7 @@ use nom::bytes::complete::tag;
 use nom::character::complete::newline;
 use nom::character::complete::one_of;
 use nom::combinator::map;
+use nom::combinator::peek;
 use nom::combinator::recognize;
 use nom::combinator::value;
 use nom::combinator::verify;
@@ -91,8 +92,17 @@ fn space_after_quantifier(input: &str) -> IResult<&str, ()> {
     value((), many1(one_of(" \t")))(input)
 }
 
+fn conditional_space(input: &str) -> IResult<&str, ()> {
+    let is_next_quantifier = peek(quantifier)(input);
+
+    match is_next_quantifier {
+        Ok(_) => value((), space)(input),
+        Err(_) => value((), space_after_quantifier)(input),
+    }
+}
+
 fn binder(input: &str) -> IResult<&str, Expr> {
-    map(tuple((preceded(space, quantifier), preceded(space, variable), preceded(space_after_quantifier, expr))), |(kind, name, body)| Expr::Quant { kind, name, body: Box::new(body) })(input)
+    map(tuple((preceded(space, quantifier), preceded(space, variable), preceded(conditional_space, expr))), |(kind, name, body)| Expr::Quant { kind, name, body: Box::new(body) })(input)
 }
 
 fn impl_term(input: &str) -> IResult<&str, Expr> {

@@ -69,6 +69,7 @@ pub extern "system" fn Java_edu_rpi_aris_rules_Rule_getRuleType(env: JNIEnv, obj
                 Elimination => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("ELIM")?])?,
                 BooleanEquivalence => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("BOOL_EQUIVALENCE")?])?,
                 ConditionalEquivalence => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("CONDITIONAL_EQUIVALENCE")?])?,
+                BiconditionalEquivalence => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("BICONDITIONAL_EQUIVALENCE")?])?,
                 QuantifierEquivalence => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("QUANTIFIER_EQUIVALENCE")?])?,
                 MiscInference => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("MISC_INFERENCE")?])?,
             };
