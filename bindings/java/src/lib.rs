@@ -26,13 +26,12 @@ pub fn java_iterator_for_each<F: FnMut(JObject) -> jni::errors::Result<()>>(env:
 
 /// Wraps a Rust function, converting both Result::Err and panic into instances of Java's RuntimeException.
 /// Please use this on all native methods, otherwise a Rust panic/unwrap will crash the Java UI instead of popping a dialog box with the message.
-#[allow(deprecated)]
 pub fn with_thrown_errors<A, F: FnOnce(&JNIEnv) -> jni::errors::Result<A> + UnwindSafe>(env: &JNIEnv, f: F) -> A {
-    use std::panic::{set_hook, take_hook, PanicInfo};
+    use std::panic::{set_hook, take_hook, PanicHookInfo};
     let old_hook = take_hook();
     let (tx, rx) = std::sync::mpsc::channel::<String>();
     let mtx = std::sync::Mutex::new(tx);
-    set_hook(Box::new(move |info: &PanicInfo| {
+    set_hook(Box::new(move |info: &PanicHookInfo| {
         let mut msg = format!("Panic at {:?}", info.location());
         if let Some(e) = info.payload().downcast_ref::<&str>() {
             msg += &*format!(": {e:?}");
