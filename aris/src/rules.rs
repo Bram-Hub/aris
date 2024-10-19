@@ -572,11 +572,11 @@ impl RuleT for PrepositionalInference {
                         if premise_set.contains(&conclusion) {
                             Ok(())
                         } else {
-                            return Err(DoesNotOccur(conclusion.clone(), prem.clone()));
+                            Err(DoesNotOccur(conclusion.clone(), prem.clone()))
                         }
                     }
                 } else {
-                    return Err(DepDoesNotExist(Expr::assocplaceholder(Op::And), true));
+                    Err(DepDoesNotExist(Expr::assocplaceholder(Op::And), true))
                 }
             }
             OrIntro => {
