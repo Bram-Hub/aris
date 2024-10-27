@@ -112,6 +112,7 @@ pub enum PredicateInference {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BooleanEquivalence {
     DeMorgan,
+    HalfDeMorgan,
     Association,
     Commutation,
     Idempotence,
@@ -129,26 +130,31 @@ pub enum BooleanEquivalence {
 #[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ConditionalEquivalence {
-    Complement,
-    Identity,
-    Annihilation,
     Implication,
     Contraposition,
-    Currying,
+    Exportation,
     ConditionalDistribution,
+    ConditionalAbsorption,
     ConditionalReduction,
-    KnightsAndKnaves,
     ConditionalIdempotence,
+    ConditionalComplement,
+    ConditionalIdentity,
+    ConditionalAnnihilation,
 }
 
 #[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BiconditionalEquivalence {
-    BiconditionalAssociation,
+    BiEquivalence,
+    BiconditionalContraposition,
     BiconditionalCommutation,
-    BiconditionalEquivalenceRule,
+    BiconditionalAssociation,
+    BiconditionalReduction,
+    BiconditionalComplement,
+    BiconditionalIdentity,
     BiconditionalNegation,
     BiconditionalSubstitution,
+    KnightsAndKnaves,
 }
 
 #[allow(missing_docs)]
@@ -277,6 +283,7 @@ pub mod RuleM {
         [Commutation, "COMMUTATION", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Commutation)))))],
         [Idempotence, "IDEMPOTENCE", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Idempotence)))))],
         [DeMorgan, "DE_MORGAN", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::DeMorgan)))))],
+        [HalfDeMorgan, "HALF_DE_MORGAN", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::HalfDeMorgan)))))],
         [Distribution, "DISTRIBUTION", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Distribution)))))],
         [DoubleNegation, "DOUBLENEGATION_EQUIV", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::DoubleNegation)))))],
         [Complement, "COMPLEMENT", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Complement)))))],
@@ -287,22 +294,27 @@ pub mod RuleM {
         [Reduction, "REDUCTION", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Reduction)))))],
         [Adjacency, "ADJACENCY", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Adjacency)))))],
 
-        [CondComplement, "CONDITIONAL_COMPLEMENT", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Complement))))))],
-        [CondIdentity, "CONDITIONAL_IDENTITY", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Identity))))))],
-        [CondAnnihilation, "CONDITIONAL_ANNIHILATION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Annihilation))))))],
         [Implication, "IMPLICATION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Implication))))))],
         [Contraposition, "CONTRAPOSITION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Contraposition))))))],
-        [Currying, "CURRYING", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Currying))))))],
+        [Exportation, "Exportation", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Exportation))))))],
         [ConditionalDistribution, "CONDITIONAL_DISTRIBUTION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalDistribution))))))],
+        [ConditionalAbsorption, "CONDITIONAL_ABSORPTION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalAbsorption))))))],
         [ConditionalReduction, "CONDITIONAL_REDUCTION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalReduction))))))],
-        [KnightsAndKnaves, "KNIGHTS_AND_KNAVES", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::KnightsAndKnaves))))))],
         [ConditionalIdempotence, "CONDITIONAL_IDEMPOTENCE", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalIdempotence))))))],
+        [ConditionalComplement, "CONDITIONAL_COMPLEMENT", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalComplement))))))],
+        [ConditionalIdentity, "CONDITIONAL_IDENTITY", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalIdentity))))))],
+        [ConditionalAnnihilation, "CONDITIONAL_ANNIHILATION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalAnnihilation))))))],
 
-        [BiconditionalAssociation, "BICONDITIONAL_ASSOCIATION", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalAssociation)))))))],
+        [BiEquivalence, "BICONDITIONAL_EQUIVALENCE", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiEquivalence)))))))],
+        [BiconditionalContraposition, "BICONDITIONAL_CONTRAPOSITION", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalContraposition)))))))],
         [BiconditionalCommutation, "BICONDITIONAL_COMMUTATION", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalCommutation)))))))],
-        [BiconditionalEquivalenceRule, "BICONDITIONAL_EQUIVALENCE", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalEquivalenceRule)))))))],
+        [BiconditionalAssociation, "BICONDITIONAL_ASSOCIATION", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalAssociation)))))))],
+        [BiconditionalReduction, "BICONDITIONAL_REDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalReduction)))))))],
+        [BiconditionalComplement, "BICONDITIONAL_COMPLEMENT", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalComplement)))))))],
+        [BiconditionalIdentity, "BICONDITIONAL_IDENTITY", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalIdentity)))))))],
         [BiconditionalNegation, "BICONDITIONAL_NEGATION", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalNegation)))))))],
         [BiconditionalSubstitution, "BICONDITIONAL_SUBSTITUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalSubstitution)))))))],
+        [KnightsAndKnaves, "KNIGHTS_AND_KNAVES", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::KnightsAndKnaves)))))))],
 
         [ModusTollens, "MODUS_TOLLENS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ModusTollens))))))))],
         [HypotheticalSyllogism, "HYPOTHETICAL_SYLLOGISM", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::HypotheticalSyllogism))))))))],
@@ -1021,6 +1033,28 @@ where
     }
 }
 
+fn check_by_normalize_multiple_possibilities<F, P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion: Expr, normalize_fn: F) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>>
+where
+    F: Fn(Expr) -> Vec<Expr>,
+{
+    let premise = p.lookup_expr_or_die(&deps[0])?;
+
+    // Generate all possible transformed premises and conclusions
+    let premise_possibilities = normalize_fn(premise);
+    let conclusion_possibilities = normalize_fn(conclusion);
+
+    // Check if any conclusion possibility matches a premise possibility
+    for premise_expr in premise_possibilities.iter() {
+        for conclusion_expr in conclusion_possibilities.iter() {
+            if premise_expr == conclusion_expr {
+                return Ok(()); // If a match is found, return success
+            }
+        }
+    }
+
+    Err(ProofCheckError::Other("None of the possible normalized premises match the conclusion.".to_string()))
+}
+
 fn check_by_rewrite_rule_confl<P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion: Expr, commutative: bool, rule: &RewriteRule, restriction: &str) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
     check_by_normalize_first_expr(p, deps, conclusion, commutative, |e| rule.reduce(e), restriction)
 }
@@ -1049,6 +1083,7 @@ impl RuleT for BooleanEquivalence {
         use BooleanEquivalence::*;
         match self {
             DeMorgan => "DeMorgan",
+            HalfDeMorgan => "Half DeMorgan",
             Association => "Association",
             Commutation => "Commutation",
             Idempotence => "Idempotence",
@@ -1077,6 +1112,7 @@ impl RuleT for BooleanEquivalence {
         use BooleanEquivalence::*;
         match self {
             DeMorgan => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.normalize_demorgans(), "none"),
+            HalfDeMorgan => check_by_normalize_multiple_possibilities(p, deps, conclusion, |e| e.normalize_halfdemorgans()),
             Association => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.combine_associative_ops("bool"), "bool"),
             Commutation => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.sort_commutative_ops("bool"), "bool"),
             Idempotence => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.normalize_idempotence(), "none"),
@@ -1100,16 +1136,16 @@ impl RuleT for ConditionalEquivalence {
     fn get_name(&self) -> String {
         use ConditionalEquivalence::*;
         match self {
-            Complement => "Conditional Complement",
-            Identity => "Conditional Identity",
-            Annihilation => "Conditional Annihilation",
             Implication => "Implication",
             Contraposition => "Contraposition",
-            Currying => "Exportation",
+            Exportation => "Exportation",
             ConditionalDistribution => "Conditional Distribution",
+            ConditionalAbsorption => "Conditional Absorption",
             ConditionalReduction => "Conditional Reduction",
-            KnightsAndKnaves => "Knights and Knaves",
             ConditionalIdempotence => "Conditional Idempotence",
+            ConditionalComplement => "Conditional Complement",
+            ConditionalIdentity => "Conditional Identity",
+            ConditionalAnnihilation => "Conditional Annihilation",
         }
         .into()
     }
@@ -1125,16 +1161,16 @@ impl RuleT for ConditionalEquivalence {
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
         use ConditionalEquivalence::*;
         match self {
-            Complement => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_COMPLEMENT, "none"),
-            Identity => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_IDENTITY, "none"),
-            Annihilation => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_ANNIHILATION, "none"),
             Implication => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_IMPLICATION, "none"),
             Contraposition => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_CONTRAPOSITION, "none"),
-            Currying => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_CURRYING, "none"),
+            Exportation => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_EXPORTATION, "none"),
             ConditionalDistribution => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::CONDITIONAL_DISTRIBUTION, "none"),
+            ConditionalAbsorption => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_ABSORPTION, "none"),
             ConditionalReduction => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::CONDITIONAL_REDUCTION, "none"),
-            KnightsAndKnaves => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::KNIGHTS_AND_KNAVES, "none"),
             ConditionalIdempotence => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::CONDITIONAL_IDEMPOTENCE, "none"),
+            ConditionalComplement => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_COMPLEMENT, "none"),
+            ConditionalIdentity => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_IDENTITY, "none"),
+            ConditionalAnnihilation => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_ANNIHILATION, "none"),
         }
     }
 }
@@ -1143,11 +1179,16 @@ impl RuleT for BiconditionalEquivalence {
     fn get_name(&self) -> String {
         use BiconditionalEquivalence::*;
         match self {
-            BiconditionalAssociation => "Biconditional Association",
+            BiEquivalence => "Equivalence",
+            BiconditionalContraposition => "Biconditional Contraposition",
             BiconditionalCommutation => "Biconditional Commutation",
-            BiconditionalEquivalenceRule => "Biconditional Equivalence",
+            BiconditionalAssociation => "Biconditional Association",
+            BiconditionalReduction => "Biconditional Reduction",
+            BiconditionalComplement => "Biconditional Complement",
+            BiconditionalIdentity => "Biconditional Identity",
             BiconditionalNegation => "Biconditional Negation",
             BiconditionalSubstitution => "Biconditional Substitution",
+            KnightsAndKnaves => "Knights & Knaves",
         }
         .into()
     }
@@ -1163,11 +1204,16 @@ impl RuleT for BiconditionalEquivalence {
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
         use BiconditionalEquivalence::*;
         match self {
-            BiconditionalAssociation => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.combine_associative_ops("bicon"), "bicon"),
+            BiEquivalence => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::BICONDITIONAL_EQUIVALENCE, "none"),
+            BiconditionalContraposition => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.normalize_biconditional_contraposition(), "none"),
             BiconditionalCommutation => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.sort_commutative_ops("bicon"), "bicon"),
-            BiconditionalEquivalenceRule => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::BICONDITIONAL_EQUIVALENCE, "none"),
+            BiconditionalAssociation => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.combine_associative_ops("bicon"), "bicon"),
+            BiconditionalReduction => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::BICONDITIONAL_REDUCTION, "none"),
+            BiconditionalComplement => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::BICONDITIONAL_COMPLEMENT, "none"),
+            BiconditionalIdentity => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::BICONDITIONAL_IDENTITY, "none"),
             BiconditionalNegation => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::BICONDITIONAL_NEGATION, "none"),
             BiconditionalSubstitution => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::BICONDITIONAL_SUBSTITUTION, "none"),
+            KnightsAndKnaves => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::KNIGHTS_AND_KNAVES, "none"),
         }
     }
 }
@@ -1259,46 +1305,39 @@ impl RuleT for RedundantPrepositionalInference {
                 )
             }
             DisjunctiveSyllogism => {
-                // P | Q, ~P
-                // ---------
-                // Q
                 let dep_0 = proof.lookup_expr_or_die(&deps[0])?;
                 let dep_1 = proof.lookup_expr_or_die(&deps[1])?;
-                either_order(
-                    &dep_0,
-                    &dep_1,
-                    |dep_0, dep_1| {
-                        if let Expr::Assoc { op: _, exprs: expression } = dep_0 {
-                            let p = expression[0].clone();
-                            let q = expression[1].clone();
-                            let res = either_order(
-                                &p,
-                                &q,
-                                |p, q| {
-                                    if let Expr::Not { operand: dep1_body } = dep_1 {
-                                        if p != &**dep1_body {
-                                            AnyOrderResult::Err(DoesNotOccur(p.clone(), dep_1.clone()))
-                                        } else if q.clone() != conclusion {
-                                            AnyOrderResult::Err(DoesNotOccur(q.clone(), conclusion.clone()))
-                                        } else {
-                                            AnyOrderResult::Ok
-                                        }
-                                    } else {
-                                        AnyOrderResult::WrongOrder
-                                    }
-                                },
-                                || DepDoesNotExist(Expr::assocplaceholder(Op::Or), true),
-                            );
-                            match res {
-                                Ok(()) => AnyOrderResult::Ok,
-                                Err(e) => AnyOrderResult::Err(e),
+
+                let is_disjunctive_case = |disj, negation, conclusion| {
+                    if let Expr::Assoc { op: Op::Or, exprs } = disj {
+                        if exprs.len() == 2 {
+                            let (p, q) = (&exprs[0], &exprs[1]);
+
+                            match (p, q, negation, conclusion) {
+                                // Case 1: P | Q, ~P concludes Q
+                                (p_expr, q_expr, Expr::Not { operand }, conclusion) if p_expr == &*operand && q_expr == conclusion => true,
+                                // Case 2: P | Q, ~Q concludes P
+                                (p_expr, q_expr, Expr::Not { operand }, conclusion) if q_expr == &*operand && p_expr == conclusion => true,
+                                // Case 3: ~P | Q, P concludes Q
+                                (Expr::Not { operand }, q_expr, p_expr, conclusion) if **operand == p_expr && q_expr == conclusion => true,
+                                // Case 4: P | ~Q, Q concludes P
+                                (p_expr, Expr::Not { operand }, q_expr, conclusion) if **operand == q_expr && p_expr == conclusion => true,
+                                _ => false,
                             }
                         } else {
-                            AnyOrderResult::WrongOrder
+                            false
                         }
-                    },
-                    || DepDoesNotExist(Expr::assocplaceholder(Op::Or), true),
-                )
+                    } else {
+                        false
+                    }
+                };
+
+                // Check if dep_0 or dep_1 is the disjunction, and apply the disjunctive syllogism rule
+                if is_disjunctive_case(dep_0.clone(), dep_1.clone(), &conclusion) || is_disjunctive_case(dep_1, dep_0, &conclusion) {
+                    Ok(())
+                } else {
+                    Err(ProofCheckError::Other("Conclusion does not logically follow from premises".to_string()))
+                }
             }
             ExcludedMiddle => {
                 // A | ~A
