@@ -788,6 +788,60 @@ impl Expr {
         })
     }
 
+    /// Simplify an expression with recursive HalfDeMorgan's
+    /// ~(A v B) => ~A  /  ~(A v B) => ~B
+    /// Strategy: Expr::Apply this to all ~(A ^ B) constructions
+    /// This should leave us with a vector of possible expressions
+    /// in "HalfDeMorgan'd normal form" with no ~(A v B) expressions
+    pub fn normalize_halfdemorgans(self) -> Vec<Expr> {
+        fn normalize_expr(expr: Expr) -> Vec<Expr> {
+            match expr {
+                Expr::Not { operand } => match *operand {
+                    Expr::Assoc { op: Op::Or, exprs } => {
+                        let mut possibilities = Vec::new();
+                        for expr in &exprs {
+                            let not_expr = Expr::Not { operand: Box::new(expr.clone()) };
+                            possibilities.push(not_expr);
+                        }
+                        combine_possibilities(possibilities)
+                    }
+                    _ => vec![Expr::Not { operand: Box::new(*operand) }],
+                },
+                Expr::Assoc { op, exprs } => {
+                    let mut combined_possibilities = vec![Vec::new()];
+                    for sub_expr in exprs {
+                        let sub_possibilities = normalize_expr(sub_expr);
+                        combined_possibilities = combine_associations(combined_possibilities, sub_possibilities);
+                    }
+                    combined_possibilities.into_iter().map(|exprs| Expr::Assoc { op, exprs }).collect()
+                }
+                _ => vec![expr],
+            }
+        }
+
+        normalize_expr(self)
+    }
+
+    pub fn normalize_biconditional_contraposition(self) -> Expr {
+        self.transform(&|expr| {
+            match expr {
+                Expr::Assoc { op: Op::Bicon, ref exprs } if exprs.len() == 2 => {
+                    let already_negated = exprs.iter().all(|e| matches!(e, Expr::Not { .. }));
+
+                    if already_negated {
+                        // Check to ensure that the function only transforms instances of bicon. contraposition once
+                        (expr, false) // otherwise results in infinite loop
+                    } else {
+                        let new_exprs = exprs.iter().map(|e| Expr::Not { operand: Box::new(e.clone()) }).collect();
+
+                        (Expr::Assoc { op: Op::Bicon, exprs: new_exprs }, true)
+                    }
+                }
+                _ => (expr, false),
+            }
+        })
+    }
+
     /// Reduce an expression over idempotence, that is:
     /// A & A -> A
     /// A | A -> A
@@ -1221,6 +1275,31 @@ impl Expr {
             },
         }
     }
+}
+
+/// Helper function to combine possibilities
+fn combine_possibilities(exprs: Vec<Expr>) -> Vec<Expr> {
+    let mut combined = Vec::new();
+    for i in 0..exprs.len() {
+        for j in (i + 1)..exprs.len() {
+            combined.push(exprs[i].clone());
+            combined.push(exprs[j].clone());
+        }
+    }
+    combined
+}
+
+/// Helper function to combine associations
+fn combine_associations(existing: Vec<Vec<Expr>>, new_exprs: Vec<Expr>) -> Vec<Vec<Expr>> {
+    let mut combined = Vec::new();
+    for existing_comb in existing {
+        for new_expr in &new_exprs {
+            let mut new_comb = existing_comb.clone();
+            new_comb.push(new_expr.clone());
+            combined.push(new_comb);
+        }
+    }
+    combined
 }
 
 impl NnfExpr {

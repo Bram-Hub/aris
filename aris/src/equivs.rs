@@ -89,11 +89,16 @@ define_rewrite_rule! {
 
 // Conditional Equivalences
 define_rewrite_rule! {
+    CONDITIONAL_ABSORPTION,
+    &[
+        ("phi & (~phi -> psi)", "phi"),
+        ("psi & (phi -> psi)", "psi"),
+    ]
+}
+define_rewrite_rule! {
     CONDITIONAL_COMPLEMENT,
     &[
         ("phi -> phi", "^|^"),
-        ("phi <-> phi", "^|^"),
-        ("phi <-> ~phi", "_|_"),
     ]
 }
 define_rewrite_rule! {
@@ -101,8 +106,6 @@ define_rewrite_rule! {
     &[
         ("phi -> _|_", "~phi"),
         ("^|^ -> phi", "phi"),
-        ("phi <-> _|_", "~phi"),
-        ("phi <-> ^|^", "phi"),
     ]
 }
 define_rewrite_rule! {
@@ -128,7 +131,7 @@ define_rewrite_rule! {
 }
 // exportation
 define_rewrite_rule! {
-    CONDITIONAL_CURRYING,
+    CONDITIONAL_EXPORTATION,
     &[
         ("phi -> (psi -> lambda)", "(phi & psi) -> lambda"),
     ]
@@ -147,8 +150,6 @@ define_rewrite_rule! {
     &[
         ("phi & (phi -> psi)", "phi & psi"),
         ("~psi & (phi -> psi)", "~psi & ~phi"),
-        ("phi & (phi <-> psi)", "phi & psi"),
-        ("~phi & (phi <-> psi)", "~phi & ~psi"),
     ]
 }
 define_rewrite_rule! {
@@ -168,9 +169,16 @@ define_rewrite_rule! {
 
 // Biconditional Equivalences
 define_rewrite_rule! {
-    BICONDITIONAL_ASSOCIATION,
+    BICONDITIONAL_EQUIVALENCE,
     &[
-        ("phi <-> (psi <-> lambda)", "(phi <-> psi) <-> lambda"),
+        ("(phi -> psi) & (psi -> phi)", "phi <-> psi"),
+        ("(phi & psi) | (~phi & ~psi)", "phi <-> psi"),
+    ]
+}
+define_rewrite_rule! {
+    BICONDITIONAL_CONTRAPOSITION,
+    &[
+        ("phi <-> psi", "psi <-> phi"),
     ]
 }
 define_rewrite_rule! {
@@ -180,10 +188,30 @@ define_rewrite_rule! {
     ]
 }
 define_rewrite_rule! {
-    BICONDITIONAL_EQUIVALENCE,
+    BICONDITIONAL_ASSOCIATION,
     &[
-        ("(phi -> psi) & (psi -> phi)", "phi <-> psi"),
-        ("(phi & psi) | (~phi & ~psi)", "phi <-> psi"),
+        ("phi <-> (psi <-> lambda)", "(phi <-> psi) <-> lambda"),
+    ]
+}
+define_rewrite_rule! {
+    BICONDITIONAL_REDUCTION,
+    &[
+        ("phi & (phi <-> psi)", "phi & psi"),
+        ("~phi & (phi <-> psi)", "~phi & ~psi"),
+    ]
+}
+define_rewrite_rule! {
+    BICONDITIONAL_COMPLEMENT,
+    &[
+        ("phi <-> phi", "^|^"),
+        ("phi <-> ~phi", "_|_"),
+    ]
+}
+define_rewrite_rule! {
+    BICONDITIONAL_IDENTITY,
+    &[
+        ("phi <-> _|_", "~phi"),
+        ("phi <-> ^|^", "phi"),
     ]
 }
 define_rewrite_rule! {
@@ -222,7 +250,7 @@ mod tests {
     #[test]
     fn bruteforce_equivalence_truthtables() {
         use std::collections::HashMap;
-        let rules: Vec<&RewriteRule> = vec![&*DOUBLE_NEGATION, &*DISTRIBUTION, &*COMPLEMENT, &*IDENTITY, &*ANNIHILATION, &*INVERSE, &*ABSORPTION, &*REDUCTION, &*ADJACENCY, &*CONDITIONAL_ANNIHILATION, &*CONDITIONAL_IMPLICATION, &*CONDITIONAL_CONTRAPOSITION, &*CONDITIONAL_CURRYING, &*CONDITIONAL_COMPLEMENT, &*CONDITIONAL_IDENTITY, &*CONDITIONAL_DISTRIBUTION, &*CONDITIONAL_REDUCTION, &*KNIGHTS_AND_KNAVES, &*CONDITIONAL_IDEMPOTENCE, &*BICONDITIONAL_ASSOCIATION, &*BICONDITIONAL_COMMUTATION, &*BICONDITIONAL_EQUIVALENCE, &*BICONDITIONAL_NEGATION, &*BICONDITIONAL_SUBSTITUTION];
+        let rules: Vec<&RewriteRule> = vec![&*DOUBLE_NEGATION, &*DISTRIBUTION, &*COMPLEMENT, &*IDENTITY, &*ANNIHILATION, &*INVERSE, &*ABSORPTION, &*REDUCTION, &*ADJACENCY, &*CONDITIONAL_ABSORPTION, &*CONDITIONAL_ANNIHILATION, &*CONDITIONAL_IMPLICATION, &*CONDITIONAL_CONTRAPOSITION, &*CONDITIONAL_EXPORTATION, &*CONDITIONAL_COMPLEMENT, &*CONDITIONAL_IDENTITY, &*CONDITIONAL_DISTRIBUTION, &*CONDITIONAL_REDUCTION, &*KNIGHTS_AND_KNAVES, &*CONDITIONAL_IDEMPOTENCE, &*BICONDITIONAL_CONTRAPOSITION, &*BICONDITIONAL_ASSOCIATION, &*BICONDITIONAL_COMMUTATION, &*BICONDITIONAL_REDUCTION, &*BICONDITIONAL_COMPLEMENT, &*BICONDITIONAL_IDENTITY, &*BICONDITIONAL_EQUIVALENCE, &*BICONDITIONAL_NEGATION, &*BICONDITIONAL_SUBSTITUTION];
         for rule in rules {
             for (lhs, rhs) in rule.reductions.iter() {
                 println!("Testing {lhs} -> {rhs}");
