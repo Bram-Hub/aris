@@ -1029,7 +1029,7 @@ where
     if p == q {
         Ok(())
     } else {
-        Err(ProofCheckError::Other(format!("{p} and {q} are not equal.{:?}", premise)))
+        Err(ProofCheckError::Other(format!("{p} and {q} are not equal.")))
     }
 }
 
