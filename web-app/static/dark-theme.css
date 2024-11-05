@@ -1,6 +1,9 @@
+[theme="dark"] html, 
 [theme="dark"] body {
-    color: white;
     background-color: black;
+    color: white;
+    min-height: 100vh;
+    height: auto;
 }
 
 [theme="dark"] a {
