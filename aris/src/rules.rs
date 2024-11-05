@@ -1409,7 +1409,7 @@ impl RuleT for RedundantPrepositionalInference {
                     },
                     || OneOf(btreeset![DepDoesNotExist(Expr::impl_place_holder(), true), DepDoesNotExist(Expr::assocplaceholder(Op::Or), true),]),
                 )
-            },
+            }
             HalfDeMorgan => check_by_normalize_multiple_possibilities(proof, deps, conclusion, |e| e.normalize_halfdemorgans()),
         }
     }

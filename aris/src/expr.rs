@@ -906,7 +906,7 @@ impl Expr {
                     Expr::Assoc { op, exprs: unique_exprs }
                 }
             }
-            other => other, 
+            other => other,
         }
     }
 
@@ -923,9 +923,7 @@ impl Expr {
     /// Collects unique expressions and identifies complements globally
     fn collect_unique_exprs_complement(expr: &Expr, op: Op, unique_exprs: &mut HashSet<Expr>) -> bool {
         match expr {
-            Expr::Assoc { op: expr_op, exprs } if *expr_op == op => {
-                exprs.iter().any(|sub_expr| Expr::collect_unique_exprs_complement(sub_expr, op, unique_exprs))
-            }
+            Expr::Assoc { op: expr_op, exprs } if *expr_op == op => exprs.iter().any(|sub_expr| Expr::collect_unique_exprs_complement(sub_expr, op, unique_exprs)),
             Expr::Not { operand } => {
                 // Check if the negation of the operand already exists in the set
                 if let Expr::Quant { kind: QuantKind::Forall, .. } = **operand {
