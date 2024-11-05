@@ -788,6 +788,31 @@ impl Expr {
         })
     }
 
+    /// Helper function to combine possibilities
+    fn combine_possibilities(exprs: Vec<Expr>) -> Vec<Expr> {
+        let mut combined = Vec::new();
+        for i in 0..exprs.len() {
+            for j in (i + 1)..exprs.len() {
+                combined.push(exprs[i].clone());
+                combined.push(exprs[j].clone());
+            }
+        }
+        combined
+    }
+
+    /// Helper function to combine associations
+    fn combine_associations(existing: Vec<Vec<Expr>>, new_exprs: Vec<Expr>) -> Vec<Vec<Expr>> {
+        let mut combined = Vec::new();
+        for existing_comb in existing {
+            for new_expr in &new_exprs {
+                let mut new_comb = existing_comb.clone();
+                new_comb.push(new_expr.clone());
+                combined.push(new_comb);
+            }
+        }
+        combined
+    }
+
     /// Simplify an expression with recursive HalfDeMorgan's
     /// ~(A v B) => ~A  /  ~(A v B) => ~B
     /// Strategy: Expr::Apply this to all ~(A ^ B) constructions
@@ -803,7 +828,7 @@ impl Expr {
                             let not_expr = Expr::Not { operand: Box::new(expr.clone()) };
                             possibilities.push(not_expr);
                         }
-                        combine_possibilities(possibilities)
+                        Expr::combine_possibilities(possibilities)
                     }
                     _ => vec![Expr::Not { operand: Box::new(*operand) }],
                 },
@@ -811,7 +836,7 @@ impl Expr {
                     let mut combined_possibilities = vec![Vec::new()];
                     for sub_expr in exprs {
                         let sub_possibilities = normalize_expr(sub_expr);
-                        combined_possibilities = combine_associations(combined_possibilities, sub_possibilities);
+                        combined_possibilities = Expr::combine_associations(combined_possibilities, sub_possibilities);
                     }
                     combined_possibilities.into_iter().map(|exprs| Expr::Assoc { op, exprs }).collect()
                 }
@@ -842,35 +867,117 @@ impl Expr {
         })
     }
 
+    /// Helper function to collect unique expressions, flattening for a given operator
+    fn collect_unique_exprs_idempotence(expr: &Expr, op: Op, unique_exprs: &mut HashSet<Expr>) {
+        match expr {
+            Expr::Assoc { op: expr_op, exprs } if *expr_op == op => {
+                for sub_expr in exprs {
+                    // Recursively collect unique expressions for nested associative structures
+                    Expr::collect_unique_exprs_idempotence(sub_expr, op, unique_exprs);
+                }
+            }
+            _ => {
+                unique_exprs.insert(expr.clone());
+            }
+        }
+    }
+
     /// Reduce an expression over idempotence, that is:
     /// A & A -> A
     /// A | A -> A
-    /// In a manner equivalent to normalize_demorgans
+    /// Function to normalize idempotence by removing duplicates across all nested levels
     pub fn normalize_idempotence(self) -> Expr {
-        self.transform(&|expr| {
-            match expr {
-                Expr::Assoc { op: op @ Op::And, exprs } | Expr::Assoc { op: op @ Op::Or, exprs } => {
-                    let mut unifies = true;
-                    // (0, 1), (1, 2), ... (n - 2, n - 1)
-                    for pair in exprs.windows(2) {
-                        // Just doing a basic AST equality. Could replace this with unify if we want
-                        // to be stronger
-                        if pair[0] != pair[1] {
-                            unifies = false;
-                            break;
-                        }
-                    }
+        match self {
+            Expr::Assoc { op, exprs } => {
+                let mut unique_exprs = HashSet::new();
 
-                    if unifies {
-                        // Just use the first one
-                        (exprs.into_iter().next().unwrap(), true)
-                    } else {
-                        (Expr::Assoc { op, exprs }, false)
+                // Recursively collect unique expressions by flattening nested structures
+                for expr in exprs {
+                    let normalized_expr = expr.normalize_idempotence(); // Apply idempotence normalization at each level
+                    Expr::collect_unique_exprs_idempotence(&normalized_expr, op, &mut unique_exprs);
+                }
+
+                // Recursively normalize each unique expression
+                let unique_exprs: Vec<Expr> = unique_exprs.into_iter().collect();
+
+                if unique_exprs.len() == 1 {
+                    unique_exprs.into_iter().next().unwrap()
+                } else {
+                    Expr::Assoc { op, exprs: unique_exprs }
+                }
+            }
+            other => other, 
+        }
+    }
+
+    /// Helper function for complement quantified expressions
+    fn is_universal_tautology(&self) -> bool {
+        match self {
+            Expr::Quant { kind: QuantKind::Forall, name, body } => {
+                matches!(&**body, Expr::Var { name: var_name } if var_name == name)
+            }
+            _ => false,
+        }
+    }
+
+    /// Collects unique expressions and identifies complements globally
+    fn collect_unique_exprs_complement(expr: &Expr, op: Op, unique_exprs: &mut HashSet<Expr>) -> bool {
+        match expr {
+            Expr::Assoc { op: expr_op, exprs } if *expr_op == op => {
+                exprs.iter().any(|sub_expr| Expr::collect_unique_exprs_complement(sub_expr, op, unique_exprs))
+            }
+            Expr::Not { operand } => {
+                // Check if the negation of the operand already exists in the set
+                if let Expr::Quant { kind: QuantKind::Forall, .. } = **operand {
+                    if operand.is_universal_tautology() {
+                        return true;
                     }
                 }
-                _ => (expr, false),
+                if unique_exprs.contains(&**operand) {
+                    true // Complement found
+                } else {
+                    unique_exprs.insert(expr.clone());
+                    false
+                }
             }
-        })
+            _ => {
+                if unique_exprs.contains(&Expr::Not { operand: Box::new(expr.clone()) }) {
+                    true // Complement found
+                } else {
+                    unique_exprs.insert(expr.clone());
+                    false
+                }
+            }
+        }
+    }
+
+    /// Reduce an expression over complement, that is:
+    /// A & ~A -> ⊥
+    /// A | ~A -> ⊤
+    pub fn normalize_complement(self) -> Expr {
+        match self {
+            Expr::Assoc { op, exprs } if op == Op::And || op == Op::Or => {
+                let mut unique_exprs = HashSet::new();
+                let has_complement = exprs.iter().any(|expr| Expr::collect_unique_exprs_complement(expr, op, &mut unique_exprs));
+
+                if has_complement {
+                    match op {
+                        Op::And => Expr::Contra,
+                        Op::Or => Expr::Taut,
+                        _ => unreachable!(),
+                    }
+                } else {
+                    let unique_exprs: Vec<Expr> = unique_exprs.into_iter().map(|e| e.normalize_complement()).collect();
+
+                    if unique_exprs.len() == 1 {
+                        unique_exprs.into_iter().next().unwrap()
+                    } else {
+                        Expr::Assoc { op, exprs: unique_exprs }
+                    }
+                }
+            }
+            other => other,
+        }
     }
 
     /// View the top-level disjuncts of an Expr, counting contradiction as an empty disjunction. Useful for SAT interopration.
@@ -1277,31 +1384,6 @@ impl Expr {
     }
 }
 
-/// Helper function to combine possibilities
-fn combine_possibilities(exprs: Vec<Expr>) -> Vec<Expr> {
-    let mut combined = Vec::new();
-    for i in 0..exprs.len() {
-        for j in (i + 1)..exprs.len() {
-            combined.push(exprs[i].clone());
-            combined.push(exprs[j].clone());
-        }
-    }
-    combined
-}
-
-/// Helper function to combine associations
-fn combine_associations(existing: Vec<Vec<Expr>>, new_exprs: Vec<Expr>) -> Vec<Vec<Expr>> {
-    let mut combined = Vec::new();
-    for existing_comb in existing {
-        for new_expr in &new_exprs {
-            let mut new_comb = existing_comb.clone();
-            new_comb.push(new_expr.clone());
-            combined.push(new_comb);
-        }
-    }
-    combined
-}
-
 impl NnfExpr {
     /// Create a true (tautology) NNF expression.
     ///
@@ -1662,18 +1744,6 @@ mod tests {
         let f = |s: &str| {
             let e = p(s);
             println!("association of {} is {}", e, e.clone().combine_associative_ops("bool"));
-        };
-        f("a & (b & (c | (p -> (q <-> (r <-> s)))) & ((t === u) === (v === ((w | x) | y))))");
-        f("a & ((b & c) | (q | r))");
-        f("(a & (b & c)) | (q | r)");
-    }
-
-    #[test]
-    pub fn test_combine_associative_ops_bicon() {
-        use crate::parser::parse_unwrap as p;
-        let f = |s: &str| {
-            let e = p(s);
-            println!("association of {} is {}", e, e.clone().combine_associative_ops("bicon"));
         };
         f("a & (b & (c | (p -> (q <-> (r <-> s)))) & ((t === u) === (v === ((w | x) | y))))");
         f("a & ((b & c) | (q | r))");

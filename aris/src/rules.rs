@@ -112,7 +112,6 @@ pub enum PredicateInference {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BooleanEquivalence {
     DeMorgan,
-    HalfDeMorgan,
     Association,
     Commutation,
     Idempotence,
@@ -165,6 +164,7 @@ pub enum RedundantPrepositionalInference {
     DisjunctiveSyllogism,
     ExcludedMiddle,
     ConstructiveDilemma,
+    HalfDeMorgan,
 }
 
 #[allow(missing_docs)]
@@ -283,7 +283,6 @@ pub mod RuleM {
         [Commutation, "COMMUTATION", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Commutation)))))],
         [Idempotence, "IDEMPOTENCE", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Idempotence)))))],
         [DeMorgan, "DE_MORGAN", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::DeMorgan)))))],
-        [HalfDeMorgan, "HALF_DE_MORGAN", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::HalfDeMorgan)))))],
         [Distribution, "DISTRIBUTION", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Distribution)))))],
         [DoubleNegation, "DOUBLENEGATION_EQUIV", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::DoubleNegation)))))],
         [Complement, "COMPLEMENT", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Complement)))))],
@@ -321,6 +320,7 @@ pub mod RuleM {
         [DisjunctiveSyllogism, "DISJUNCTIVE_SYLLOGISM", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::DisjunctiveSyllogism))))))))],
         [ExcludedMiddle, "EXCLUDED_MIDDLE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ExcludedMiddle))))))))],
         [ConstructiveDilemma, "CONSTRUCTIVE_DILEMMA", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ConstructiveDilemma))))))))],
+        [HalfDeMorgan, "HALF_DE_MORGAN", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::HalfDeMorgan))))))))],
 
         [Resolution, "RESOLUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::Resolution)))))))))],
         [TruthFunctionalConsequence, "TRUTHFUNCTIONAL_CONSEQUENCE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::TruthFunctionalConsequence)))))))))],
@@ -1020,7 +1020,7 @@ where
     F: Fn(Expr) -> Expr,
 {
     let premise = p.lookup_expr_or_die(&deps[0])?;
-    let mut p = normalize_fn(premise);
+    let mut p = normalize_fn(premise.clone());
     let mut q = normalize_fn(conclusion);
     if commutative {
         p = p.sort_commutative_ops(restriction);
@@ -1029,7 +1029,7 @@ where
     if p == q {
         Ok(())
     } else {
-        Err(ProofCheckError::Other(format!("{p} and {q} are not equal.")))
+        Err(ProofCheckError::Other(format!("{p} and {q} are not equal.{:?}", premise)))
     }
 }
 
@@ -1083,7 +1083,6 @@ impl RuleT for BooleanEquivalence {
         use BooleanEquivalence::*;
         match self {
             DeMorgan => "DeMorgan",
-            HalfDeMorgan => "Half DeMorgan",
             Association => "Association",
             Commutation => "Commutation",
             Idempotence => "Idempotence",
@@ -1112,16 +1111,15 @@ impl RuleT for BooleanEquivalence {
         use BooleanEquivalence::*;
         match self {
             DeMorgan => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.normalize_demorgans(), "none"),
-            HalfDeMorgan => check_by_normalize_multiple_possibilities(p, deps, conclusion, |e| e.normalize_halfdemorgans()),
             Association => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.combine_associative_ops("bool"), "bool"),
             Commutation => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.sort_commutative_ops("bool"), "bool"),
-            Idempotence => check_by_normalize_first_expr(p, deps, conclusion, false, |e| e.normalize_idempotence(), "none"),
+            Idempotence => check_by_normalize_first_expr(p, deps, conclusion, true, |e| e.normalize_idempotence(), "none"),
             DoubleNegation => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::DOUBLE_NEGATION, "none"),
             // Distribution and Reduction have outputs containing binops that need commutative sorting
             // because we can't expect people to know the specific order of outputs that our definition
             // of the rules uses
             Distribution => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::DISTRIBUTION, "none"),
-            Complement => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::COMPLEMENT, "none"),
+            Complement => check_by_normalize_first_expr(p, deps, conclusion, true, |e| e.normalize_complement(), "none"),
             Identity => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::IDENTITY, "none"),
             Annihilation => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::ANNIHILATION, "none"),
             Inverse => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::INVERSE, "none"),
@@ -1227,6 +1225,7 @@ impl RuleT for RedundantPrepositionalInference {
             DisjunctiveSyllogism => "Disjunctive Syllogism",
             ExcludedMiddle => "Excluded Middle",
             ConstructiveDilemma => "Constructive Dilemma",
+            HalfDeMorgan => "Half DeMorgan",
         }
         .into()
     }
@@ -1239,6 +1238,7 @@ impl RuleT for RedundantPrepositionalInference {
             ModusTollens | HypotheticalSyllogism | DisjunctiveSyllogism => Some(2),
             ExcludedMiddle => Some(0),
             ConstructiveDilemma => Some(3),
+            HalfDeMorgan => Some(1),
         }
     }
     fn num_subdeps(&self) -> Option<usize> {
@@ -1409,7 +1409,8 @@ impl RuleT for RedundantPrepositionalInference {
                     },
                     || OneOf(btreeset![DepDoesNotExist(Expr::impl_place_holder(), true), DepDoesNotExist(Expr::assocplaceholder(Op::Or), true),]),
                 )
-            }
+            },
+            HalfDeMorgan => check_by_normalize_multiple_possibilities(proof, deps, conclusion, |e| e.normalize_halfdemorgans()),
         }
     }
 }
