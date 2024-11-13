@@ -33,11 +33,11 @@ impl RewriteRule {
         reduce_pattern(e, &self.reductions)
     }
 
-    /// Reduce an expression with the rewrite rule's reductions, yielding a set
-    /// of possible reductions
-    pub fn reduce_set(&self, e: Expr) -> HashSet<Expr> {
-        reduce_pattern_set(e, &self.reductions)
-    }
+    //     /// Reduce an expression with the rewrite rule's reductions, yielding a set
+    //     /// of possible reductions
+    //     pub fn reduce_set(&self, e: Expr) -> HashSet<Expr> {
+    //         reduce_pattern_set(e, &self.reductions)
+    //     }
 }
 
 /// Permute all binary and associative operations in an expression, resulting in a list of
@@ -127,13 +127,13 @@ fn reduce_pattern(e: Expr, patterns: &[(Expr, Expr)]) -> Expr {
     e.transform(&|expr| reduce_transform_func(expr, &patterns))
 }
 
-/// Like `reduce_pattern()`, but creates a set of possible reductions. This set
-/// will contain all levels of reduction (up to full normalization), and on all
-/// sub-nodes of the expression.
-fn reduce_pattern_set(e: Expr, patterns: &[(Expr, Expr)]) -> HashSet<Expr> {
-    let patterns = freevarsify_pattern(&e, patterns);
-    e.transform_set(&|expr| reduce_transform_func(expr, &patterns))
-}
+// /// Like `reduce_pattern()`, but creates a set of possible reductions. This set
+// /// will contain all levels of reduction (up to full normalization), and on all
+// /// sub-nodes of the expression.
+// fn reduce_pattern_set(e: Expr, patterns: &[(Expr, Expr)]) -> HashSet<Expr> {
+//     let patterns = freevarsify_pattern(&e, patterns);
+//     e.transform_set(&|expr| reduce_transform_func(expr, &patterns))
+// }
 
 /// Helper function for `reduce_pattern()` and `reduce_pattern_set()`; try to
 /// reduce `expr` using `patterns`. The returned `bool` in the tuple indicates

@@ -1019,7 +1019,10 @@ fn check_by_normalize_first_expr<F, P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclu
 where
     F: Fn(Expr) -> Expr,
 {
-    let premise = p.lookup_expr_or_die(&deps[0])?;
+    let mut premise = p.lookup_expr_or_die(&deps[0])?;
+    if commutative {
+        premise = premise.sort_commutative_ops(restriction);
+    }
     let mut p = normalize_fn(premise.clone());
     let mut q = normalize_fn(conclusion);
     if commutative {
@@ -1029,7 +1032,7 @@ where
     if p == q {
         Ok(())
     } else {
-        Err(ProofCheckError::Other(format!("{p} and {q} are not equal.")))
+        Err(ProofCheckError::Other(format!("{p} and {q} are not equal. {:?}", premise)))
     }
 }
 
@@ -1059,24 +1062,24 @@ fn check_by_rewrite_rule_confl<P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion:
     check_by_normalize_first_expr(p, deps, conclusion, commutative, |e| rule.reduce(e), restriction)
 }
 
-fn check_by_rewrite_rule_non_confl<P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion: Expr, commutative: bool, rule: &RewriteRule, restriction: &str) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
-    let premise = p.lookup_expr_or_die(&deps[0])?;
-    let premise_set = rule.reduce_set(premise.clone());
-    let conclusion_set = rule.reduce_set(conclusion.clone());
-    let (premise_set, conclusion_set) = if commutative {
-        let sort_ops = |set: HashSet<Expr>| set.into_iter().map(|expr| expr.sort_commutative_ops(restriction)).collect();
-        (sort_ops(premise_set), sort_ops(conclusion_set))
-    } else {
-        (premise_set, conclusion_set)
-    };
-    // The premise and conclusion are equal if the set intersection is nonempty
-    let is_eq = premise_set.intersection(&conclusion_set).next().is_some();
-    if is_eq {
-        Ok(())
-    } else {
-        Err(ProofCheckError::Other(format!("{premise} and {conclusion} are not equal.")))
-    }
-}
+// fn check_by_rewrite_rule_non_confl<P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion: Expr, commutative: bool, rule: &RewriteRule, restriction: &str) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
+//     let premise = p.lookup_expr_or_die(&deps[0])?;
+//     let premise_set = rule.reduce_set(premise.clone());
+//     let conclusion_set = rule.reduce_set(conclusion.clone());
+//     let (premise_set, conclusion_set) = if commutative {
+//         let sort_ops = |set: HashSet<Expr>| set.into_iter().map(|expr| expr.sort_commutative_ops(restriction)).collect();
+//         (sort_ops(premise_set), sort_ops(conclusion_set))
+//     } else {
+//         (premise_set, conclusion_set)
+//     };
+//     // The premise and conclusion are equal if the set intersection is nonempty
+//     let is_eq = premise_set.intersection(&conclusion_set).next().is_some();
+//     if is_eq {
+//         Ok(())
+//     } else {
+//         Err(ProofCheckError::Other(format!("{premise} and {conclusion} are not equal.")))
+//     }
+// }
 
 impl RuleT for BooleanEquivalence {
     fn get_name(&self) -> String {
@@ -1123,8 +1126,8 @@ impl RuleT for BooleanEquivalence {
             Identity => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::IDENTITY, "none"),
             Annihilation => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::ANNIHILATION, "none"),
             Inverse => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::INVERSE, "none"),
-            Absorption => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::ABSORPTION, "none"),
-            Reduction => check_by_rewrite_rule_non_confl(p, deps, conclusion, true, &equivs::REDUCTION, "none"),
+            Absorption => check_by_normalize_first_expr(p, deps, conclusion, true, |e| e.normalize_absorption(), "none"),
+            Reduction => check_by_normalize_first_expr(p, deps, conclusion, true, |e| e.normalize_reduction(), "none"),
             Adjacency => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::ADJACENCY, "none"),
         }
     }
