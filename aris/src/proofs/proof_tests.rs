@@ -731,6 +731,10 @@ pub fn test_idempotence<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     let r7 = prf.add_premise(p("A & A & B"));
     let r8 = prf.add_premise(p("(¬A | (¬B | (¬C | (¬A | ¬B)))) & D"));
     let r9 = prf.add_premise(p("W | (¬X & (¬Y & (¬Z & (¬X & ¬Y))))"));
+
+    let r27 = prf.add_premise(p("(P | Q) & (P | R) & (P | Q)"));
+    let r29 = prf.add_premise(p("P ∧ R ∧ (P ∨ Q)"));
+
     let r10 = prf.add_step(Justification(p("A"), RuleM::Idempotence, vec![i(r1)], vec![]));
     let r11 = prf.add_step(Justification(p("A"), RuleM::Idempotence, vec![i(r2)], vec![]));
     let r12 = prf.add_step(Justification(p("A"), RuleM::Idempotence, vec![i(r3)], vec![]));
@@ -749,7 +753,9 @@ pub fn test_idempotence<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     let r25 = prf.add_step(Justification(p("(¬A | ¬B | ¬C) & D"), RuleM::Idempotence, vec![i(r8)], vec![]));
     let r26 = prf.add_step(Justification(p("W | (¬X & ¬Y & ¬Z)"), RuleM::Idempotence, vec![i(r9)], vec![]));
 
-    (prf, vec![i(r10), i(r11), i(r12), i(r13), i(r14), i(r18), i(r19), i(r20), i(r24), i(r25), i(r26)], vec![i(r15), i(r16), i(r17), i(r21), i(r22), i(r23)])
+    let r28 = prf.add_step(Justification(p("(P | Q) & (P | R)"), RuleM::Idempotence, vec![i(r27)], vec![]));
+    let r30 = prf.add_step(Justification(p("P ∧ R ∧ Q"), RuleM::Idempotence, vec![i(r29)], vec![]));
+    (prf, vec![i(r10), i(r11), i(r12), i(r13), i(r14), i(r18), i(r19), i(r20), i(r24), i(r25), i(r26), i(r28)], vec![i(r15), i(r16), i(r17), i(r21), i(r22), i(r23), i(r30)])
 }
 
 pub fn test_doublenegation<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
@@ -956,11 +962,15 @@ pub fn test_reduction<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     let p6 = prf.add_premise(p("B & (C | (~C & ~A))"));
     let p7 = prf.add_premise(p("A | (~A & (~~A | B))"));
     let p8 = prf.add_premise(p("D | (~A & (~~A | B))"));
+    let p9 = prf.add_premise(p("P & M & (~P | Q)"));
+    let p10 = prf.add_premise(p("P | M | (~P & Q)"));
+    // let p11 = prf.add_premise(p("~P & (P | Q)"));
 
     let r1 = prf.add_step(Justification(p("A & B"), RuleM::Reduction, vec![i(p1.clone())], vec![]));
     let r2 = prf.add_step(Justification(p("~A & B"), RuleM::Reduction, vec![i(p2.clone())], vec![]));
     let r3 = prf.add_step(Justification(p("A | B"), RuleM::Reduction, vec![i(p3.clone())], vec![]));
     let r4 = prf.add_step(Justification(p("~B | A"), RuleM::Reduction, vec![i(p4.clone())], vec![]));
+    // let r18 = prf.add_step(Justification(p("¬P ∧ Q"), RuleM::Reduction, vec![i(p11.clone())], vec![]));
     let r5 = prf.add_step(Justification(p("(forall A (A & B)) | C"), RuleM::Reduction, vec![i(p5)], vec![]));
 
     let r6 = prf.add_step(Justification(p("A"), RuleM::Reduction, vec![i(p1)], vec![]));
@@ -973,7 +983,12 @@ pub fn test_reduction<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     let r12 = prf.add_step(Justification(p("A | (~A & B)"), RuleM::Reduction, vec![i(p7)], vec![]));
     let r13 = prf.add_step(Justification(p("D | (~A & B)"), RuleM::Reduction, vec![i(p8)], vec![]));
 
-    (prf, vec![i(r1), i(r2), i(r3), i(r4), i(r5), i(r10), i(r12), i(r13)], vec![i(r6), i(r7), i(r8), i(r9), i(r11)])
+    let r14 = prf.add_step(Justification(p("P & M & Q"), RuleM::Reduction, vec![i(p9.clone())], vec![]));
+    let r15 = prf.add_step(Justification(p("(P & M) | Q"), RuleM::Reduction, vec![i(p9)], vec![]));
+    let r16 = prf.add_step(Justification(p("P | M | Q"), RuleM::Reduction, vec![i(p10.clone())], vec![]));
+    let r17 = prf.add_step(Justification(p("(P | M) & Q"), RuleM::Reduction, vec![i(p10)], vec![]));
+
+    (prf, vec![i(r1), i(r2), i(r3), i(r4), i(r5), i(r10), i(r12), i(r13), i(r14), i(r16)], vec![i(r6), i(r7), i(r8), i(r9), i(r11), i(r15), i(r17)])
 }
 
 pub fn test_adjacency<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {

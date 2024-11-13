@@ -868,20 +868,20 @@ impl Expr {
     }
 
     /// Helper function to collect unique expressions, flattening for a given operator
-    fn collect_unique_exprs_idempotence(expr: &Expr, op: Op, unique_exprs: &mut HashSet<Expr>) {
+    fn collect_unique_exprs_idempotence(expr: &Expr, op: Op, unique_exprs: &mut BTreeSet<Expr>) {
         match expr {
             Expr::Assoc { op: expr_op, exprs } if *expr_op == op => {
+                // Flatten nested expressions for associative operations
                 for sub_expr in exprs {
-                    // Recursively collect unique expressions for nested associative structures
                     Expr::collect_unique_exprs_idempotence(sub_expr, op, unique_exprs);
                 }
             }
             _ => {
-                unique_exprs.insert(expr.clone());
+                let normalized_expr = expr.clone().normalize_idempotence();
+                unique_exprs.insert(normalized_expr);
             }
         }
     }
-
     /// Reduce an expression over idempotence, that is:
     /// A & A -> A
     /// A | A -> A
@@ -889,15 +889,15 @@ impl Expr {
     pub fn normalize_idempotence(self) -> Expr {
         match self {
             Expr::Assoc { op, exprs } => {
-                let mut unique_exprs = HashSet::new();
+                let mut unique_exprs = BTreeSet::new();
 
                 // Recursively collect unique expressions by flattening nested structures
                 for expr in exprs {
-                    let normalized_expr = expr.normalize_idempotence(); // Apply idempotence normalization at each level
+                    let normalized_expr = expr.normalize_idempotence();
                     Expr::collect_unique_exprs_idempotence(&normalized_expr, op, &mut unique_exprs);
                 }
 
-                // Recursively normalize each unique expression
+                // If there's only one unique expression, return it; otherwise, reassemble the expression
                 let unique_exprs: Vec<Expr> = unique_exprs.into_iter().collect();
 
                 if unique_exprs.len() == 1 {
@@ -907,6 +907,135 @@ impl Expr {
                 }
             }
             other => other,
+        }
+    }
+
+    fn collect_unique_exprs_absorption(expr: &Expr, op: Op, unique_exprs: &mut BTreeSet<Expr>) {
+        match expr {
+            Expr::Assoc { op: expr_op, exprs } if *expr_op == op => {
+                // Recursively handle nested associative expressions
+                for sub_expr in exprs {
+                    Self::collect_unique_exprs_absorption(sub_expr, op, unique_exprs);
+                }
+            }
+            Expr::Assoc { op: inner_op, exprs } if (op == Op::Or && *inner_op == Op::And) || (op == Op::And && *inner_op == Op::Or) => {
+                if exprs.iter().any(|e| unique_exprs.contains(e)) {
+                    if let Some(e) = exprs.iter().find(|e| unique_exprs.contains(e)) {
+                        unique_exprs.insert(e.clone());
+                    }
+                } else {
+                    unique_exprs.insert(expr.clone());
+                }
+            }
+            _ => {
+                unique_exprs.insert(expr.clone());
+            }
+        }
+    }
+
+    pub fn normalize_absorption(self) -> Expr {
+        if let Expr::Assoc { op, exprs } = self {
+            let mut unique_exprs = BTreeSet::new();
+            for expr in exprs {
+                let normalized_expr = expr.normalize_absorption();
+                Self::collect_unique_exprs_absorption(&normalized_expr, op, &mut unique_exprs);
+            }
+            let unique_exprs: Vec<Expr> = unique_exprs.into_iter().collect();
+            if unique_exprs.len() == 1 {
+                unique_exprs.into_iter().next().unwrap()
+            } else {
+                Expr::Assoc { op, exprs: unique_exprs }
+            }
+        } else {
+            self
+        }
+    }
+
+    pub fn normalize_reduction(self) -> Expr {
+        match self {
+            // Handle Associative operations (AND/OR)
+            Expr::Assoc { op, exprs } => {
+                let mut reduced_exprs = BTreeSet::new();
+
+                // Recurse through the expressions inside the Assoc operation
+                for expr in exprs {
+                    let normalized_expr = expr.normalize_reduction();
+                    Self::collect_reduction_exprs(&normalized_expr, op, &mut reduced_exprs);
+                }
+
+                if op == Op::And && reduced_exprs.len() == 2 {
+                    let mut expr_iter = reduced_exprs.clone().into_iter();
+                    let first = expr_iter.next().unwrap();
+                    let second = expr_iter.next().unwrap();
+
+                    // Check if the second expression is a quantifier
+                    if let Expr::Quant { kind, name, body } = second {
+                        return Expr::Assoc { op: Op::Or, exprs: vec![first, Expr::Quant { kind, name, body }] };
+                    }
+                }
+                Expr::Assoc { op, exprs: reduced_exprs.into_iter().collect() }
+            }
+            // Recursively normalize quantifier body
+            Expr::Quant { kind, name, body } => {
+                let normalized_body = body.normalize_reduction();
+                Expr::Quant { kind, name, body: Box::new(normalized_body) }
+            }
+            // If the expression is a negation, attempt to simplify the negated quantifier
+            Expr::Not { operand } => {
+                match *operand {
+                    // If the operand is a quantifier, recursively normalize its body
+                    Expr::Quant { kind, name, body } => {
+                        let normalized_body = body.normalize_reduction();
+                        Expr::Quant { kind, name, body: Box::new(normalized_body) }
+                    }
+                    _ => Expr::Not { operand: Box::new(operand.normalize_reduction()) },
+                }
+            }
+            _ => self,
+        }
+    }
+
+    fn collect_reduction_exprs(expr: &Expr, op: Op, reduced_exprs: &mut BTreeSet<Expr>) {
+        match expr {
+            // If the expression is an associative operation with the same operator, recurse into its subexpressions
+            Expr::Assoc { op: expr_op, exprs } if *expr_op == op => {
+                for sub_expr in exprs {
+                    Self::collect_reduction_exprs(sub_expr, op, reduced_exprs);
+                }
+            }
+            // If the expression involves an AND/OR between a quantifier and another expression, handle simplifications
+            Expr::Assoc { op: inner_op, exprs } => match (op, inner_op) {
+                (Op::And, Op::Or) | (Op::Or, Op::And) => {
+                    let mut other_terms = vec![];
+                    let mut negated_match = None;
+                    for sub_expr in exprs {
+                        match sub_expr {
+                            // If the subexpression involves a negated quantifier, simplify it
+                            Expr::Not { operand } if reduced_exprs.contains(operand) => {
+                                negated_match = Some(operand.as_ref().clone());
+                            }
+                            _ => other_terms.push(sub_expr.clone()),
+                        }
+                    }
+                    if negated_match.is_some() {
+                        reduced_exprs.extend(other_terms);
+                    } else {
+                        reduced_exprs.insert(expr.clone());
+                    }
+                }
+                _ => {
+                    reduced_exprs.insert(expr.clone());
+                }
+            },
+            // Simplify quantifier body
+            Expr::Quant { kind, name, body } => {
+                let normalized_body = body.clone().normalize_reduction();
+                let simplified_expr = Expr::Quant { kind: *kind, name: name.clone(), body: Box::new(normalized_body) };
+                reduced_exprs.insert(simplified_expr);
+            }
+            _ => {
+                reduced_exprs.insert(expr.clone());
+            }
         }
     }
 
