@@ -165,6 +165,7 @@ pub enum RedundantPrepositionalInference {
     ExcludedMiddle,
     ConstructiveDilemma,
     HalfDeMorgan,
+    QuantifierInference,
 }
 
 #[allow(missing_docs)]
@@ -321,6 +322,7 @@ pub mod RuleM {
         [ExcludedMiddle, "EXCLUDED_MIDDLE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ExcludedMiddle))))))))],
         [ConstructiveDilemma, "CONSTRUCTIVE_DILEMMA", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ConstructiveDilemma))))))))],
         [HalfDeMorgan, "HALF_DE_MORGAN", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::HalfDeMorgan))))))))],
+        [QuantifierInference, "QUANTIFIER_INFERENCE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::QuantifierInference))))))))],
 
         [Resolution, "RESOLUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::Resolution)))))))))],
         [TruthFunctionalConsequence, "TRUTHFUNCTIONAL_CONSEQUENCE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::TruthFunctionalConsequence)))))))))],
@@ -536,7 +538,6 @@ impl RuleT for PrepositionalInference {
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
         use PrepositionalInference::*;
         use ProofCheckError::*;
-
         match self {
             Reit => {
                 let prem = p.lookup_expr_or_die(&deps[0])?;
@@ -547,6 +548,12 @@ impl RuleT for PrepositionalInference {
                 }
             }
             AndIntro => {
+                if deps.len() == 1 {
+                    let single_dep_expr = p.lookup_expr_or_die(&deps[0])?;
+                    if single_dep_expr == conclusion {
+                        return Ok(());
+                    }
+                }
                 if let Expr::Assoc { op: Op::And, ref exprs } = conclusion {
                     // ensure each dep appears in exprs
                     for d in deps.iter() {
@@ -567,6 +574,12 @@ impl RuleT for PrepositionalInference {
                 }
             }
             AndElim => {
+                if deps.len() == 1 {
+                    let single_dep_expr = p.lookup_expr_or_die(&deps[0])?;
+                    if single_dep_expr == conclusion {
+                        return Ok(());
+                    }
+                }
                 let prem = p.lookup_expr_or_die(&deps[0])?;
                 if let Expr::Assoc { op: Op::And, ref exprs } = prem {
                     let premise_set: HashSet<_> = exprs.iter().collect();
@@ -592,6 +605,12 @@ impl RuleT for PrepositionalInference {
                 }
             }
             OrIntro => {
+                if deps.len() == 1 {
+                    let single_dep_expr = p.lookup_expr_or_die(&deps[0])?;
+                    if single_dep_expr == conclusion {
+                        return Ok(());
+                    }
+                }
                 let prem = p.lookup_expr_or_die(&deps[0])?;
                 if let Expr::Assoc { op: Op::Or, ref exprs } = conclusion {
                     if !exprs.iter().any(|e| e == &prem) {
@@ -603,6 +622,12 @@ impl RuleT for PrepositionalInference {
                 }
             }
             OrElim => {
+                if deps.len() == 1 {
+                    let single_dep_expr = p.lookup_expr_or_die(&deps[0])?;
+                    if single_dep_expr == conclusion {
+                        return Ok(());
+                    }
+                }
                 let prem = p.lookup_expr_or_die(&deps[0])?;
                 if let Expr::Assoc { op: Op::Or, ref exprs } = prem {
                     let sproofs = sdeps.into_iter().map(|r| p.lookup_subproof_or_die(&r)).collect::<Result<Vec<_>, _>>()?;
@@ -1020,11 +1045,13 @@ where
     F: Fn(Expr) -> Expr,
 {
     let mut premise = p.lookup_expr_or_die(&deps[0])?;
+    let mut conclusion_mut = conclusion;
     if commutative {
         premise = premise.sort_commutative_ops(restriction);
+        conclusion_mut = conclusion_mut.sort_commutative_ops(restriction);
     }
     let mut p = normalize_fn(premise.clone());
-    let mut q = normalize_fn(conclusion);
+    let mut q = normalize_fn(conclusion_mut);
     if commutative {
         p = p.sort_commutative_ops(restriction);
         q = q.sort_commutative_ops(restriction);
@@ -1033,6 +1060,19 @@ where
         Ok(())
     } else {
         Err(ProofCheckError::Other(format!("{p} and {q} are not equal. {:?}", premise)))
+    }
+}
+
+fn check_by_normalize_first_expr_one_way<F, P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion: Expr, normalize_fn: F) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>>
+where
+    F: Fn(Expr) -> Expr,
+{
+    let premise = p.lookup_expr_or_die(&deps[0])?;
+    let p = normalize_fn(premise.clone());
+    if p == conclusion.clone() {
+        Ok(())
+    } else {
+        Err(ProofCheckError::Other(format!("{p} and {conclusion} are not equal. {:?}", premise)))
     }
 }
 
@@ -1128,7 +1168,7 @@ impl RuleT for BooleanEquivalence {
             Inverse => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::INVERSE, "none"),
             Absorption => check_by_normalize_first_expr(p, deps, conclusion, true, |e| e.normalize_absorption(), "none"),
             Reduction => check_by_normalize_first_expr(p, deps, conclusion, true, |e| e.normalize_reduction(), "none"),
-            Adjacency => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::ADJACENCY, "none"),
+            Adjacency => check_by_normalize_first_expr(p, deps, conclusion, true, |e| e.normalize_adjacency(), "none"),
         }
     }
 }
@@ -1229,6 +1269,7 @@ impl RuleT for RedundantPrepositionalInference {
             ExcludedMiddle => "Excluded Middle",
             ConstructiveDilemma => "Constructive Dilemma",
             HalfDeMorgan => "Half DeMorgan",
+            QuantifierInference => "Quantifier Inference",
         }
         .into()
     }
@@ -1241,7 +1282,7 @@ impl RuleT for RedundantPrepositionalInference {
             ModusTollens | HypotheticalSyllogism | DisjunctiveSyllogism => Some(2),
             ExcludedMiddle => Some(0),
             ConstructiveDilemma => Some(3),
-            HalfDeMorgan => Some(1),
+            HalfDeMorgan | QuantifierInference => Some(1),
         }
     }
     fn num_subdeps(&self) -> Option<usize> {
@@ -1414,6 +1455,7 @@ impl RuleT for RedundantPrepositionalInference {
                 )
             }
             HalfDeMorgan => check_by_normalize_multiple_possibilities(proof, deps, conclusion, |e| e.normalize_halfdemorgans()),
+            QuantifierInference => check_by_normalize_first_expr_one_way(proof, deps, conclusion, |e| e.quantifier_inference()),
         }
     }
 }

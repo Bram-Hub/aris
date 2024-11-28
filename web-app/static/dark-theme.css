@@ -163,3 +163,28 @@
     background-color: black;
 }
 
+[theme="dark"] .tooltip {
+    overflow: visible;
+}
+
+[theme="dark"] .tooltip-inner {
+    border: 3px solid white; 
+    padding: 4px; 
+}
+
+/* Tooltip Arrow Colors in Dark Mode */
+[theme="dark"] .bs-tooltip-bottom .arrow::before {
+    border-bottom-color: white; 
+}
+
+[theme="dark"] .bs-tooltip-top .arrow::before {
+    border-top-color: white; 
+}
+
+[theme="dark"] .bs-tooltip-left .arrow::before {
+    border-left-color: white;
+}
+
+[theme="dark"] .bs-tooltip-right .arrow::before {
+    border-right-color: white; 
+}

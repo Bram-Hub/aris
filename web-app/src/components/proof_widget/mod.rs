@@ -166,90 +166,44 @@ impl ProofWidget {
     ///
     /// [lib]: https://github.com/vsn4ik/bootstrap-submenu
     fn render_rules_menu(&self, ctx: &Context<Self>, jref: <P as Proof>::JustificationReference, cur_rule_name: &str) -> Html {
-        let menu = RuleClassification::iter()
-            .map(|rule_class| {
-                let rules = rule_class
-                    .rules()
-                    .map(|rule| {
-                        let pjref = Coproduct::inject(jref);
+        let equivalence_classes = [RuleClassification::BooleanEquivalence, RuleClassification::ConditionalEquivalence, RuleClassification::BiconditionalEquivalence, RuleClassification::QuantifierEquivalence];
 
-                        // Determine the folder for the current theme
-                        let get_folder = || {
-                            if theme() == "dark" {
-                                "proofImages_dark"
-                            } else {
-                                "proofImages_light"
-                            }
-                        };
-                        let image_src = format!("{}/{}.png", get_folder(), rule.get_name());
+        let render_rules = |rules: Vec<Rule>| {
+            rules
+                .into_iter()
+                .map(|rule| {
+                    let pjref = Coproduct::inject(jref);
+                    let image_src = format!("{}/{}.png", if theme() == "dark" { "proofImages_dark" } else { "proofImages_light" }, rule.get_name());
+                    html! {
+                        <button
+                            class="dropdown-item"
+                            type="button"
+                            data-toggle="tooltip"
+                            data-placement="left"
+                            title={format!("<img id='rule-img' src='{}'/>", image_src)}
+                            onclick={ ctx.link().callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule }, pjref)) }
+                        >
+                            { rule.get_name() }
+                        </button>
+                    }
+                })
+                .collect::<Vec<_>>()
+        };
 
-                        html! {
-                            <div class="dropdown-item-wrapper" style="position: relative;">
-                                <button
-                                    class="dropdown-item"
-                                    type="button"
-                                    onclick={ ctx.link().callback(move |_| ProofWidgetMsg::LineAction(LineActionKind::SetRule { rule }, pjref)) }
-                                    onmouseover={ctx.link().callback(move |_| {
-                                        let js = format!(
-                                            r#"
-                                            var tooltipImg = document.getElementById('tooltip-img-{0}');
-                                            if (tooltipImg !== null) {{
-                                                tooltipImg.style.display = 'block';
-                                            }}
-                                            "#, rule.get_name()
-                                        );
-                                        js_sys::eval(&js).unwrap_throw();
-                                        ProofWidgetMsg::Nop
-                                    })}
+        let render_class = |rule_class: RuleClassification| {
+            let rules = render_rules(rule_class.rules().collect());
+            html! {
+                <div class="dropdown dropright dropdown-submenu">
+                    <button class="dropdown-item dropdown-toggle" type="button" data-toggle="dropdown">
+                        { format!("{}", rule_class) }
+                    </button>
+                    <div class="dropdown-menu">{ rules }</div>
+                </div>
+            }
+        };
 
-                                    onmouseout={ctx.link().callback(move |_| {
-                                        let js = format!(
-                                            r#"
-                                            var tooltipImg = document.getElementById('tooltip-img-{0}');
-                                            if (tooltipImg !== null) {{
-                                                tooltipImg.style.display = 'none';
-                                            }}
-                                            "#, rule.get_name()
-                                        );
-                                        js_sys::eval(&js).unwrap_throw();
-                                        ProofWidgetMsg::Nop
-                                    })}
-                                >
-                                    { rule.get_name() }
-                                </button>
-                                <img
-                                    id={format!("tooltip-img-{}", rule.get_name())}
-                                    src={image_src}
-                                    alt={rule.get_name()}
-                                    style="
-                                        display: none; 
-                                        position: absolute; 
-                                        max-width: auto; 
-                                        max-height: 600px;
-                                        right: 110%; 
-                                        top: 50%; 
-                                        transform: translateY(-50%);
-                                        border: 2px solid black;
-                                        border-radius: 5px;
-                                        padding: 2px;
-                                        background-color: white;" 
-                                />
-                            </div>
-                        }
-                    })
-                    .collect::<Vec<yew::virtual_dom::VNode>>();
-
-                let rules = yew::virtual_dom::VList::with_children(rules, None);
-
-                html! {
-                    <div class="dropdown dropright dropdown-submenu">
-                        <button class="dropdown-item dropdown-toggle" type="button" data-toggle="dropdown"> { rule_class } </button>
-                        <div class="dropdown-menu"> { rules } </div>
-                    </div>
-                }
-            })
-            .collect::<Vec<yew::virtual_dom::VNode>>();
-        let menu = yew::virtual_dom::VList::with_children(menu, None);
+        let equivalence_submenu = equivalence_classes.iter().map(|&class| render_class(class)).collect::<Vec<_>>();
+        let non_equivalence_menu = RuleClassification::iter().filter(|class| !equivalence_classes.contains(class)).map(render_class).collect::<Vec<_>>();
 
         html! {
             <div class="dropright">
@@ -257,7 +211,11 @@ impl ProofWidget {
                     { cur_rule_name }
                 </button>
                 <div class="dropdown-menu">
-                    { menu }
+                    { non_equivalence_menu }
+                    <div class="dropdown dropright dropdown-submenu">
+                        <button class="dropdown-item dropdown-toggle" type="button" data-toggle="dropdown">{"Equivalence"}</button>
+                        <div class="dropdown-menu">{ equivalence_submenu }</div>
+                    </div>
                 </div>
             </div>
         }
@@ -266,8 +224,7 @@ impl ProofWidget {
     fn render_justification_widget(&self, ctx: &Context<Self>, jref: <P as Proof>::JustificationReference) -> Html {
         let just = self.prf.lookup_justification_or_die(&jref).expect("proofref should exist in self.prf");
 
-        // Iterator over line dependency badges, for rendering list of
-        // dependencies
+        // Iterator over line dependency badges, for rendering list of dependencies
         let dep_badges = just.2.iter().map(|dep| {
             let (dep_line, _) = self.pud.ref_to_line_depth[dep];
             html! {
@@ -275,8 +232,7 @@ impl ProofWidget {
             }
         });
 
-        // Iterator over subproof dependency badges, for rendering list of
-        // dependencies
+        // Iterator over subproof dependency badges, for rendering list of dependencies
         let sdep_badges = just.3.iter().filter_map(|sdep| self.prf.lookup_subproof(sdep)).map(|sub| {
             let (mut lo, mut hi) = (usize::MAX, usize::MIN);
             for line in sub.premises().into_iter().map(Coproduct::inject).chain(sub.direct_lines().into_iter().map(Coproduct::inject)) {
@@ -897,26 +853,7 @@ impl Component for ProofWidget {
             </div>
         }
     }
-    fn rendered(&mut self, _: &Context<Self>, first_render: bool) {
+    fn rendered(&mut self, _: &Context<Self>, _: bool) {
         js_sys::eval("$('[data-submenu]').submenupicker(); $('[data-toggle=popover]').popover()").unwrap_throw();
-        if !first_render {
-            let js = r#"
-                document.querySelectorAll('.dropdown-item').forEach(item => {
-                    const imgId = `tooltip-img-${item.innerText.trim().replace(/\s+/g, '_')}`;
-                    const imgElem = document.getElementById(imgId);
-                    item.addEventListener('mouseover', function() {
-                        if (imgElem) {
-                            imgElem.style.display = 'block';
-                        }
-                    });
-                    item.addEventListener('mouseout', function() {
-                        if (imgElem) {
-                            imgElem.style.display = 'none';
-                        }
-                    });
-                });
-            "#;
-            js_sys::eval(js).unwrap_throw();
-        }
     }
 }
