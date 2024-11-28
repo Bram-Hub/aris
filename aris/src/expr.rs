@@ -28,9 +28,8 @@ assert_eq!(&handle_user_input("bad(missing, paren"), "unsuccessful parse");
 
 use std::collections::BTreeSet;
 use std::collections::{HashMap, HashSet};
-use std::fmt;
-use std::mem;
 use std::ops::Not;
+use std::{fmt, mem};
 
 use itertools::Itertools;
 use maplit::hashset;
@@ -897,7 +896,7 @@ impl Expr {
                     Expr::collect_unique_exprs_idempotence(&normalized_expr, op, &mut unique_exprs);
                 }
 
-                // If there's only one unique expression, return it; otherwise, reassemble the expression
+                // If there's only one unique expression, return it. Otherwise, reassemble the expression
                 let unique_exprs: Vec<Expr> = unique_exprs.into_iter().collect();
 
                 if unique_exprs.len() == 1 {
@@ -951,13 +950,51 @@ impl Expr {
         }
     }
 
+    fn collect_reduction_exprs(expr: &Expr, op: Op, reduced_exprs: &mut BTreeSet<Expr>) {
+        match expr {
+            Expr::Assoc { op: expr_op, exprs } if *expr_op == op => {
+                exprs.iter().for_each(|sub_expr| Self::collect_reduction_exprs(sub_expr, op, reduced_exprs));
+            }
+            Expr::Assoc { op: inner_op, exprs } if (op, *inner_op) == (Op::And, Op::Or) || (op, *inner_op) == (Op::Or, Op::And) => {
+                let (mut other_terms, mut negated_match) = (vec![], None);
+
+                for sub_expr in exprs {
+                    match sub_expr {
+                        Expr::Not { operand } => {
+                            if Self::is_subset_of_assoc(operand, reduced_exprs, Op::And) {
+                                negated_match = Some(sub_expr.clone());
+                            } else {
+                                other_terms.push(sub_expr.clone());
+                            }
+                        }
+                        _ if reduced_exprs.contains(&Expr::Not { operand: Box::new(sub_expr.clone()) }) => {
+                            negated_match = Some(sub_expr.clone());
+                        }
+                        _ => other_terms.push(sub_expr.clone()),
+                    }
+                }
+
+                if negated_match.is_some() {
+                    reduced_exprs.extend(other_terms);
+                } else {
+                    reduced_exprs.insert(expr.clone());
+                }
+            }
+            Expr::Quant { kind, name, body } => {
+                reduced_exprs.insert(Expr::Quant { kind: *kind, name: name.clone(), body: Box::new(body.clone().normalize_reduction()) });
+            }
+            _ => {
+                reduced_exprs.insert(expr.clone());
+            }
+        }
+    }
+
     pub fn normalize_reduction(self) -> Expr {
         match self {
-            // Handle Associative operations (AND/OR)
             Expr::Assoc { op, exprs } => {
                 let mut reduced_exprs = BTreeSet::new();
 
-                // Recurse through the expressions inside the Assoc operation
+                // Recurse through the expressions
                 for expr in exprs {
                     let normalized_expr = expr.normalize_reduction();
                     Self::collect_reduction_exprs(&normalized_expr, op, &mut reduced_exprs);
@@ -968,75 +1005,127 @@ impl Expr {
                     let first = expr_iter.next().unwrap();
                     let second = expr_iter.next().unwrap();
 
-                    // Check if the second expression is a quantifier
                     if let Expr::Quant { kind, name, body } = second {
                         return Expr::Assoc { op: Op::Or, exprs: vec![first, Expr::Quant { kind, name, body }] };
                     }
                 }
+
                 Expr::Assoc { op, exprs: reduced_exprs.into_iter().collect() }
             }
-            // Recursively normalize quantifier body
+
+            // If the expression is a quantifier, recursively normalize its body
             Expr::Quant { kind, name, body } => {
                 let normalized_body = body.normalize_reduction();
                 Expr::Quant { kind, name, body: Box::new(normalized_body) }
             }
+
             // If the expression is a negation, attempt to simplify the negated quantifier
-            Expr::Not { operand } => {
-                match *operand {
-                    // If the operand is a quantifier, recursively normalize its body
-                    Expr::Quant { kind, name, body } => {
-                        let normalized_body = body.normalize_reduction();
-                        Expr::Quant { kind, name, body: Box::new(normalized_body) }
-                    }
-                    _ => Expr::Not { operand: Box::new(operand.normalize_reduction()) },
+            Expr::Not { operand } => match *operand {
+                Expr::Quant { kind, name, body } => {
+                    let normalized_body = body.normalize_reduction();
+                    Expr::Quant { kind, name, body: Box::new(normalized_body) }
                 }
+                _ => Expr::Not { operand: Box::new(operand.normalize_reduction()) },
+            },
+
+            _ => self,
+        }
+    }
+
+    fn is_subset_of_assoc(expr: &Expr, set: &BTreeSet<Expr>, op: Op) -> bool {
+        match expr {
+            Expr::Assoc { op: expr_op, exprs } if *expr_op == op => exprs.iter().all(|sub_expr| set.contains(sub_expr)),
+            single_expr => set.contains(single_expr),
+        }
+    }
+
+    pub fn normalize_adjacency(self) -> Expr {
+        match self {
+            Expr::Assoc { op, exprs } => {
+                let unique_exprs = exprs.into_iter().flat_map(|e| e.normalize_adjacency().extract_associative(op)).collect::<Vec<_>>();
+
+                match Self::simplify_general(unique_exprs.clone(), op) {
+                    Some(simplified) => simplified,
+                    None => match unique_exprs.len() {
+                        1 => unique_exprs.into_iter().next().unwrap(),
+                        _ => Expr::Assoc { op, exprs: unique_exprs },
+                    },
+                }
+            }
+            Expr::Quant { kind, name, body } => {
+                // Normalize the body of the quantifier
+                let normalized_body = body.normalize_adjacency();
+                Expr::Quant { kind, name, body: Box::new(normalized_body) }
             }
             _ => self,
         }
     }
 
-    fn collect_reduction_exprs(expr: &Expr, op: Op, reduced_exprs: &mut BTreeSet<Expr>) {
-        match expr {
-            // If the expression is an associative operation with the same operator, recurse into its subexpressions
-            Expr::Assoc { op: expr_op, exprs } if *expr_op == op => {
-                for sub_expr in exprs {
-                    Self::collect_reduction_exprs(sub_expr, op, reduced_exprs);
+    fn extract_associative(self, op: Op) -> Vec<Expr> {
+        match self {
+            Expr::Assoc { op: expr_op, exprs } if expr_op == op => exprs,
+            _ => vec![self],
+        }
+    }
+
+    fn simplify_general(mut exprs: Vec<Expr>, op: Op) -> Option<Expr> {
+        for i in 0..exprs.len() {
+            for j in (i + 1..exprs.len()).rev() {
+                if let Some(simplified) = Self::try_simplify_pair(&exprs[i], &exprs[j], op) {
+                    exprs.swap_remove(j);
+                    exprs[i] = simplified;
+                    return Self::simplify_general(exprs, op); // Restart with updated list
                 }
-            }
-            // If the expression involves an AND/OR between a quantifier and another expression, handle simplifications
-            Expr::Assoc { op: inner_op, exprs } => match (op, inner_op) {
-                (Op::And, Op::Or) | (Op::Or, Op::And) => {
-                    let mut other_terms = vec![];
-                    let mut negated_match = None;
-                    for sub_expr in exprs {
-                        match sub_expr {
-                            // If the subexpression involves a negated quantifier, simplify it
-                            Expr::Not { operand } if reduced_exprs.contains(operand) => {
-                                negated_match = Some(operand.as_ref().clone());
-                            }
-                            _ => other_terms.push(sub_expr.clone()),
-                        }
-                    }
-                    if negated_match.is_some() {
-                        reduced_exprs.extend(other_terms);
-                    } else {
-                        reduced_exprs.insert(expr.clone());
-                    }
-                }
-                _ => {
-                    reduced_exprs.insert(expr.clone());
-                }
-            },
-            // Simplify quantifier body
-            Expr::Quant { kind, name, body } => {
-                let normalized_body = body.clone().normalize_reduction();
-                let simplified_expr = Expr::Quant { kind: *kind, name: name.clone(), body: Box::new(normalized_body) };
-                reduced_exprs.insert(simplified_expr);
-            }
-            _ => {
-                reduced_exprs.insert(expr.clone());
             }
         }
+        exprs.sort();
+        exprs.dedup();
+        match exprs.len() {
+            0 => None,
+            1 => Some(exprs.into_iter().next().unwrap()),
+            _ => Some(Expr::Assoc { op, exprs }),
+        }
+    }
+
+    fn try_simplify_pair(e1: &Expr, e2: &Expr, op: Op) -> Option<Expr> {
+        match op {
+            Op::Or | Op::And => Self::simplify_logic(e1, e2),
+            _ => None,
+        }
+    }
+
+    fn simplify_logic(e1: &Expr, e2: &Expr) -> Option<Expr> {
+        match (e1, e2) {
+            (Expr::Assoc { op: sub_op1, exprs: exprs1 }, Expr::Assoc { op: sub_op2, exprs: exprs2 }) if *sub_op1 == *sub_op2 => {
+                let common: Vec<_> = exprs1.iter().filter(|e| exprs2.contains(e)).cloned().collect();
+                if common.is_empty() {
+                    return None;
+                }
+                let rest1: Vec<_> = exprs1.iter().filter(|e| !common.contains(*e)).collect();
+                let rest2: Vec<_> = exprs2.iter().filter(|e| !common.contains(*e)).collect();
+                if Self::is_complementary(&rest1, &rest2) {
+                    return Some(Self::assoc_or_single(common, *sub_op1));
+                }
+            }
+            _ => {}
+        }
+        None
+    }
+
+    fn assoc_or_single(mut exprs: Vec<Expr>, op: Op) -> Expr {
+        exprs.sort();
+        exprs.dedup();
+        match exprs.len() {
+            1 => exprs.pop().unwrap(),
+            _ => Expr::Assoc { op, exprs },
+        }
+    }
+
+    fn is_complementary(others1: &[&Expr], others2: &[&Expr]) -> bool {
+        matches!(
+            (others1, others2),
+            ([Expr::Not { operand: o1 }], [e2]) | ([e2], [Expr::Not { operand: o1 }]) if **o1 == **e2
+        )
     }
 
     /// Helper function for complement quantified expressions
@@ -1399,46 +1488,67 @@ impl Expr {
         })
     }
 
-    /// Distribute forall/exists into and/or
-    pub fn quantifier_distribution(self) -> Expr {
-        let push_quantifier_inside = |kind: QuantKind, qname: String, exprs: &mut Vec<Expr>| {
-            for iter in exprs.iter_mut() {
-                match kind {
-                    QuantKind::Exists => {
-                        let tmp = mem::replace(iter, Expr::Contra);
-                        *iter = Expr::exists(qname.as_str(), tmp);
-                    }
-
-                    QuantKind::Forall => {
-                        let tmp = mem::replace(iter, Expr::Contra);
-                        *iter = Expr::forall(qname.as_str(), tmp);
+    pub fn quantifier_inference(self) -> Expr {
+        let distribute_quantifiers = |expr: &Expr| -> Option<Expr> {
+            match expr {
+                // (∃ x (P(x) ∧ Q(x))) => ((∃ x P(x)) ∧ (∃ x Q(x)))
+                Expr::Quant { kind: QuantKind::Exists, name, body } if matches!(body.as_ref(), Expr::Assoc { op: Op::And, .. }) => {
+                    if let Expr::Assoc { op: Op::And, exprs } = body.as_ref() {
+                        let distributed = exprs.iter().map(|inner| Expr::exists(name, inner.clone())).collect::<Vec<_>>();
+                        return Some(Expr::assoc(Op::And, &distributed));
                     }
                 }
+                // ((∀ x P(x)) ∨ (∀ x Q(x))) => (∀ x (P(x) ∨ Q(x)))
+                Expr::Assoc { op: Op::Or, exprs } if exprs.iter().all(|e| matches!(e, Expr::Quant { kind: QuantKind::Forall, .. })) => {
+                    let names_and_bodies: Vec<(&str, &Expr)> = exprs
+                        .iter()
+                        .filter_map(|e| match e {
+                            Expr::Quant { kind: QuantKind::Forall, name, body } => Some((name.as_str(), body.as_ref())),
+                            _ => None,
+                        })
+                        .collect();
+
+                    let first_name = names_and_bodies[0].0;
+                    if names_and_bodies.iter().all(|(name, _)| name == &first_name) {
+                        let combined_body = Expr::assoc(Op::Or, &names_and_bodies.iter().map(|(_, body)| (*body).clone()).collect::<Vec<_>>());
+                        return Some(Expr::forall(first_name, combined_body));
+                    }
+                }
+                _ => {}
             }
+            None
         };
 
-        self.transform(&|expr| {
-            let orig_expr = expr.clone();
+        self.transform(&|expr| distribute_quantifiers(&expr).map_or((expr.clone(), false), |transformed| (transformed, true)))
+    }
 
-            match expr {
-                Expr::Quant { kind, name, body } => {
-                    match *body {
-                        Expr::Assoc { op, mut exprs } => {
-                            // continue only if op is And or Or
-                            match op {
-                                Op::And | Op::Or => {}
-                                _ => return (orig_expr, false),
-                            };
+    pub fn quantifier_distribution(self) -> Expr {
+        let push_quantifier_inside = |kind: QuantKind, qname: String, exprs: &mut Vec<Expr>| {
+            exprs.iter_mut().for_each(|iter| {
+                let tmp = mem::replace(iter, Expr::Contra);
+                *iter = match kind {
+                    QuantKind::Exists => Expr::exists(qname.as_str(), tmp),
+                    QuantKind::Forall => Expr::forall(qname.as_str(), tmp),
+                };
+            });
+        };
 
-                            // inline push_quantifier_inside here
-                            push_quantifier_inside(kind, name, &mut exprs);
-                            (Expr::assoc(op, &exprs), true)
-                        }
-                        _ => (orig_expr, false),
+        self.transform(&|expr| match expr.clone() {
+            Expr::Quant { kind, name, body } => match *body {
+                Expr::Assoc { op, mut exprs } => match op {
+                    Op::And if kind == QuantKind::Forall => {
+                        push_quantifier_inside(kind, name, &mut exprs);
+                        (Expr::assoc(Op::And, &exprs), true)
                     }
-                }
-                _ => (expr, false),
-            }
+                    Op::Or if kind == QuantKind::Exists => {
+                        push_quantifier_inside(kind, name, &mut exprs);
+                        (Expr::assoc(Op::Or, &exprs), true)
+                    }
+                    _ => (expr.clone(), false),
+                },
+                _ => (expr.clone(), false),
+            },
+            _ => (expr, false),
         })
     }
 
