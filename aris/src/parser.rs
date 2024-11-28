@@ -102,7 +102,22 @@ fn conditional_space(input: &str) -> IResult<&str, ()> {
 }
 
 fn binder(input: &str) -> IResult<&str, Expr> {
-    map(tuple((preceded(space, quantifier), preceded(space, variable), preceded(conditional_space, expr))), |(kind, name, body)| Expr::Quant { kind, name, body: Box::new(body) })(input)
+    map(
+        tuple((
+            preceded(space, quantifier),
+            preceded(space, variable),
+            preceded(
+                conditional_space,
+                alt((
+                    // Parse multiple terms enclosed in parentheses
+                    delimited(tuple((space, tag("("), space)), expr, tuple((space, tag(")"), space))),
+                    // Parse a single term without parentheses
+                    paren_expr,
+                )),
+            ),
+        )),
+        |(kind, name, body)| Expr::Quant { kind, name, body: Box::new(body) },
+    )(input)
 }
 
 fn impl_term(input: &str) -> IResult<&str, Expr> {
@@ -180,10 +195,10 @@ fn test_parser() {
     println!("{:?}", predicate("s(s(s(s(s(z)))))"));
     println!("{:?}", expr("a & b & c(x,y)\n"));
     println!("{:?}", expr("forall a (b & c)\n"));
-    let e = expr("exists x (Tet(x) & SameCol(x, b)) -> ~forall x (Tet(x) -> LeftOf(x, b))\n").unwrap();
+    let e = expr("exists x ((Tet(x) & SameCol(x, b)) -> ~forall x (Tet(x) -> LeftOf(x, b)))\n").unwrap();
     let fv = free_vars(&e.1);
     println!("{e:?} {fv:?}");
-    let e = expr("forall a forall b ((forall x in(x,a) <-> in(x,b)) -> eq(a,b))\n").unwrap();
+    let e = expr("forall a (forall b (((forall x (in(x,a) <-> in(x,b)) -> eq(a,b)))))\n").unwrap();
     let fv = free_vars(&e.1);
     assert_eq!(fv, ["eq", "in"].iter().map(|x| String::from(*x)).collect());
     println!("{e:?} {fv:?}");
