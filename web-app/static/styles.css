@@ -54,9 +54,15 @@ html, body {
     margin-top: 10px;
 }
 
+.tooltip {
+    overflow: visible;
+}
+
 .tooltip-inner {
-    max-width: 100%;
-    background-color: #0062cc; 
+    border: 1px solid black; /* Set uniform border width and color */
+    padding: 3px; /* Add consistent padding around the image */
+    width: auto; /* Ensure tooltip width adjusts to content */
+    max-width: none; 
 }
 
 .tooltip.show {
@@ -64,14 +70,14 @@ html, body {
 }
 
 .bs-tooltip-bottom .arrow::before{
-    border-bottom-color: #0062cc;
+    border-bottom-color: black;
 }
 .bs-tooltip-top .arrow::before{
-    border-top-color: #0062cc;
+    border-top-color: black;
 }
 .bs-tooltip-left .arrow::before{
-    border-left-color: #0062cc;
+    border-left-color: black;
 }
 .bs-tooltip-right  .arrow::before{
-    border-right-color: #0062cc;
+    border-right-color: black;
 }
