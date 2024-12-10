@@ -28,7 +28,7 @@ impl Proof for JavaShallowProof {
         Some(r.clone())
     }
     fn lookup_step(&self, r: &Self::JustificationReference) -> Option<Justification<Expr, PjRef<Self>, Self::SubproofReference>> {
-        Some(Justification(r.clone(), RuleM::Reit, vec![], vec![]))
+        Some(Justification(r.clone(), RuleM::Reiteration, vec![], vec![]))
     }
     fn lookup_subproof(&self, r: &Self::SubproofReference) -> Option<Self> {
         Some(r.clone())

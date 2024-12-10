@@ -117,13 +117,13 @@ where
         let line: Option<Line<P>> = self.lines.get(i).cloned();
         match line {
             None => {
-                let r = if is_premise { Inl(self.proof.add_premise(const_true)) } else { Inr(Inl(self.proof.add_step(Justification(const_true, RuleM::Reit, vec![], vec![])))) };
+                let r = if is_premise { Inl(self.proof.add_premise(const_true)) } else { Inr(Inl(self.proof.add_step(Justification(const_true, RuleM::Reiteration, vec![], vec![])))) };
                 self.lines.push(Line { raw_expr: "".into(), is_premise, reference: r, subreference: None });
             }
             Some(line) => {
                 let r = match (is_premise, line.reference.clone()) {
                     (true, Inl(pr)) => Inl(self.proof.add_premise_relative(const_true, &pr, true)),
-                    (false, Inr(Inl(jr))) => Inr(Inl(self.proof.add_step_relative(Justification(const_true, RuleM::Reit, vec![], vec![]), &Coproduct::inject(jr), true))),
+                    (false, Inr(Inl(jr))) => Inr(Inl(self.proof.add_step_relative(Justification(const_true, RuleM::Reiteration, vec![], vec![]), &Coproduct::inject(jr), true))),
                     (_, Inr(Inr(void))) => match void {},
                     (b, r) => panic!("LinedProof::add_line, is_premise was {b}, but the line reference was {r:?}"),
                 };
