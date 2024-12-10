@@ -441,6 +441,10 @@ impl Expr {
     pub fn apply(func: Expr, args: &[Expr]) -> Expr {
         Expr::Apply { func: Box::new(func), args: args.to_vec() }
     }
+    /// Helper for constructing `Not` nodes
+    pub fn not_place_holder() -> Expr {
+        Expr::Not { operand: Box::new(Expr::var("_")) }
+    }
     /// Construct an error message placeholder for an implication
     pub fn impl_place_holder() -> Expr {
         Expr::implies(Expr::var("_"), Expr::var("_"))
@@ -454,11 +458,11 @@ impl Expr {
         Expr::Assoc { op, exprs: exprs.to_vec() }
     }
     /// Construct an error message placeholder for an associative operator
-    pub fn assocplaceholder(op: Op) -> Expr {
+    pub fn assoc_place_holder(op: Op) -> Expr {
         Expr::assoc(op, &[Expr::var("_"), Expr::var("_"), Expr::var("...")])
     }
     /// Construct an error message placeholder for a quantifier
-    pub fn quant_placeholder(kind: QuantKind) -> Expr {
+    pub fn quant_place_holder(kind: QuantKind) -> Expr {
         Expr::Quant { kind, name: "_".to_owned(), body: Box::new(Expr::var("_")) }
     }
     /// Helper for constructing `Forall` nodes
