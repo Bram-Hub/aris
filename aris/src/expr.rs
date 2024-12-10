@@ -1143,26 +1143,29 @@ impl Expr {
     }
 
     /// Collects unique expressions and identifies complements globally
+    /// Removes complements from the unique expressions set when found
     fn collect_unique_exprs_complement(expr: &Expr, op: Op, unique_exprs: &mut HashSet<Expr>) -> bool {
         match expr {
-            Expr::Assoc { op: expr_op, exprs } if *expr_op == op => exprs.iter().any(|sub_expr| Expr::collect_unique_exprs_complement(sub_expr, op, unique_exprs)),
+            Expr::Assoc { op: expr_op, exprs } if *expr_op == op => exprs.iter().fold(false, |found_complement, sub_expr| Expr::collect_unique_exprs_complement(sub_expr, op, unique_exprs) || found_complement),
             Expr::Not { operand } => {
-                // Check if the negation of the operand already exists in the set
                 if let Expr::Quant { kind: QuantKind::Forall, .. } = **operand {
                     if operand.is_universal_tautology() {
                         return true;
                     }
                 }
                 if unique_exprs.contains(&**operand) {
-                    true // Complement found
+                    unique_exprs.remove(&**operand);
+                    true
                 } else {
                     unique_exprs.insert(expr.clone());
                     false
                 }
             }
             _ => {
-                if unique_exprs.contains(&Expr::Not { operand: Box::new(expr.clone()) }) {
-                    true // Complement found
+                let negated = Expr::Not { operand: Box::new(expr.clone()) };
+                if unique_exprs.contains(&negated) {
+                    unique_exprs.remove(&negated);
+                    true
                 } else {
                     unique_exprs.insert(expr.clone());
                     false
@@ -1174,6 +1177,7 @@ impl Expr {
     /// Reduce an expression over complement, that is:
     /// A & ~A -> ⊥
     /// A | ~A -> ⊤
+    /// Removes complements and preserves non-complement terms
     pub fn normalize_complement(self) -> Expr {
         match self {
             Expr::Assoc { op, exprs } if op == Op::And || op == Op::Or => {
@@ -1182,13 +1186,19 @@ impl Expr {
 
                 if has_complement {
                     match op {
-                        Op::And => Expr::Contra,
+                        Op::And => {
+                            let remaining_terms: Vec<Expr> = unique_exprs.into_iter().collect();
+                            if remaining_terms.is_empty() {
+                                Expr::Contra
+                            } else {
+                                Expr::Assoc { op, exprs: vec![Expr::Contra].into_iter().chain(remaining_terms).collect() }
+                            }
+                        }
                         Op::Or => Expr::Taut,
                         _ => unreachable!(),
                     }
                 } else {
                     let unique_exprs: Vec<Expr> = unique_exprs.into_iter().map(|e| e.normalize_complement()).collect();
-
                     if unique_exprs.len() == 1 {
                         unique_exprs.into_iter().next().unwrap()
                     } else {
