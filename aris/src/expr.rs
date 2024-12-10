@@ -786,6 +786,17 @@ impl Expr {
                     Expr::Assoc { op: Op::Or, exprs } => (demorgans(Op::And, exprs), true),
                     _ => (Expr::not(*operand), false),
                 },
+                Expr::Assoc { op, exprs } if op == Op::Or || op == Op::And => {
+                    let flattened_exprs: Vec<Expr> = exprs
+                        .into_iter()
+                        .flat_map(|e| match e {
+                            Expr::Assoc { op: inner_op, exprs: inner_exprs } if inner_op == op => inner_exprs,
+                            _ => vec![e],
+                        })
+                        .collect();
+
+                    (Expr::Assoc { op, exprs: flattened_exprs }, false)
+                }
                 _ => (expr, false),
             }
         })
@@ -1148,10 +1159,8 @@ impl Expr {
         match expr {
             Expr::Assoc { op: expr_op, exprs } if *expr_op == op => exprs.iter().fold(false, |found_complement, sub_expr| Expr::collect_unique_exprs_complement(sub_expr, op, unique_exprs) || found_complement),
             Expr::Not { operand } => {
-                if let Expr::Quant { kind: QuantKind::Forall, .. } = **operand {
-                    if operand.is_universal_tautology() {
-                        return true;
-                    }
+                if operand.is_universal_tautology() {
+                    return true;
                 }
                 if unique_exprs.contains(&**operand) {
                     unique_exprs.remove(&**operand);
@@ -1161,6 +1170,7 @@ impl Expr {
                     false
                 }
             }
+            expr if expr.is_universal_tautology() => false,
             _ => {
                 let negated = Expr::Not { operand: Box::new(expr.clone()) };
                 if unique_exprs.contains(&negated) {
@@ -1182,28 +1192,29 @@ impl Expr {
         match self {
             Expr::Assoc { op, exprs } if op == Op::And || op == Op::Or => {
                 let mut unique_exprs = HashSet::new();
-                let has_complement = exprs.iter().any(|expr| Expr::collect_unique_exprs_complement(expr, op, &mut unique_exprs));
+                let mut complements_found = false;
 
-                if has_complement {
-                    match op {
-                        Op::And => {
-                            let remaining_terms: Vec<Expr> = unique_exprs.into_iter().collect();
-                            if remaining_terms.is_empty() {
-                                Expr::Contra
-                            } else {
-                                Expr::Assoc { op, exprs: vec![Expr::Contra].into_iter().chain(remaining_terms).collect() }
-                            }
-                        }
-                        Op::Or => Expr::Taut,
-                        _ => unreachable!(),
+                for expr in exprs {
+                    if Expr::collect_unique_exprs_complement(&expr, op, &mut unique_exprs) {
+                        complements_found = true;
                     }
+                }
+
+                unique_exprs.retain(|e| !e.is_universal_tautology());
+                let mut result_exprs: Vec<Expr> = unique_exprs.into_iter().collect();
+
+                if complements_found {
+                    if op == Op::Or {
+                        result_exprs.push(Expr::Taut);
+                    } else if op == Op::And {
+                        result_exprs.push(Expr::Contra);
+                    }
+                }
+
+                if result_exprs.len() == 1 {
+                    result_exprs.into_iter().next().unwrap()
                 } else {
-                    let unique_exprs: Vec<Expr> = unique_exprs.into_iter().map(|e| e.normalize_complement()).collect();
-                    if unique_exprs.len() == 1 {
-                        unique_exprs.into_iter().next().unwrap()
-                    } else {
-                        Expr::Assoc { op, exprs: unique_exprs }
-                    }
+                    Expr::Assoc { op, exprs: result_exprs }
                 }
             }
             other => other,
