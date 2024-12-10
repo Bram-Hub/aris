@@ -74,7 +74,6 @@ use frunk_core::coproduct::Coproduct::Inr;
 use frunk_core::Coprod;
 use itertools::Itertools;
 use maplit::btreeset;
-use maplit::hashset;
 use petgraph::algo::tarjan_scc;
 use petgraph::graphmap::DiGraphMap;
 use strum_macros::*;
@@ -82,7 +81,6 @@ use strum_macros::*;
 #[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PrepositionalInference {
-    Reit,
     AndIntro,
     AndElim,
     OrIntro,
@@ -106,6 +104,44 @@ pub enum PredicateInference {
     ForallElim,
     ExistsIntro,
     ExistsElim,
+}
+
+#[allow(missing_docs)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BooleanInference {
+    DisjunctiveSyllogism,
+    Exclusion,
+    ExcludedMiddle,
+    HalfDeMorgan,
+}
+
+#[allow(missing_docs)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ConditionalInference {
+    ModusTollens,
+    HypotheticalSyllogism,
+    ConstructiveDilemma,
+    DestructiveDilemma,
+    StrengthenAntecedent,
+    WeakenConsequent,
+    ConIntroNegation,
+    ConElimNegation,
+
+}
+
+#[allow(missing_docs)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BiconditionalInference {
+    BiconIntro,
+    BiconIntroNegation,
+    BiconElim,
+    BiconElimNegation,
+}
+
+#[allow(missing_docs)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum QuantifierInference {
+    QuantInference,
 }
 
 #[allow(missing_docs)]
@@ -158,25 +194,6 @@ pub enum BiconditionalEquivalence {
 
 #[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum RedundantPrepositionalInference {
-    ModusTollens,
-    HypotheticalSyllogism,
-    DisjunctiveSyllogism,
-    ExcludedMiddle,
-    ConstructiveDilemma,
-    HalfDeMorgan,
-    QuantifierInference,
-}
-
-#[allow(missing_docs)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum AutomationRelatedRules {
-    Resolution,
-    TruthFunctionalConsequence,
-}
-
-#[allow(missing_docs)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum QuantifierEquivalence {
     QuantifierNegation,
     NullQuantification,
@@ -185,6 +202,14 @@ pub enum QuantifierEquivalence {
     AristoteleanSquare,
     QuantifierDistribution,
     PrenexLaws,
+}
+
+#[allow(missing_docs)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Special {
+    Reiteration,
+    Resolution,
+    TruthFunctionalConsequence,
 }
 
 #[allow(missing_docs)]
@@ -211,7 +236,7 @@ pub struct EmptyRule;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SharedChecks<T>(T);
 
-pub type Rule = SharedChecks<Coprod!(PrepositionalInference, PredicateInference, BooleanEquivalence, ConditionalEquivalence, BiconditionalEquivalence, RedundantPrepositionalInference, AutomationRelatedRules, QuantifierEquivalence, Induction, EmptyRule)>;
+pub type Rule = SharedChecks<Coprod!(PrepositionalInference, PredicateInference, BooleanInference, ConditionalInference, BiconditionalInference, QuantifierInference, BooleanEquivalence, ConditionalEquivalence, BiconditionalEquivalence, QuantifierEquivalence, Special, Induction, EmptyRule)>;
 
 /// Conveniences for constructing rules of the appropriate type, primarily for testing.
 /// The non-standard naming conventions here are because a module is being used to pretend to be an enum.
@@ -259,7 +284,6 @@ pub mod RuleM {
     // If the parens are omitted, $value:tt only captures SharedChecks, without the (...)
     // I haven't yet found a way to use macro_rules! to convert between expr and pat.
     declare_rules! {
-        [Reit, "REITERATION", (SharedChecks(Inl(PrepositionalInference::Reit)))],
         [AndIntro, "CONJUNCTION", (SharedChecks(Inl(PrepositionalInference::AndIntro)))],
         [AndElim, "SIMPLIFICATION", (SharedChecks(Inl(PrepositionalInference::AndElim)))],
         [OrIntro, "ADDITION", (SharedChecks(Inl(PrepositionalInference::OrIntro)))],
@@ -280,65 +304,79 @@ pub mod RuleM {
         [ExistsIntro, "EXISTENTIAL_GENERALIZATION", (SharedChecks(Inr(Inl(PredicateInference::ExistsIntro))))],
         [ExistsElim, "EXISTENTIAL_INSTANTIATION", (SharedChecks(Inr(Inl(PredicateInference::ExistsElim))))],
 
-        [Association, "ASSOCIATION", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Association)))))],
-        [Commutation, "COMMUTATION", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Commutation)))))],
-        [Idempotence, "IDEMPOTENCE", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Idempotence)))))],
-        [DeMorgan, "DE_MORGAN", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::DeMorgan)))))],
-        [Distribution, "DISTRIBUTION", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Distribution)))))],
-        [DoubleNegation, "DOUBLENEGATION_EQUIV", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::DoubleNegation)))))],
-        [Complement, "COMPLEMENT", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Complement)))))],
-        [Identity, "IDENTITY", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Identity)))))],
-        [Annihilation, "ANNIHILATION", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Annihilation)))))],
-        [Inverse, "INVERSE", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Inverse)))))],
-        [Absorption, "ABSORPTION", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Absorption)))))],
-        [Reduction, "REDUCTION", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Reduction)))))],
-        [Adjacency, "ADJACENCY", (SharedChecks(Inr(Inr(Inl(BooleanEquivalence::Adjacency)))))],
+        [DisjunctiveSyllogism, "DISJUNCTIVE_SYLLOGISM", (SharedChecks(Inr(Inr(Inl(BooleanInference::DisjunctiveSyllogism)))))],
+        [Exclusion, "EXCLUSION", (SharedChecks(Inr(Inr(Inl(BooleanInference::Exclusion)))))],
+        [ExcludedMiddle, "EXCLUDED_MIDDLE", (SharedChecks(Inr(Inr(Inl(BooleanInference::ExcludedMiddle)))))],
+        [HalfDeMorgan, "HALF_DE_MORGAN", (SharedChecks(Inr(Inr(Inl(BooleanInference::HalfDeMorgan)))))],
 
-        [Implication, "IMPLICATION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Implication))))))],
-        [Contraposition, "CONTRAPOSITION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Contraposition))))))],
-        [Exportation, "Exportation", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::Exportation))))))],
-        [ConditionalDistribution, "CONDITIONAL_DISTRIBUTION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalDistribution))))))],
-        [ConditionalAbsorption, "CONDITIONAL_ABSORPTION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalAbsorption))))))],
-        [ConditionalReduction, "CONDITIONAL_REDUCTION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalReduction))))))],
-        [ConditionalIdempotence, "CONDITIONAL_IDEMPOTENCE", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalIdempotence))))))],
-        [ConditionalComplement, "CONDITIONAL_COMPLEMENT", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalComplement))))))],
-        [ConditionalIdentity, "CONDITIONAL_IDENTITY", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalIdentity))))))],
-        [ConditionalAnnihilation, "CONDITIONAL_ANNIHILATION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalAnnihilation))))))],
+        [ModusTollens, "MODUS_TOLLENS", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalInference::ModusTollens))))))],
+        [HypotheticalSyllogism, "HYPOTHETICAL_SYLLOGISM", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalInference::HypotheticalSyllogism))))))],
+        [ConstructiveDilemma, "CONSTRUCTIVE_DILEMMA", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalInference::ConstructiveDilemma))))))],
+        [DestructiveDilemma, "DESTRUCTIVE_DILEMMA", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalInference::DestructiveDilemma))))))],
+        [StrengthenAntecedent, "STRENGTHEN_ANTECEDENT", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalInference::StrengthenAntecedent))))))],
+        [WeakenConsequent, "WEAKEN_CONSEQUENT", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalInference::WeakenConsequent))))))],
+        [ConIntroNegation, "CON_INTRO_NEGATION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalInference::ConIntroNegation))))))],
+        [ConElimNegation, "CON_ELIM_NEGATION", (SharedChecks(Inr(Inr(Inr(Inl(ConditionalInference::ConElimNegation))))))],
 
-        [BiEquivalence, "BICONDITIONAL_EQUIVALENCE", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiEquivalence)))))))],
-        [BiconditionalContraposition, "BICONDITIONAL_CONTRAPOSITION", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalContraposition)))))))],
-        [BiconditionalCommutation, "BICONDITIONAL_COMMUTATION", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalCommutation)))))))],
-        [BiconditionalAssociation, "BICONDITIONAL_ASSOCIATION", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalAssociation)))))))],
-        [BiconditionalReduction, "BICONDITIONAL_REDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalReduction)))))))],
-        [BiconditionalComplement, "BICONDITIONAL_COMPLEMENT", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalComplement)))))))],
-        [BiconditionalIdentity, "BICONDITIONAL_IDENTITY", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalIdentity)))))))],
-        [BiconditionalNegation, "BICONDITIONAL_NEGATION", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalNegation)))))))],
-        [BiconditionalSubstitution, "BICONDITIONAL_SUBSTITUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalSubstitution)))))))],
-        [KnightsAndKnaves, "KNIGHTS_AND_KNAVES", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::KnightsAndKnaves)))))))],
+        [BiconIntro, "BICON_INTRO", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalInference::BiconIntro)))))))],
+        [BiconIntroNegation, "BICON_INTRO_NEGATION", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalInference::BiconIntroNegation)))))))],
+        [BiconElim, "BICON_ELIM", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalInference::BiconElim)))))))],
+        [BiconElimNegation, "BICON_ELIM_NEGATION", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalInference::BiconElimNegation)))))))],
+        
+        [QuantifierInference, "QUANTIFIER_INFERENCE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierInference::QuantInference))))))))],
 
-        [ModusTollens, "MODUS_TOLLENS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ModusTollens))))))))],
-        [HypotheticalSyllogism, "HYPOTHETICAL_SYLLOGISM", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::HypotheticalSyllogism))))))))],
-        [DisjunctiveSyllogism, "DISJUNCTIVE_SYLLOGISM", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::DisjunctiveSyllogism))))))))],
-        [ExcludedMiddle, "EXCLUDED_MIDDLE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ExcludedMiddle))))))))],
-        [ConstructiveDilemma, "CONSTRUCTIVE_DILEMMA", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::ConstructiveDilemma))))))))],
-        [HalfDeMorgan, "HALF_DE_MORGAN", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::HalfDeMorgan))))))))],
-        [QuantifierInference, "QUANTIFIER_INFERENCE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(RedundantPrepositionalInference::QuantifierInference))))))))],
+        [Association, "ASSOCIATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BooleanEquivalence::Association)))))))))],
+        [Commutation, "COMMUTATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BooleanEquivalence::Commutation)))))))))],
+        [Idempotence, "IDEMPOTENCE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BooleanEquivalence::Idempotence)))))))))],
+        [DeMorgan, "DE_MORGAN", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BooleanEquivalence::DeMorgan)))))))))],
+        [Distribution, "DISTRIBUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BooleanEquivalence::Distribution)))))))))],
+        [DoubleNegation, "DOUBLENEGATION_EQUIV", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BooleanEquivalence::DoubleNegation)))))))))],
+        [Complement, "COMPLEMENT", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BooleanEquivalence::Complement)))))))))],
+        [Identity, "IDENTITY", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BooleanEquivalence::Identity)))))))))],
+        [Annihilation, "ANNIHILATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BooleanEquivalence::Annihilation)))))))))],
+        [Inverse, "INVERSE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BooleanEquivalence::Inverse)))))))))],
+        [Absorption, "ABSORPTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BooleanEquivalence::Absorption)))))))))],
+        [Reduction, "REDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BooleanEquivalence::Reduction)))))))))],
+        [Adjacency, "ADJACENCY", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BooleanEquivalence::Adjacency)))))))))],
 
-        [Resolution, "RESOLUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::Resolution)))))))))],
-        [TruthFunctionalConsequence, "TRUTHFUNCTIONAL_CONSEQUENCE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(AutomationRelatedRules::TruthFunctionalConsequence)))))))))],
+        [Implication, "IMPLICATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(ConditionalEquivalence::Implication))))))))))],
+        [Contraposition, "CONTRAPOSITION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(ConditionalEquivalence::Contraposition))))))))))],
+        [Exportation, "Exportation", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(ConditionalEquivalence::Exportation))))))))))],
+        [ConditionalDistribution, "CONDITIONAL_DISTRIBUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalDistribution))))))))))],
+        [ConditionalAbsorption, "CONDITIONAL_ABSORPTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalAbsorption))))))))))],
+        [ConditionalReduction, "CONDITIONAL_REDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalReduction))))))))))],
+        [ConditionalIdempotence, "CONDITIONAL_IDEMPOTENCE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalIdempotence))))))))))],
+        [ConditionalComplement, "CONDITIONAL_COMPLEMENT", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalComplement))))))))))],
+        [ConditionalIdentity, "CONDITIONAL_IDENTITY", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalIdentity))))))))))],
+        [ConditionalAnnihilation, "CONDITIONAL_ANNIHILATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(ConditionalEquivalence::ConditionalAnnihilation))))))))))],
 
-        [QuantifierNegation, "QUANTIFIER_NEGATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::QuantifierNegation))))))))))],
-        [NullQuantification, "NULL_QUANTIFICATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::NullQuantification))))))))))],
-        [ReplacingBoundVars, "REPLACING_BOUND_VARS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::ReplacingBoundVars))))))))))],
-        [SwappingQuantifiers, "SWAPPING_QUANTIFIERS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::SwappingQuantifiers))))))))))],
-        [AristoteleanSquare, "ARISTOTELEAN_SQUARE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::AristoteleanSquare))))))))))],
-        [QuantifierDistribution, "QUANTIFIER_DISTRIBUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::QuantifierDistribution))))))))))],
-        [PrenexLaws, "PRENEX_LAWS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::PrenexLaws))))))))))],
+        [BiEquivalence, "BICONDITIONAL_EQUIVALENCE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiEquivalence)))))))))))],
+        [BiconditionalContraposition, "BICONDITIONAL_CONTRAPOSITION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalContraposition)))))))))))],
+        [BiconditionalCommutation, "BICONDITIONAL_COMMUTATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalCommutation)))))))))))],
+        [BiconditionalAssociation, "BICONDITIONAL_ASSOCIATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalAssociation)))))))))))],
+        [BiconditionalReduction, "BICONDITIONAL_REDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalReduction)))))))))))],
+        [BiconditionalComplement, "BICONDITIONAL_COMPLEMENT", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalComplement)))))))))))],
+        [BiconditionalIdentity, "BICONDITIONAL_IDENTITY", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalIdentity)))))))))))],
+        [BiconditionalNegation, "BICONDITIONAL_NEGATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalNegation)))))))))))],
+        [BiconditionalSubstitution, "BICONDITIONAL_SUBSTITUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::BiconditionalSubstitution)))))))))))],
+        [KnightsAndKnaves, "KNIGHTS_AND_KNAVES", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BiconditionalEquivalence::KnightsAndKnaves)))))))))))],
 
-        [WeakInduction, "WEAK_INDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Induction::Weak)))))))))))],
-        [StrongInduction, "STRONG_INDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Induction::Strong)))))))))))],
+        [QuantifierNegation, "QUANTIFIER_NEGATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::QuantifierNegation))))))))))))],
+        [NullQuantification, "NULL_QUANTIFICATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::NullQuantification))))))))))))],
+        [ReplacingBoundVars, "REPLACING_BOUND_VARS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::ReplacingBoundVars))))))))))))],
+        [SwappingQuantifiers, "SWAPPING_QUANTIFIERS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::SwappingQuantifiers))))))))))))],
+        [AristoteleanSquare, "ARISTOTELEAN_SQUARE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::AristoteleanSquare))))))))))))],
+        [QuantifierDistribution, "QUANTIFIER_DISTRIBUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::QuantifierDistribution))))))))))))],
+        [PrenexLaws, "PRENEX_LAWS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::PrenexLaws))))))))))))],
+        
+        [Reiteration, "REITERATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Special::Reiteration)))))))))))))],
+        [Resolution, "RESOLUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Special::Resolution)))))))))))))],
+        [TruthFunctionalConsequence, "TRUTHFUNCTIONAL_CONSEQUENCE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Special::TruthFunctionalConsequence)))))))))))))],
 
-        [EmptyRule, "EMPTY_RULE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(super::EmptyRule))))))))))))]
+        [WeakInduction, "WEAK_INDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Induction::Weak))))))))))))))],
+        [StrongInduction, "STRONG_INDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Induction::Strong))))))))))))))],
+
+        [EmptyRule, "EMPTY_RULE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(super::EmptyRule)))))))))))))))]
     }
 }
 
@@ -348,8 +386,14 @@ pub mod RuleM {
 pub enum RuleClassification {
     Introduction,
     Elimination,
-    #[strum(to_string = "Misc. Inference")]
-    MiscInference,
+    #[strum(to_string = "Boolean Inference")]
+    BooleanInference,
+    #[strum(to_string = "Conditional Inference")]
+    ConditionalInference,
+    #[strum(to_string = "Biconditional Inference")]
+    BiconditionalInference,
+    #[strum(to_string = "Quantifier Inference")]
+    QuantifierInference,
     #[strum(to_string = "Boolean Equivalence")]
     BooleanEquivalence,
     #[strum(to_string = "Conditional Equivalence")]
@@ -358,6 +402,8 @@ pub enum RuleClassification {
     BiconditionalEquivalence,
     #[strum(to_string = "Quantifier Equivalence")]
     QuantifierEquivalence,
+    Special,
+    Induction,
 }
 
 impl RuleClassification {
@@ -481,7 +527,6 @@ impl RuleT for PrepositionalInference {
     fn get_name(&self) -> String {
         use PrepositionalInference::*;
         match self {
-            Reit => "Reiteration",
             AndIntro => "∧ Introduction",
             AndElim => "∧ Elimination",
             OrIntro => "∨ Introduction",
@@ -504,9 +549,6 @@ impl RuleT for PrepositionalInference {
         use RuleClassification::*;
         let mut ret = HashSet::new();
         match self {
-            Reit => {
-                ret.insert(MiscInference);
-            }
             AndIntro | OrIntro | ImpIntro | NotIntro | ContradictionIntro | BiconditionalIntro | EquivalenceIntro => {
                 ret.insert(Introduction);
             }
@@ -519,7 +561,7 @@ impl RuleT for PrepositionalInference {
     fn num_deps(&self) -> Option<usize> {
         use PrepositionalInference::*;
         match self {
-            Reit | AndElim | OrIntro | OrElim | NotElim | ContradictionElim => Some(1),
+            AndElim | OrIntro | OrElim | NotElim | ContradictionElim => Some(1),
             ContradictionIntro | ImpElim | BiconditionalElim | EquivalenceElim => Some(2),
             NotIntro | ImpIntro => Some(0),
             AndIntro | BiconditionalIntro | EquivalenceIntro => None, // AndIntro can have arbitrarily many conjuncts in one application
@@ -529,7 +571,7 @@ impl RuleT for PrepositionalInference {
         use PrepositionalInference::*;
         match self {
             NotIntro | ImpIntro => Some(1),
-            Reit | AndElim | OrIntro | NotElim | ContradictionElim | ContradictionIntro | ImpElim | AndIntro | BiconditionalElim | EquivalenceElim => Some(0),
+            AndElim | OrIntro | NotElim | ContradictionElim | ContradictionIntro | ImpElim | AndIntro | BiconditionalElim | EquivalenceElim => Some(0),
             OrElim | BiconditionalIntro | EquivalenceIntro => None,
         }
     }
@@ -539,14 +581,6 @@ impl RuleT for PrepositionalInference {
         use PrepositionalInference::*;
         use ProofCheckError::*;
         match self {
-            Reit => {
-                let prem = p.lookup_expr_or_die(&deps[0])?;
-                if prem == conclusion {
-                    Ok(())
-                } else {
-                    Err(DoesNotOccur(conclusion, prem))
-                }
-            }
             AndIntro => {
                 if deps.len() == 1 {
                     let single_dep_expr = p.lookup_expr_or_die(&deps[0])?;
@@ -570,7 +604,7 @@ impl RuleT for PrepositionalInference {
                     }
                     Ok(())
                 } else {
-                    Err(ConclusionOfWrongForm(Expr::assocplaceholder(Op::And)))
+                    Err(ConclusionOfWrongForm(Expr::assoc_place_holder(Op::And)))
                 }
             }
             AndElim => {
@@ -601,7 +635,7 @@ impl RuleT for PrepositionalInference {
                         }
                     }
                 } else {
-                    Err(DepDoesNotExist(Expr::assocplaceholder(Op::And), true))
+                    Err(DepDoesNotExist(Expr::assoc_place_holder(Op::And), true))
                 }
             }
             OrIntro => {
@@ -618,7 +652,7 @@ impl RuleT for PrepositionalInference {
                     }
                     Ok(())
                 } else {
-                    Err(ConclusionOfWrongForm(Expr::assocplaceholder(Op::Or)))
+                    Err(ConclusionOfWrongForm(Expr::assoc_place_holder(Op::Or)))
                 }
             }
             OrElim => {
@@ -641,7 +675,7 @@ impl RuleT for PrepositionalInference {
                     }
                     Ok(())
                 } else {
-                    Err(DepDoesNotExist(Expr::assocplaceholder(Op::Or), true))
+                    Err(DepDoesNotExist(Expr::assoc_place_holder(Op::Or), true))
                 }
             }
             ImpIntro => {
@@ -771,7 +805,7 @@ impl RuleT for PrepositionalInference {
                             AnyOrderResult::WrongOrder
                         }
                     },
-                    || DepDoesNotExist(Expr::assocplaceholder(Op::Bicon), true),
+                    || DepDoesNotExist(Expr::assoc_place_holder(Op::Bicon), true),
                 )
             }
             EquivalenceIntro | BiconditionalIntro => {
@@ -808,7 +842,7 @@ impl RuleT for PrepositionalInference {
                                     slab.entry(*right.clone()).or_insert_with(|| next());
                                     g.add_edge(slab[left], slab[right], ());
                                 }
-                                _ => return Err(OneOf(btreeset![DepOfWrongForm(prem.clone(), Expr::assocplaceholder(oper)), DepOfWrongForm(prem.clone(), Expr::impl_place_holder()),])),
+                                _ => return Err(OneOf(btreeset![DepOfWrongForm(prem.clone(), Expr::assoc_place_holder(oper)), DepOfWrongForm(prem.clone(), Expr::impl_place_holder()),])),
                             }
                         }
                         for sproof in sproofs.iter() {
@@ -847,7 +881,7 @@ impl RuleT for PrepositionalInference {
                         }
                     }
                 }
-                Err(ConclusionOfWrongForm(Expr::assocplaceholder(oper)))
+                Err(ConclusionOfWrongForm(Expr::assoc_place_holder(oper)))
             }
             EquivalenceElim => {
                 let prem1 = p.lookup_expr_or_die(&deps[0])?;
@@ -869,7 +903,7 @@ impl RuleT for PrepositionalInference {
                             AnyOrderResult::WrongOrder
                         }
                     },
-                    || DepDoesNotExist(Expr::assocplaceholder(Op::Equiv), true),
+                    || DepDoesNotExist(Expr::assoc_place_holder(Op::Equiv), true),
                 )
             }
         }
@@ -968,7 +1002,7 @@ impl RuleT for PredicateInference {
                     }
                     Err(Other(format!("Couldn't find a subproof line that unifies with the conclusion ({conclusion}).")))
                 } else {
-                    Err(ConclusionOfWrongForm(Expr::quant_placeholder(QuantKind::Forall)))
+                    Err(ConclusionOfWrongForm(Expr::quant_place_holder(QuantKind::Forall)))
                 }
             }
             ForallElim => {
@@ -977,7 +1011,7 @@ impl RuleT for PredicateInference {
                     unifies_wrt_var::<P>(body, &conclusion, name)?;
                     Ok(())
                 } else {
-                    Err(DepOfWrongForm(prem, Expr::quant_placeholder(QuantKind::Forall)))
+                    Err(DepOfWrongForm(prem, Expr::quant_place_holder(QuantKind::Forall)))
                 }
             }
             ExistsIntro => {
@@ -986,7 +1020,7 @@ impl RuleT for PredicateInference {
                     unifies_wrt_var::<P>(body, &prem, name)?;
                     Ok(())
                 } else {
-                    Err(ConclusionOfWrongForm(Expr::quant_placeholder(QuantKind::Exists)))
+                    Err(ConclusionOfWrongForm(Expr::quant_place_holder(QuantKind::Exists)))
                 }
             }
             ExistsElim => {
@@ -1019,7 +1053,7 @@ impl RuleT for PredicateInference {
                             return Err(Other(format!("Premise {subprem} doesn't unify with the body of dependency {prem}")));
                         }
                     } else {
-                        return Err(DepOfWrongForm(prem, Expr::quant_placeholder(QuantKind::Exists)));
+                        return Err(DepOfWrongForm(prem, Expr::quant_place_holder(QuantKind::Exists)));
                     }
                 };
                 for (r, expr) in sproof.exprs().into_iter().map(|r| sproof.lookup_expr_or_die(&r).map(|e| (r, e))).collect::<Result<Vec<_>, _>>()? {
@@ -1036,6 +1070,649 @@ impl RuleT for PredicateInference {
                 }
                 Err(Other(format!("Couldn't find a subproof line equal to the conclusion ({conclusion}).")))
             }
+        }
+    }
+}
+
+impl RuleT for BooleanInference {
+    fn get_name(&self) -> String {
+        use BooleanInference::*;
+        match self {
+            DisjunctiveSyllogism => "Disjunctive Syllogism",
+            Exclusion => "Exclusion",
+            ExcludedMiddle => "Excluded Middle",
+            HalfDeMorgan => "Half DeMorgan",
+        }
+        .into()
+    }
+    fn get_classifications(&self) -> HashSet<RuleClassification> {
+        [RuleClassification::BooleanInference].iter().cloned().collect()
+    }
+    fn num_deps(&self) -> Option<usize> {
+        use BooleanInference::*;
+        match self {
+            DisjunctiveSyllogism | Exclusion => Some(2),
+            ExcludedMiddle => Some(0),
+            HalfDeMorgan => Some(1),
+        }
+    }
+    fn num_subdeps(&self) -> Option<usize> {
+        Some(0)
+    }
+    fn check<P: Proof>(self, proof: &P, conclusion: Expr, deps: Vec<PjRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
+        use ProofCheckError::*;
+        use BooleanInference::*;
+
+        assert!(sdeps.is_empty());
+        match self {
+            DisjunctiveSyllogism => {
+                let dep_0 = proof.lookup_expr_or_die(&deps[0])?;
+                let dep_1 = proof.lookup_expr_or_die(&deps[1])?;
+
+                let is_disjunctive_case = |disj, negation, conclusion| {
+                    if let Expr::Assoc { op: Op::Or, exprs } = disj {
+                        if exprs.len() == 2 {
+                            let (p, q) = (&exprs[0], &exprs[1]);
+
+                            match (p, q, negation, conclusion) {
+                                // Case 1: P | Q, ~P concludes Q
+                                (p_expr, q_expr, Expr::Not { operand }, conclusion) if p_expr == &*operand && q_expr == conclusion => true,
+                                // Case 2: P | Q, ~Q concludes P
+                                (p_expr, q_expr, Expr::Not { operand }, conclusion) if q_expr == &*operand && p_expr == conclusion => true,
+                                // Case 3: ~P | Q, P concludes Q
+                                (Expr::Not { operand }, q_expr, p_expr, conclusion) if **operand == p_expr && q_expr == conclusion => true,
+                                // Case 4: P | ~Q, Q concludes P
+                                (p_expr, Expr::Not { operand }, q_expr, conclusion) if **operand == q_expr && p_expr == conclusion => true,
+                                _ => false,
+                            }
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                };
+
+                // Check if dep_0 or dep_1 is the disjunction, and apply the disjunctive syllogism rule
+                if is_disjunctive_case(dep_0.clone(), dep_1.clone(), &conclusion) || is_disjunctive_case(dep_1, dep_0, &conclusion) {
+                    Ok(())
+                } else {
+                    Err(ProofCheckError::Other("Conclusion does not logically follow from premises".to_string()))
+                }
+            }
+            Exclusion => {
+                let dep_0 = proof.lookup_expr_or_die(&deps[0])?;
+                let dep_1 = proof.lookup_expr_or_die(&deps[1])?;
+
+                let is_exclusion_case = |neg_conj, premise, conclusion| {
+                    if let Expr::Not { operand } = neg_conj {
+                        if let Expr::Assoc { op: Op::And, exprs } = operand.as_ref() {
+                            if exprs.len() == 2 {
+                                let (p, q) = (&exprs[0], &exprs[1]);
+
+                                match (p, q, premise, conclusion) {
+                                    // Case 1: !(P & Q), P concludes ~Q
+                                    (p_expr, q_expr, premise_expr, Expr::Not { operand: concl_q }) if *p_expr == premise_expr && q_expr == &*concl_q => true,
+                                    // Case 2: !(P & Q), Q concludes ~P
+                                    (p_expr, q_expr, premise_expr, Expr::Not { operand: concl_p }) if *q_expr == premise_expr && p_expr == &*concl_p => true,
+                                    // Case 3: !(P & ~Q), P concludes Q
+                                    (p_expr, Expr::Not { operand: q_expr }, premise_expr, conclusion_expr) if *p_expr == premise_expr && **q_expr == conclusion_expr => true,
+                                    // Case 4: !(!P & Q), Q concludes P
+                                    (Expr::Not { operand: p_expr }, q_expr, premise_expr, conclusion_expr) if *q_expr == premise_expr && **p_expr == conclusion_expr => true,
+                                    _ => false,
+                                }
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                };
+
+                if is_exclusion_case(dep_0.clone(), dep_1.clone(), conclusion.clone()) || is_exclusion_case(dep_1, dep_0, conclusion) {
+                    Ok(())
+                } else {
+                    Err(ProofCheckError::Other("Conclusion does not logically follow from premises".to_string()))
+                }
+            }
+            ExcludedMiddle => {
+                // A | ~A
+                let wrong_form_err = ConclusionOfWrongForm(Expr::var("_") | !Expr::var("_"));
+                let operands = match conclusion {
+                    Expr::Assoc { op: Op::Or, exprs } => exprs,
+                    _ => return Err(wrong_form_err),
+                };
+
+                let (a, not_a) = match operands.as_slice() {
+                    [a, not_a] => (a, not_a),
+                    _ => return Err(wrong_form_err),
+                };
+
+                let not_a_0 = not_a.clone();
+                let not_a_1 = !(a.clone());
+
+                if not_a_0 == not_a_1 {
+                    Ok(())
+                } else {
+                    Err(DoesNotOccur(not_a_0, not_a_1))
+                }
+            }
+            HalfDeMorgan => check_by_normalize_multiple_possibilities(proof, deps, conclusion, |e| e.normalize_halfdemorgans()),
+        }
+    }
+}
+
+impl RuleT for ConditionalInference {
+    fn get_name(&self) -> String {
+        use ConditionalInference::*;
+        match self {
+            ModusTollens => "Modus Tollens",
+            HypotheticalSyllogism => "Hypothetical Syllogism",
+            ConstructiveDilemma => "Constructive Dilemma",
+            DestructiveDilemma => "Destructive Dilemma",
+            StrengthenAntecedent => "Strengthening the Antecedent",
+            WeakenConsequent => "Weakening the Consequent",
+            ConIntroNegation => "Conditional Introduction Negation",
+            ConElimNegation => "Conditional Elimination Negation"
+        }
+        .into()
+    }
+    fn get_classifications(&self) -> HashSet<RuleClassification> {
+        [RuleClassification::ConditionalInference].iter().cloned().collect()
+    }
+    fn num_deps(&self) -> Option<usize> {
+        use ConditionalInference::*;
+        match self {
+            ModusTollens | HypotheticalSyllogism => Some(2),
+            ConstructiveDilemma | DestructiveDilemma => Some(3),
+            StrengthenAntecedent | WeakenConsequent | ConIntroNegation | ConElimNegation => Some(1),
+        }
+    }
+    fn num_subdeps(&self) -> Option<usize> {
+        Some(0)
+    }
+    fn check<P: Proof>(self, proof: &P, conclusion: Expr, deps: Vec<PjRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
+        use ProofCheckError::*;
+        use ConditionalInference::*;
+
+        assert!(sdeps.is_empty());
+        match self {
+            ModusTollens => {
+                let dep_0 = proof.lookup_expr_or_die(&deps[0])?;
+                let dep_1 = proof.lookup_expr_or_die(&deps[1])?;
+
+                let is_modus_tollens_case = |implication, negation, conclusion| {
+                    if let Expr::Impl { left, right } = implication {
+                        match (left.as_ref(), right.as_ref(), negation, conclusion) {
+                            // Case 1: P -> Q, ~Q concludes ~P
+                            (p, q, Expr::Not { operand }, Expr::Not { operand: concl_p }) if q == &*operand && p == &*concl_p => true,
+                            // Case 2: P -> ~Q, Q concludes ~P
+                            (p, Expr::Not { operand: q }, neg_q, Expr::Not { operand: concl_p }) if **q == neg_q && p == &*concl_p => true,
+                            // Case 3: ~P -> Q, ~Q concludes P
+                            (Expr::Not { operand: p }, q, Expr::Not { operand: neg_q }, concl_p) if *q == *neg_q && **p == concl_p => true,
+                            // Case 4: ~P -> ~Q, Q concludes P
+                            (Expr::Not { operand: p }, Expr::Not { operand: q }, neg_q, concl_p) if **q == neg_q && **p == concl_p => true,
+                            _ => false,
+                        }
+                    } else {
+                        false
+                    }
+                };
+
+                // Check if dep_0 or dep_1 is the implication, and apply the Modus Tollens rule
+                if is_modus_tollens_case(dep_0.clone(), dep_1.clone(), conclusion.clone()) || is_modus_tollens_case(dep_1, dep_0, conclusion) {
+                    Ok(())
+                } else {
+                    Err(ProofCheckError::Other("Conclusion does not logically follow from premises".to_string()))
+                }
+            }
+            HypotheticalSyllogism => {
+                // P -> Q, Q -> R
+                // --------------
+                // P -> R
+                let dep_0 = proof.lookup_expr_or_die(&deps[0])?;
+                let dep_1 = proof.lookup_expr_or_die(&deps[1])?;
+                either_order(
+                    &dep_0,
+                    &dep_1,
+                    |dep_0, dep_1| {
+                        if let (Expr::Impl { left: p_0, right: q_0 }, Expr::Impl { left: q_1, right: r_0 }, Expr::Impl { left: p_1, right: r_1 }) = (dep_0, dep_1, &conclusion) {
+                            if p_0 != p_1 {
+                                AnyOrderResult::Err(DoesNotOccur(*p_0.clone(), *p_1.clone()))
+                            } else if q_0 != q_1 {
+                                AnyOrderResult::Err(DoesNotOccur(*q_0.clone(), *q_1.clone()))
+                            } else if r_0 != r_1 {
+                                AnyOrderResult::Err(DoesNotOccur(*r_0.clone(), *r_1.clone()))
+                            } else {
+                                AnyOrderResult::Ok
+                            }
+                        } else {
+                            AnyOrderResult::WrongOrder
+                        }
+                    },
+                    || DepDoesNotExist(Expr::impl_place_holder(), true),
+                )
+            }
+            ConstructiveDilemma => {
+                // P -> Q, R -> S, P | R
+                // ---------------------
+                // Q | S
+                let deps = deps.into_iter().map(|dep| proof.lookup_expr_or_die(&dep)).collect::<Result<Vec<Expr>, _>>()?;
+                any_order(
+                    &deps,
+                    |deps| {
+                        let (dep_0, dep_1, dep_2) = deps.iter().collect_tuple().unwrap();
+                        if let (Expr::Impl { left: p_0, right: q_0 }, Expr::Impl { left: r_0, right: s_0 }, Expr::Assoc { op: Op::Or, exprs: p_r }, Expr::Assoc { op: Op::Or, exprs: q_s }) = (dep_0, dep_1, dep_2, &conclusion) {
+                            let p_0 = *p_0.clone();
+                            let q_0 = *q_0.clone();
+                            let r_0 = *r_0.clone();
+                            let s_0 = *s_0.clone();
+                            let dep_2 = (*dep_2).clone();
+                            let conclusion = conclusion.clone();
+
+                            let (p_1, r_1) = match p_r.iter().collect_tuple() {
+                                Some((p_1, r_1)) => (p_1, r_1),
+                                None => return AnyOrderResult::Err(DoesNotOccur(p_0 | r_0, dep_2)),
+                            };
+                            let (q_1, s_1) = match q_s.iter().collect_tuple() {
+                                Some((q_1, s_1)) => (q_1, s_1),
+                                None => return AnyOrderResult::Err(DoesNotOccur(q_0 | s_0, conclusion)),
+                            };
+
+                            let p_1 = p_1.clone();
+                            let q_1 = q_1.clone();
+                            let r_1 = r_1.clone();
+                            let s_1 = s_1.clone();
+
+                            if p_0 != p_1 {
+                                AnyOrderResult::Err(DoesNotOccur(p_0, p_1))
+                            } else if q_0 != q_1 {
+                                AnyOrderResult::Err(DoesNotOccur(q_0, q_1))
+                            } else if r_0 != r_1 {
+                                AnyOrderResult::Err(DoesNotOccur(r_0, r_1))
+                            } else if s_0 != s_1 {
+                                AnyOrderResult::Err(DoesNotOccur(s_0, s_1))
+                            } else {
+                                AnyOrderResult::Ok
+                            }
+                        } else {
+                            AnyOrderResult::WrongOrder
+                        }
+                    },
+                    || OneOf(btreeset![DepDoesNotExist(Expr::impl_place_holder(), true), DepDoesNotExist(Expr::assoc_place_holder(Op::Or), true),]),
+                )
+            }
+            DestructiveDilemma => {
+                // ~R | ~S, P -> R, Q -> S
+                // -----------------------
+                // ~P | ~Q OR ~Q | ~P
+                let deps = deps.into_iter().map(|dep| proof.lookup_expr_or_die(&dep)).collect::<Result<Vec<Expr>, _>>()?;
+                any_order(
+                    &deps,
+                    |deps| {
+                        let (dep_0, dep_1, dep_2) = deps.iter().collect_tuple().unwrap();
+                        if let (Expr::Assoc { op: Op::Or, exprs: neg_rs }, Expr::Impl { left: p_0, right: r_0 }, Expr::Impl { left: q_0, right: s_0 }, Expr::Assoc { op: Op::Or, exprs: neg_pq }) = (dep_0, dep_1, dep_2, &conclusion) {
+                            let p_0 = *p_0.clone();
+                            let q_0 = *q_0.clone();
+                            let r_0 = *r_0.clone();
+                            let s_0 = *s_0.clone();
+                            let dep_0 = (*dep_0).clone();
+                            let conclusion = conclusion.clone();
+
+                            let (neg_r, neg_s) = match neg_rs.iter().collect_tuple() {
+                                Some((neg_r, neg_s)) => (neg_r, neg_s),
+                                None => return AnyOrderResult::Err(DoesNotOccur(Expr::assoc_place_holder(Op::Or), dep_0)),
+                            };
+
+                            let neg_p_set = neg_pq.iter().collect::<std::collections::BTreeSet<_>>();
+
+                            let neg_r = neg_r.clone();
+                            let neg_s = neg_s.clone();
+
+                            if let Expr::Not { operand: r_1 } = neg_r {
+                                if r_0 != *r_1 {
+                                    return AnyOrderResult::Err(DoesNotOccur(r_0, *r_1));
+                                }
+                            } else {
+                                return AnyOrderResult::WrongOrder;
+                            }
+
+                            if let Expr::Not { operand: s_1 } = neg_s {
+                                if s_0 != *s_1 {
+                                    return AnyOrderResult::Err(DoesNotOccur(s_0, *s_1));
+                                }
+                            } else {
+                                return AnyOrderResult::WrongOrder;
+                            }
+
+                            let expected_neg_p = Expr::Not { operand: Box::new(p_0.clone()) };
+                            let expected_neg_q = Expr::Not { operand: Box::new(q_0.clone()) };
+
+                            if !neg_p_set.contains(&expected_neg_p) || !neg_p_set.contains(&expected_neg_q) {
+                                return AnyOrderResult::Err(DoesNotOccur(Expr::assoc_place_holder(Op::Or), conclusion));
+                            }
+
+                            AnyOrderResult::Ok
+                        } else {
+                            AnyOrderResult::WrongOrder
+                        }
+                    },
+                    || OneOf(btreeset![DepDoesNotExist(Expr::assoc_place_holder(Op::Or), true), DepDoesNotExist(Expr::impl_place_holder(), true),]),
+                )
+            }
+            StrengthenAntecedent => {
+                let dep_0 = proof.lookup_expr_or_die(&deps[0])?;
+                if let Expr::Impl { left, right } = dep_0.clone() {
+                    // Case 1: Premise: P -> R, Conclusion: (P & Q) -> R or (Q & P) -> R
+                    if let Expr::Impl { left: strengthened_left, right: strengthened_right } = conclusion.clone() {
+                        if *right == *strengthened_right {
+                            if let Expr::Assoc { op: Op::And, exprs } = strengthened_left.as_ref() {
+                                if exprs.contains(&*left) {
+                                    return Ok(());
+                                }
+                            }
+                        }
+                    }
+
+                    // Case 2: Premise: (P | Q) -> R, Conclusion: P -> R or Q -> R
+                    if let Expr::Impl { left: conclusion_left, right: conclusion_right } = conclusion {
+                        if *right == *conclusion_right {
+                            if let Expr::Assoc { op: Op::Or, exprs } = left.as_ref() {
+                                if exprs.contains(&*conclusion_left) {
+                                    return Ok(());
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Err(ProofCheckError::Other("Conclusion does not follow from the Strengthening the Antecedent rule.".to_string()))
+            }
+            WeakenConsequent => {
+                let dep_0 = proof.lookup_expr_or_die(&deps[0])?;
+                if let Expr::Impl { left, right } = dep_0.clone() {
+                    // Case 1 and 2: Premise: P -> (Q & R), Conclusion: P -> Q or P -> R
+                    if let Expr::Impl { left: conclusion_left, right: conclusion_right } = conclusion.clone() {
+                        if *left == *conclusion_left {
+                            if let Expr::Assoc { op: Op::And, exprs } = right.as_ref() {
+                                if exprs.contains(&*conclusion_right) {
+                                    return Ok(());
+                                }
+                            }
+                        }
+                    }
+
+                    // Case 3 and 4: Premise: P -> Q, Conclusion: P -> (Q | R) or P -> (R | Q)
+                    if let Expr::Impl { left: conclusion_left, right: conclusion_right } = conclusion {
+                        if *left == *conclusion_left {
+                            if let Expr::Assoc { op: Op::Or, exprs } = conclusion_right.as_ref() {
+                                if exprs.contains(&*right) {
+                                    return Ok(());
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Err(ProofCheckError::Other("Conclusion does not follow from the Weaken the Consequent rule.".to_string()))
+            }
+            ConIntroNegation => {
+                let premise = proof.lookup_expr_or_die(&deps[0])?;
+            
+                if let Expr::Impl { ref left, ref right } = conclusion {
+                    // Case 1: Premise: ~P, Conclusion: P -> Q
+                    if let Expr::Not { ref operand } = premise {
+                        if **operand == **left && !matches!(**right, Expr::Not { .. }) {
+                            return Ok(());
+                        }
+                    }
+            
+                    // Case 2: Premise: Q, Conclusion: P -> Q
+                    if premise == **right && !matches!(**left, Expr::Not { .. }) {
+                        return Ok(());
+                    }
+                }
+            
+                Err(ProofCheckError::Other(
+                    "Conclusion does not follow from the Conditional Introduction Negation rule.".to_string(),
+                ))
+            }
+            
+            ConElimNegation => {
+                let premise = proof.lookup_expr_or_die(&deps[0])?;
+
+                if let Expr::Not { ref operand } = premise {
+                    if let Expr::Impl { ref left, ref right } = **operand {
+                        // Case 1: Premise: ~(P -> Q), Conclusion: P
+                        if conclusion == **left {
+                            return Ok(());
+                        }
+
+                        // Case 2: Premise: ~(P -> Q), Conclusion: ~Q
+                        if conclusion == (Expr::Not { operand: Box::new(*right.clone()) }) {
+                            return Ok(());
+                        }
+                    }
+                }
+
+                Err(ProofCheckError::Other("Conclusion does not follow from the Conditional Elimination Negation rule.".to_string()))
+            }
+        }
+    }
+}
+
+impl RuleT for BiconditionalInference {
+    fn get_name(&self) -> String {
+        use BiconditionalInference::*;
+        match self { 
+            BiconIntro => "Biconditional Introduction",
+            BiconIntroNegation => "Biconditional Introduction Negation",
+            BiconElim => "Biconditional Elimination",
+            BiconElimNegation => "Biconditional Elimination Negation",
+        }
+        .into()
+    }
+    fn get_classifications(&self) -> HashSet<RuleClassification> {
+        [RuleClassification::BiconditionalInference].iter().cloned().collect()
+    }
+    fn num_deps(&self) -> Option<usize> {
+        use BiconditionalInference::*;
+        match self {
+            BiconIntro | BiconIntroNegation | BiconElim | BiconElimNegation => Some(2),
+        }
+    }
+    fn num_subdeps(&self) -> Option<usize> {
+        Some(0)
+    }
+    fn check<P: Proof>(self, proof: &P, conclusion: Expr, deps: Vec<PjRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
+        use crate::rules::ProofCheckError::*;
+        use BiconditionalInference::*;
+
+        assert!(sdeps.is_empty());
+        match self {
+            BiconIntro => {
+                let prem1 = proof.lookup_expr_or_die(&deps[0])?;
+                let prem2 = proof.lookup_expr_or_die(&deps[1])?;
+            
+                either_order(
+                    &prem1,
+                    &prem2,
+                    |i, j| {
+                        match (i, j) {
+                            // Case 1: Both premises are variables (P and Q)
+                            (Expr::Var { name: ref left }, Expr::Var { name: ref right }) => {
+                                if conclusion == Expr::assoc(Op::Bicon, &[Expr::var(left), Expr::var(right)]) {
+                                    return AnyOrderResult::Ok;
+                                }
+                            }
+                            // Case 2: Both premises are negations (~P and ~Q)
+                            (
+                                Expr::Not { operand: ref left },
+                                Expr::Not { operand: ref right },
+                            ) => {
+                                if conclusion == Expr::assoc(Op::Bicon, &[*left.clone(), *right.clone()])
+                                    || conclusion
+                                        == Expr::assoc(
+                                            Op::Bicon,
+                                            &[Expr::Not { operand: left.clone() }, Expr::Not { operand: right.clone() }],
+                                        )
+                                {
+                                    return AnyOrderResult::Ok;
+                                }
+                            }
+                            _ => {}
+                        }
+            
+                        AnyOrderResult::Err(DoesNotOccur(conclusion.clone(), Expr::assoc_place_holder(Op::Bicon)))
+                    },
+                    || DepDoesNotExist(Expr::assoc_place_holder(Op::Bicon), true),
+                )
+            },
+            BiconIntroNegation => {
+                let prem1 = proof.lookup_expr_or_die(&deps[0])?;
+                let prem2 = proof.lookup_expr_or_die(&deps[1])?;
+            
+                either_order(
+                    &prem1,
+                    &prem2,
+                    |i, j| {
+                        match (i, j) {
+                            // Case 1: Premises: ~P and Q, Conclusion: ~(P <-> Q)
+                            (
+                                Expr::Not { operand: ref left },
+                                Expr::Var { name: ref right },
+                            ) => {
+                                if conclusion
+                                    == (Expr::Not {
+                                        operand: Box::new(Expr::assoc(Op::Bicon, &[*left.clone(), Expr::var(right)])),
+                                    })
+                                {
+                                    return AnyOrderResult::Ok;
+                                }
+                            }
+                            // Case 2: Premises are P and ~Q, Conclusion: ~(P <-> Q)
+                            (
+                                Expr::Var { name: ref left },
+                                Expr::Not { operand: ref right },
+                            ) => {
+                                if conclusion
+                                    == (Expr::Not {
+                                        operand: Box::new(Expr::assoc(Op::Bicon, &[Expr::var(left), *right.clone()])),
+                                    })
+                                {
+                                    return AnyOrderResult::Ok;
+                                }
+                            }
+                            _ => {}
+                        }
+            
+                        AnyOrderResult::Err(DoesNotOccur(
+                            conclusion.clone(),
+                            Expr::not_place_holder(),
+                        ))
+                    },
+                    || DepDoesNotExist(Expr::not_place_holder(), true),
+                )
+            },
+            BiconElim => {
+                let prem1 = proof.lookup_expr_or_die(&deps[0])?;
+                let prem2 = proof.lookup_expr_or_die(&deps[1])?;
+            
+                either_order(
+                    &prem1,
+                    &prem2,
+                    |i, j| {
+                        if let Expr::Assoc { ref op, ref exprs } = i {
+                            if *op == Op::Bicon && exprs.len() == 2 {
+                                let left = &exprs[0];
+                                let right = &exprs[1];
+            
+                                if let Expr::Not { ref operand } = j {
+                                    if **operand == *left && conclusion == (Expr::Not { operand: Box::new(right.clone()) }) {
+                                        return AnyOrderResult::Ok;
+                                    } else if **operand == *right && conclusion == (Expr::Not { operand: Box::new(left.clone()) }) {
+                                        return AnyOrderResult::Ok;
+                                    } else {
+                                        return AnyOrderResult::Err(DoesNotOccur(j.clone(), conclusion.clone()));
+                                    }
+                                }
+                            }
+                        }
+                        AnyOrderResult::WrongOrder
+                    },
+                    || DepDoesNotExist(Expr::assoc_place_holder(Op::Bicon), true),
+                )
+            },
+            BiconElimNegation => {
+                let prem1 = proof.lookup_expr_or_die(&deps[0])?;
+                let prem2 = proof.lookup_expr_or_die(&deps[1])?;
+            
+                either_order(
+                    &prem1,
+                    &prem2,
+                    |i, j| {
+                        if let Expr::Not { ref operand } = i {
+                            if let Expr::Assoc { ref op, ref exprs } = **operand {
+                                if *op == Op::Bicon && exprs.len() == 2 {
+                                    let left = &exprs[0];
+                                    let right = &exprs[1];
+            
+                                    if *left == *j {
+                                        if conclusion == (Expr::Not { operand: Box::new(right.clone()) }) {
+                                            return AnyOrderResult::Ok;
+                                        } else {
+                                            return AnyOrderResult::Err(DoesNotOccur(conclusion.clone(), right.clone()));
+                                        }
+                                    }
+            
+                                    if *right == *j {
+                                        if conclusion == (Expr::Not { operand: Box::new(left.clone()) }) {
+                                            return AnyOrderResult::Ok;
+                                        } else {
+                                            return AnyOrderResult::Err(DoesNotOccur(conclusion.clone(), left.clone()));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        AnyOrderResult::WrongOrder
+                    },
+                    || DepDoesNotExist(Expr::not_place_holder(), true),
+                )
+            }
+        }
+    }
+}
+
+impl RuleT for QuantifierInference {
+    fn get_name(&self) -> String {
+        use QuantifierInference::*;
+        match self {
+            QuantInference => "Quantifier Inference",
+        }
+        .into()
+    }
+    fn get_classifications(&self) -> HashSet<RuleClassification> {
+        [RuleClassification::QuantifierInference].iter().cloned().collect()
+    }
+    fn num_deps(&self) -> Option<usize> {
+        use QuantifierInference::*;
+        match self {
+            QuantInference => Some(1),
+        }
+    }
+    fn num_subdeps(&self) -> Option<usize> {
+        Some(0)
+    }
+    fn check<P: Proof>(self, proof: &P, conclusion: Expr, deps: Vec<PjRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
+        use QuantifierInference::*;
+
+        assert!(sdeps.is_empty());
+        match self {
+            QuantInference => check_by_normalize_first_expr_one_way(proof, deps, conclusion, |e| e.quantifier_inference()),
         }
     }
 }
@@ -1082,44 +1759,23 @@ where
 {
     let premise = p.lookup_expr_or_die(&deps[0])?;
 
-    // Generate all possible transformed premises and conclusions
     let premise_possibilities = normalize_fn(premise);
     let conclusion_possibilities = normalize_fn(conclusion);
 
-    // Check if any conclusion possibility matches a premise possibility
     for premise_expr in premise_possibilities.iter() {
         for conclusion_expr in conclusion_possibilities.iter() {
             if premise_expr == conclusion_expr {
-                return Ok(()); // If a match is found, return success
+                return Ok(()); 
             }
         }
     }
 
-    Err(ProofCheckError::Other("None of the possible normalized premises match the conclusion.".to_string()))
+    Err(ProofCheckError::Other(format!("None of the possible normalized premises match the conclusion.")))
 }
 
 fn check_by_rewrite_rule_confl<P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion: Expr, commutative: bool, rule: &RewriteRule, restriction: &str) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
     check_by_normalize_first_expr(p, deps, conclusion, commutative, |e| rule.reduce(e), restriction)
 }
-
-// fn check_by_rewrite_rule_non_confl<P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion: Expr, commutative: bool, rule: &RewriteRule, restriction: &str) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
-//     let premise = p.lookup_expr_or_die(&deps[0])?;
-//     let premise_set = rule.reduce_set(premise.clone());
-//     let conclusion_set = rule.reduce_set(conclusion.clone());
-//     let (premise_set, conclusion_set) = if commutative {
-//         let sort_ops = |set: HashSet<Expr>| set.into_iter().map(|expr| expr.sort_commutative_ops(restriction)).collect();
-//         (sort_ops(premise_set), sort_ops(conclusion_set))
-//     } else {
-//         (premise_set, conclusion_set)
-//     };
-//     // The premise and conclusion are equal if the set intersection is nonempty
-//     let is_eq = premise_set.intersection(&conclusion_set).next().is_some();
-//     if is_eq {
-//         Ok(())
-//     } else {
-//         Err(ProofCheckError::Other(format!("{premise} and {conclusion} are not equal.")))
-//     }
-// }
 
 impl RuleT for BooleanEquivalence {
     fn get_name(&self) -> String {
@@ -1259,232 +1915,83 @@ impl RuleT for BiconditionalEquivalence {
     }
 }
 
-impl RuleT for RedundantPrepositionalInference {
+impl RuleT for QuantifierEquivalence {
     fn get_name(&self) -> String {
-        use RedundantPrepositionalInference::*;
+        use QuantifierEquivalence::*;
         match self {
-            ModusTollens => "Modus Tollens",
-            HypotheticalSyllogism => "Hypothetical Syllogism",
-            DisjunctiveSyllogism => "Disjunctive Syllogism",
-            ExcludedMiddle => "Excluded Middle",
-            ConstructiveDilemma => "Constructive Dilemma",
-            HalfDeMorgan => "Half DeMorgan",
-            QuantifierInference => "Quantifier Inference",
+            QuantifierNegation => "Quantifier Negation",
+            NullQuantification => "Null Quantification",
+            ReplacingBoundVars => "Replacing Bound Variables",
+            SwappingQuantifiers => "Swapping Quantifiers of Same Type",
+            AristoteleanSquare => "Aristotelean Square of Opposition",
+            QuantifierDistribution => "Quantifier Distribution",
+            PrenexLaws => "Prenex Laws",
         }
         .into()
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
-        [RuleClassification::MiscInference].iter().cloned().collect()
+        [RuleClassification::QuantifierEquivalence].iter().cloned().collect()
     }
     fn num_deps(&self) -> Option<usize> {
-        use RedundantPrepositionalInference::*;
-        match self {
-            ModusTollens | HypotheticalSyllogism | DisjunctiveSyllogism => Some(2),
-            ExcludedMiddle => Some(0),
-            ConstructiveDilemma => Some(3),
-            HalfDeMorgan | QuantifierInference => Some(1),
-        }
-    }
+        Some(1)
+    } // all equivalence rules rewrite a single statement
     fn num_subdeps(&self) -> Option<usize> {
         Some(0)
     }
-    fn check<P: Proof>(self, proof: &P, conclusion: Expr, deps: Vec<PjRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
-        use ProofCheckError::*;
-        use RedundantPrepositionalInference::*;
-
-        assert!(sdeps.is_empty());
+    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
+        use QuantifierEquivalence::*;
         match self {
-            ModusTollens => {
-                // P -> Q, ~Q
-                // ----------
-                // ~P
-                let dep_0 = proof.lookup_expr_or_die(&deps[0])?;
-                let dep_1 = proof.lookup_expr_or_die(&deps[1])?;
-                either_order(
-                    &dep_0,
-                    &dep_1,
-                    |dep_0, dep_1| {
-                        if let Expr::Impl { left: p, right: q } = dep_0 {
-                            let not_p = !(*p.clone());
-                            let not_q = !(*q.clone());
-                            if not_q != *dep_1 {
-                                AnyOrderResult::Err(DoesNotOccur(not_q, dep_1.clone()))
-                            } else if not_p != conclusion {
-                                AnyOrderResult::Err(DoesNotOccur(not_p, conclusion.clone()))
-                            } else {
-                                AnyOrderResult::Ok
-                            }
-                        } else {
-                            AnyOrderResult::WrongOrder
-                        }
-                    },
-                    || DepDoesNotExist(Expr::impl_place_holder(), true),
-                )
-            }
-            HypotheticalSyllogism => {
-                // P -> Q, Q -> R
-                // --------------
-                // P -> R
-                let dep_0 = proof.lookup_expr_or_die(&deps[0])?;
-                let dep_1 = proof.lookup_expr_or_die(&deps[1])?;
-                either_order(
-                    &dep_0,
-                    &dep_1,
-                    |dep_0, dep_1| {
-                        if let (Expr::Impl { left: p_0, right: q_0 }, Expr::Impl { left: q_1, right: r_0 }, Expr::Impl { left: p_1, right: r_1 }) = (dep_0, dep_1, &conclusion) {
-                            if p_0 != p_1 {
-                                AnyOrderResult::Err(DoesNotOccur(*p_0.clone(), *p_1.clone()))
-                            } else if q_0 != q_1 {
-                                AnyOrderResult::Err(DoesNotOccur(*q_0.clone(), *q_1.clone()))
-                            } else if r_0 != r_1 {
-                                AnyOrderResult::Err(DoesNotOccur(*r_0.clone(), *r_1.clone()))
-                            } else {
-                                AnyOrderResult::Ok
-                            }
-                        } else {
-                            AnyOrderResult::WrongOrder
-                        }
-                    },
-                    || DepDoesNotExist(Expr::impl_place_holder(), true),
-                )
-            }
-            DisjunctiveSyllogism => {
-                let dep_0 = proof.lookup_expr_or_die(&deps[0])?;
-                let dep_1 = proof.lookup_expr_or_die(&deps[1])?;
-
-                let is_disjunctive_case = |disj, negation, conclusion| {
-                    if let Expr::Assoc { op: Op::Or, exprs } = disj {
-                        if exprs.len() == 2 {
-                            let (p, q) = (&exprs[0], &exprs[1]);
-
-                            match (p, q, negation, conclusion) {
-                                // Case 1: P | Q, ~P concludes Q
-                                (p_expr, q_expr, Expr::Not { operand }, conclusion) if p_expr == &*operand && q_expr == conclusion => true,
-                                // Case 2: P | Q, ~Q concludes P
-                                (p_expr, q_expr, Expr::Not { operand }, conclusion) if q_expr == &*operand && p_expr == conclusion => true,
-                                // Case 3: ~P | Q, P concludes Q
-                                (Expr::Not { operand }, q_expr, p_expr, conclusion) if **operand == p_expr && q_expr == conclusion => true,
-                                // Case 4: P | ~Q, Q concludes P
-                                (p_expr, Expr::Not { operand }, q_expr, conclusion) if **operand == q_expr && p_expr == conclusion => true,
-                                _ => false,
-                            }
-                        } else {
-                            false
-                        }
-                    } else {
-                        false
-                    }
-                };
-
-                // Check if dep_0 or dep_1 is the disjunction, and apply the disjunctive syllogism rule
-                if is_disjunctive_case(dep_0.clone(), dep_1.clone(), &conclusion) || is_disjunctive_case(dep_1, dep_0, &conclusion) {
-                    Ok(())
-                } else {
-                    Err(ProofCheckError::Other("Conclusion does not logically follow from premises".to_string()))
-                }
-            }
-            ExcludedMiddle => {
-                // A | ~A
-                let wrong_form_err = ConclusionOfWrongForm(Expr::var("_") | !Expr::var("_"));
-                let operands = match conclusion {
-                    Expr::Assoc { op: Op::Or, exprs } => exprs,
-                    _ => return Err(wrong_form_err),
-                };
-
-                let (a, not_a) = match operands.as_slice() {
-                    [a, not_a] => (a, not_a),
-                    _ => return Err(wrong_form_err),
-                };
-
-                let not_a_0 = not_a.clone();
-                let not_a_1 = !(a.clone());
-
-                if not_a_0 == not_a_1 {
-                    Ok(())
-                } else {
-                    Err(DoesNotOccur(not_a_0, not_a_1))
-                }
-            }
-            ConstructiveDilemma => {
-                // P -> Q, R -> S, P | R
-                // ---------------------
-                // Q | S
-                let deps = deps.into_iter().map(|dep| proof.lookup_expr_or_die(&dep)).collect::<Result<Vec<Expr>, _>>()?;
-                any_order(
-                    &deps,
-                    |deps| {
-                        let (dep_0, dep_1, dep_2) = deps.iter().collect_tuple().unwrap();
-                        if let (Expr::Impl { left: p_0, right: q_0 }, Expr::Impl { left: r_0, right: s_0 }, Expr::Assoc { op: Op::Or, exprs: p_r }, Expr::Assoc { op: Op::Or, exprs: q_s }) = (dep_0, dep_1, dep_2, &conclusion) {
-                            let p_0 = *p_0.clone();
-                            let q_0 = *q_0.clone();
-                            let r_0 = *r_0.clone();
-                            let s_0 = *s_0.clone();
-                            let dep_2 = (*dep_2).clone();
-                            let conclusion = conclusion.clone();
-
-                            let (p_1, r_1) = match p_r.iter().collect_tuple() {
-                                Some((p_1, r_1)) => (p_1, r_1),
-                                None => return AnyOrderResult::Err(DoesNotOccur(p_0 | r_0, dep_2)),
-                            };
-                            let (q_1, s_1) = match q_s.iter().collect_tuple() {
-                                Some((q_1, s_1)) => (q_1, s_1),
-                                None => return AnyOrderResult::Err(DoesNotOccur(q_0 | s_0, conclusion)),
-                            };
-
-                            let p_1 = p_1.clone();
-                            let q_1 = q_1.clone();
-                            let r_1 = r_1.clone();
-                            let s_1 = s_1.clone();
-
-                            if p_0 != p_1 {
-                                AnyOrderResult::Err(DoesNotOccur(p_0, p_1))
-                            } else if q_0 != q_1 {
-                                AnyOrderResult::Err(DoesNotOccur(q_0, q_1))
-                            } else if r_0 != r_1 {
-                                AnyOrderResult::Err(DoesNotOccur(r_0, r_1))
-                            } else if s_0 != s_1 {
-                                AnyOrderResult::Err(DoesNotOccur(s_0, s_1))
-                            } else {
-                                AnyOrderResult::Ok
-                            }
-                        } else {
-                            AnyOrderResult::WrongOrder
-                        }
-                    },
-                    || OneOf(btreeset![DepDoesNotExist(Expr::impl_place_holder(), true), DepDoesNotExist(Expr::assocplaceholder(Op::Or), true),]),
-                )
-            }
-            HalfDeMorgan => check_by_normalize_multiple_possibilities(proof, deps, conclusion, |e| e.normalize_halfdemorgans()),
-            QuantifierInference => check_by_normalize_first_expr_one_way(proof, deps, conclusion, |e| e.quantifier_inference()),
+            QuantifierNegation => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::negate_quantifiers, "none"),
+            NullQuantification => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::normalize_null_quantifiers, "none"),
+            ReplacingBoundVars => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::replacing_bound_vars, "none"),
+            SwappingQuantifiers => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::swap_quantifiers, "none"),
+            AristoteleanSquare => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::aristotelean_square, "none"),
+            QuantifierDistribution => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::quantifier_distribution, "none"),
+            PrenexLaws => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::normalize_prenex_laws, "none"),
         }
     }
 }
 
-impl RuleT for AutomationRelatedRules {
+impl RuleT for Special {
     fn get_name(&self) -> String {
+        use Special::*;
         match self {
-            AutomationRelatedRules::Resolution => "Resolution",
-            AutomationRelatedRules::TruthFunctionalConsequence => "Truth-Functional Consequence",
+            Reiteration => "Reiteration",
+            Resolution => "Resolution",
+            TruthFunctionalConsequence => "Truth-Functional Consequence",
         }
         .into()
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
-        [RuleClassification::MiscInference].iter().cloned().collect()
+        [RuleClassification::Special].iter().cloned().collect()
     }
     fn num_deps(&self) -> Option<usize> {
+        use Special::*;
         match self {
-            AutomationRelatedRules::Resolution => Some(2),
-            AutomationRelatedRules::TruthFunctionalConsequence => None,
+            Reiteration => Some(1),
+            Resolution => Some(2),
+            TruthFunctionalConsequence => None,
         }
     }
     fn num_subdeps(&self) -> Option<usize> {
+        use Special::*;
         match self {
-            AutomationRelatedRules::Resolution | AutomationRelatedRules::TruthFunctionalConsequence => Some(0),
+            Reiteration | Resolution | TruthFunctionalConsequence => Some(0),
         }
     }
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
+        use crate::rules::ProofCheckError::DoesNotOccur;
+        use Special::*;
         match self {
-            AutomationRelatedRules::Resolution => {
+            Reiteration => {
+                let prem = p.lookup_expr_or_die(&deps[0])?;
+                if prem == conclusion {
+                    Ok(())
+                } else {
+                    Err(DoesNotOccur(conclusion, prem))
+                }
+            }
+            Resolution => {
                 let prem0 = p.lookup_expr_or_die(&deps[0])?;
                 let prem1 = p.lookup_expr_or_die(&deps[1])?;
                 let mut premise_disjuncts = HashSet::new();
@@ -1492,8 +1999,14 @@ impl RuleT for AutomationRelatedRules {
                 premise_disjuncts.extend(prem1.disjuncts());
                 let conclusion_disjuncts = conclusion.disjuncts().into_iter().collect::<HashSet<_>>();
                 let mut remainder = premise_disjuncts.difference(&conclusion_disjuncts).cloned().collect::<Vec<Expr>>();
-                //println!("resolution remainder of {:?} and {:?} is {:?}", premise_disjuncts, conclusion_disjuncts, remainder);
                 remainder.sort();
+
+                // Ensure conclusion terms are in premises
+                if !conclusion_disjuncts.is_subset(&premise_disjuncts) {
+                    return Err(ProofCheckError::Other(format!("Conclusion contains terms that are not in the premises: {:?}", conclusion_disjuncts.difference(&premise_disjuncts).collect::<Vec<_>>())));
+                }
+
+                // Ensure remainder forms a contradiction
                 match &remainder[..] {
                     [e1, e2] => do_expressions_contradict::<P>(e1, e2),
                     _ => {
@@ -1506,7 +2019,7 @@ impl RuleT for AutomationRelatedRules {
                     }
                 }
             }
-            AutomationRelatedRules::TruthFunctionalConsequence => {
+            TruthFunctionalConsequence => {
                 // Closure for making CNF conversion errors
                 let cnf_error = || ProofCheckError::Other("Failed converting to CNF; the propositions for this rule should not use quantifiers, arithmetic, or application.".to_string());
 
@@ -1553,43 +2066,6 @@ impl RuleT for AutomationRelatedRules {
     }
 }
 
-impl RuleT for QuantifierEquivalence {
-    fn get_name(&self) -> String {
-        use QuantifierEquivalence::*;
-        match self {
-            QuantifierNegation => "Quantifier Negation",
-            NullQuantification => "Null Quantification",
-            ReplacingBoundVars => "Replacing Bound Variables",
-            SwappingQuantifiers => "Swapping Quantifiers of Same Type",
-            AristoteleanSquare => "Aristotelean Square of Opposition",
-            QuantifierDistribution => "Quantifier Distribution",
-            PrenexLaws => "Prenex Laws",
-        }
-        .into()
-    }
-    fn get_classifications(&self) -> HashSet<RuleClassification> {
-        [RuleClassification::QuantifierEquivalence].iter().cloned().collect()
-    }
-    fn num_deps(&self) -> Option<usize> {
-        Some(1)
-    } // all equivalence rules rewrite a single statement
-    fn num_subdeps(&self) -> Option<usize> {
-        Some(0)
-    }
-    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
-        use QuantifierEquivalence::*;
-        match self {
-            QuantifierNegation => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::negate_quantifiers, "none"),
-            NullQuantification => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::normalize_null_quantifiers, "none"),
-            ReplacingBoundVars => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::replacing_bound_vars, "none"),
-            SwappingQuantifiers => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::swap_quantifiers, "none"),
-            AristoteleanSquare => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::aristotelean_square, "none"),
-            QuantifierDistribution => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::quantifier_distribution, "none"),
-            PrenexLaws => check_by_normalize_first_expr(p, deps, conclusion, false, Expr::normalize_prenex_laws, "none"),
-        }
-    }
-}
-
 impl RuleT for Induction {
     fn get_name(&self) -> String {
         match self {
@@ -1600,7 +2076,7 @@ impl RuleT for Induction {
     }
 
     fn get_classifications(&self) -> HashSet<RuleClassification> {
-        hashset![RuleClassification::MiscInference]
+        [RuleClassification::Induction].iter().cloned().collect()
     }
 
     fn num_deps(&self) -> Option<usize> {
@@ -1618,7 +2094,7 @@ impl RuleT for Induction {
         // Check conclusion
         let (quantified_var, property) = match &conclusion {
             Expr::Quant { kind: QuantKind::Forall, name, body } => (name, &**body),
-            _ => return Err(ProofCheckError::ConclusionOfWrongForm(Expr::quant_placeholder(QuantKind::Forall))),
+            _ => return Err(ProofCheckError::ConclusionOfWrongForm(Expr::quant_place_holder(QuantKind::Forall))),
         };
 
         match self {
@@ -1639,7 +2115,7 @@ impl RuleT for Induction {
                         let (induction_var, induction_impl) = if let Expr::Quant { kind: QuantKind::Forall, name, body } = inductive_case {
                             (name, &**body)
                         } else {
-                            return AnyOrderResult::Err(ProofCheckError::DepOfWrongForm(inductive_case.clone(), Expr::quant_placeholder(QuantKind::Forall)));
+                            return AnyOrderResult::Err(ProofCheckError::DepOfWrongForm(inductive_case.clone(), Expr::quant_place_holder(QuantKind::Forall)));
                         };
                         if crate::expr::free_vars(&conclusion).contains(induction_var) {
                             return AnyOrderResult::Err(ProofCheckError::Other(format!("Induction variable '{induction_var}' is a free variable in the conclusion")));
@@ -1667,7 +2143,7 @@ impl RuleT for Induction {
                 // ----
                 // ∀ quantified_var, property(quantified_var)
                 let prem = p.lookup_expr_or_die(&deps[0])?;
-                let (n, e) = if let Expr::Quant { kind: QuantKind::Forall, name, body } = prem { (name, *body) } else { return Err(ProofCheckError::DepOfWrongForm(prem, Expr::quant_placeholder(QuantKind::Forall))) };
+                let (n, e) = if let Expr::Quant { kind: QuantKind::Forall, name, body } = prem { (name, *body) } else { return Err(ProofCheckError::DepOfWrongForm(prem, Expr::quant_place_holder(QuantKind::Forall))) };
                 let (e, property_n) = if let Expr::Impl { left, right } = e { (*left, *right) } else { return Err(ProofCheckError::DepOfWrongForm(e, Expr::impl_place_holder())) };
                 if crate::expr::free_vars(&conclusion).contains(&n) {
                     return Err(ProofCheckError::Other(format!("Variable '{n}' is free in '{conclusion}'")));
@@ -1676,7 +2152,7 @@ impl RuleT for Induction {
                 if property_n != expected_property_n {
                     return Err(ProofCheckError::DepOfWrongForm(property_n, expected_property_n));
                 }
-                let (x, e) = if let Expr::Quant { kind: QuantKind::Forall, name, body } = e { (name, *body) } else { return Err(ProofCheckError::DepOfWrongForm(e, Expr::quant_placeholder(QuantKind::Forall))) };
+                let (x, e) = if let Expr::Quant { kind: QuantKind::Forall, name, body } = e { (name, *body) } else { return Err(ProofCheckError::DepOfWrongForm(e, Expr::quant_place_holder(QuantKind::Forall))) };
                 let (x_lt_n, property_x) = if let Expr::Impl { left, right } = e {
                     (*left, *right)
                 } else {
