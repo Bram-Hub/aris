@@ -124,8 +124,8 @@ pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Result<(P, ProofMetaData), Str
                                 on_current_proof! { proof, { let p = proof.add_subproof(); subproofs.insert(seen_premises[0].clone(), p.clone()); lines_to_subs.insert(last_linenum.clone(), p) } }
                             }
                             rulename => {
-                                let rule = RuleM::from_serialized_name(rulename).unwrap_or(RuleM::Reit); // TODO: explicit RuleM::NoSelectionMade?
-                                                                                                         //println!("{:?}", rule);
+                                let rule = RuleM::from_serialized_name(rulename).unwrap_or(RuleM::Reiteration); // TODO: explicit RuleM::NoSelectionMade?
+                                                                                                                //println!("{:?}", rule);
                                 let deps = seen_premises.iter().filter_map(|x| line_refs.get(x)).cloned().collect::<Vec<_>>();
                                 let sdeps = seen_premises.iter().filter_map(|x| lines_to_subs.get(x)).cloned().collect::<Vec<_>>();
                                 //println!("{:?} {:?}", line_refs, subproofs);
@@ -343,7 +343,7 @@ mod tests {
         let sub_lines = sub.lines();
         let Justification(e1, r1, d1, s1) = prf.lookup_pj(&Coproduct::inject(*sub_lines[0].get::<<P as Proof>::JustificationReference, _>().unwrap())).unwrap().get::<Justification<_, _, _>, _>().unwrap().clone();
         assert_eq!(e1, Expr::var("A"));
-        assert_eq!(r1, RuleM::Reit);
+        assert_eq!(r1, RuleM::Reiteration);
         assert_eq!(d1.len(), 1);
         assert_eq!(s1.len(), 0);
         let Justification(e2, r2, d2, s2) = prf.lookup_pj(&Coproduct::inject(*lines[1].get::<<P as Proof>::JustificationReference, _>().unwrap())).unwrap().get::<Justification<_, _, _>, _>().unwrap().clone();

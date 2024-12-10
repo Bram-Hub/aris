@@ -1286,7 +1286,7 @@ pub fn test_con_intro_negation<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) 
     let mut prf = P::new();
     let r1 = prf.add_premise(p("~P"));
     let r2 = prf.add_premise(p("Q"));
-    
+
     let r3 = prf.add_step(Justification(p("P -> Q"), RuleM::ConIntroNegation, vec![i(r1.clone())], vec![]));
     let r4 = prf.add_step(Justification(p("P -> Q"), RuleM::ConIntroNegation, vec![i(r2.clone())], vec![]));
 
@@ -1302,7 +1302,7 @@ pub fn test_con_elim_negation<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use crate::parser::parse_unwrap as p;
     let mut prf = P::new();
     let r1 = prf.add_premise(p("~(P -> Q)"));
-    
+
     let r2 = prf.add_premise(p("P -> Q"));
 
     let r3 = prf.add_step(Justification(p("P"), RuleM::ConElimNegation, vec![i(r1.clone())], vec![]));
@@ -1354,7 +1354,7 @@ pub fn test_bicon_intro_negation<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>
     let r8 = prf.add_step(Justification(p("P <-> Q"), RuleM::BiconIntroNegation, vec![i(r3.clone()), i(r4.clone())], vec![]));
     let r9 = prf.add_step(Justification(p("~(P <-> Q)"), RuleM::BiconIntroNegation, vec![i(r1.clone()), i(r4.clone())], vec![]));
     let r10 = prf.add_step(Justification(p("~(P <-> Q)"), RuleM::BiconIntroNegation, vec![i(r2.clone()), i(r3.clone())], vec![]));
-    
+
     (prf, vec![i(r5), i(r6)], vec![i(r7), i(r8), i(r9), i(r10)])
 }
 pub fn test_bicon_elim<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
@@ -1372,7 +1372,7 @@ pub fn test_bicon_elim<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     let r7 = prf.add_step(Justification(p("P"), RuleM::BiconElim, vec![i(r1.clone()), i(r3.clone())], vec![]));
     let r8 = prf.add_step(Justification(p("~Q"), RuleM::BiconElim, vec![i(r1.clone()), i(r3.clone())], vec![]));
     let r9 = prf.add_step(Justification(p("~P"), RuleM::BiconElim, vec![i(r1.clone()), i(r2.clone())], vec![]));
-    
+
     (prf, vec![i(r4), i(r5)], vec![i(r6), i(r7), i(r8), i(r9)])
 }
 pub fn test_bicon_elim_negation<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
@@ -1390,7 +1390,7 @@ pub fn test_bicon_elim_negation<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>)
     let r7 = prf.add_step(Justification(p("P"), RuleM::BiconElimNegation, vec![i(r1.clone()), i(r3.clone())], vec![]));
     let r8 = prf.add_step(Justification(p("~Q"), RuleM::BiconElimNegation, vec![i(r1.clone()), i(r3.clone())], vec![]));
     let r9 = prf.add_step(Justification(p("~P"), RuleM::BiconElimNegation, vec![i(r1.clone()), i(r2.clone())], vec![]));
-    
+
     (prf, vec![i(r4), i(r5)], vec![i(r6), i(r7), i(r8), i(r9)])
 }
 

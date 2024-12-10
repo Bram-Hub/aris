@@ -166,29 +166,15 @@ impl ProofWidget {
     ///
     /// [lib]: https://github.com/vsn4ik/bootstrap-submenu
     fn render_rules_menu(&self, ctx: &Context<Self>, jref: <P as Proof>::JustificationReference, cur_rule_name: &str) -> Html {
-        let equivalence_classes = [
-            RuleClassification::BooleanEquivalence,
-            RuleClassification::ConditionalEquivalence,
-            RuleClassification::BiconditionalEquivalence,
-            RuleClassification::QuantifierEquivalence,
-        ];
-    
-        let misc_inference_classes = [
-            RuleClassification::BooleanInference,
-            RuleClassification::ConditionalInference,
-            RuleClassification::BiconditionalInference,
-            RuleClassification::QuantifierInference,
-        ];
-    
+        let equivalence_classes = [RuleClassification::BooleanEquivalence, RuleClassification::ConditionalEquivalence, RuleClassification::BiconditionalEquivalence, RuleClassification::QuantifierEquivalence];
+
+        let misc_inference_classes = [RuleClassification::BooleanInference, RuleClassification::ConditionalInference, RuleClassification::BiconditionalInference, RuleClassification::QuantifierInference];
+
         let special_rule_names = ["Reiteration", "Resolution", "Truth-Functional Consequence"];
-    
+
         let render_rule_button = |rule: Rule| {
             let pjref = Coproduct::inject(jref);
-            let image_src = format!(
-                "{}/{}.png",
-                if theme() == "dark" { "proofImages_dark" } else { "proofImages_light" },
-                rule.get_name()
-            );
+            let image_src = format!("{}/{}.png", if theme() == "dark" { "proofImages_dark" } else { "proofImages_light" }, rule.get_name());
             html! {
                 <button class="dropdown-item" type="button"
                     data-toggle="tooltip" data-placement="left"
@@ -199,45 +185,30 @@ impl ProofWidget {
                 </button>
             }
         };
-    
-        let render_rules_from_class = |class: RuleClassification| html! {
-            <div class="dropdown dropright dropdown-submenu">
-                <button class="dropdown-item dropdown-toggle" type="button" data-toggle="dropdown">
-                    { format!("{}", class) }
-                </button>
-                <div class="dropdown-menu">
-                    { for class.rules().map(render_rule_button) }
+
+        let render_rules_from_class = |class: RuleClassification| {
+            html! {
+                <div class="dropdown dropright dropdown-submenu">
+                    <button class="dropdown-item dropdown-toggle" type="button" data-toggle="dropdown">
+                        { format!("{}", class) }
+                    </button>
+                    <div class="dropdown-menu">
+                        { for class.rules().map(render_rule_button) }
+                    </div>
                 </div>
-            </div>
+            }
         };
-    
-        let special_rules = RuleClassification::iter()
-            .flat_map(|c| c.rules())
-            .filter(|r| special_rule_names.contains(&r.get_name().as_str()))
-            .map(render_rule_button);
-    
-        let induction_category = RuleClassification::iter()
-            .find(|c| c.to_string() == "Induction")
-            .map(render_rules_from_class);
-    
-        let misc_inference_submenu = misc_inference_classes
-            .iter()
-            .map(|&c| render_rules_from_class(c));
-    
-        let equivalence_submenu = equivalence_classes
-            .iter()
-            .map(|&c| render_rules_from_class(c));
-    
-        let other_menus = RuleClassification::iter()
-            .filter(|c| {
-                !special_rule_names.contains(&c.to_string().as_str())
-                    && c.to_string() != "Induction"
-                    && !equivalence_classes.contains(c)
-                    && !misc_inference_classes.contains(c)
-                    && c.to_string() != "Special"
-            })
-            .map(render_rules_from_class);
-    
+
+        let special_rules = RuleClassification::iter().flat_map(|c| c.rules()).filter(|r| special_rule_names.contains(&r.get_name().as_str())).map(render_rule_button);
+
+        let induction_category = RuleClassification::iter().find(|c| c.to_string() == "Induction").map(render_rules_from_class);
+
+        let misc_inference_submenu = misc_inference_classes.iter().map(|&c| render_rules_from_class(c));
+
+        let equivalence_submenu = equivalence_classes.iter().map(|&c| render_rules_from_class(c));
+
+        let other_menus = RuleClassification::iter().filter(|c| !special_rule_names.contains(&c.to_string().as_str()) && c.to_string() != "Induction" && !equivalence_classes.contains(c) && !misc_inference_classes.contains(c) && c.to_string() != "Special").map(render_rules_from_class);
+
         html! {
             <div class="dropright">
                 <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown" data-submenu="">
@@ -259,8 +230,6 @@ impl ProofWidget {
             </div>
         }
     }
-    
-    
 
     fn render_justification_widget(&self, ctx: &Context<Self>, jref: <P as Proof>::JustificationReference) -> Html {
         let just = self.prf.lookup_justification_or_die(&jref).expect("proofref should exist in self.prf");
