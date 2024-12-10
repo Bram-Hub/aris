@@ -126,7 +126,6 @@ pub enum ConditionalInference {
     WeakenConsequent,
     ConIntroNegation,
     ConElimNegation,
-
 }
 
 #[allow(missing_docs)]
@@ -322,7 +321,7 @@ pub mod RuleM {
         [BiconIntroNegation, "BICON_INTRO_NEGATION", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalInference::BiconIntroNegation)))))))],
         [BiconElim, "BICON_ELIM", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalInference::BiconElim)))))))],
         [BiconElimNegation, "BICON_ELIM_NEGATION", (SharedChecks(Inr(Inr(Inr(Inr(Inl(BiconditionalInference::BiconElimNegation)))))))],
-        
+
         [QuantifierInference, "QUANTIFIER_INFERENCE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierInference::QuantInference))))))))],
 
         [Association, "ASSOCIATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inl(BooleanEquivalence::Association)))))))))],
@@ -368,7 +367,7 @@ pub mod RuleM {
         [AristoteleanSquare, "ARISTOTELEAN_SQUARE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::AristoteleanSquare))))))))))))],
         [QuantifierDistribution, "QUANTIFIER_DISTRIBUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::QuantifierDistribution))))))))))))],
         [PrenexLaws, "PRENEX_LAWS", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(QuantifierEquivalence::PrenexLaws))))))))))))],
-        
+
         [Reiteration, "REITERATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Special::Reiteration)))))))))))))],
         [Resolution, "RESOLUTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Special::Resolution)))))))))))))],
         [TruthFunctionalConsequence, "TRUTHFUNCTIONAL_CONSEQUENCE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Special::TruthFunctionalConsequence)))))))))))))],
@@ -1100,8 +1099,8 @@ impl RuleT for BooleanInference {
         Some(0)
     }
     fn check<P: Proof>(self, proof: &P, conclusion: Expr, deps: Vec<PjRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
-        use ProofCheckError::*;
         use BooleanInference::*;
+        use ProofCheckError::*;
 
         assert!(sdeps.is_empty());
         match self {
@@ -1216,7 +1215,7 @@ impl RuleT for ConditionalInference {
             StrengthenAntecedent => "Strengthening the Antecedent",
             WeakenConsequent => "Weakening the Consequent",
             ConIntroNegation => "Conditional Introduction Negation",
-            ConElimNegation => "Conditional Elimination Negation"
+            ConElimNegation => "Conditional Elimination Negation",
         }
         .into()
     }
@@ -1235,8 +1234,8 @@ impl RuleT for ConditionalInference {
         Some(0)
     }
     fn check<P: Proof>(self, proof: &P, conclusion: Expr, deps: Vec<PjRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
-        use ProofCheckError::*;
         use ConditionalInference::*;
+        use ProofCheckError::*;
 
         assert!(sdeps.is_empty());
         match self {
@@ -1461,7 +1460,7 @@ impl RuleT for ConditionalInference {
             }
             ConIntroNegation => {
                 let premise = proof.lookup_expr_or_die(&deps[0])?;
-            
+
                 if let Expr::Impl { ref left, ref right } = conclusion {
                     // Case 1: Premise: ~P, Conclusion: P -> Q
                     if let Expr::Not { ref operand } = premise {
@@ -1469,18 +1468,16 @@ impl RuleT for ConditionalInference {
                             return Ok(());
                         }
                     }
-            
+
                     // Case 2: Premise: Q, Conclusion: P -> Q
                     if premise == **right && !matches!(**left, Expr::Not { .. }) {
                         return Ok(());
                     }
                 }
-            
-                Err(ProofCheckError::Other(
-                    "Conclusion does not follow from the Conditional Introduction Negation rule.".to_string(),
-                ))
+
+                Err(ProofCheckError::Other("Conclusion does not follow from the Conditional Introduction Negation rule.".to_string()))
             }
-            
+
             ConElimNegation => {
                 let premise = proof.lookup_expr_or_die(&deps[0])?;
 
@@ -1507,7 +1504,7 @@ impl RuleT for ConditionalInference {
 impl RuleT for BiconditionalInference {
     fn get_name(&self) -> String {
         use BiconditionalInference::*;
-        match self { 
+        match self {
             BiconIntro => "Biconditional Introduction",
             BiconIntroNegation => "Biconditional Introduction Negation",
             BiconElim => "Biconditional Elimination",
@@ -1536,7 +1533,7 @@ impl RuleT for BiconditionalInference {
             BiconIntro => {
                 let prem1 = proof.lookup_expr_or_die(&deps[0])?;
                 let prem2 = proof.lookup_expr_or_die(&deps[1])?;
-            
+
                 either_order(
                     &prem1,
                     &prem2,
@@ -1549,78 +1546,52 @@ impl RuleT for BiconditionalInference {
                                 }
                             }
                             // Case 2: Both premises are negations (~P and ~Q)
-                            (
-                                Expr::Not { operand: ref left },
-                                Expr::Not { operand: ref right },
-                            ) => {
-                                if conclusion == Expr::assoc(Op::Bicon, &[*left.clone(), *right.clone()])
-                                    || conclusion
-                                        == Expr::assoc(
-                                            Op::Bicon,
-                                            &[Expr::Not { operand: left.clone() }, Expr::Not { operand: right.clone() }],
-                                        )
-                                {
+                            (Expr::Not { operand: ref left }, Expr::Not { operand: ref right }) => {
+                                if conclusion == Expr::assoc(Op::Bicon, &[*left.clone(), *right.clone()]) || conclusion == Expr::assoc(Op::Bicon, &[Expr::Not { operand: left.clone() }, Expr::Not { operand: right.clone() }]) {
                                     return AnyOrderResult::Ok;
                                 }
                             }
                             _ => {}
                         }
-            
+
                         AnyOrderResult::Err(DoesNotOccur(conclusion.clone(), Expr::assoc_place_holder(Op::Bicon)))
                     },
                     || DepDoesNotExist(Expr::assoc_place_holder(Op::Bicon), true),
                 )
-            },
+            }
             BiconIntroNegation => {
                 let prem1 = proof.lookup_expr_or_die(&deps[0])?;
                 let prem2 = proof.lookup_expr_or_die(&deps[1])?;
-            
+
                 either_order(
                     &prem1,
                     &prem2,
                     |i, j| {
                         match (i, j) {
                             // Case 1: Premises: ~P and Q, Conclusion: ~(P <-> Q)
-                            (
-                                Expr::Not { operand: ref left },
-                                Expr::Var { name: ref right },
-                            ) => {
-                                if conclusion
-                                    == (Expr::Not {
-                                        operand: Box::new(Expr::assoc(Op::Bicon, &[*left.clone(), Expr::var(right)])),
-                                    })
-                                {
+                            (Expr::Not { operand: ref left }, Expr::Var { name: ref right }) => {
+                                if conclusion == (Expr::Not { operand: Box::new(Expr::assoc(Op::Bicon, &[*left.clone(), Expr::var(right)])) }) {
                                     return AnyOrderResult::Ok;
                                 }
                             }
                             // Case 2: Premises are P and ~Q, Conclusion: ~(P <-> Q)
-                            (
-                                Expr::Var { name: ref left },
-                                Expr::Not { operand: ref right },
-                            ) => {
-                                if conclusion
-                                    == (Expr::Not {
-                                        operand: Box::new(Expr::assoc(Op::Bicon, &[Expr::var(left), *right.clone()])),
-                                    })
-                                {
+                            (Expr::Var { name: ref left }, Expr::Not { operand: ref right }) => {
+                                if conclusion == (Expr::Not { operand: Box::new(Expr::assoc(Op::Bicon, &[Expr::var(left), *right.clone()])) }) {
                                     return AnyOrderResult::Ok;
                                 }
                             }
                             _ => {}
                         }
-            
-                        AnyOrderResult::Err(DoesNotOccur(
-                            conclusion.clone(),
-                            Expr::not_place_holder(),
-                        ))
+
+                        AnyOrderResult::Err(DoesNotOccur(conclusion.clone(), Expr::not_place_holder()))
                     },
                     || DepDoesNotExist(Expr::not_place_holder(), true),
                 )
-            },
+            }
             BiconElim => {
                 let prem1 = proof.lookup_expr_or_die(&deps[0])?;
                 let prem2 = proof.lookup_expr_or_die(&deps[1])?;
-            
+
                 either_order(
                     &prem1,
                     &prem2,
@@ -1629,11 +1600,9 @@ impl RuleT for BiconditionalInference {
                             if *op == Op::Bicon && exprs.len() == 2 {
                                 let left = &exprs[0];
                                 let right = &exprs[1];
-            
+
                                 if let Expr::Not { ref operand } = j {
-                                    if **operand == *left && conclusion == (Expr::Not { operand: Box::new(right.clone()) }) {
-                                        return AnyOrderResult::Ok;
-                                    } else if **operand == *right && conclusion == (Expr::Not { operand: Box::new(left.clone()) }) {
+                                    if (**operand == *left && conclusion == Expr::Not { operand: Box::new(right.clone()) }) || (**operand == *right && conclusion == Expr::Not { operand: Box::new(left.clone()) }) {
                                         return AnyOrderResult::Ok;
                                     } else {
                                         return AnyOrderResult::Err(DoesNotOccur(j.clone(), conclusion.clone()));
@@ -1645,11 +1614,11 @@ impl RuleT for BiconditionalInference {
                     },
                     || DepDoesNotExist(Expr::assoc_place_holder(Op::Bicon), true),
                 )
-            },
+            }
             BiconElimNegation => {
                 let prem1 = proof.lookup_expr_or_die(&deps[0])?;
                 let prem2 = proof.lookup_expr_or_die(&deps[1])?;
-            
+
                 either_order(
                     &prem1,
                     &prem2,
@@ -1659,7 +1628,7 @@ impl RuleT for BiconditionalInference {
                                 if *op == Op::Bicon && exprs.len() == 2 {
                                     let left = &exprs[0];
                                     let right = &exprs[1];
-            
+
                                     if *left == *j {
                                         if conclusion == (Expr::Not { operand: Box::new(right.clone()) }) {
                                             return AnyOrderResult::Ok;
@@ -1667,7 +1636,7 @@ impl RuleT for BiconditionalInference {
                                             return AnyOrderResult::Err(DoesNotOccur(conclusion.clone(), right.clone()));
                                         }
                                     }
-            
+
                                     if *right == *j {
                                         if conclusion == (Expr::Not { operand: Box::new(left.clone()) }) {
                                             return AnyOrderResult::Ok;
@@ -1765,12 +1734,12 @@ where
     for premise_expr in premise_possibilities.iter() {
         for conclusion_expr in conclusion_possibilities.iter() {
             if premise_expr == conclusion_expr {
-                return Ok(()); 
+                return Ok(());
             }
         }
     }
 
-    Err(ProofCheckError::Other(format!("None of the possible normalized premises match the conclusion.")))
+    Err(ProofCheckError::Other("None of the possible normalized premises match the conclusion.".to_string()))
 }
 
 fn check_by_rewrite_rule_confl<P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion: Expr, commutative: bool, rule: &RewriteRule, restriction: &str) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
