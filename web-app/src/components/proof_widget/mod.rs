@@ -1,3 +1,8 @@
+/*!This file implements a Yew-based frontend component for editing, displaying, and managing natural deduction
+ * proofs in a structured UI. It provides mechanisms for creating, editing, and validating proofs interactively,
+ * with support for keyboard shortcuts, line dependency management, and UI-specific data handling. The file includes
+ * utility functions, enums, and a main component (ProofWidget) that manages the state and rendering of the proof editor. */
+
 mod actions;
 
 use crate::box_chars;
@@ -37,6 +42,8 @@ use wasm_bindgen::JsCast;
 
 use js_sys::Math::random;
 
+/// Retrieves the document object of the current web page.
+/// This is used for DOM manipulation and event listeners.
 fn document() -> web_sys::Document {
     web_sys::window().expect_throw("window is undefined").document().expect_throw("document is undefined")
 }
@@ -124,6 +131,8 @@ pub struct ProofWidgetProps {
 }
 
 impl ProofWidget {
+    /// Renders a checkbox for managing line dependencies.
+    /// This checkbox is interactive if the dependency is valid, otherwise it is disabled.
     fn render_line_num_dep_checkbox(&self, ctx: &Context<Self>, line: Option<usize>, proofref: Coprod!(PjRef<P>, <P as Proof>::SubproofReference)) -> Html {
         let line = match line {
             Some(line) => line.to_string(),
@@ -231,6 +240,7 @@ impl ProofWidget {
         }
     }
 
+    /// Renders a UI widget for a justification line, including its dependencies and rule selector.
     fn render_justification_widget(&self, ctx: &Context<Self>, jref: <P as Proof>::JustificationReference) -> Html {
         let just = self.prf.lookup_justification_or_die(&jref).expect("proofref should exist in self.prf");
 
@@ -278,6 +288,9 @@ impl ProofWidget {
             </>
         }
     }
+
+    /// Renders feedback for a specific proof line, such as correctness or errors.
+    /// Feedback includes messages for parse errors, valid premises, and rule violations.
     fn render_line_feedback(&self, proofref: PjRef<P>, is_subproof: bool) -> Html {
         use aris::parser::parse;
         let raw_line = match self.pud.ref_to_input.get(&proofref).and_then(|x| if !x.is_empty() { Some(x) } else { None }) {
@@ -309,6 +322,8 @@ impl ProofWidget {
             }
         }
     }
+
+    /// Renders a single proof line with all associated UI elements, including indentation, feedback, and actions.
     fn render_proof_line(&self, ctx: &Context<Self>, line: usize, depth: usize, proofref: PjRef<P>, edge_decoration: &str) -> Html {
         use Coproduct::{Inl, Inr};
         let line_num_dep_checkbox = self.render_line_num_dep_checkbox(ctx, Some(line), Coproduct::inject(proofref));
@@ -437,6 +452,8 @@ impl ProofWidget {
         }
     }
 
+    /// Renders the entire proof structure as a hierarchical table.
+    /// Subproofs are displayed indented, with dependency management and line actions integrated.
     fn render_proof(&self, ctx: &Context<Self>, prf: &<P as Proof>::Subproof, sref: Option<<P as Proof>::SubproofReference>, line: &mut usize, depth: &mut usize) -> Html {
         // output has a bool tag to prune subproof spacers with, because VNode's PartialEq doesn't do the right thing
         let mut output: Vec<(Html, bool)> = Vec::new();
@@ -576,7 +593,9 @@ impl ProofWidget {
     }
 }
 
-/// Is the user allowed to remove the line at `line_ref`?
+/// Determines if the user is allowed to remove a line at `line_ref`.
+/// Premises at the top level can only be removed if there are multiple top-level premises.
+/// Steps can always be removed.
 fn may_remove_line<P: Proof>(prf: &P, line_ref: &PjRef<P>) -> bool {
     use Coproduct::Inl;
 
@@ -609,16 +628,14 @@ fn render_open_error(error: &str) -> Html {
     }
 }
 
-/// Create a new empty premise, the default premise when creating a new one in
-/// the UI. The `ProofUiData` is supposed to be modified so this appears blank.
+/// Create a new empty premise, the default premise when creating a new one in the UI.
 fn new_empty_premise() -> Expr {
-    Expr::var("__js_ui_blank_premise")
+    Expr::var("")
 }
 
 /// Create a new empty step, the default step when creating a new one in the UI.
-/// The `ProofUiData` is supposed to be modified so this appears blank.
 fn new_empty_step() -> Justification<Expr, PjRef<P>, <P as Proof>::SubproofReference> {
-    Justification(Expr::var("__js_ui_blank_step"), RuleM::EmptyRule, vec![], vec![])
+    Justification(Expr::var(""), RuleM::EmptyRule, vec![], vec![])
 }
 
 /// Create a new empty proof, the default proof shown in the UI
@@ -637,6 +654,9 @@ fn new_empty_proof() -> (P, ProofUiData<P>) {
 impl Component for ProofWidget {
     type Message = ProofWidgetMsg;
     type Properties = ProofWidgetProps;
+
+    /// Creates a new `ProofWidget` component.
+    /// Initializes the proof, UI data, and error handling based on the input properties.
     fn create(ctx: &Context<Self>) -> Self {
         ctx.props().oncreate.emit(ctx.link().clone());
         let (prf, pud, error) = match &ctx.props().data {
@@ -665,6 +685,9 @@ impl Component for ProofWidget {
         Component::update(&mut tmp, ctx, ProofWidgetMsg::Nop);
         tmp
     }
+
+    /// Updates the `ProofWidget` state based on messages, such as line edits or rule changes.
+    /// This handles line actions, updates proof data, and re-renders the UI as needed.
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         let mut ret = false;
         if ctx.props().verbose {
@@ -843,9 +866,15 @@ impl Component for ProofWidget {
         }
         ret
     }
+
+    /// Handles property changes for the `ProofWidget` component.
+    /// Always triggers a re-render when properties change.
     fn changed(&mut self, _: &Context<Self>, _: &Self::Properties) -> bool {
         true
     }
+
+    /// Renders the `ProofWidget` component.
+    /// Displays either the proof editor or an error message if the proof could not be loaded.
     fn view(&self, ctx: &Context<Self>) -> Html {
         let widget = match &self.open_error {
             Some(err) => render_open_error(err),
@@ -863,6 +892,8 @@ impl Component for ProofWidget {
             </div>
         }
     }
+
+    /// Executes post-render logic, such as initializing Bootstrap submenus and popovers.
     fn rendered(&mut self, _: &Context<Self>, _: bool) {
         js_sys::eval("$('[data-submenu]').submenupicker(); $('[data-toggle=popover]').popover()").unwrap_throw();
     }

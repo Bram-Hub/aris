@@ -36,13 +36,6 @@ define_rewrite_rule! {
     ]
 }
 define_rewrite_rule! {
-    COMPLEMENT,
-    &[
-        ("phi & ~phi", "_|_"),
-        ("phi | ~phi", "^|^"),
-    ]
-}
-define_rewrite_rule! {
     IDENTITY,
     &[
         ("phi & ^|^", "phi"),
@@ -61,29 +54,6 @@ define_rewrite_rule! {
     &[
         ("~^|^", "_|_"),
         ("~_|_", "^|^"),
-    ]
-}
-define_rewrite_rule! {
-    ABSORPTION,
-    &[
-        ("phi & (phi | psi)", "phi"),
-        ("phi | (phi & psi)", "phi"),
-    ]
-}
-define_rewrite_rule! {
-    REDUCTION,
-    &[
-        ("phi & (~phi | psi)", "phi & psi"),
-        ("~phi & (phi | psi)", "~phi & psi"),
-        ("phi | (~phi & psi)", "phi | psi"),
-        ("~phi | (phi & psi)", "~phi | psi"),
-    ]
-}
-define_rewrite_rule! {
-    ADJACENCY,
-    &[
-        ("(phi | psi) & (phi | ~psi)", "phi"),
-        ("(phi & psi) | (phi & ~psi)", "phi"),
     ]
 }
 
@@ -176,12 +146,6 @@ define_rewrite_rule! {
     ]
 }
 define_rewrite_rule! {
-    BICONDITIONAL_CONTRAPOSITION,
-    &[
-        ("phi <-> psi", "psi <-> phi"),
-    ]
-}
-define_rewrite_rule! {
     BICONDITIONAL_COMMUTATION,
     &[
         ("phi <-> psi", "psi <-> phi"),
@@ -247,10 +211,11 @@ mod tests {
         }
     }
 
+    /// Test function to verify the logical equivalence of rewrite rules using brute-force truth tables.
     #[test]
     fn bruteforce_equivalence_truthtables() {
         use std::collections::HashMap;
-        let rules: Vec<&RewriteRule> = vec![&*DOUBLE_NEGATION, &*DISTRIBUTION, &*COMPLEMENT, &*IDENTITY, &*ANNIHILATION, &*INVERSE, &*ABSORPTION, &*REDUCTION, &*ADJACENCY, &*CONDITIONAL_ABSORPTION, &*CONDITIONAL_ANNIHILATION, &*CONDITIONAL_IMPLICATION, &*CONDITIONAL_CONTRAPOSITION, &*CONDITIONAL_EXPORTATION, &*CONDITIONAL_COMPLEMENT, &*CONDITIONAL_IDENTITY, &*CONDITIONAL_DISTRIBUTION, &*CONDITIONAL_REDUCTION, &*KNIGHTS_AND_KNAVES, &*CONDITIONAL_IDEMPOTENCE, &*BICONDITIONAL_CONTRAPOSITION, &*BICONDITIONAL_ASSOCIATION, &*BICONDITIONAL_COMMUTATION, &*BICONDITIONAL_REDUCTION, &*BICONDITIONAL_COMPLEMENT, &*BICONDITIONAL_IDENTITY, &*BICONDITIONAL_EQUIVALENCE, &*BICONDITIONAL_NEGATION, &*BICONDITIONAL_SUBSTITUTION];
+        let rules: Vec<&RewriteRule> = vec![&*DOUBLE_NEGATION, &*DISTRIBUTION, &*IDENTITY, &*ANNIHILATION, &*INVERSE, &*CONDITIONAL_ABSORPTION, &*CONDITIONAL_ANNIHILATION, &*CONDITIONAL_IMPLICATION, &*CONDITIONAL_CONTRAPOSITION, &*CONDITIONAL_EXPORTATION, &*CONDITIONAL_COMPLEMENT, &*CONDITIONAL_IDENTITY, &*CONDITIONAL_DISTRIBUTION, &*CONDITIONAL_REDUCTION, &*KNIGHTS_AND_KNAVES, &*CONDITIONAL_IDEMPOTENCE, &*BICONDITIONAL_ASSOCIATION, &*BICONDITIONAL_COMMUTATION, &*BICONDITIONAL_REDUCTION, &*BICONDITIONAL_COMPLEMENT, &*BICONDITIONAL_IDENTITY, &*BICONDITIONAL_EQUIVALENCE, &*BICONDITIONAL_NEGATION, &*BICONDITIONAL_SUBSTITUTION];
         for rule in rules {
             for (lhs, rhs) in rule.reductions.iter() {
                 println!("Testing {lhs} -> {rhs}");
