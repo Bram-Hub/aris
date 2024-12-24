@@ -861,6 +861,9 @@ impl Expr {
         normalize_expr(self)
     }
 
+    /// Normalize biconditional contrapositions in the expression.
+    /// Converts expressions of the form '(A <-> B)' into their negated counterparts '(~A <-> ~B)'.
+    /// Ensures that this transformation does not occur repeatedly to avoid infinite loops.
     pub fn normalize_biconditional_contraposition(self) -> Expr {
         self.transform(&|expr| {
             match expr {
@@ -924,6 +927,7 @@ impl Expr {
         }
     }
 
+    /// Helper function for collecting unique expressions under absorption laws
     fn collect_unique_exprs_absorption(expr: &Expr, op: Op, unique_exprs: &mut BTreeSet<Expr>) {
         match expr {
             Expr::Assoc { op: expr_op, exprs } if *expr_op == op => {
@@ -947,6 +951,9 @@ impl Expr {
         }
     }
 
+    /// Normalize an expression using absorption laws:
+    /// Simplifies redundant subexpressions like 'A | (A & B)' => 'A'.
+    /// Handles associative operators to simplify expressions with nested terms.
     pub fn normalize_absorption(self) -> Expr {
         if let Expr::Assoc { op, exprs } = self {
             let mut unique_exprs = BTreeSet::new();
@@ -965,6 +972,8 @@ impl Expr {
         }
     }
 
+    /// Helper function for collecting expressions to reduce over logical reduction rules
+    /// Applies rules like 'A & ~A' -> '⊥' or 'A | ~A' -> '⊤'.
     fn collect_reduction_exprs(expr: &Expr, op: Op, reduced_exprs: &mut BTreeSet<Expr>) {
         match expr {
             Expr::Assoc { op: expr_op, exprs } if *expr_op == op => {
@@ -1004,6 +1013,9 @@ impl Expr {
         }
     }
 
+    /// Normalize an expression using logical reduction rules:
+    /// Simplifies contradictions ('A & ~A') to '⊥' and tautologies ('A | ~A') to '⊤'.
+    /// Reduces nested expressions based on their logical structure.
     pub fn normalize_reduction(self) -> Expr {
         match self {
             Expr::Assoc { op, exprs } => {
@@ -1047,6 +1059,8 @@ impl Expr {
         }
     }
 
+    /// Check if an expression is a subset of another associative expression.
+    /// Used to validate containment relationships between subexpressions.
     fn is_subset_of_assoc(expr: &Expr, set: &BTreeSet<Expr>, op: Op) -> bool {
         match expr {
             Expr::Assoc { op: expr_op, exprs } if *expr_op == op => exprs.iter().all(|sub_expr| set.contains(sub_expr)),
@@ -1054,6 +1068,8 @@ impl Expr {
         }
     }
 
+    /// Normalize adjacency in expressions:
+    /// Simplifies and flattens expressions with adjacent associative operators.
     pub fn normalize_adjacency(self) -> Expr {
         match self {
             Expr::Assoc { op, exprs } => {
@@ -1076,6 +1092,7 @@ impl Expr {
         }
     }
 
+    /// Extract expressions from associative structures while preserving their operator type.
     fn extract_associative(self, op: Op) -> Vec<Expr> {
         match self {
             Expr::Assoc { op: expr_op, exprs } if expr_op == op => exprs,
@@ -1083,6 +1100,8 @@ impl Expr {
         }
     }
 
+    /// General simplification for associative expressions:
+    /// Attempts to merge or simplify pairs of subexpressions under a given operator.
     fn simplify_general(mut exprs: Vec<Expr>, op: Op) -> Option<Expr> {
         for i in 0..exprs.len() {
             for j in (i + 1..exprs.len()).rev() {
@@ -1102,6 +1121,8 @@ impl Expr {
         }
     }
 
+    /// Try to simplify a pair of expressions based on logical relationships.
+    /// Merges or simplifies expressions under logical operators (e.g., 'A | B').
     fn try_simplify_pair(e1: &Expr, e2: &Expr, op: Op) -> Option<Expr> {
         match op {
             Op::Or | Op::And => Self::simplify_logic(e1, e2),
@@ -1109,6 +1130,7 @@ impl Expr {
         }
     }
 
+    /// Attempt to simplify two associative expressions with the same operator.
     fn simplify_logic(e1: &Expr, e2: &Expr) -> Option<Expr> {
         match (e1, e2) {
             (Expr::Assoc { op: sub_op1, exprs: exprs1 }, Expr::Assoc { op: sub_op2, exprs: exprs2 }) if *sub_op1 == *sub_op2 => {
@@ -1127,6 +1149,7 @@ impl Expr {
         None
     }
 
+    /// Create an associative expression from a list of subexpressions.
     fn assoc_or_single(mut exprs: Vec<Expr>, op: Op) -> Expr {
         exprs.sort();
         exprs.dedup();
@@ -1136,6 +1159,7 @@ impl Expr {
         }
     }
 
+    /// Determine if two lists of subexpressions are complementary.
     fn is_complementary(others1: &[&Expr], others2: &[&Expr]) -> bool {
         matches!(
             (others1, others2),
@@ -1513,6 +1537,8 @@ impl Expr {
         })
     }
 
+    /// Infer and manipulate quantifiers:
+    /// Applies rules like '(∃x (P & Q))' => '(∃x P) & (∃x Q)' and merges compatible quantifiers.
     pub fn quantifier_inference(self) -> Expr {
         let distribute_quantifiers = |expr: &Expr| -> Option<Expr> {
             match expr {
@@ -1547,6 +1573,8 @@ impl Expr {
         self.transform(&|expr| distribute_quantifiers(&expr).map_or((expr.clone(), false), |transformed| (transformed, true)))
     }
 
+    /// Distribute quantifiers across associative operators:
+    /// Pushes quantifiers inside conjunctions or disjunctions when applicable.
     pub fn quantifier_distribution(self) -> Expr {
         let push_quantifier_inside = |kind: QuantKind, qname: String, exprs: &mut Vec<Expr>| {
             exprs.iter_mut().for_each(|iter| {

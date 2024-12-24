@@ -46,12 +46,12 @@ Each `check` implementation usually starts off with bringing the rules of the re
 Adding the tests and implementing the rule can be interleaved; it's convenient to debug the implementation by iterating on `cargo test -- test_your_rule_name`, possibly with `--nocapture` if you're println-debugging.
 
 ## Checklist for adding a new rule type
-(e.g. for adding `PrepositionalInference` if it wasn't already there)
+(e.g. for adding `PropositionalInference` if it wasn't already there)
 - Create the new enum, preferably right after all the existing ones
 - Add the new enum to the `Rule` type alias, inside the `SharedChecks` and `Coprod!` wrappers
 - Add a `RuleT` impl block for the new enum
     - if default metadata applies to all rules of the type, add those (e.g. `BooleanEquivalence`)
-    - if default metadata doesn't apply to all rules of the type, add an empty match block (e.g. `PrepositionalInference`)
+    - if default metadata doesn't apply to all rules of the type, add an empty match block (e.g. `PropositionalInference`)
 */
 
 use crate::equivs;
@@ -80,7 +80,7 @@ use strum_macros::*;
 
 #[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PrepositionalInference {
+pub enum PropositionalInference {
     AndIntro,
     AndElim,
     OrIntro,
@@ -235,7 +235,7 @@ pub struct EmptyRule;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SharedChecks<T>(T);
 
-pub type Rule = SharedChecks<Coprod!(PrepositionalInference, PredicateInference, BooleanInference, ConditionalInference, BiconditionalInference, QuantifierInference, BooleanEquivalence, ConditionalEquivalence, BiconditionalEquivalence, QuantifierEquivalence, Special, Induction, EmptyRule)>;
+pub type Rule = SharedChecks<Coprod!(PropositionalInference, PredicateInference, BooleanInference, ConditionalInference, BiconditionalInference, QuantifierInference, BooleanEquivalence, ConditionalEquivalence, BiconditionalEquivalence, QuantifierEquivalence, Special, Induction, EmptyRule)>;
 
 /// Conveniences for constructing rules of the appropriate type, primarily for testing.
 /// The non-standard naming conventions here are because a module is being used to pretend to be an enum.
@@ -283,20 +283,20 @@ pub mod RuleM {
     // If the parens are omitted, $value:tt only captures SharedChecks, without the (...)
     // I haven't yet found a way to use macro_rules! to convert between expr and pat.
     declare_rules! {
-        [AndIntro, "CONJUNCTION", (SharedChecks(Inl(PrepositionalInference::AndIntro)))],
-        [AndElim, "SIMPLIFICATION", (SharedChecks(Inl(PrepositionalInference::AndElim)))],
-        [OrIntro, "ADDITION", (SharedChecks(Inl(PrepositionalInference::OrIntro)))],
-        [OrElim, "DISJUNCTIVE_ELIMINATION", (SharedChecks(Inl(PrepositionalInference::OrElim)))],
-        [ImpIntro, "CONDITIONAL_PROOF", (SharedChecks(Inl(PrepositionalInference::ImpIntro)))],
-        [ImpElim, "MODUS_PONENS", (SharedChecks(Inl(PrepositionalInference::ImpElim)))],
-        [NotIntro, "PROOF_BY_CONTRADICTION", (SharedChecks(Inl(PrepositionalInference::NotIntro)))],
-        [NotElim, "DOUBLENEGATION", (SharedChecks(Inl(PrepositionalInference::NotElim)))],
-        [ContradictionIntro, "CONTRADICTION", (SharedChecks(Inl(PrepositionalInference::ContradictionIntro)))],
-        [ContradictionElim, "PRINCIPLE_OF_EXPLOSION", (SharedChecks(Inl(PrepositionalInference::ContradictionElim)))],
-        [BiconditionalIntro, "BICONDITIONAL_INTRO", (SharedChecks(Inl(PrepositionalInference::BiconditionalIntro)))],
-        [BiconditionalElim, "BICONDITIONAL_ELIM", (SharedChecks(Inl(PrepositionalInference::BiconditionalElim)))],
-        [EquivalenceIntro, "EQUIVALENCE_INTRO", (SharedChecks(Inl(PrepositionalInference::EquivalenceIntro)))],
-        [EquivalenceElim, "EQUIVALENCE_ELIM", (SharedChecks(Inl(PrepositionalInference::EquivalenceElim)))],
+        [AndIntro, "CONJUNCTION", (SharedChecks(Inl(PropositionalInference::AndIntro)))],
+        [AndElim, "SIMPLIFICATION", (SharedChecks(Inl(PropositionalInference::AndElim)))],
+        [OrIntro, "ADDITION", (SharedChecks(Inl(PropositionalInference::OrIntro)))],
+        [OrElim, "DISJUNCTIVE_ELIMINATION", (SharedChecks(Inl(PropositionalInference::OrElim)))],
+        [ImpIntro, "CONDITIONAL_PROOF", (SharedChecks(Inl(PropositionalInference::ImpIntro)))],
+        [ImpElim, "MODUS_PONENS", (SharedChecks(Inl(PropositionalInference::ImpElim)))],
+        [NotIntro, "PROOF_BY_CONTRADICTION", (SharedChecks(Inl(PropositionalInference::NotIntro)))],
+        [NotElim, "DOUBLENEGATION", (SharedChecks(Inl(PropositionalInference::NotElim)))],
+        [ContradictionIntro, "CONTRADICTION", (SharedChecks(Inl(PropositionalInference::ContradictionIntro)))],
+        [ContradictionElim, "PRINCIPLE_OF_EXPLOSION", (SharedChecks(Inl(PropositionalInference::ContradictionElim)))],
+        [BiconditionalIntro, "BICONDITIONAL_INTRO", (SharedChecks(Inl(PropositionalInference::BiconditionalIntro)))],
+        [BiconditionalElim, "BICONDITIONAL_ELIM", (SharedChecks(Inl(PropositionalInference::BiconditionalElim)))],
+        [EquivalenceIntro, "EQUIVALENCE_INTRO", (SharedChecks(Inl(PropositionalInference::EquivalenceIntro)))],
+        [EquivalenceElim, "EQUIVALENCE_ELIM", (SharedChecks(Inl(PropositionalInference::EquivalenceElim)))],
 
         [ForallIntro, "UNIVERSAL_GENERALIZATION", (SharedChecks(Inr(Inl(PredicateInference::ForallIntro))))],
         [ForallElim, "UNIVERSAL_INSTANTIATION", (SharedChecks(Inr(Inl(PredicateInference::ForallElim))))],
@@ -522,9 +522,9 @@ pub fn do_expressions_contradict<P: Proof>(prem1: &Expr, prem2: &Expr) -> Result
     )
 }
 
-impl RuleT for PrepositionalInference {
+impl RuleT for PropositionalInference {
     fn get_name(&self) -> String {
-        use PrepositionalInference::*;
+        use PropositionalInference::*;
         match self {
             AndIntro => "∧ Introduction",
             AndElim => "∧ Elimination",
@@ -544,7 +544,7 @@ impl RuleT for PrepositionalInference {
         .into()
     }
     fn get_classifications(&self) -> HashSet<RuleClassification> {
-        use PrepositionalInference::*;
+        use PropositionalInference::*;
         use RuleClassification::*;
         let mut ret = HashSet::new();
         match self {
@@ -558,7 +558,7 @@ impl RuleT for PrepositionalInference {
         ret
     }
     fn num_deps(&self) -> Option<usize> {
-        use PrepositionalInference::*;
+        use PropositionalInference::*;
         match self {
             AndElim | OrIntro | OrElim | NotElim | ContradictionElim => Some(1),
             ContradictionIntro | ImpElim | BiconditionalElim | EquivalenceElim => Some(2),
@@ -567,7 +567,7 @@ impl RuleT for PrepositionalInference {
         }
     }
     fn num_subdeps(&self) -> Option<usize> {
-        use PrepositionalInference::*;
+        use PropositionalInference::*;
         match self {
             NotIntro | ImpIntro => Some(1),
             AndElim | OrIntro | NotElim | ContradictionElim | ContradictionIntro | ImpElim | AndIntro | BiconditionalElim | EquivalenceElim => Some(0),
@@ -577,8 +577,8 @@ impl RuleT for PrepositionalInference {
 
     #[allow(clippy::redundant_closure)]
     fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
-        use PrepositionalInference::*;
         use ProofCheckError::*;
+        use PropositionalInference::*;
         match self {
             AndIntro => {
                 if deps.len() == 1 {
@@ -1696,7 +1696,7 @@ where
         premise = premise.sort_commutative_ops(restriction);
         conclusion_mut = conclusion_mut.sort_commutative_ops(restriction);
     }
-    let mut p = normalize_fn(premise.clone());
+    let mut p = normalize_fn(premise);
     let mut q = normalize_fn(conclusion_mut);
     if commutative {
         p = p.sort_commutative_ops(restriction);
@@ -1705,7 +1705,7 @@ where
     if p == q {
         Ok(())
     } else {
-        Err(ProofCheckError::Other(format!("{p} and {q} are not equal. {:?}", premise)))
+        Err(ProofCheckError::Other(format!("{p} and {q} are not equal.")))
     }
 }
 

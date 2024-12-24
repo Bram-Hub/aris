@@ -165,7 +165,7 @@ pub mod pooledproof;
 /// - Trivial to construct from Claim objects
 /// ## Cons
 /// - Doesn't support most operations
-/// - Doesn't handle binding structure, so can't be used for first order logic, only prepositional logic
+/// - Doesn't handle binding structure, so can't be used for first order logic, only Propositional logic
 pub mod java_shallow_proof;
 
 /// A LinedProof is a wrapper around another proof type that adds lines and strings, for interfacing with the GUI
@@ -202,57 +202,130 @@ pub trait Proof: Sized {
     type JustificationReference: Clone + Eq + Ord + Hash;
     type SubproofReference: Clone + Eq + Ord + Hash;
     type Subproof: Proof<PremiseReference = Self::PremiseReference, JustificationReference = Self::JustificationReference, SubproofReference = Self::SubproofReference, Subproof = Self::Subproof>;
+
+    /// Creates a new proof object.
+    /// This initializes an empty proof structure.
     fn new() -> Self;
+
+    /// Retrieves the top-level proof of the current proof structure.
+    /// The top-level proof is the outermost subproof that encapsulates all lines and subproofs.
     fn top_level_proof(&self) -> &Self::Subproof;
+
+    /// Looks up the expression associated with a premise reference.
     fn lookup_premise(&self, r: &Self::PremiseReference) -> Option<Expr>;
+
+    /// Looks up the justification associated with a justification reference.
     fn lookup_step(&self, r: &Self::JustificationReference) -> Option<Justification<Expr, PjRef<Self>, Self::SubproofReference>>;
+
+    /// Looks up a subproof using its reference.
     fn lookup_subproof(&self, r: &Self::SubproofReference) -> Option<Self::Subproof>;
+
+    /// Mutates the expression of a premise in place.
+    /// The provided closure is executed on the mutable reference to the expression.
     fn with_mut_premise<A, F: FnOnce(&mut Expr) -> A>(&mut self, r: &Self::PremiseReference, f: F) -> Option<A>;
+
+    /// Mutates the justification of a step in place.
+    /// The provided closure is executed on the mutable reference to the justification.
     fn with_mut_step<A, F: FnOnce(&mut Justification<Expr, PjRef<Self>, Self::SubproofReference>) -> A>(&mut self, r: &Self::JustificationReference, f: F) -> Option<A>;
+
+    /// Mutates a subproof in place.
+    /// The provided closure is executed on the mutable reference to the subproof.
     fn with_mut_subproof<A, F: FnOnce(&mut Self::Subproof) -> A>(&mut self, r: &Self::SubproofReference, f: F) -> Option<A>;
+
+    /// Adds a new premise to the proof.
+    /// Returns a reference to the newly added premise.
     fn add_premise(&mut self, e: Expr) -> Self::PremiseReference;
+
+    /// Adds a new subproof to the proof.
+    /// Returns a reference to the newly added subproof.
     fn add_subproof(&mut self) -> Self::SubproofReference;
+
+    /// Adds a new step (justification) to the proof.
+    /// Returns a reference to the newly added step.
     fn add_step(&mut self, just: Justification<Expr, PjRef<Self>, Self::SubproofReference>) -> Self::JustificationReference;
+
+    /// Prepends a step to the proof, adding it at the beginning.
+    /// If no steps exist, adds it as the first step.
     fn prepend_step(&mut self, just: Justification<Expr, PjRef<Self>, Self::SubproofReference>) -> Self::JustificationReference {
         match self.lines().first() {
             Some(first_step) => self.add_step_relative(just, first_step, false),
             None => self.add_step(just),
         }
     }
+
+    /// Adds a premise relative to another premise reference.
+    /// The `after` parameter determines if the new premise is added before or after the reference.
     fn add_premise_relative(&mut self, e: Expr, r: &Self::PremiseReference, after: bool) -> Self::PremiseReference;
+
+    /// Adds a subproof relative to another justification reference.
+    /// The `after` parameter determines if the new subproof is added before or after the reference.
     fn add_subproof_relative(&mut self, r: &JsRef<Self>, after: bool) -> Self::SubproofReference;
+
+    /// Adds a step relative to another justification reference.
+    /// The `after` parameter determines if the new step is added before or after the reference.
     fn add_step_relative(&mut self, just: Justification<Expr, PjRef<Self>, Self::SubproofReference>, r: &JsRef<Self>, after: bool) -> Self::JustificationReference;
+
+    /// Removes a line from the proof using its reference.
     fn remove_line(&mut self, r: &PjRef<Self>);
+
+    /// Removes a subproof from the proof using its reference.
     fn remove_subproof(&mut self, r: &Self::SubproofReference);
+
+    /// Retrieves all premise references within the proof.
+    /// Returns a vector of premise references.
     fn premises(&self) -> Vec<Self::PremiseReference>;
+
+    /// Retrieves all justification and subproof references within the proof.
+    /// Returns a vector of mixed references.
     fn lines(&self) -> Vec<JsRef<Self>>;
+
+    /// Retrieves the parent subproof of a given line reference, if it exists.
     fn parent_of_line(&self, r: &PjsRef<Self>) -> Option<Self::SubproofReference>;
+
+    /// Verifies a specific line in the proof to check its validity.
     fn verify_line(&self, r: &PjRef<Self>) -> Result<(), ProofCheckError<PjRef<Self>, Self::SubproofReference>>;
 
+    /// Retrieves the expression for a given proof reference, or `None` if not found.
     fn lookup_expr(&self, r: &PjRef<Self>) -> Option<Expr> {
         r.clone().fold(hlist![|pr| self.lookup_premise(&pr), |jr| self.lookup_step(&jr).map(|x| x.0)])
     }
+
+    /// Retrieves the expression for a proof reference, returning an error if not found.
     fn lookup_expr_or_die(&self, r: &PjRef<Self>) -> Result<Expr, ProofCheckError<PjRef<Self>, Self::SubproofReference>> {
         self.lookup_expr(r).ok_or_else(|| ProofCheckError::LineDoesNotExist(r.clone()))
     }
+
+    /// Retrieves a premise expression or returns an error if the reference is invalid.
     fn lookup_premise_or_die(&self, r: &Self::PremiseReference) -> Result<Expr, ProofCheckError<PjRef<Self>, Self::SubproofReference>> {
         self.lookup_premise(r).ok_or_else(|| ProofCheckError::LineDoesNotExist(Coproduct::inject(r.clone())))
     }
+
+    /// Retrieves a justification or returns an error if the reference is invalid.
     fn lookup_justification_or_die(&self, r: &Self::JustificationReference) -> Result<JustVal<Self>, ProofCheckError<PjRef<Self>, Self::SubproofReference>> {
         self.lookup_step(r).ok_or_else(|| ProofCheckError::LineDoesNotExist(Coproduct::inject(r.clone())))
     }
+
+    /// Looks up a premise or justification, returning either type wrapped in a coproduct.
     fn lookup_pj(&self, r: &PjRef<Self>) -> Option<Coprod!(Expr, JustVal<Self>)> {
         r.clone().fold(hlist![|pr| self.lookup_premise(&pr).map(Coproduct::inject), |jr| self.lookup_step(&jr).map(Coproduct::inject)])
     }
+
+    /// Retrieves a subproof or returns an error if the reference is invalid.
     fn lookup_subproof_or_die(&self, r: &Self::SubproofReference) -> Result<Self::Subproof, ProofCheckError<PjRef<Self>, Self::SubproofReference>> {
         self.lookup_subproof(r).ok_or_else(|| ProofCheckError::SubproofDoesNotExist(r.clone()))
     }
+
+    /// Returns all direct justification references in the proof.
     fn direct_lines(&self) -> Vec<Self::JustificationReference> {
         self.lines().iter().filter_map(|x| Coproduct::uninject::<Self::JustificationReference, _>(x.clone()).ok()).collect()
     }
+
+    /// Returns all proof references, including premises and direct justification lines.
     fn exprs(&self) -> Vec<PjRef<Self>> {
         self.premises().into_iter().map(Coproduct::inject).chain(self.direct_lines().into_iter().map(Coproduct::inject)).collect()
     }
+
+    /// Retrieves all justifications within the proof, optionally including premises.
     fn contained_justifications(&self, include_premises: bool) -> HashSet<PjRef<Self>> {
         let mut ret = self.lines().into_iter().filter_map(|x| x.fold(hlist![|r: Self::JustificationReference| Some(vec![r].into_iter().map(Coproduct::inject).collect()), |r: Self::SubproofReference| self.lookup_subproof(&r).map(|sub| sub.contained_justifications(include_premises)),])).fold(HashSet::new(), |mut x, y| {
             x.extend(y);
@@ -263,6 +336,9 @@ pub trait Proof: Sized {
         }
         ret
     }
+
+    /// Computes the transitive dependencies of a specific line in the proof.
+    /// Returns a set of all lines that the given line depends on.
     fn transitive_dependencies(&self, line: PjRef<Self>) -> HashSet<PjRef<Self>> {
         use frunk_core::coproduct::Coproduct::{Inl, Inr};
         // TODO: cycle detection
@@ -290,6 +366,9 @@ pub trait Proof: Sized {
         }
         result
     }
+
+    /// Determines the depth of a specific line in the proof hierarchy.
+    /// Returns the number of subproof levels enclosing the line.
     fn depth_of_line(&self, r: &PjsRef<Self>) -> usize {
         let mut result = 0;
         let mut current = r.clone();
@@ -300,6 +379,8 @@ pub trait Proof: Sized {
         result
     }
 
+    /// Computes all possible dependencies that a given line can reference.
+    /// Updates the provided sets of valid dependencies and subproof references.
     fn possible_deps_for_line(&self, r: &PjRef<Self>, deps: &mut HashSet<PjRef<Self>>, sdeps: &mut HashSet<Self::SubproofReference>) {
         // r1 can reference r2 if all of the following hold:
         // 1) r2 occurs before r1

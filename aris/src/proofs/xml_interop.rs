@@ -31,7 +31,7 @@ pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Result<(P, ProofMetaData), Str
             let s: &str = $x;
             match crate::parser::parse(&s) {
                 Some(e) => e,
-                None if s == "" => Expr::Var { name: "__xml_interop_blank_line".into() },
+                None if s == "" => Expr::Var { name: "".to_string() },
                 None => return Err(format!("Failed to parse {:?}, element stack {:?}", s, element_stack)),
             }
         }};

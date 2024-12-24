@@ -3,6 +3,9 @@ name = "aris-auto-grader"
 version = "0.1.0"
 authors = ["Avi Weinstock <aweinstock314@gmail.com>"]
 edition = "2021"
+description = "Aris is a formal logic proof-building tool designed to help users learn and practice logic."
+repository = "https://github.com/Bram-Hub/aris"
+license = "GPL-3.0"
 
 [dependencies]
 aris = { path = "../aris" }
