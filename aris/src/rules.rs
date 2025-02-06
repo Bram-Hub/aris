@@ -52,6 +52,8 @@ Adding the tests and implementing the rule can be interleaved; it's convenient t
 - Add a `RuleT` impl block for the new enum
     - if default metadata applies to all rules of the type, add those (e.g. `BooleanEquivalence`)
     - if default metadata doesn't apply to all rules of the type, add an empty match block (e.g. `PropositionalInference`)
+
+-If needed also add the new rule type to the RuleCalssification Enum (around line 400)
 */
 
 use crate::equivs;
@@ -218,6 +220,17 @@ pub enum Induction {
     Strong,
 }
 
+#[allow(missing_docs)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Reduction {
+    RedIdentity,
+    RedAnnihilation,
+    RedInverse,
+    RedBiconditionalIdentity,
+    RedConditionalIdentity,
+    RedConditionalAnnihilation,
+}
+
 /// This should be the default rule when creating a new step in a UI. It
 /// always fails, and isn't part of any `RuleClassification`s.
 ///
@@ -235,7 +248,7 @@ pub struct EmptyRule;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SharedChecks<T>(T);
 
-pub type Rule = SharedChecks<Coprod!(PropositionalInference, PredicateInference, BooleanInference, ConditionalInference, BiconditionalInference, QuantifierInference, BooleanEquivalence, ConditionalEquivalence, BiconditionalEquivalence, QuantifierEquivalence, Special, Induction, EmptyRule)>;
+pub type Rule = SharedChecks<Coprod!(PropositionalInference, PredicateInference, BooleanInference, ConditionalInference, BiconditionalInference, QuantifierInference, BooleanEquivalence, ConditionalEquivalence, BiconditionalEquivalence, QuantifierEquivalence, Special, Induction,Reduction, EmptyRule)>;
 
 /// Conveniences for constructing rules of the appropriate type, primarily for testing.
 /// The non-standard naming conventions here are because a module is being used to pretend to be an enum.
@@ -375,7 +388,16 @@ pub mod RuleM {
         [WeakInduction, "WEAK_INDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Induction::Weak))))))))))))))],
         [StrongInduction, "STRONG_INDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Induction::Strong))))))))))))))],
 
-        [EmptyRule, "EMPTY_RULE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(super::EmptyRule)))))))))))))))]
+        [RedIdentity, "RED_IDENTITY", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::RedIdentity)))))))))))))))],
+        [RedAnnihilation, "RED_ANNIHILATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::RedAnnihilation)))))))))))))))],
+        [RedInverse, "RED_INVERSE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::RedInverse)))))))))))))))],
+        [RedBiconditionalIdentity, "RED_BICONDITIONAL_IDENTITY", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::RedBiconditionalIdentity)))))))))))))))],
+        [RedConditionalIdentity, "RED_CONDITIONAL_IDENTITY", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::RedConditionalIdentity)))))))))))))))],
+        [RedConditionalAnnihilation, "RED_CONDITIONAL_ANNIHILATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::RedConditionalAnnihilation)))))))))))))))],
+
+
+
+        [EmptyRule, "EMPTY_RULE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(super::EmptyRule))))))))))))))))]
     }
 }
 
@@ -403,6 +425,8 @@ pub enum RuleClassification {
     QuantifierEquivalence,
     Special,
     Induction,
+    //#[strum(to_string = "Reduction")]
+    Reduction,
 }
 
 impl RuleClassification {
@@ -2140,6 +2164,47 @@ impl RuleT for Induction {
                 }
                 Ok(())
             }
+        }
+    }
+}
+
+
+impl RuleT for Reduction {
+    fn get_name(&self) -> String {
+        use Reduction::*;
+        match self {
+            RedIdentity => "Identity",
+            RedAnnihilation => "Annihilation",
+            RedInverse => "Inverse",
+            RedBiconditionalIdentity => "Biconditional Identity",
+            RedConditionalIdentity => "Conditional Identity",
+            RedConditionalAnnihilation => "Conditional Annihilation"
+        }
+        .into()
+    }
+    fn get_classifications(&self) -> HashSet<RuleClassification> {
+        [RuleClassification::Reduction].iter().cloned().collect()
+    }
+    fn num_deps(&self) -> Option<usize> {
+        use Reduction::*;
+        match self {
+            RedBiconditionalIdentity | RedConditionalIdentity | RedConditionalAnnihilation => Some(1),
+            _ => Some(0)
+        }
+    }
+    fn num_subdeps(&self) -> Option<usize> {
+        Some(0)
+    }
+    fn check<P: Proof>(self, p: &P, conclusion: Expr, deps: Vec<PjRef<P>>, _sdeps: Vec<P::SubproofReference>) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
+        //Err(ProofCheckError::Other("No rule selected".to_string()))
+        use Reduction::*;
+        match self {
+            RedIdentity => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::IDENTITY, "none"),
+            RedAnnihilation => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::ANNIHILATION, "none"),
+            RedInverse => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::INVERSE, "none"),
+            RedBiconditionalIdentity => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::BICONDITIONAL_IDENTITY, "none"),
+            RedConditionalIdentity => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_IDENTITY, "none"),
+            RedConditionalAnnihilation => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_ANNIHILATION, "none"),
         }
     }
 }
