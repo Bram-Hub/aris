@@ -61,6 +61,7 @@ use crate::expr::Constraint;
 use crate::expr::Expr;
 use crate::expr::Op;
 use crate::expr::QuantKind;
+use crate::expr::subst;
 use crate::proofs::PjRef;
 use crate::proofs::Proof;
 use crate::rewrite_rules::RewriteRule;
@@ -223,12 +224,11 @@ pub enum Induction {
 #[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Reduction {
-    RedIdentity,
-    RedAnnihilation,
-    RedInverse,
-    RedBiconditionalIdentity,
-    RedConditionalIdentity,
-    RedConditionalAnnihilation,
+    Conjunction,
+    Disjunction,
+    Negation,
+    BicondReduction,
+    CondReduction,
 }
 
 /// This should be the default rule when creating a new step in a UI. It
@@ -388,12 +388,11 @@ pub mod RuleM {
         [WeakInduction, "WEAK_INDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Induction::Weak))))))))))))))],
         [StrongInduction, "STRONG_INDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Induction::Strong))))))))))))))],
 
-        [RedIdentity, "RED_IDENTITY", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::RedIdentity)))))))))))))))],
-        [RedAnnihilation, "RED_ANNIHILATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::RedAnnihilation)))))))))))))))],
-        [RedInverse, "RED_INVERSE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::RedInverse)))))))))))))))],
-        [RedBiconditionalIdentity, "RED_BICONDITIONAL_IDENTITY", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::RedBiconditionalIdentity)))))))))))))))],
-        [RedConditionalIdentity, "RED_CONDITIONAL_IDENTITY", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::RedConditionalIdentity)))))))))))))))],
-        [RedConditionalAnnihilation, "RED_CONDITIONAL_ANNIHILATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::RedConditionalAnnihilation)))))))))))))))],
+        [Conjunction, "CONJUNCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::Conjunction)))))))))))))))],
+        [Disjunction, "DISJUNCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::Disjunction)))))))))))))))],
+        [Negation, "NEGATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::Negation)))))))))))))))],
+        [BicondReduction, "BICOND_REDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::BicondReduction)))))))))))))))],
+        [CondReduction, "COND_REDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::CondReduction)))))))))))))))],
 
 
 
@@ -1902,11 +1901,88 @@ impl RuleT for BiconditionalEquivalence {
             BiconditionalComplement => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::BICONDITIONAL_COMPLEMENT, "none"),
             BiconditionalIdentity => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::BICONDITIONAL_IDENTITY, "none"),
             BiconditionalNegation => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::BICONDITIONAL_NEGATION, "none"),
-            BiconditionalSubstitution => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::BICONDITIONAL_SUBSTITUTION, "none"),
+            BiconditionalSubstitution => { /// I think this is close but i need to figure out how to use dependencies, currently this uses P which isnt an Expr and 
+                /// I should use the only dependency, but im not sure how to do that
+                let premise = p.lookup_expr_or_die(&deps[0])?;
+                let premise_sub = biconditional_substitution(premise.clone());
+                if premise_sub == conclusion {
+                    Ok(())
+                } else {
+                    Err(ProofCheckError::Other(format!("{premise} and {conclusion} are not equal.")))
+                }
+            }
             KnightsAndKnaves => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::KNIGHTS_AND_KNAVES, "none"),
         }
     }
 }
+
+/// Perform biconditional substitution in an expression.
+///
+/// If the expression contains a biconditional `(phi <-> psi)`, this function finds
+/// all instances of `phi` in the rest of the expression and replaces them with `psi`.
+pub fn biconditional_substitution(expr: Expr) -> Expr {
+    match &expr {
+        // Look for (phi <-> psi) & S(phi)
+        Expr::Assoc { op: Op::And, exprs } => {
+            let mut new_exprs = vec![];
+            let mut subst_pairs = vec![];
+
+            // Find biconditional (phi <-> psi) and store the phi->psi mapping
+            for e in exprs {
+                if let Expr::Assoc { op: Op::Bicon, exprs: bicon_exprs } = e {
+                    if bicon_exprs.len() == 2 {
+                        let phi = &bicon_exprs[0];
+                        let psi = &bicon_exprs[1];
+                        subst_pairs.push((phi.clone(), psi.clone()));
+                    }
+                } else {
+                    new_exprs.push(e.clone());
+                }
+            }
+
+            // Apply all biconditional substitutions to the remaining expressions
+            for (phi, psi) in subst_pairs {
+                if let Expr::Var { name } = phi {
+                    new_exprs = new_exprs.into_iter().map(|e| subst(e, name.as_str(), psi.clone())).collect();
+                } else {
+                    panic!("phi must be a variable (Expr::Var) but got {:?}", phi);
+                }
+            }
+
+
+            Expr::Assoc { op: Op::And, exprs: new_exprs }
+        }
+
+        // Recurse into expressions
+        Expr::Apply { func, args } => Expr::Apply {
+            func: Box::new(biconditional_substitution(*func.clone())),
+            args: args.iter().map(|e| biconditional_substitution(e.clone())).collect(),
+        },
+
+        Expr::Not { operand } => Expr::Not {
+            operand: Box::new(biconditional_substitution(*operand.clone())),
+        },
+
+        Expr::Impl { left, right } => Expr::Impl {
+            left: Box::new(biconditional_substitution(*left.clone())),
+            right: Box::new(biconditional_substitution(*right.clone())),
+        },
+
+        Expr::Assoc { op, exprs } => Expr::Assoc {
+            op: *op,
+            exprs: exprs.iter().map(|e| biconditional_substitution(e.clone())).collect(),
+        },
+
+        Expr::Quant { kind, name, body } => Expr::Quant {
+            kind: *kind,
+            name: name.clone(),
+            body: Box::new(biconditional_substitution(*body.clone())),
+        },
+
+        _ => expr.clone(), // Base case: return unchanged
+    }
+}
+
 
 impl RuleT for QuantifierEquivalence {
     fn get_name(&self) -> String {
@@ -2173,12 +2249,11 @@ impl RuleT for Reduction {
     fn get_name(&self) -> String {
         use Reduction::*;
         match self {
-            RedIdentity => "Identity",
-            RedAnnihilation => "Annihilation",
-            RedInverse => "Inverse",
-            RedBiconditionalIdentity => "Biconditional Identity",
-            RedConditionalIdentity => "Conditional Identity",
-            RedConditionalAnnihilation => "Conditional Annihilation"
+            Conjunction => "Conjunction",
+            Disjunction => "Disjunction",
+            Negation => "Negation",
+            BicondReduction => "Bicond Reduction",
+            CondReduction => "Cond Reduction"
         }
         .into()
     }
@@ -2188,8 +2263,7 @@ impl RuleT for Reduction {
     fn num_deps(&self) -> Option<usize> {
         use Reduction::*;
         match self {
-            RedBiconditionalIdentity | RedConditionalIdentity | RedConditionalAnnihilation => Some(1),
-            _ => Some(0)
+            _ => Some(1)
         }
     }
     fn num_subdeps(&self) -> Option<usize> {
@@ -2199,12 +2273,11 @@ impl RuleT for Reduction {
         //Err(ProofCheckError::Other("No rule selected".to_string()))
         use Reduction::*;
         match self {
-            RedIdentity => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::IDENTITY, "none"),
-            RedAnnihilation => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::ANNIHILATION, "none"),
-            RedInverse => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::INVERSE, "none"),
-            RedBiconditionalIdentity => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::BICONDITIONAL_IDENTITY, "none"),
-            RedConditionalIdentity => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_IDENTITY, "none"),
-            RedConditionalAnnihilation => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONDITIONAL_ANNIHILATION, "none"),
+            Conjunction => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::CONJUNCTION, "none"),
+            Disjunction => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::DISJUNCTION, "none"),
+            Negation => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::INVERSE, "none"),
+            BicondReduction => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::BICOND_REDUCTION, "none"),
+            CondReduction => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::COND_REDUCTION, "none"),
         }
     }
 }
