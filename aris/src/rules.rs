@@ -1741,7 +1741,7 @@ where
     if p == conclusion.clone() {
         Ok(())
     } else {
-        Err(ProofCheckError::Other(format!("{p} and {conclusion} are not equal. {:?}", premise)))
+        Err(ProofCheckError::Other(format!("{p} and {conclusion} are not equal.{:?}", premise)))
     }
 }
 
@@ -1901,14 +1901,13 @@ impl RuleT for BiconditionalEquivalence {
             BiconditionalComplement => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::BICONDITIONAL_COMPLEMENT, "none"),
             BiconditionalIdentity => check_by_rewrite_rule_confl(p, deps, conclusion, false, &equivs::BICONDITIONAL_IDENTITY, "none"),
             BiconditionalNegation => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::BICONDITIONAL_NEGATION, "none"),
-            BiconditionalSubstitution => { /// I think this is close but i need to figure out how to use dependencies, currently this uses P which isnt an Expr and 
-                /// I should use the only dependency, but im not sure how to do that
+            BiconditionalSubstitution => {
                 let premise = p.lookup_expr_or_die(&deps[0])?;
                 let premise_sub = biconditional_substitution(premise.clone());
                 if premise_sub == conclusion {
-                    Ok(())
+                    Ok(()) //This means the rule was used correctly
                 } else {
-                    Err(ProofCheckError::Other(format!("{premise} and {conclusion} are not equal.")))
+                    Err(ProofCheckError::Other(format!("{conclusion} and {premise_sub} are not equal."))) //Rule was not used correctly
                 }
             }
             KnightsAndKnaves => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::KNIGHTS_AND_KNAVES, "none"),
@@ -1926,31 +1925,40 @@ pub fn biconditional_substitution(expr: Expr) -> Expr {
         Expr::Assoc { op: Op::And, exprs } => {
             let mut new_exprs = vec![];
             let mut subst_pairs = vec![];
+            let mut bicon_exprs = vec![];
 
-            // Find biconditional (phi <-> psi) and store the phi->psi mapping
+            // Separate biconditional expressions from other expressions
             for e in exprs {
-                if let Expr::Assoc { op: Op::Bicon, exprs: bicon_exprs } = e {
-                    if bicon_exprs.len() == 2 {
-                        let phi = &bicon_exprs[0];
-                        let psi = &bicon_exprs[1];
+                if let Expr::Assoc { op: Op::Bicon, exprs: bicon_exprs_inner } = e {
+                    if bicon_exprs_inner.len() == 2 {
+                        let phi = &bicon_exprs_inner[0];
+                        let psi = &bicon_exprs_inner[1];
                         subst_pairs.push((phi.clone(), psi.clone()));
                     }
+                    // Store biconditional separately so we don't modify it
+                    bicon_exprs.push(e.clone());
                 } else {
                     new_exprs.push(e.clone());
                 }
             }
 
-            // Apply all biconditional substitutions to the remaining expressions
+            // Apply substitutions only to non-biconditional expressions
             for (phi, psi) in subst_pairs {
-                if let Expr::Var { name } = phi {
-                    new_exprs = new_exprs.into_iter().map(|e| subst(e, name.as_str(), psi.clone())).collect();
-                } else {
-                    panic!("phi must be a variable (Expr::Var) but got {:?}", phi);
-                }
+                new_exprs = new_exprs
+                    .into_iter()
+                    .map(|e| subst_expr(e, &phi, &psi)) // Use a general substitution function
+                    .collect();
+
             }
 
+            // Combine the unchanged biconditionals and the modified expressions
+            //new_exprs.extend(bicon_exprs);
+            bicon_exprs.extend(new_exprs);
 
-            Expr::Assoc { op: Op::And, exprs: new_exprs }
+            Expr::Assoc {
+                op: Op::And,
+                exprs: bicon_exprs,
+            }
         }
 
         // Recurse into expressions
@@ -1982,6 +1990,40 @@ pub fn biconditional_substitution(expr: Expr) -> Expr {
         _ => expr.clone(), // Base case: return unchanged
     }
 }
+
+/// Recursively substitutes `phi` with `psi` in the given expression
+fn subst_expr(expr: Expr, phi: &Expr, psi: &Expr) -> Expr {
+    if expr == *phi {
+        return psi.clone(); // Direct replacement if exact match
+    }
+
+    match expr {
+        Expr::Assoc { op, exprs } => Expr::Assoc {
+            op,
+            exprs: exprs.into_iter().map(|e| subst_expr(e, phi, psi)).collect(),
+        },
+        Expr::Impl { left, right } => Expr::Impl {
+            left: Box::new(subst_expr(*left, phi, psi)),
+            right: Box::new(subst_expr(*right, phi, psi)),
+        },
+        Expr::Not { operand } => Expr::Not {
+            operand: Box::new(subst_expr(*operand, phi, psi)),
+        },
+        Expr::Apply { func, args } => Expr::Apply {
+            func: Box::new(subst_expr(*func, phi, psi)),
+            args: args.into_iter().map(|e| subst_expr(e, phi, psi)).collect(),
+        },
+        Expr::Quant { kind, name, body } => Expr::Quant {
+            kind,
+            name,
+            body: Box::new(subst_expr(*body, phi, psi)),
+        },
+        _ => expr, // Base case: return unchanged
+    }
+}
+
+
+
 
 
 impl RuleT for QuantifierEquivalence {
