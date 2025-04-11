@@ -40,12 +40,7 @@ use crate::expr::QuantKind;
 
 /// parser::parse parses a string slice into an Expr AST, returning None if there's an error
 pub fn parse(input: &str) -> Option<Expr> {
-    let no_comments: String = input.lines()
-        .map(|line| line.split(';').next().unwrap_or("").trim()) // Remove everything after ';' and trim
-        .collect::<Vec<_>>()
-        .join("\n"); // Rejoin the cleaned lines
-
-    let newlined = format!("{no_comments}\n");
+    let newlined = format!("{input}\n");
     main(&newlined).map(|(_, expr)| expr).ok()
 }
 
@@ -219,21 +214,12 @@ fn assoc_term(s: &str) -> nom::IResult<&str, Expr> {
 
 // paren_expr is a factoring of expr that eliminates left-recursion, which parser combinators have trouble with
 fn paren_expr(input: &str) -> IResult<&str, Expr> {
-    alt((
-        contradiction,
-        tautology,
-        predicate,
-        notterm,
-        binder,
-        delimited(tuple((space, tag("("), space)), expr, tuple((space, tag(")"), space)))
-    ))(input)
+    alt((contradiction, tautology, predicate, notterm, binder, delimited(tuple((space, tag("("), space)), expr, tuple((space, tag(")"), space)))))(input)
 }
-
 
 fn expr(input: &str) -> IResult<&str, Expr> {
     alt((assoc_term, impl_term, paren_expr))(input)
 }
-
 
 fn main(input: &str) -> IResult<&str, Expr> {
     terminated(expr, newline)(input)
