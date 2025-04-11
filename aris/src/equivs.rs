@@ -205,7 +205,7 @@ define_rewrite_rule! {
     DISJUNCTION,
     &[
         ("phi | _|_", "phi"),
-        ("phi | ^|^", "^|^"),        
+        ("phi | ^|^", "^|^"),
     ]
 }
 

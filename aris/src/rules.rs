@@ -57,11 +57,11 @@ Adding the tests and implementing the rule can be interleaved; it's convenient t
 */
 
 use crate::equivs;
+use crate::expr::subst;
 use crate::expr::Constraint;
 use crate::expr::Expr;
 use crate::expr::Op;
 use crate::expr::QuantKind;
-use crate::expr::subst;
 use crate::proofs::PjRef;
 use crate::proofs::Proof;
 use crate::rewrite_rules::RewriteRule;
@@ -248,7 +248,7 @@ pub struct EmptyRule;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SharedChecks<T>(T);
 
-pub type Rule = SharedChecks<Coprod!(PropositionalInference, PredicateInference, BooleanInference, ConditionalInference, BiconditionalInference, QuantifierInference, BooleanEquivalence, ConditionalEquivalence, BiconditionalEquivalence, QuantifierEquivalence, Special, Induction,Reduction, EmptyRule)>;
+pub type Rule = SharedChecks<Coprod!(PropositionalInference, PredicateInference, BooleanInference, ConditionalInference, BiconditionalInference, QuantifierInference, BooleanEquivalence, ConditionalEquivalence, BiconditionalEquivalence, QuantifierEquivalence, Special, Induction, Reduction, EmptyRule)>;
 
 /// Conveniences for constructing rules of the appropriate type, primarily for testing.
 /// The non-standard naming conventions here are because a module is being used to pretend to be an enum.
@@ -1907,7 +1907,8 @@ impl RuleT for BiconditionalEquivalence {
                 if premise_sub == conclusion {
                     Ok(()) //This means the rule was used correctly
                 } else {
-                    Err(ProofCheckError::Other(format!("{conclusion} and {premise_sub} are not equal."))) //Rule was not used correctly
+                    Err(ProofCheckError::Other(format!("{conclusion} and {premise_sub} are not equal.")))
+                    //Rule was not used correctly
                 }
             }
             KnightsAndKnaves => check_by_rewrite_rule_confl(p, deps, conclusion, true, &equivs::KNIGHTS_AND_KNAVES, "none"),
@@ -1948,44 +1949,25 @@ pub fn biconditional_substitution(expr: Expr) -> Expr {
                     .into_iter()
                     .map(|e| subst_expr(e, &phi, &psi)) // Use a general substitution function
                     .collect();
-
             }
 
             // Combine the unchanged biconditionals and the modified expressions
             //new_exprs.extend(bicon_exprs);
             bicon_exprs.extend(new_exprs);
 
-            Expr::Assoc {
-                op: Op::And,
-                exprs: bicon_exprs,
-            }
+            Expr::Assoc { op: Op::And, exprs: bicon_exprs }
         }
 
         // Recurse into expressions
-        Expr::Apply { func, args } => Expr::Apply {
-            func: Box::new(biconditional_substitution(*func.clone())),
-            args: args.iter().map(|e| biconditional_substitution(e.clone())).collect(),
-        },
+        Expr::Apply { func, args } => Expr::Apply { func: Box::new(biconditional_substitution(*func.clone())), args: args.iter().map(|e| biconditional_substitution(e.clone())).collect() },
 
-        Expr::Not { operand } => Expr::Not {
-            operand: Box::new(biconditional_substitution(*operand.clone())),
-        },
+        Expr::Not { operand } => Expr::Not { operand: Box::new(biconditional_substitution(*operand.clone())) },
 
-        Expr::Impl { left, right } => Expr::Impl {
-            left: Box::new(biconditional_substitution(*left.clone())),
-            right: Box::new(biconditional_substitution(*right.clone())),
-        },
+        Expr::Impl { left, right } => Expr::Impl { left: Box::new(biconditional_substitution(*left.clone())), right: Box::new(biconditional_substitution(*right.clone())) },
 
-        Expr::Assoc { op, exprs } => Expr::Assoc {
-            op: *op,
-            exprs: exprs.iter().map(|e| biconditional_substitution(e.clone())).collect(),
-        },
+        Expr::Assoc { op, exprs } => Expr::Assoc { op: *op, exprs: exprs.iter().map(|e| biconditional_substitution(e.clone())).collect() },
 
-        Expr::Quant { kind, name, body } => Expr::Quant {
-            kind: *kind,
-            name: name.clone(),
-            body: Box::new(biconditional_substitution(*body.clone())),
-        },
+        Expr::Quant { kind, name, body } => Expr::Quant { kind: *kind, name: name.clone(), body: Box::new(biconditional_substitution(*body.clone())) },
 
         _ => expr.clone(), // Base case: return unchanged
     }
@@ -1998,33 +1980,14 @@ fn subst_expr(expr: Expr, phi: &Expr, psi: &Expr) -> Expr {
     }
 
     match expr {
-        Expr::Assoc { op, exprs } => Expr::Assoc {
-            op,
-            exprs: exprs.into_iter().map(|e| subst_expr(e, phi, psi)).collect(),
-        },
-        Expr::Impl { left, right } => Expr::Impl {
-            left: Box::new(subst_expr(*left, phi, psi)),
-            right: Box::new(subst_expr(*right, phi, psi)),
-        },
-        Expr::Not { operand } => Expr::Not {
-            operand: Box::new(subst_expr(*operand, phi, psi)),
-        },
-        Expr::Apply { func, args } => Expr::Apply {
-            func: Box::new(subst_expr(*func, phi, psi)),
-            args: args.into_iter().map(|e| subst_expr(e, phi, psi)).collect(),
-        },
-        Expr::Quant { kind, name, body } => Expr::Quant {
-            kind,
-            name,
-            body: Box::new(subst_expr(*body, phi, psi)),
-        },
+        Expr::Assoc { op, exprs } => Expr::Assoc { op, exprs: exprs.into_iter().map(|e| subst_expr(e, phi, psi)).collect() },
+        Expr::Impl { left, right } => Expr::Impl { left: Box::new(subst_expr(*left, phi, psi)), right: Box::new(subst_expr(*right, phi, psi)) },
+        Expr::Not { operand } => Expr::Not { operand: Box::new(subst_expr(*operand, phi, psi)) },
+        Expr::Apply { func, args } => Expr::Apply { func: Box::new(subst_expr(*func, phi, psi)), args: args.into_iter().map(|e| subst_expr(e, phi, psi)).collect() },
+        Expr::Quant { kind, name, body } => Expr::Quant { kind, name, body: Box::new(subst_expr(*body, phi, psi)) },
         _ => expr, // Base case: return unchanged
     }
 }
-
-
-
-
 
 impl RuleT for QuantifierEquivalence {
     fn get_name(&self) -> String {
@@ -2286,7 +2249,6 @@ impl RuleT for Induction {
     }
 }
 
-
 impl RuleT for Reduction {
     fn get_name(&self) -> String {
         use Reduction::*;
@@ -2295,7 +2257,7 @@ impl RuleT for Reduction {
             Disjunction => "Disjunction",
             Negation => "Negation",
             BicondReduction => "Bicond Reduction",
-            CondReduction => "Cond Reduction"
+            CondReduction => "Cond Reduction",
         }
         .into()
     }
@@ -2305,7 +2267,7 @@ impl RuleT for Reduction {
     fn num_deps(&self) -> Option<usize> {
         use Reduction::*;
         match self {
-            _ => Some(1)
+            _ => Some(1),
         }
     }
     fn num_subdeps(&self) -> Option<usize> {
