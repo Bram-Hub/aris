@@ -52,8 +52,6 @@ Adding the tests and implementing the rule can be interleaved; it's convenient t
 - Add a `RuleT` impl block for the new enum
     - if default metadata applies to all rules of the type, add those (e.g. `BooleanEquivalence`)
     - if default metadata doesn't apply to all rules of the type, add an empty match block (e.g. `PropositionalInference`)
-
--If needed also add the new rule type to the RuleCalssification Enum (around line 400)
 */
 
 use crate::equivs;
@@ -221,16 +219,6 @@ pub enum Induction {
     Strong,
 }
 
-#[allow(missing_docs)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Reduction {
-    Conjunction,
-    Disjunction,
-    Negation,
-    BicondReduction,
-    CondReduction,
-}
-
 /// This should be the default rule when creating a new step in a UI. It
 /// always fails, and isn't part of any `RuleClassification`s.
 ///
@@ -247,6 +235,7 @@ pub struct EmptyRule;
 ///  it should always be the outermost constructor of the Rule type alias.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SharedChecks<T>(T);
+
 
 pub type Rule = SharedChecks<Coprod!(PropositionalInference, PredicateInference, BooleanInference, ConditionalInference, BiconditionalInference, QuantifierInference, BooleanEquivalence, ConditionalEquivalence, BiconditionalEquivalence, QuantifierEquivalence, Special, Induction, Reduction, EmptyRule)>;
 
@@ -388,15 +377,7 @@ pub mod RuleM {
         [WeakInduction, "WEAK_INDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Induction::Weak))))))))))))))],
         [StrongInduction, "STRONG_INDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Induction::Strong))))))))))))))],
 
-        [Conjunction, "CONJUNCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::Conjunction)))))))))))))))],
-        [Disjunction, "DISJUNCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::Disjunction)))))))))))))))],
-        [Negation, "NEGATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::Negation)))))))))))))))],
-        [BicondReduction, "BICOND_REDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::BicondReduction)))))))))))))))],
-        [CondReduction, "COND_REDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::CondReduction)))))))))))))))],
-
-
-
-        [EmptyRule, "EMPTY_RULE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(super::EmptyRule))))))))))))))))]
+        [EmptyRule, "EMPTY_RULE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(super::EmptyRule)))))))))))))))]
     }
 }
 
@@ -424,8 +405,6 @@ pub enum RuleClassification {
     QuantifierEquivalence,
     Special,
     Induction,
-    //#[strum(to_string = "Reduction")]
-    Reduction,
 }
 
 impl RuleClassification {
@@ -1741,7 +1720,7 @@ where
     if p == conclusion.clone() {
         Ok(())
     } else {
-        Err(ProofCheckError::Other(format!("{p} and {conclusion} are not equal.{:?}", premise)))
+        Err(ProofCheckError::Other(format!("{p} and {conclusion} are not equal. {:?}", premise)))
     }
 }
 
@@ -2249,6 +2228,7 @@ impl RuleT for Induction {
     }
 }
 
+
 impl RuleT for Reduction {
     fn get_name(&self) -> String {
         use Reduction::*;
@@ -2285,6 +2265,7 @@ impl RuleT for Reduction {
         }
     }
 }
+
 
 impl RuleT for EmptyRule {
     fn get_name(&self) -> String {
