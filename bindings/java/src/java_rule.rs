@@ -77,6 +77,7 @@ pub extern "system" fn Java_edu_rpi_aris_rules_Rule_getRuleType(env: JNIEnv, obj
                 QuantifierEquivalence => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("QUANTIFIER_EQUIVALENCE")?])?,
                 Special => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("SPECIAL")?])?,
                 Induction => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("INDUCTION")?])?,
+                Reduction => env.call_static_method("java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", &[cls, jv("REDUCTION")?])?,
             };
             env.set_object_array_element(types, i as _, ty.l()?)?;
         }

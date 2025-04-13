@@ -40,7 +40,13 @@ use crate::expr::QuantKind;
 
 /// parser::parse parses a string slice into an Expr AST, returning None if there's an error
 pub fn parse(input: &str) -> Option<Expr> {
-    let newlined = format!("{input}\n");
+    let no_comments: String = input
+        .lines()
+        .map(|line| line.split(';').next().unwrap_or("").trim()) // Remove everything after ';' and trim
+        .collect::<Vec<_>>()
+        .join("\n"); // Rejoin the cleaned lines
+
+    let newlined = format!("{no_comments}\n");
     main(&newlined).map(|(_, expr)| expr).ok()
 }
 

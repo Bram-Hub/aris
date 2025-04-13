@@ -192,6 +192,49 @@ define_rewrite_rule! {
     ]
 }
 
+define_rewrite_rule! {
+    CONJUNCTION,
+    &[
+        ("phi & ^|^", "phi"),
+        ("phi & _|_", "_|_"),
+
+    ]
+}
+
+define_rewrite_rule! {
+    DISJUNCTION,
+    &[
+        ("phi | _|_", "phi"),
+        ("phi | ^|^", "^|^"),
+    ]
+}
+
+define_rewrite_rule! {
+    NEGATION,
+    &[
+        ("~^|^", "_|_"),
+        ("~_|_", "^|^"),
+    ]
+}
+
+define_rewrite_rule! {
+    BICOND_REDUCTION,
+    &[
+        ("phi <-> _|_", "~phi"),
+        ("phi <-> ^|^", "phi"),
+    ]
+}
+
+define_rewrite_rule! {
+    COND_REDUCTION,
+    &[
+        ("phi -> ^|^", "^|^"),
+        ("_|_ -> phi", "^|^"),
+        ("phi -> _|_", "~phi"),
+        ("^|^ -> phi", "phi"),
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
