@@ -55,7 +55,6 @@ Adding the tests and implementing the rule can be interleaved; it's convenient t
 */
 
 use crate::equivs;
-use crate::expr::subst;
 use crate::expr::Constraint;
 use crate::expr::Expr;
 use crate::expr::Op;
@@ -270,6 +269,7 @@ pub mod RuleM {
             }
             /// Convert string from the Java enum `edu.rpi.aris.rules.RuleList` to a Rule
             pub fn from_serialized_name(name: &str) -> Option<Rule> {
+                #[allow(unreachable_patterns)]
                 Some(declare_rules! { DECLARE_MATCH; on: name; default: { return None; }; $([$name, $id]),+ })
             }
         };
@@ -2261,9 +2261,7 @@ impl RuleT for Reduction {
         [RuleClassification::Reduction].iter().cloned().collect()
     }
     fn num_deps(&self) -> Option<usize> {
-        match self {
-            _ => Some(1),
-        }
+        Some(1)
     }
     fn num_subdeps(&self) -> Option<usize> {
         Some(0)
