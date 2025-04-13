@@ -2316,10 +2316,10 @@ enum AnyOrderResult<R, S> {
 ///
 /// ## Parameters
 ///   * `deps` - the dependencies to check
-///   * `check_func` 
+///   * `check_func`
 ///   - function checking a rule and assuming a given ordering of  
 ///     the dependencies
-///   * `fallthrough_handler` 
+///   * `fallthrough_handler`
 ///   - function to obtain an error that occurs when all
 ///     orderings have dependencies that are in the
 ///     wrong form.
