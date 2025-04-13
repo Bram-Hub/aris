@@ -219,6 +219,18 @@ pub enum Induction {
     Strong,
 }
 
+#[allow(missing_docs)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Reduction {
+    Conjunction,
+    Disjunction,
+    Negation,
+    BicondReduction,
+    CondReduction,
+    
+}
+
+
 /// This should be the default rule when creating a new step in a UI. It
 /// always fails, and isn't part of any `RuleClassification`s.
 ///
@@ -377,7 +389,14 @@ pub mod RuleM {
         [WeakInduction, "WEAK_INDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Induction::Weak))))))))))))))],
         [StrongInduction, "STRONG_INDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Induction::Strong))))))))))))))],
 
-        [EmptyRule, "EMPTY_RULE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(super::EmptyRule)))))))))))))))]
+        [Conjunction, "CONJUNCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::Conjunction)))))))))))))))],
+        [Disjunction, "DISJUNCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::Disjunction)))))))))))))))],
+        [Negation, "NEGATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::Negation)))))))))))))))],
+        [BicondReduction, "BICOND_REDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::BicondReduction)))))))))))))))],
+        [CondReduction, "COND_REDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::CondReduction)))))))))))))))],
+        
+
+        [EmptyRule, "EMPTY_RULE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(super::EmptyRule))))))))))))))))]
     }
 }
 
@@ -405,6 +424,7 @@ pub enum RuleClassification {
     QuantifierEquivalence,
     Special,
     Induction,
+    Reduction,
 }
 
 impl RuleClassification {
@@ -2231,7 +2251,7 @@ impl RuleT for Induction {
 
 impl RuleT for Reduction {
     fn get_name(&self) -> String {
-        use Reduction::*;
+        use Reduction::*;   
         match self {
             Conjunction => "Conjunction",
             Disjunction => "Disjunction",
