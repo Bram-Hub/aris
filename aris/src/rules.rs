@@ -2265,7 +2265,6 @@ impl RuleT for Reduction {
         [RuleClassification::Reduction].iter().cloned().collect()
     }
     fn num_deps(&self) -> Option<usize> {
-        use Reduction::*;
         match self {
             _ => Some(1),
         }
