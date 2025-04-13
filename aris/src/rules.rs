@@ -227,9 +227,7 @@ pub enum Reduction {
     Negation,
     BicondReduction,
     CondReduction,
-    
 }
-
 
 /// This should be the default rule when creating a new step in a UI. It
 /// always fails, and isn't part of any `RuleClassification`s.
@@ -247,7 +245,6 @@ pub struct EmptyRule;
 ///  it should always be the outermost constructor of the Rule type alias.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SharedChecks<T>(T);
-
 
 pub type Rule = SharedChecks<Coprod!(PropositionalInference, PredicateInference, BooleanInference, ConditionalInference, BiconditionalInference, QuantifierInference, BooleanEquivalence, ConditionalEquivalence, BiconditionalEquivalence, QuantifierEquivalence, Special, Induction, Reduction, EmptyRule)>;
 
@@ -394,7 +391,7 @@ pub mod RuleM {
         [Negation, "NEGATION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::Negation)))))))))))))))],
         [BicondReduction, "BICOND_REDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::BicondReduction)))))))))))))))],
         [CondReduction, "COND_REDUCTION", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(Reduction::CondReduction)))))))))))))))],
-        
+
 
         [EmptyRule, "EMPTY_RULE", (SharedChecks(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inr(Inl(super::EmptyRule))))))))))))))))]
     }
@@ -2248,10 +2245,9 @@ impl RuleT for Induction {
     }
 }
 
-
 impl RuleT for Reduction {
     fn get_name(&self) -> String {
-        use Reduction::*;   
+        use Reduction::*;
         match self {
             Conjunction => "Conjunction",
             Disjunction => "Disjunction",
@@ -2284,7 +2280,6 @@ impl RuleT for Reduction {
         }
     }
 }
-
 
 impl RuleT for EmptyRule {
     fn get_name(&self) -> String {

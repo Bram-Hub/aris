@@ -74,7 +74,7 @@ macro_rules! enumerate_subproofless_tests {
             test_con_elim_negation, test_bicon_intro, test_bicon_intro_negation,
             test_bicon_elim, test_bicon_elim_negation, test_exclusion,
             test_excluded_middle, test_weak_induction, test_strong_induction,
-            test_bicon_contraposition, test_biconditionalsubstitution, 
+            test_bicon_contraposition, test_biconditionalsubstitution,
         }
     };
 }
@@ -1473,7 +1473,7 @@ pub fn test_biconditionalsubstitution<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRe
 
     // Step 2: Valid applications of <-> Substitution
     let r4 = prf.add_step(Justification(
-        p("(A <-> B) & B"),           // Correct substitution
+        p("(A <-> B) & B"), // Correct substitution
         RuleM::BiconditionalSubstitution,
         vec![i(r1.clone())],
         vec![],
@@ -1488,14 +1488,14 @@ pub fn test_biconditionalsubstitution<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRe
 
     // Step 3: Invalid applications
     let r6 = prf.add_step(Justification(
-        p("(A <-> B) & A"),           // No substitution occurred
+        p("(A <-> B) & A"), // No substitution occurred
         RuleM::BiconditionalSubstitution,
         vec![i(r1.clone())],
         vec![],
     ));
 
     let r7 = prf.add_step(Justification(
-        p("(X <-> Y) & W"),           // Incorrect conclusion
+        p("(X <-> Y) & W"), // Incorrect conclusion
         RuleM::BiconditionalSubstitution,
         vec![i(r3.clone())],
         vec![],
