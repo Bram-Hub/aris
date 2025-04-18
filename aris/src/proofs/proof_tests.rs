@@ -74,7 +74,7 @@ macro_rules! enumerate_subproofless_tests {
             test_con_elim_negation, test_bicon_intro, test_bicon_intro_negation,
             test_bicon_elim, test_bicon_elim_negation, test_exclusion,
             test_excluded_middle, test_weak_induction, test_strong_induction,
-            test_bicon_contraposition, test_biconditionalsubstitution,
+            test_bicon_contraposition, test_prenex_basic, test_prenex_full,
         }
     };
 }
@@ -1460,55 +1460,88 @@ pub fn test_bicon_contraposition<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>
     (prf, vec![i(r1), i(r2), i(r3)], vec![i(r4)])
 }
 
-pub fn test_biconditionalsubstitution<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
+pub fn test_prenex_basic<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     use self::coproduct_inject as i;
     use crate::parser::parse_unwrap as p;
-
     let mut prf = P::new();
 
-    // Step 1: Add premises
-    let r1 = prf.add_premise(p("(A <-> B) & A")); // valid context for substitution
-    let r2 = prf.add_premise(p("((A | C) <-> B) & (D | (A | C))")); // complex substitution case
-    let r3 = prf.add_premise(p("(X <-> Y) & Z")); // used for incorrect test
+    let p1 = prf.add_premise(p("forall x (P(x) & Q)"));
+    let p2 = prf.add_premise(p("exists x (P(x) & Q)"));
+    let p3 = prf.add_premise(p("forall x (P(x) | Q)"));
+    let p4 = prf.add_premise(p("exists x (P(x) | Q)"));
+    let p5 = prf.add_premise(p("forall x (P(x) -> Q)"));
+    let p6 = prf.add_premise(p("exists x (P(x) -> Q)"));
+    let p7 = prf.add_premise(p("forall x (Q -> P(x))"));
+    let p8 = prf.add_premise(p("exists x (Q -> P(x))"));
 
-    // Step 2: Valid applications of <-> Substitution
-    let r4 = prf.add_step(Justification(
-        p("(A <-> B) & B"), // Correct substitution
-        RuleM::BiconditionalSubstitution,
-        vec![i(r1.clone())],
-        vec![],
-    ));
+    let r1 = prf.add_step(Justification(p("(forall x P(x)) & Q"), RuleM::PrenexLaws, vec![i(p1.clone())], vec![]));
+    let r2 = prf.add_step(Justification(p("(exists x P(x)) & Q"), RuleM::PrenexLaws, vec![i(p2.clone())], vec![]));
+    let r3 = prf.add_step(Justification(p("(forall x P(x)) | Q"), RuleM::PrenexLaws, vec![i(p3.clone())], vec![]));
+    let r4 = prf.add_step(Justification(p("(exists x P(x)) | Q"), RuleM::PrenexLaws, vec![i(p4.clone())], vec![]));
+    let r5 = prf.add_step(Justification(p("(exists x P(x)) -> Q"), RuleM::PrenexLaws, vec![i(p5.clone())], vec![]));
+    let r6 = prf.add_step(Justification(p("(forall x P(x)) -> Q"), RuleM::PrenexLaws, vec![i(p6.clone())], vec![]));
+    let r7 = prf.add_step(Justification(p("Q -> (forall x P(x))"), RuleM::PrenexLaws, vec![i(p7.clone())], vec![]));
+    let r8 = prf.add_step(Justification(p("Q -> (exists x P(x))"), RuleM::PrenexLaws, vec![i(p8.clone())], vec![]));
 
-    let r5 = prf.add_step(Justification(
-        p("((A | C) <-> B) & (D | B)"), // Substitute (A | C) with B
-        RuleM::BiconditionalSubstitution,
-        vec![i(r2.clone())],
-        vec![],
-    ));
+    let r9 = prf.add_step(Justification(p("(exists x P(x)) & Q"), RuleM::PrenexLaws, vec![i(p1.clone())], vec![]));
+    let r10 = prf.add_step(Justification(p("(forall x P(x)) | Q"), RuleM::PrenexLaws, vec![i(p1.clone())], vec![]));
+    let r11 = prf.add_step(Justification(p("(forall x P(x)) & Q"), RuleM::PrenexLaws, vec![i(p2.clone())], vec![]));
+    let r12 = prf.add_step(Justification(p("(exists x P(x)) | Q"), RuleM::PrenexLaws, vec![i(p3.clone())], vec![]));
+    let r13 = prf.add_step(Justification(p("(forall x P(x)) | Q"), RuleM::PrenexLaws, vec![i(p4.clone())], vec![]));
+    let r14 = prf.add_step(Justification(p("(exists x P(x)) & Q"), RuleM::PrenexLaws, vec![i(p5.clone())], vec![]));
+    let r15 = prf.add_step(Justification(p("(forall x P(x)) -> Q"), RuleM::PrenexLaws, vec![i(p5.clone())], vec![]));
+    let r16 = prf.add_step(Justification(p("(exists x P(x)) -> Q"), RuleM::PrenexLaws, vec![i(p6.clone())], vec![]));
+    let r17 = prf.add_step(Justification(p("Q -> (exists x P(x))"), RuleM::PrenexLaws, vec![i(p7.clone())], vec![]));
+    let r18 = prf.add_step(Justification(p("Q -> (forall x P(x))"), RuleM::PrenexLaws, vec![i(p8.clone())], vec![]));
 
-    // Step 3: Invalid applications
-    let r6 = prf.add_step(Justification(
-        p("(A <-> B) & A"), // No substitution occurred
-        RuleM::BiconditionalSubstitution,
-        vec![i(r1.clone())],
-        vec![],
-    ));
+    (prf, vec![i(r1), i(r2), i(r3), i(r4), i(r5), i(r6), i(r7), i(r8)], vec![i(r9), i(r10), i(r11), i(r12), i(r13), i(r14), i(r15), i(r16), i(r17), i(r18)])
+}
 
-    let r7 = prf.add_step(Justification(
-        p("(X <-> Y) & W"), // Incorrect conclusion
-        RuleM::BiconditionalSubstitution,
-        vec![i(r3.clone())],
-        vec![],
-    ));
+pub fn test_prenex_full<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
+    use self::coproduct_inject as i;
+    use crate::parser::parse_unwrap as p;
+    let mut prf = P::new();
 
-    // Step 4: Edge case
-    let r8 = prf.add_step(Justification(
-        p("((A | C) <-> B) & (D | (A | C))"), // no substitution applied, should fail
-        RuleM::BiconditionalSubstitution,
-        vec![i(r2)],
-        vec![],
-    ));
+    let p1  = prf.add_premise(p("exists x P(x) -> exists y Q(y)"));
+    let p2  = prf.add_premise(p("exists x (P(x) & exists y Q(y))"));
+    let p3  = prf.add_premise(p("forall x (P(x) | exists y Q(y))"));
+    let p4  = prf.add_premise(p("forall x (P(x) & exists x Q(x))"));
+    let p5  = prf.add_premise(p("exists y (P & Q & S(y))"));
+    let p6  = prf.add_premise(p("forall x (A(x) | B | C)"));
+    let p7  = prf.add_premise(p("exists x (P(x) & (Q | R))"));
+    let p8  = prf.add_premise(p("forall x (R | (P(x) -> Q))"));
+    let p9  = prf.add_premise(p("((exists x (P(x) & ~Q(x))) | (exists y R(y)))"));
+    let p10 = prf.add_premise(p("exists x (P(x) | forall y Q(y))"));
+    let p11 = prf.add_premise(p("exists x (P(x) -> exists y (Q(y) -> exists z R(z)))"));
+    let p15 = prf.add_premise(p("P & Q"));
+    let p16 = prf.add_premise(p("forall x P(x) & Q(x)"));
+    let p17 = prf.add_premise(p("exists x P(x) & exists x Q(x)"));
+    let p18 = prf.add_premise(p("forall x P(x) -> Q(x)"));
+    let p19 = prf.add_premise(p("exists y forall x R(x,y)"));
 
-    // Return proof and categorized results
-    (prf, vec![i(r4), i(r5)], vec![i(r6), i(r7), i(r8)])
+    let r1  = prf.add_step(Justification(p("forall x (P(x) -> exists y Q(y))"), RuleM::PrenexLaws, vec![i(p1.clone())],vec![],));
+    let r2  = prf.add_step(Justification(p("exists y (exists x P(x) -> Q(y))"), RuleM::PrenexLaws, vec![i(p1.clone())], vec![],));
+    let r3  = prf.add_step(Justification(p("(exists x P(x)) & exists y Q(y)"), RuleM::PrenexLaws, vec![i(p2.clone())], vec![],));
+    let r4  = prf.add_step(Justification(p("exists x P(x) & exists y Q(y)"), RuleM::PrenexLaws, vec![i(p2.clone())], vec![],));
+    let r5  = prf.add_step(Justification(p("(forall x P(x)) | exists y Q(y)"), RuleM::PrenexLaws, vec![i(p3.clone())], vec![],));
+    let r6  = prf.add_step(Justification(p("forall x P(x) | exists y Q(y)"), RuleM::PrenexLaws, vec![i(p3.clone())], vec![],));
+    let r7  = prf.add_step(Justification(p("forall x (P(x) & exists x Q(x))"), RuleM::PrenexLaws, vec![i(p4.clone())], vec![],));
+    let r8  = prf.add_step(Justification(p("P & Q & exists y S(y)"), RuleM::PrenexLaws, vec![i(p5.clone())], vec![],));
+    let r9  = prf.add_step(Justification(p("(forall x A(x) | B | C)"), RuleM::PrenexLaws, vec![i(p6.clone())], vec![],));
+    let r10 = prf.add_step(Justification(p("(exists x P(x)) & (Q | R)"), RuleM::PrenexLaws, vec![i(p7.clone())], vec![],));
+    let r11 = prf.add_step(Justification(p("R | forall x (P(x) -> Q)"), RuleM::PrenexLaws, vec![i(p8.clone())], vec![],));
+    let r12 = prf.add_step(Justification(p("(exists x (exists y ((P(x) & ~Q(x)) | R(y))))"), RuleM::PrenexLaws, vec![i(p9.clone())], vec![],));
+    let r13 = prf.add_step(Justification(p("((exists x P(x)) | forall y Q(y))"), RuleM::PrenexLaws, vec![i(p10.clone())], vec![],));
+    let r14 = prf.add_step(Justification(p("((forall x P(x)) -> ((forall y Q(y)) -> exists z R(z)))"), RuleM::PrenexLaws, vec![i(p11.clone())], vec![],));
+    let r15 = prf.add_step(Justification(p("P & Q"), RuleM::PrenexLaws, vec![i(p15.clone())], vec![]));
+    let r16 = prf.add_step(Justification(p("forall x P(x) & Q(x)"), RuleM::PrenexLaws, vec![i(p16.clone())], vec![]));
+    let r17 = prf.add_step(Justification(p("exists x P(x) & exists x Q(x)"), RuleM::PrenexLaws, vec![i(p17.clone())], vec![]));
+    let r18 = prf.add_step(Justification(p("forall x P(x) -> Q(x)"), RuleM::PrenexLaws, vec![i(p18.clone())], vec![]));
+    let r19 = prf.add_step(Justification(p("forall x exists y R(x,y)"), RuleM::PrenexLaws, vec![i(p19.clone())], vec![]));
+
+    let e1 = prf.add_step(Justification(p("exists x (P & Q)"), RuleM::PrenexLaws, vec![i(p15.clone())], vec![]));
+    let e2 = prf.add_step(Justification(p("(forall x P(x)) & Q"), RuleM::PrenexLaws, vec![i(p16.clone())], vec![]));
+    let e3 = prf.add_step(Justification(p("forall x (P(x) -> Q(x))"), RuleM::PrenexLaws, vec![i(p18.clone())], vec![]));
+
+    (prf, vec![i(r1), i(r2), i(r3), i(r4), i(r5), i(r6), i(r7), i(r8), i(r9), i(r10), i(r11), i(r12), i(r13), i(r14), i(r15), i(r16), i(r17), i(r18), i(r19)], vec![i(e1), i(e2), i(e3)])
 }
