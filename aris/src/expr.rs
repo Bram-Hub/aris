@@ -1318,7 +1318,7 @@ impl Expr {
             match expr {
                 Expr::Var { name } => {
                     // look up the name in gamma *from the end*, so we get the nearest (innermost) binding
-                    let i = gamma.iter().rposition(|n| n == &name).expect(&format!("unbound variable {}", name));
+                    let i = gamma.iter().rposition(|n| n == &name).unwrap_or_else(|| panic!("unbound variable {}", name));
                     Expr::Var { name: i.to_string() }
                 }
                 // push the name onto gamma from the actual quantifier,
