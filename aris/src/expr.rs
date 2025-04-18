@@ -1444,50 +1444,75 @@ impl Expr {
             let body = Box::new(Expr::Impl { left, right });
             (Expr::Quant { kind, name, body }, true)
         };
-        self.transform(&|expr| {
+        let prenex_step = |expr: Expr| -> (Expr, bool) {
             match expr {
                 Expr::Assoc { op, exprs } => match op {
-                    Op::And => transform_7ab(Op::And, exprs),
-                    Op::Or => transform_7ab(Op::Or, exprs),
+                    Op::And | Op::Or => transform_7ab(op, exprs),
                     _ => (Expr::Assoc { op, exprs }, false),
                 },
+
                 Expr::Impl { mut left, mut right } => {
                     let left_free = free_vars(&left);
                     let right_free = free_vars(&right);
+
+                    // 7c: Quant on left and not captured on right → flip
                     left = match *left {
                         Expr::Quant { kind, name, body } if !right_free.contains(&name) => {
-                            // 7c case, quantifier is flipped
                             match kind {
-                                QuantKind::Forall => {
-                                    return reconstruct_7cd(QuantKind::Exists, name, body, right);
-                                }
-                                QuantKind::Exists => {
-                                    return reconstruct_7cd(QuantKind::Forall, name, body, right);
-                                }
+                                QuantKind::Forall => return reconstruct_7cd(QuantKind::Exists, name, body, right),
+                                QuantKind::Exists => return reconstruct_7cd(QuantKind::Forall, name, body, right),
                             }
                         }
-                        left => Box::new(left),
+                        other => Box::new(other),
                     };
+
+                    // 7d: Quant on right and not captured on left → no flip
                     right = match *right {
                         Expr::Quant { kind, name, body } if !left_free.contains(&name) => {
-                            // 7d case, quantifier is not flipped
-                            // exhaustive match despite the bodies being the same: since if more quantifiers are added, should reconsider here instead of blindly hoisting the new quantifier
                             match kind {
-                                QuantKind::Forall => {
-                                    return reconstruct_7cd(QuantKind::Forall, name, left, body);
-                                }
-                                QuantKind::Exists => {
-                                    return reconstruct_7cd(QuantKind::Exists, name, left, body);
-                                }
+                                QuantKind::Forall => return reconstruct_7cd(QuantKind::Forall, name, left, body),
+                                QuantKind::Exists => return reconstruct_7cd(QuantKind::Exists, name, left, body),
                             }
                         }
-                        right => Box::new(right),
+                        other => Box::new(other),
                     };
+
+                    // if neither side hoisted, leave the implication intact
                     (Expr::Impl { left, right }, false)
                 }
-                _ => (expr, false),
+
+                // everything else is a no‑op
+                other => (other, false),
             }
-        })
+        };
+
+        // 1) do *all* possible one‑step hoists
+        let expr = self.transform(&prenex_step);
+
+        // 2) now peel off the entire quantifier prefix
+        let mut prefix = Vec::new();
+        let mut body   = expr;
+        while let Expr::Quant { kind, name, body: inner } = body {
+            prefix.push((kind, name));
+            body = *inner;
+        }
+
+        // 3) stable‑sort so ∀s come before ∃s (same‐kind keep their relative order)
+        prefix.sort_by_key(|(kind, _)| match kind {
+            QuantKind::Forall => 0,
+            QuantKind::Exists => 1,
+        });
+
+        // 4) rebuild in reverse (so the first in `prefix` is the outermost)
+        let mut result = body;
+        for (kind, name) in prefix.into_iter().rev() {
+            result = Expr::Quant {
+                kind,
+                name,
+                body: Box::new(result),
+            };
+        }
+        result
     }
 
     /// ¬∀x (φ(x) → ψ(x)) ⇔ ∃x (φ(x) ∧ ¬ψ(x))
