@@ -23,6 +23,7 @@ pub enum AppMsg {
         name: String,
         content: Html,
     },
+    CloseTab(String),
     RegisterProofName {
         name: String,
         link: Scope<ProofWidget>,
@@ -56,6 +57,11 @@ impl Component for App {
                 }
                 true
             }
+            AppMsg::CloseTab(name) => {
+                // just drop the proof widget; the UI tab was already removed
+                self.proofs.remove(&name);
+                true
+            }
             AppMsg::RegisterProofName { name, link } => {
                 self.proofs.insert(name, link);
                 false
@@ -81,8 +87,9 @@ impl Component for App {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let resolution_fname: String = "resolution_example.bram".into();
         let resolution_fname_ = resolution_fname.clone();
+        let onclose = ctx.link().callback(AppMsg::CloseTab);
         let tabview = html! {
-            <TabbedContainer tab_ids={ vec![resolution_fname, "Parser demo".into()] } oncreate={ ctx.link().callback(AppMsg::TabbedContainerInit) }>
+            <TabbedContainer tab_ids={ vec![resolution_fname, "Parser demo".into()] } oncreate={ ctx.link().callback(AppMsg::TabbedContainerInit) } onclose={ Some(onclose) }>
                 <ProofWidget verbose=true data={ Some(include_bytes!("../../../example-proofs/resolution_example.bram").to_vec()) } oncreate={ ctx.link().callback(move |link| AppMsg::RegisterProofName { name: resolution_fname_.clone(), link }) } />
             </TabbedContainer>
         };

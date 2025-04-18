@@ -8,6 +8,7 @@ pub struct TabbedContainer {
 pub enum TabbedContainerMsg {
     Switch(usize),
     Create { name: String, content: Html },
+    Close(usize),
     GetCurrent(Box<dyn FnOnce(usize, String)>),
 }
 
@@ -16,6 +17,7 @@ pub struct TabbedContainerProps {
     pub tab_ids: Vec<String>,
     pub children: Children,
     pub oncreate: Callback<Scope<TabbedContainer>>,
+    pub onclose: Option<Callback<String>>,
 }
 
 impl Component for TabbedContainer {
@@ -28,7 +30,7 @@ impl Component for TabbedContainer {
         Self { tabs, current_tab: 0 }
     }
 
-    fn update(&mut self, _: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             TabbedContainerMsg::Switch(idx) => {
                 self.current_tab = idx;
@@ -38,6 +40,19 @@ impl Component for TabbedContainer {
                 self.tabs.insert(0, (name, content));
                 // Switch to new tab
                 self.current_tab = 0;
+                true
+            }
+            TabbedContainerMsg::Close(idx) => {
+                // Grab the name before removal
+                let (name, _) = self.tabs.remove(idx);
+                // fire the onclose callback if provided
+                if let Some(cb) = &ctx.props().onclose {
+                    cb.emit(name.clone());
+                }
+                // adjust current_tab if out of bounds
+                if self.current_tab >= self.tabs.len() {
+                    self.current_tab = self.tabs.len().saturating_sub(1);
+                }
                 true
             }
             TabbedContainerMsg::GetCurrent(f) => {
@@ -54,20 +69,31 @@ impl Component for TabbedContainer {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let mut tab_links = yew::virtual_dom::VList::new();
         let mut out = yew::virtual_dom::VList::new();
-        for (i, (name, data)) in self.tabs.iter().enumerate() {
-            let onclick = ctx.link().callback(move |_| TabbedContainerMsg::Switch(i));
+
+        for (i, (name, content)) in self.tabs.iter().enumerate() {
+            let switch = ctx.link().callback(move |_| TabbedContainerMsg::Switch(i));
+            let close = ctx.link().callback(move |_| TabbedContainerMsg::Close(i));
             let link_class = if i == self.current_tab { "nav-link active" } else { "nav-link" };
+
             tab_links.add_child(html! {
-                <li class="nav-item">
-                    <a class={ link_class } href="#" onclick={ onclick }>
+                <li class="nav-item d-flex align-items-center">
+                    <a class={ link_class } href="#" onclick={ switch.clone() }>
                         { name }
                     </a>
+                    <button
+                        type="button"
+                        class="close ml-1"
+                        aria-label="Close"
+                        onclick={ close }>
+                        <span aria-hidden="true">{ "×" }</span>
+                    </button>
                 </li>
             });
+
             if i == self.current_tab {
-                out.add_child(html! { <div> { data.clone() } </div> });
+                out.add_child(html! { <div> { content.clone() } </div> });
             } else {
-                out.add_child(html! { <div style="display:none"> { data.clone() } </div> });
+                out.add_child(html! { <div style="display:none"> { content.clone() } </div> });
             }
         }
 
