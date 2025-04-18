@@ -1457,23 +1457,19 @@ impl Expr {
 
                     // 7c: Quant on left and not captured on right → flip
                     left = match *left {
-                        Expr::Quant { kind, name, body } if !right_free.contains(&name) => {
-                            match kind {
-                                QuantKind::Forall => return reconstruct_7cd(QuantKind::Exists, name, body, right),
-                                QuantKind::Exists => return reconstruct_7cd(QuantKind::Forall, name, body, right),
-                            }
-                        }
+                        Expr::Quant { kind, name, body } if !right_free.contains(&name) => match kind {
+                            QuantKind::Forall => return reconstruct_7cd(QuantKind::Exists, name, body, right),
+                            QuantKind::Exists => return reconstruct_7cd(QuantKind::Forall, name, body, right),
+                        },
                         other => Box::new(other),
                     };
 
                     // 7d: Quant on right and not captured on left → no flip
                     right = match *right {
-                        Expr::Quant { kind, name, body } if !left_free.contains(&name) => {
-                            match kind {
-                                QuantKind::Forall => return reconstruct_7cd(QuantKind::Forall, name, left, body),
-                                QuantKind::Exists => return reconstruct_7cd(QuantKind::Exists, name, left, body),
-                            }
-                        }
+                        Expr::Quant { kind, name, body } if !left_free.contains(&name) => match kind {
+                            QuantKind::Forall => return reconstruct_7cd(QuantKind::Forall, name, left, body),
+                            QuantKind::Exists => return reconstruct_7cd(QuantKind::Exists, name, left, body),
+                        },
                         other => Box::new(other),
                     };
 
@@ -1491,7 +1487,7 @@ impl Expr {
 
         // 2) now peel off the entire quantifier prefix
         let mut prefix = Vec::new();
-        let mut body   = expr;
+        let mut body = expr;
         while let Expr::Quant { kind, name, body: inner } = body {
             prefix.push((kind, name));
             body = *inner;
@@ -1506,11 +1502,7 @@ impl Expr {
         // 4) rebuild in reverse (so the first in `prefix` is the outermost)
         let mut result = body;
         for (kind, name) in prefix.into_iter().rev() {
-            result = Expr::Quant {
-                kind,
-                name,
-                body: Box::new(result),
-            };
+            result = Expr::Quant { kind, name, body: Box::new(result) };
         }
         result
     }
