@@ -74,7 +74,8 @@ macro_rules! enumerate_subproofless_tests {
             test_con_elim_negation, test_bicon_intro, test_bicon_intro_negation,
             test_bicon_elim, test_bicon_elim_negation, test_exclusion,
             test_excluded_middle, test_weak_induction, test_strong_induction,
-            test_bicon_contraposition, test_prenex_basic, test_prenex_full,
+            test_bicon_contraposition, test_biconditionalsubstitution,
+            test_prenex_basic, test_prenex_full,
         }
     };
 }
@@ -1458,6 +1459,59 @@ pub fn test_bicon_contraposition<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>
     let r4 = prf.add_step(Justification(p("A & (~Q <-> ~P)"), RuleM::BiconditionalContraposition, vec![i(r1.clone())], vec![]));
 
     (prf, vec![i(r1), i(r2), i(r3)], vec![i(r4)])
+}
+
+pub fn test_biconditionalsubstitution<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
+    use self::coproduct_inject as i;
+    use crate::parser::parse_unwrap as p;
+
+    let mut prf = P::new();
+
+    // Step 1: Add premises
+    let r1 = prf.add_premise(p("(A <-> B) & A")); // valid context for substitution
+    let r2 = prf.add_premise(p("((A | C) <-> B) & (D | (A | C))")); // complex substitution case
+    let r3 = prf.add_premise(p("(X <-> Y) & Z")); // used for incorrect test
+
+    // Step 2: Valid applications of <-> Substitution
+    let r4 = prf.add_step(Justification(
+        p("(A <-> B) & B"), // Correct substitution
+        RuleM::BiconditionalSubstitution,
+        vec![i(r1.clone())],
+        vec![],
+    ));
+
+    let r5 = prf.add_step(Justification(
+        p("((A | C) <-> B) & (D | B)"), // Substitute (A | C) with B
+        RuleM::BiconditionalSubstitution,
+        vec![i(r2.clone())],
+        vec![],
+    ));
+
+    // Step 3: Invalid applications
+    let r6 = prf.add_step(Justification(
+        p("(A <-> B) & A"), // No substitution occurred
+        RuleM::BiconditionalSubstitution,
+        vec![i(r1.clone())],
+        vec![],
+    ));
+
+    let r7 = prf.add_step(Justification(
+        p("(X <-> Y) & W"), // Incorrect conclusion
+        RuleM::BiconditionalSubstitution,
+        vec![i(r3.clone())],
+        vec![],
+    ));
+
+    // Step 4: Edge case
+    let r8 = prf.add_step(Justification(
+        p("((A | C) <-> B) & (D | (A | C))"), // no substitution applied, should fail
+        RuleM::BiconditionalSubstitution,
+        vec![i(r2)],
+        vec![],
+    ));
+
+    // Return proof and categorized results
+    (prf, vec![i(r4), i(r5)], vec![i(r6), i(r7), i(r8)])
 }
 
 pub fn test_prenex_basic<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
