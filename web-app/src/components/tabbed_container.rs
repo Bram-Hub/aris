@@ -1,4 +1,5 @@
 use yew::{html::Scope, prelude::*};
+use web_sys::window;
 
 pub struct TabbedContainer {
     tabs: Vec<(String, Html)>,
@@ -72,7 +73,23 @@ impl Component for TabbedContainer {
 
         for (i, (name, content)) in self.tabs.iter().enumerate() {
             let switch = ctx.link().callback(move |_| TabbedContainerMsg::Switch(i));
-            let close = ctx.link().callback(move |_| TabbedContainerMsg::Close(i));
+
+            // Wrap the close in a confirm dialog
+            let close = {
+                let link = ctx.link().clone();
+                let name = name.clone();
+                Callback::from(move |_| {
+                    // ask the user for confirmation
+                    let msg = format!("Close tab \"{}\"? You will lose all unsaved changes.", name);
+                    if window()
+                        .expect("no global `window`")
+                        .confirm_with_message(&msg)
+                        .unwrap_or(false)
+                    {
+                        link.send_message(TabbedContainerMsg::Close(i));
+                    }
+                })
+            };
             let link_class = if i == self.current_tab { "nav-link active" } else { "nav-link" };
 
             tab_links.add_child(html! {
