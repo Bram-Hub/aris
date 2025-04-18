@@ -1317,9 +1317,9 @@ impl Expr {
         fn aux(expr: Expr, mut gamma: Vec<String>) -> Expr {
             match expr {
                 Expr::Var { name } => {
-                    // look up the name in gamma, get the index
-                    let i = gamma.into_iter().enumerate().find(|(_, n)| n == &name).unwrap().0;
-                    Expr::Var { name: format!("{i}") }
+                    // look up the name in gamma *from the end*, so we get the nearest (innermost) binding
+                    let i = gamma.iter().rposition(|n| n == &name).unwrap_or_else(|| panic!("unbound variable {}", name));
+                    Expr::Var { name: i.to_string() }
                 }
                 // push the name onto gamma from the actual quantifier,
                 // Example: for forall x P(x)

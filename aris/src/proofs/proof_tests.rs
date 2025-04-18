@@ -75,7 +75,7 @@ macro_rules! enumerate_subproofless_tests {
             test_bicon_elim, test_bicon_elim_negation, test_exclusion,
             test_excluded_middle, test_weak_induction, test_strong_induction,
             test_bicon_contraposition, test_biconditionalsubstitution,
-            test_prenex_basic, test_prenex_full,
+            test_prenex_basic, test_prenex_full, test_replacingboundvars,
         }
     };
 }
@@ -1598,4 +1598,36 @@ pub fn test_prenex_full<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
     let e3 = prf.add_step(Justification(p("forall x (P(x) -> Q(x))"), RuleM::PrenexLaws, vec![i(p18.clone())], vec![]));
 
     (prf, vec![i(r1), i(r2), i(r3), i(r4), i(r5), i(r6), i(r7), i(r8), i(r9), i(r10), i(r11), i(r12), i(r13), i(r14), i(r15), i(r16), i(r17), i(r18), i(r19)], vec![i(e1), i(e2), i(e3)])
+}
+
+pub fn test_replacingboundvars<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
+    use self::coproduct_inject as i;
+    use crate::parser::parse_unwrap as p;
+    let mut prf = P::new();
+
+    let p0 = prf.add_premise(p("exists x ((P(x) -> Q) & forall x (Q -> P(x)))"));
+    let p1 = prf.add_premise(p("exists x P(x)"));
+    let p2 = prf.add_premise(p("forall x P(x)"));
+    let p3 = prf.add_premise(p("exists x forall y R(x,y)"));
+    let p4 = prf.add_premise(p("forall x exists y R(x,y)"));
+    let p5 = prf.add_premise(p("exists x (P(x) & exists x Q(x))"));
+    let p6 = prf.add_premise(p("forall x (P(x) -> forall x Q(x))"));
+
+    let r0 = prf.add_step(Justification(p("exists x ((P(x) -> Q) & forall y (Q -> P(y)))"), RuleM::ReplacingBoundVars, vec![i(p0.clone())], vec![]));
+    let r1 = prf.add_step(Justification(p("exists y P(y)"), RuleM::ReplacingBoundVars, vec![i(p1.clone())], vec![]));
+    let r2 = prf.add_step(Justification(p("exists z P(z)"), RuleM::ReplacingBoundVars, vec![i(p1.clone())], vec![]));
+    let r3 = prf.add_step(Justification(p("forall y P(y)"), RuleM::ReplacingBoundVars, vec![i(p2.clone())], vec![]));
+    let r4 = prf.add_step(Justification(p("exists a forall b R(a, b)"), RuleM::ReplacingBoundVars, vec![i(p3.clone())], vec![]));
+    let r5 = prf.add_step(Justification(p("forall a exists b R(a, b)"), RuleM::ReplacingBoundVars, vec![i(p4.clone())], vec![]));
+    let r6 = prf.add_step(Justification(p("exists y (P(y) & exists z Q(z))"), RuleM::ReplacingBoundVars, vec![i(p5.clone())], vec![]));
+    let r7 = prf.add_step(Justification(p("forall a (P(a) -> forall b Q(b))"), RuleM::ReplacingBoundVars, vec![i(p6.clone())], vec![]));
+
+    let e1 = prf.add_step(Justification(p("exists y P(x)"), RuleM::ReplacingBoundVars, vec![i(p1.clone())], vec![]));
+    let e2 = prf.add_step(Justification(p("forall y P(x)"), RuleM::ReplacingBoundVars, vec![i(p2.clone())], vec![]));
+    let e3 = prf.add_step(Justification(p("exists a forall b R(b, a)"), RuleM::ReplacingBoundVars, vec![i(p3.clone())], vec![]));
+    let e4 = prf.add_step(Justification(p("exists y forall x R(y, x)"), RuleM::ReplacingBoundVars, vec![i(p4.clone())], vec![]));
+    let e5 = prf.add_step(Justification(p("exists y (P(y) & exists z Q(x))"), RuleM::ReplacingBoundVars, vec![i(p5.clone())], vec![]));
+    let e6 = prf.add_step(Justification(p("forall a (P(a) -> forall b Q(a))"), RuleM::ReplacingBoundVars, vec![i(p6.clone())], vec![]));
+
+    (prf, vec![i(r0), i(r1), i(r2), i(r3), i(r4), i(r5), i(r6), i(r7)], vec![i(e1), i(e2), i(e3), i(e4), i(e5), i(e6)])
 }
