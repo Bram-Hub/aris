@@ -93,7 +93,7 @@ impl Component for TabbedContainer {
             let link_class = if i == self.current_tab { "nav-link active" } else { "nav-link" };
 
             tab_links.add_child(html! {
-                <li class="nav-item d-flex align-items-center">
+                <li key={ name.clone() } class="nav-item d-flex align-items-center">
                     <a class={ link_class } href="#" onclick={ switch.clone() }>
                         { name }
                     </a>
@@ -108,9 +108,9 @@ impl Component for TabbedContainer {
             });
 
             if i == self.current_tab {
-                out.add_child(html! { <div> { content.clone() } </div> });
+                out.add_child(html! { <div key={ name.clone() }> { content.clone() } </div> });
             } else {
-                out.add_child(html! { <div style="display:none"> { content.clone() } </div> });
+                out.add_child(html! { <div key={ name.clone() } style="display:none"> { content.clone() } </div> });
             }
         }
 
