@@ -1015,7 +1015,11 @@ impl Expr {
                 }
 
                 if negated_match.is_some() {
-                    reduced_exprs.extend(other_terms);
+                    match other_terms.len() {
+                        0 => {},
+                        1 => { reduced_exprs.insert(other_terms[0].clone()); },
+                        _ => { reduced_exprs.insert(Expr::Assoc { op: *inner_op, exprs: other_terms }); },
+                    }
                 } else {
                     reduced_exprs.insert(expr.clone());
                 }
