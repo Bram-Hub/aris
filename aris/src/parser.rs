@@ -146,6 +146,8 @@ fn binder(input: &str) -> IResult<&str, Expr> {
                 alt((
                     // Parse multiple terms enclosed in parentheses
                     delimited(tuple((space, tag("("), space)), expr, tuple((space, tag(")"), space))),
+                    delimited(tuple((space, tag("["), space)), expr, tuple((space, tag("]"), space))),
+                    delimited(tuple((space, tag("{"), space)), expr, tuple((space, tag("}"), space))),
                     // Parse a single term without parentheses
                     paren_expr,
                 )),
@@ -220,7 +222,14 @@ fn assoc_term(s: &str) -> nom::IResult<&str, Expr> {
 
 // paren_expr is a factoring of expr that eliminates left-recursion, which parser combinators have trouble with
 fn paren_expr(input: &str) -> IResult<&str, Expr> {
-    alt((contradiction, tautology, predicate, notterm, binder, delimited(tuple((space, tag("("), space)), expr, tuple((space, tag(")"), space)))))(input)
+    alt((contradiction, 
+        tautology,
+        predicate,
+        notterm,
+        binder,
+        delimited(tuple((space, tag("("), space)), expr, tuple((space, tag(")"), space))),
+        delimited(tuple((space, tag("["), space)), expr, tuple((space, tag("]"), space))),
+        delimited(tuple((space, tag("{"), space)), expr, tuple((space, tag("}"), space)))))(input)
 }
 
 fn expr(input: &str) -> IResult<&str, Expr> {
