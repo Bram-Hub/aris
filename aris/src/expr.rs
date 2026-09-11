@@ -1263,6 +1263,7 @@ impl Expr {
 
     /// Collects unique expressions and identifies complements globally
     /// Removes complements from the unique expressions set when found
+    #[allow(clippy::unnecessary_fold)]
     fn collect_unique_exprs_complement(expr: &Expr, op: Op, unique_exprs: &mut HashSet<Expr>) -> bool {
         match expr {
             Expr::Assoc { op: expr_op, exprs } if *expr_op == op => exprs.iter().fold(false, |found_complement, sub_expr| Expr::collect_unique_exprs_complement(sub_expr, op, unique_exprs) || found_complement),
