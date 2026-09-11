@@ -126,11 +126,11 @@ pub fn reduce_pattern(e: Expr, patterns: &[(Expr, Expr)]) -> Expr {
     let patterns = freevarsify_pattern(&e, patterns);
     e.transform(&|expr| reduce_transform_func(expr, &patterns))
 }
-pub fn reduce_pattern_once(e: Expr, patterns: &[(Expr, Expr)]) -> Expr {
-    let patterns = freevarsify_pattern(&e, patterns);
-    let (result, _) = reduce_transform_func(e, &patterns);
-    result
-}
+// pub fn reduce_pattern_once(e: Expr, patterns: &[(Expr, Expr)]) -> Expr {
+//     let patterns = freevarsify_pattern(&e, patterns);
+//     let (result, _) = reduce_transform_func(e, &patterns);
+//     result
+// }
 
 // /// Like `reduce_pattern()`, but creates a set of possible reductions. This set
 // /// will contain all levels of reduction (up to full normalization), and on all
@@ -152,11 +152,7 @@ fn reduce_transform_func(expr: Expr, patterns: &[(Expr, Expr, HashSet<String>)])
     // This allows patterns written for binary ops to match expressions with >2 operands.
     let normalized_expr = expr.clone().normalize_assoc_to_binary();
     let normalized_expr_left = normalized_expr.clone().normalize_assoc_to_binary_left();
-    let exprs_to_try = if normalized_expr_left == normalized_expr {
-        vec![normalized_expr.clone()]
-    } else {
-        vec![normalized_expr.clone(), normalized_expr_left]
-    };
+    let exprs_to_try = if normalized_expr_left == normalized_expr { vec![normalized_expr.clone()] } else { vec![normalized_expr.clone(), normalized_expr_left] };
 
     // Try all our patterns at every level of the tree
     for (pattern, replace, pattern_vars) in patterns {

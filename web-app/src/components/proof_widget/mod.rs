@@ -293,7 +293,7 @@ impl ProofWidget {
     /// Feedback includes messages for parse errors, valid premises, and rule violations.
     fn render_line_feedback(&self, proofref: PjRef<P>, is_subproof: bool) -> Html {
         use aris::parser::parse;
-        let raw_line = match self.pud.ref_to_input.get(&proofref).and_then(|x| if !x.is_empty() { Some(x) } else { None }) {
+        let raw_line = match self.pud.ref_to_input.get(&proofref).filter(|&x| !x.is_empty()) {
             None => {
                 return html! { <span></span> };
             }
@@ -434,7 +434,7 @@ impl ProofWidget {
             }
             Inr(Inr(void)) => match void {},
         };
-        let id_num = format!("{}{}{}", self.id, &"line-number-", &line.to_string());
+        let id_num = format!("{}{}{}", self.id, "line-number-", line);
         html! {
             <tr class={ class }>
                 <td> { line_num_dep_checkbox } </td>
@@ -568,7 +568,7 @@ impl ProofWidget {
                 }
                 let num = focused_elem_id[length..].parse::<i32>().unwrap() + up_down;
                 //let new_id = "#line-number-".to_owned() + &num.to_string();
-                let _focused_input = match document().get_element_by_id(&format!("{}{}", signature, &num.to_string())) {
+                let _focused_input = match document().get_element_by_id(&format!("{}{}", signature, num)) {
                     Some(_focused_input) => _focused_input.unchecked_into::<HtmlElement>().focus(),
                     None => return ProofWidgetMsg::Nop,
                 };

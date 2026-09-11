@@ -799,12 +799,7 @@ pub fn test_distribution<P: Proof>() -> (P, Vec<PjRef<P>>, Vec<PjRef<P>>) {
 
     let r4 = prf.add_step(Justification(p("A | (B & C)"), RuleM::Distribution, vec![i(p2)], vec![]));
 
-    let r5 = prf.add_step(Justification(
-        p("(~A & ((B & ~C) | (B & C))) | (A & B & C)"),
-        RuleM::Distribution,
-        vec![i(p3)],
-        vec![],
-    ));
+    let r5 = prf.add_step(Justification(p("(~A & ((B & ~C) | (B & C))) | (A & B & C)"), RuleM::Distribution, vec![i(p3)], vec![]));
 
     (prf, vec![i(r1), i(r2), i(r3), i(r5)], vec![i(r4)])
 }
