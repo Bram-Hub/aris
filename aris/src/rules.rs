@@ -1765,7 +1765,42 @@ fn check_by_rewrite_rule_confl<P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion:
     check_by_normalize_first_expr(p, deps, conclusion, commutative, |e| rule.reduce(e), restriction)
 }
 
-fn check_by_rewrite_rule_one_step<P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion: Expr, commutative: bool, rule: &RewriteRule, restriction: &str) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
+// fn check_by_rewrite_rule_one_step<P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion: Expr, commutative: bool, rule: &RewriteRule, restriction: &str) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
+//     let mut premise = p.lookup_expr_or_die(&deps[0])?;
+//     let mut conclusion_mut = conclusion;
+
+//     premise = premise.normalize_assoc_to_binary();
+//     conclusion_mut = conclusion_mut.normalize_assoc_to_binary();
+
+//     if commutative {
+//         premise = premise.sort_commutative_ops(restriction);
+//         conclusion_mut = conclusion_mut.sort_commutative_ops(restriction);
+//     }
+
+//     let premise_matches = rule.reductions.iter().any(|(find, replace)| {
+//         let mut reduced = crate::rewrite_rules::reduce_pattern_once(premise.clone(), &[(find.clone(), replace.clone())]);
+//         if commutative {
+//             reduced = reduced.sort_commutative_ops(restriction);
+//         }
+//         reduced != premise && reduced == conclusion_mut
+//     });
+
+//     let conclusion_matches = rule.reductions.iter().any(|(find, replace)| {
+//         let mut reduced = crate::rewrite_rules::reduce_pattern_once(conclusion_mut.clone(), &[(find.clone(), replace.clone())]);
+//         if commutative {
+//             reduced = reduced.sort_commutative_ops(restriction);
+//         }
+//         reduced != conclusion_mut && reduced == premise
+//     });
+
+//     if premise_matches || conclusion_matches {
+//         Ok(())
+//     } else {
+//         Err(ProofCheckError::Other("Expressions do not match by a single rewrite step.".to_string()))
+//     }
+// }
+
+fn check_by_rewrite_rule_one_step_anywhere<P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusion: Expr, commutative: bool, rule: &RewriteRule, restriction: &str) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
     let mut premise = p.lookup_expr_or_die(&deps[0])?;
     let mut conclusion_mut = conclusion;
 
@@ -1778,7 +1813,7 @@ fn check_by_rewrite_rule_one_step<P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusi
     }
 
     let premise_matches = rule.reductions.iter().any(|(find, replace)| {
-        let mut reduced = crate::rewrite_rules::reduce_pattern_once(premise.clone(), &[(find.clone(), replace.clone())]);
+        let mut reduced = crate::rewrite_rules::reduce_pattern(premise.clone(), &[(find.clone(), replace.clone())]);
         if commutative {
             reduced = reduced.sort_commutative_ops(restriction);
         }
@@ -1786,7 +1821,7 @@ fn check_by_rewrite_rule_one_step<P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusi
     });
 
     let conclusion_matches = rule.reductions.iter().any(|(find, replace)| {
-        let mut reduced = crate::rewrite_rules::reduce_pattern_once(conclusion_mut.clone(), &[(find.clone(), replace.clone())]);
+        let mut reduced = crate::rewrite_rules::reduce_pattern(conclusion_mut.clone(), &[(find.clone(), replace.clone())]);
         if commutative {
             reduced = reduced.sort_commutative_ops(restriction);
         }
@@ -1796,57 +1831,7 @@ fn check_by_rewrite_rule_one_step<P: Proof>(p: &P, deps: Vec<PjRef<P>>, conclusi
     if premise_matches || conclusion_matches {
         Ok(())
     } else {
-        Err(ProofCheckError::Other("Expressions do not match by a single rewrite step.".to_string()))
-    }
-}
-
-fn check_by_rewrite_rule_one_step_anywhere<P: Proof>(
-    p: &P,
-    deps: Vec<PjRef<P>>,
-    conclusion: Expr,
-    commutative: bool,
-    rule: &RewriteRule,
-    restriction: &str,
-) -> Result<(), ProofCheckError<PjRef<P>, P::SubproofReference>> {
-    let mut premise = p.lookup_expr_or_die(&deps[0])?;
-    let mut conclusion_mut = conclusion;
-
-    premise = premise.normalize_assoc_to_binary();
-    conclusion_mut = conclusion_mut.normalize_assoc_to_binary();
-
-    if commutative {
-        premise = premise.sort_commutative_ops(restriction);
-        conclusion_mut = conclusion_mut.sort_commutative_ops(restriction);
-    }
-
-    let premise_matches = rule.reductions.iter().any(|(find, replace)| {
-        let mut reduced = crate::rewrite_rules::reduce_pattern(
-            premise.clone(),
-            &[(find.clone(), replace.clone())],
-        );
-        if commutative {
-            reduced = reduced.sort_commutative_ops(restriction);
-        }
-        reduced != premise && reduced == conclusion_mut
-    });
-
-    let conclusion_matches = rule.reductions.iter().any(|(find, replace)| {
-        let mut reduced = crate::rewrite_rules::reduce_pattern(
-            conclusion_mut.clone(),
-            &[(find.clone(), replace.clone())],
-        );
-        if commutative {
-            reduced = reduced.sort_commutative_ops(restriction);
-        }
-        reduced != conclusion_mut && reduced == premise
-    });
-
-    if premise_matches || conclusion_matches {
-        Ok(())
-    } else {
-        Err(ProofCheckError::Other(
-            "Expressions do not match by a distribution step.".to_string(),
-        ))
+        Err(ProofCheckError::Other("Expressions do not match by a distribution step.".to_string()))
     }
 }
 
