@@ -1565,10 +1565,8 @@ impl RuleT for BiconditionalInference {
                                 }
                             }
                             // Case 2: Both premises are negations (~P and ~Q)
-                            (Expr::Not { operand: ref left }, Expr::Not { operand: ref right }) => {
-                                if conclusion == Expr::assoc(Op::Bicon, &[*left.clone(), *right.clone()]) || conclusion == Expr::assoc(Op::Bicon, &[Expr::Not { operand: left.clone() }, Expr::Not { operand: right.clone() }]) {
-                                    return AnyOrderResult::Ok;
-                                }
+                            (Expr::Not { operand: ref left }, Expr::Not { operand: ref right }) if (conclusion == Expr::assoc(Op::Bicon, &[*left.clone(), *right.clone()]) || conclusion == Expr::assoc(Op::Bicon, &[Expr::Not { operand: left.clone() }, Expr::Not { operand: right.clone() }])) => {
+                                return AnyOrderResult::Ok;
                             }
                             _ => {}
                         }
@@ -1594,10 +1592,8 @@ impl RuleT for BiconditionalInference {
                                 }
                             }
                             // Case 2: Premises are P and ~Q, Conclusion: ~(P <-> Q)
-                            (Expr::Var { name: ref left }, Expr::Not { operand: ref right }) => {
-                                if conclusion == (Expr::Not { operand: Box::new(Expr::assoc(Op::Bicon, &[Expr::var(left), *right.clone()])) }) {
-                                    return AnyOrderResult::Ok;
-                                }
+                            (Expr::Var { name: ref left }, Expr::Not { operand: ref right }) if conclusion == (Expr::Not { operand: Box::new(Expr::assoc(Op::Bicon, &[Expr::var(left), *right.clone()])) }) => {
+                                return AnyOrderResult::Ok;
                             }
                             _ => {}
                         }

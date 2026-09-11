@@ -200,7 +200,7 @@ impl<T> Pools<T> {
     }
     fn remove_premise(&mut self, idx: &PremKey) {
         self.prem_map.remove(idx);
-        for (_, v) in self.sub_map.iter_mut() {
+        for v in self.sub_map.values_mut() {
             let premise_list = std::mem::take(&mut v.premise_list);
             v.premise_list = ZipperVec::from_vec(premise_list.iter().filter(|x| x != &idx).cloned().collect());
         }
@@ -208,7 +208,7 @@ impl<T> Pools<T> {
     }
     fn remove_step(&mut self, idx: &JustKey) {
         self.just_map.remove(idx);
-        for (_, v) in self.sub_map.iter_mut() {
+        for v in self.sub_map.values_mut() {
             let line_list = std::mem::take(&mut v.line_list);
             v.line_list = ZipperVec::from_vec(line_list.iter().filter(|x| x.get() != Some(idx)).cloned().collect());
         }
@@ -232,7 +232,7 @@ impl<T> Pools<T> {
                 }
             }
         }
-        for (_, v) in self.sub_map.iter_mut() {
+        for v in self.sub_map.values_mut() {
             let line_list = std::mem::take(&mut v.line_list);
             v.line_list = ZipperVec::from_vec(line_list.iter().filter(|x| x.get() != Some(idx)).cloned().collect());
         }

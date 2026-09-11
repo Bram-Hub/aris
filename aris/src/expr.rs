@@ -400,7 +400,7 @@ pub fn unify(mut c: HashSet<Constraint>) -> Option<Substitution> {
             // require that the bodies of the quantifiers are alpha-equal by substituting a fresh constant
             c.insert(Constraint::Equal(subst(*sb, &sn, Expr::var(&uv)), subst(*tb, &tn, Expr::var(&uv))));
             // if the constant escapes, then a free variable in one formula unified with a captured variable in the other, so the values don't unify
-            unify(c).and_then(|sub| if sub.0.iter().any(|(x, y)| x == &uv || free_vars(y).contains(&uv)) { None } else { Some(sub) })
+            unify(c).filter(|sub| !sub.0.iter().any(|(x, y)| x == &uv || free_vars(y).contains(&uv)))
         }
         _ => None,
     }
@@ -1016,9 +1016,13 @@ impl Expr {
 
                 if negated_match.is_some() {
                     match other_terms.len() {
-                        0 => {},
-                        1 => { reduced_exprs.insert(other_terms[0].clone()); },
-                        _ => { reduced_exprs.insert(Expr::Assoc { op: *inner_op, exprs: other_terms }); },
+                        0 => {}
+                        1 => {
+                            reduced_exprs.insert(other_terms[0].clone());
+                        }
+                        _ => {
+                            reduced_exprs.insert(Expr::Assoc { op: *inner_op, exprs: other_terms });
+                        }
                     }
                 } else {
                     reduced_exprs.insert(expr.clone());

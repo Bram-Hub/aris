@@ -136,10 +136,8 @@ pub fn proof_from_xml<P: Proof, R: Read>(r: R) -> Result<(P, ProofMetaData), Str
                             }
                         }
                     }
-                    "goal" => {
-                        if !last_raw.is_empty() {
-                            metadata.goals.push(parse!(&last_raw));
-                        }
+                    "goal" if !last_raw.is_empty() => {
+                        metadata.goals.push(parse!(&last_raw));
                     }
                     _ => (),
                 }
